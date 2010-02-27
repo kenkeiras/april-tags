@@ -66,7 +66,7 @@ JNIEXPORT jobject JNICALL Java_april_jcam_ImageSourceNative_image_1source_1get_1
 {
     image_source_t *isrc = isrcs[srcid];
 
-    jclass formatClass = (*jenv)->FindClass(jenv, "jcam/ImageSourceFormat");
+    jclass formatClass = (*jenv)->FindClass(jenv, "april/jcam/ImageSourceFormat");
     assert(formatClass != NULL);
 
     jmethodID methodId = (*jenv)->GetMethodID(jenv, formatClass, "<init>", "()V");
