@@ -4,12 +4,12 @@ OBJS = image_source.o  image_source_v4l2.o image_source_dc1394.o main.o url_pars
 
 all: libimagesource.so
 
-libimagesource.so: jcam_ImageSourceNative.h $(LIBIMAGESOURCE_OBJS)
+libimagesource.so: april_jcam_ImageSourceNative.h $(LIBIMAGESOURCE_OBJS)
 	ld --shared $(LIBIMAGESOURCE_OBJS) -o libimagesource.so -ldc1394
 
-jcam_ImageSourceNative.h:
+april_jcam_ImageSourceNative.h:
 	echo "Rebuilding JNI headers. Ensure java file has been recently built."
-	javah -classpath ../jcam.jar  jcam.ImageSourceNative
+	javah -classpath ../../april.jar  april.jcam.ImageSourceNative
 
 all: $(OBJS)
 	$(CC) -o istest $(OBJS) -ldc1394
@@ -18,7 +18,7 @@ install: libimagesource.so
 	cp libimagesource.so /usr/lib/
 
 clean:
-	rm -f $(OBJS) *~ jcam_ImageSourceNative.h jcam_ImageSourceFormat.h
+	rm -f $(OBJS) *~ april_jcam_ImageSourceNative.h april_jcam_ImageSourceFormat.h
 
 # If you get an error message saying that you're missing jni.h or
 # jni_md.h, locate those files and add the directories using the -I

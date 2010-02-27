@@ -14,7 +14,7 @@ static image_source_t *isrcs[MAX_DESCRIPTORS];
  * Method:    image_source_open_jni
  * Signature: (Ljava/lang/String;)I
  */
-JNIEXPORT jint JNICALL Java_jcam_ImageSourceNative_image_1source_1open_1jni
+JNIEXPORT jint JNICALL Java_april_jcam_ImageSourceNative_image_1source_1open_1jni
 (JNIEnv *jenv, jclass jcls, jstring _url)
 {
     // allocate a descriptor
@@ -48,7 +48,7 @@ JNIEXPORT jint JNICALL Java_jcam_ImageSourceNative_image_1source_1open_1jni
  * Method:    image_source_open_num_formats
  * Signature: (I)I
  */
-JNIEXPORT jint JNICALL Java_jcam_ImageSourceNative_image_1source_1num_1formats_1jni
+JNIEXPORT jint JNICALL Java_april_jcam_ImageSourceNative_image_1source_1num_1formats_1jni
   (JNIEnv *jenv, jclass jcls, jint srcid)
 {
     image_source_t *isrc = isrcs[srcid];
@@ -61,7 +61,7 @@ JNIEXPORT jint JNICALL Java_jcam_ImageSourceNative_image_1source_1num_1formats_1
  * Method:    image_source_get_format
  * Signature: (II)Ljcam/ImageSource;
  */
-JNIEXPORT jobject JNICALL Java_jcam_ImageSourceNative_image_1source_1get_1format_1jni
+JNIEXPORT jobject JNICALL Java_april_jcam_ImageSourceNative_image_1source_1get_1format_1jni
   (JNIEnv *jenv, jclass jcls, jint srcid, jint fmtidx)
 {
     image_source_t *isrc = isrcs[srcid];
@@ -99,7 +99,7 @@ JNIEXPORT jobject JNICALL Java_jcam_ImageSourceNative_image_1source_1get_1format
  * Method:    image_source_enumerate_jni
  * Signature: ()Ljava/util/ArrayList;
  */
-JNIEXPORT jobject JNICALL Java_jcam_ImageSourceNative_image_1source_1enumerate_1jni
+JNIEXPORT jobject JNICALL Java_april_jcam_ImageSourceNative_image_1source_1enumerate_1jni
   (JNIEnv *jenv, jclass jcls)
 {
     jclass arrayListClass = (*jenv)->FindClass(jenv, "java/util/ArrayList");
@@ -131,7 +131,7 @@ JNIEXPORT jobject JNICALL Java_jcam_ImageSourceNative_image_1source_1enumerate_1
  * Method:    image_source_get_current_format_jni
  * Signature: (I)I
  */
-JNIEXPORT jint JNICALL Java_jcam_ImageSourceNative_image_1source_1get_1current_1format_1jni
+JNIEXPORT jint JNICALL Java_april_jcam_ImageSourceNative_image_1source_1get_1current_1format_1jni
   (JNIEnv *jenv, jclass cjls, jint srcid)
 {
     image_source_t *isrc = isrcs[srcid];
@@ -143,7 +143,7 @@ JNIEXPORT jint JNICALL Java_jcam_ImageSourceNative_image_1source_1get_1current_1
  * Method:    image_source_set_white_balance
  * Signature: (III)I
  */
-JNIEXPORT jint JNICALL Java_jcam_ImageSourceNative_image_1source_1set_1white_1balance
+JNIEXPORT jint JNICALL Java_april_jcam_ImageSourceNative_image_1source_1set_1white_1balance
   (JNIEnv *jenv, jclass cjls, jint srcid, jint r, jint b)
 {
     image_source_t *isrc = isrcs[srcid];
@@ -155,7 +155,7 @@ JNIEXPORT jint JNICALL Java_jcam_ImageSourceNative_image_1source_1set_1white_1ba
  * Method:    image_source_get_white_balance
  * Signature: (IC)I
  */
-JNIEXPORT jint JNICALL Java_jcam_ImageSourceNative_image_1source_1get_1white_1balance
+JNIEXPORT jint JNICALL Java_april_jcam_ImageSourceNative_image_1source_1get_1white_1balance
   (JNIEnv *jenv, jclass cjls, jint srcid, jchar c)
 {
     image_source_t *isrc = isrcs[srcid];
@@ -167,7 +167,7 @@ JNIEXPORT jint JNICALL Java_jcam_ImageSourceNative_image_1source_1get_1white_1ba
  * Method:    image_source_set_format
  * Signature: (II)I
  */
-JNIEXPORT jint JNICALL Java_jcam_ImageSourceNative_image_1source_1set_1format_1jni
+JNIEXPORT jint JNICALL Java_april_jcam_ImageSourceNative_image_1source_1set_1format_1jni
   (JNIEnv *jenv, jclass jcls, jint srcid, jint fmtidx)
 {
     image_source_t *isrc = isrcs[srcid];
@@ -179,7 +179,7 @@ JNIEXPORT jint JNICALL Java_jcam_ImageSourceNative_image_1source_1set_1format_1j
  * Method:    image_source_start
  * Signature: (I)I
  */
-JNIEXPORT jint JNICALL Java_jcam_ImageSourceNative_image_1source_1start_1jni
+JNIEXPORT jint JNICALL Java_april_jcam_ImageSourceNative_image_1source_1start_1jni
   (JNIEnv *jenv, jclass jcls, jint srcid)
 {
     image_source_t *isrc = isrcs[srcid];
@@ -191,7 +191,7 @@ JNIEXPORT jint JNICALL Java_jcam_ImageSourceNative_image_1source_1start_1jni
  * Method:    image_source_get_frame
  * Signature: (ID)[B
  */
-JNIEXPORT jbyteArray JNICALL Java_jcam_ImageSourceNative_image_1source_1get_1frame_1jni
+JNIEXPORT jbyteArray JNICALL Java_april_jcam_ImageSourceNative_image_1source_1get_1frame_1jni
   (JNIEnv *jenv, jclass jcls, jint srcid)
 {
     image_source_t *isrc = isrcs[srcid];
@@ -217,7 +217,7 @@ JNIEXPORT jbyteArray JNICALL Java_jcam_ImageSourceNative_image_1source_1get_1fra
  * Method:    image_source_stop
  * Signature: (I)I
  */
-JNIEXPORT jint JNICALL Java_jcam_ImageSourceNative_image_1source_1stop_1jni
+JNIEXPORT jint JNICALL Java_april_jcam_ImageSourceNative_image_1source_1stop_1jni
   (JNIEnv *jenv, jclass jcls, jint srcid)
 {
     image_source_t *isrc = isrcs[srcid];
@@ -229,7 +229,7 @@ JNIEXPORT jint JNICALL Java_jcam_ImageSourceNative_image_1source_1stop_1jni
  * Method:    image_source_close_jni
  * Signature: (I)I
  */
-JNIEXPORT jint JNICALL Java_jcam_ImageSourceNative_image_1source_1close_1jni
+JNIEXPORT jint JNICALL Java_april_jcam_ImageSourceNative_image_1source_1close_1jni
   (JNIEnv *jenv, jclass jcls, jint srcid)
 {
     image_source_t *isrc = isrcs[srcid];

@@ -25,11 +25,11 @@ public class SparseTest
             M.plusEquals(j,i, v);
         }
 
-        GreedyRowOrdering gro = new GreedyRowOrdering(M);
+        Ordering gro = new MinimumDegreeOrdering();
         //	M.print();
         reportSparsity(M);
 
-        M.permuteRows(gro.getPermutation());
+        M.permuteRows(gro.getPermutation(M));
         //	M.print();
         reportSparsity(M);
     }

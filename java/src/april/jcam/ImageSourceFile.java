@@ -158,15 +158,24 @@ public class ImageSourceFile extends ImageSource
         return 0;
     }
 
+    static boolean whiteBalanceWarned = false;
+
     public int setWhiteBalance(int r, int b)
     {
-        System.out.println("***ImageSourceFile: setWhiteBalance() not supported.  Ignoring...");
+        if (!whiteBalanceWarned) {
+            whiteBalanceWarned = true;
+            System.out.println("***ImageSourceFile: setWhiteBalance() not supported.  Ignoring...");
+        }
         return -1;
     }
 
     public int getWhiteBalance(char c)
     {
-        System.out.println("***ImageSourceFile: getWhiteBalance() not supported.  Ignoring...");
+        if (!whiteBalanceWarned) {
+            whiteBalanceWarned = true;
+            System.out.println("***ImageSourceFile: setWhiteBalance() not supported.  Ignoring...");
+        }
+
         return -1;
     }
 

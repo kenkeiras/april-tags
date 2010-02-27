@@ -95,15 +95,24 @@ static int set_format(image_source_t *isrc, int idx)
     return 0;
 }
 
+static int white_balance_warned = 0;
+
 static int set_white_balance(image_source_t *isrc, int r, int b)
 {
-    printf("***V4L2 set_white_balance() not supported.  Ignoring...");
+    if (!white_balance_warned) {
+        white_balance_warned = 1;
+        printf("***V4L2 set_white_balance() not supported.  Ignoring...");
+    }
     return -1;
 }
 
 static int get_white_balance(image_source_t *isrc, char c)
 {
-    printf("***V4L2 get_white_balance() not supported.  Ignoring...");
+    if (!white_balance_warned) {
+        white_balance_warned = 1;
+        printf("***V4L2 set_white_balance() not supported.  Ignoring...");
+    }
+
     return -1;
 }
 
