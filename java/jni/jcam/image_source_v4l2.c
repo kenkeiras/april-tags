@@ -95,25 +95,35 @@ static int set_format(image_source_t *isrc, int idx)
     return 0;
 }
 
-static int white_balance_warned = 0;
 
-static int set_white_balance(image_source_t *isrc, int r, int b)
+static int num_features(image_source_t *isrc)
 {
-    if (!white_balance_warned) {
-        white_balance_warned = 1;
-        printf("***V4L2 set_white_balance() not supported.  Ignoring...");
-    }
-    return -1;
+    return 0;
 }
 
-static int get_white_balance(image_source_t *isrc, char c)
+static const char* get_feature_name(image_source_t *isrc, int idx)
 {
-    if (!white_balance_warned) {
-        white_balance_warned = 1;
-        printf("***V4L2 set_white_balance() not supported.  Ignoring...");
-    }
+    return NULL;
+}
 
-    return -1;
+static double get_feature_min(image_source_t *isrc, int idx)
+{
+    return 0;
+}
+
+static double get_feature_max(image_source_t *isrc, int idx)
+{
+    return 0;
+}
+
+static double get_feature_value(image_source_t *isrc, int idx)
+{
+    return 0;
+}
+
+static int set_feature_value(image_source_t *isrc, int idx, double v)
+{
+    return 0;
 }
 
 static int stop(image_source_t *isrc)
@@ -345,8 +355,12 @@ image_source_t *image_source_v4l2_open(const char *path)
     isrc->get_format = get_format;
     isrc->get_current_format = get_current_format;
     isrc->set_format = set_format;
-    isrc->set_white_balance = set_white_balance;
-    isrc->get_white_balance = get_white_balance;
+    isrc->num_features = num_features;
+    isrc->get_feature_name = get_feature_name;
+    isrc->get_feature_min = get_feature_min;
+    isrc->get_feature_max = get_feature_max;
+    isrc->get_feature_value = get_feature_value;
+    isrc->set_feature_value = set_feature_value;
     isrc->start = start;
     isrc->get_frame = get_frame;
     isrc->release_frame = release_frame;

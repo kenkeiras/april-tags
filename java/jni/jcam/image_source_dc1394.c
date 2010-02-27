@@ -122,29 +122,60 @@ static int set_format(image_source_t *isrc, int idx)
     return 0;
 }
 
-static int set_white_balance(image_source_t *isrc, int r, int b)
+static int num_features(image_source_t *isrc)
 {
-    assert(r >= 0 && r <= 1023);
-    assert(b >= 0 && b <= 1023);
+    return 2;
+}
 
-    impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
-    dc1394_feature_whitebalance_set_value(impl->cam, (uint32_t) b, (uint32_t) r);
+static const char* get_feature_name(image_source_t *isrc, int idx)
+{
+    if (idx==0)
+        return "WHITEBALANCE_RED";
+    if (idx==1)
+        return "WHITEBALANCE_BLUE";
+    return NULL;
+}
 
+static double get_feature_min(image_source_t *isrc, int idx)
+{
     return 0;
 }
 
-static int get_white_balance(image_source_t *isrc, char c)
+static double get_feature_max(image_source_t *isrc, int idx)
+{
+    return 1023;
+}
+
+static double get_feature_value(image_source_t *isrc, int idx)
 {
     uint32_t r, b;
     impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
 
     dc1394_feature_whitebalance_get_value(impl->cam, &b, &r);
 
-    if(c == 'r')
-        return (int) r;
-    else if(c == 'b')
-        return (int) b;
-    return -1;
+    if (idx == 0)
+        return r;
+
+    return b;
+}
+
+static int set_feature_value(image_source_t *isrc, int idx, double v)
+{
+    uint32_t r, b;
+    impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
+
+    dc1394_feature_whitebalance_get_value(impl->cam, &b, &r);
+
+    if (idx < 2) {
+        if (idx==0)
+            r = (uint32_t) v;
+        if (idx==1)
+            b = (uint32_t) v;
+
+        return dc1394_feature_whitebalance_set_value(impl->cam, (uint32_t) b, (uint32_t) r);
+    }
+
+    return 0;
 }
 
 static int start(image_source_t *isrc)
@@ -183,7 +214,7 @@ restart:
     dc1394_format7_set_packet_size(impl->cam, format_priv->dc1394_mode, packet_size);
     uint64_t bytes_per_frame;
     dc1394_format7_get_total_bytes(impl->cam, format_priv->dc1394_mode, &bytes_per_frame);
-    
+
     if (bytes_per_frame * impl->num_buffers > 25000000) {
         printf ("Reducing dc1394 buffers from %d to ", impl->num_buffers);
         impl->num_buffers = 25000000 / bytes_per_frame;
@@ -298,8 +329,12 @@ image_source_t *image_source_dc1394_open(int64_t guid)
     isrc->get_format = get_format;
     isrc->get_current_format = get_current_format;
     isrc->set_format = set_format;
-    isrc->set_white_balance = set_white_balance;
-    isrc->get_white_balance = get_white_balance;
+    isrc->num_features = num_features;
+    isrc->get_feature_name = get_feature_name;
+    isrc->get_feature_min = get_feature_min;
+    isrc->get_feature_max = get_feature_max;
+    isrc->get_feature_value = get_feature_value;
+    isrc->set_feature_value = set_feature_value;
     isrc->start = start;
     isrc->get_frame = get_frame;
     isrc->release_frame = release_frame;

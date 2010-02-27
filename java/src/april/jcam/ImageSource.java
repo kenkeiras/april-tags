@@ -54,9 +54,36 @@ public abstract class ImageSource
         return getFormat(getCurrentFormatIndex());
     }
 
-    public abstract int setWhiteBalance(int r, int b);
+    public int getNumFeatures()
+    {
+        return 0;
+    }
 
-    public abstract int getWhiteBalance(char c);
+    public String getFeatureName(int idx)
+    {
+        return "";
+    }
+
+    public double getFeatureMin(int idx)
+    {
+        return 0;
+    }
+
+    public double getFeatureMax(int idx)
+    {
+        return 0;
+    }
+
+    public double getFeatureValue(int idx)
+    {
+        return 0;
+    }
+
+    /** returns non-zero on error. **/
+    public int setFeatureValue(int idx, double v)
+    {
+        return -1;
+    }
 
     public abstract int close();
 }

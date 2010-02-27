@@ -139,30 +139,6 @@ JNIEXPORT jint JNICALL Java_april_jcam_ImageSourceNative_image_1source_1get_1cur
 }
 
 /*
- * Class:     jcam_ImageSourceNative
- * Method:    image_source_set_white_balance
- * Signature: (III)I
- */
-JNIEXPORT jint JNICALL Java_april_jcam_ImageSourceNative_image_1source_1set_1white_1balance
-  (JNIEnv *jenv, jclass cjls, jint srcid, jint r, jint b)
-{
-    image_source_t *isrc = isrcs[srcid];
-    return isrc->set_white_balance(isrc, r, b);
-}
-
-/*
- * Class:     jcam_ImageSourceNative
- * Method:    image_source_get_white_balance
- * Signature: (IC)I
- */
-JNIEXPORT jint JNICALL Java_april_jcam_ImageSourceNative_image_1source_1get_1white_1balance
-  (JNIEnv *jenv, jclass cjls, jint srcid, jchar c)
-{
-    image_source_t *isrc = isrcs[srcid];
-    return isrc->get_white_balance(isrc, c);
-}
-
-/*
  * Class:     jcam_ImageSource
  * Method:    image_source_set_format
  * Signature: (II)I
@@ -236,3 +212,82 @@ JNIEXPORT jint JNICALL Java_april_jcam_ImageSourceNative_image_1source_1close_1j
     return isrc->close(isrc);
 }
 
+/*
+ * Class:     april_jcam_ImageSourceNative
+ * Method:    image_source_get_num_features
+ * Signature: (I)I
+ */
+JNIEXPORT jint JNICALL Java_april_jcam_ImageSourceNative_image_1source_1get_1num_1features
+  (JNIEnv *jenv, jclass jcls, jint srcid)
+{
+    image_source_t *isrc = isrcs[srcid];
+
+    return isrc->num_features(isrc);
+}
+
+/*
+ * Class:     april_jcam_ImageSourceNative
+ * Method:    image_source_get_feature_name
+ * Signature: (II)Ljava/lang/String;
+ */
+JNIEXPORT jstring JNICALL Java_april_jcam_ImageSourceNative_image_1source_1get_1feature_1name
+  (JNIEnv *jenv, jclass jcls, jint srcid, jint idx)
+{
+    image_source_t *isrc = isrcs[srcid];
+
+    jstring sobj = (*jenv)->NewStringUTF(jenv, isrc->get_feature_name(isrc, idx));
+
+    return sobj;
+}
+
+/*
+ * Class:     april_jcam_ImageSourceNative
+ * Method:    image_source_get_feature_min
+ * Signature: (II)D
+ */
+JNIEXPORT jdouble JNICALL Java_april_jcam_ImageSourceNative_image_1source_1get_1feature_1min
+  (JNIEnv *jenv, jclass jcls, jint srcid, jint idx)
+{
+    image_source_t *isrc = isrcs[srcid];
+
+    return isrc->get_feature_min(isrc, idx);
+}
+
+/*
+ * Class:     april_jcam_ImageSourceNative
+ * Method:    image_source_get_feature_max
+ * Signature: (II)D
+ */
+JNIEXPORT jdouble JNICALL Java_april_jcam_ImageSourceNative_image_1source_1get_1feature_1max
+  (JNIEnv *jenv, jclass jcls, jint srcid, jint idx)
+{
+    image_source_t *isrc = isrcs[srcid];
+
+    return isrc->get_feature_max(isrc, idx);
+}
+
+/*
+ * Class:     april_jcam_ImageSourceNative
+ * Method:    image_source_get_feature_value
+ * Signature: (II)D
+ */
+JNIEXPORT jdouble JNICALL Java_april_jcam_ImageSourceNative_image_1source_1get_1feature_1value
+  (JNIEnv *jenv, jclass jcls, jint srcid, jint idx)
+{
+    image_source_t *isrc = isrcs[srcid];
+
+    return isrc->get_feature_value(isrc, idx);
+}
+
+/*
+ * Class:     april_jcam_ImageSourceNative
+ * Method:    image_source_set_feature_value
+ * Signature: (IID)I
+ */
+JNIEXPORT jint JNICALL Java_april_jcam_ImageSourceNative_image_1source_1set_1feature_1value
+  (JNIEnv *jenv, jclass jcls, jint srcid, jint idx, jdouble v)
+{
+    image_source_t *isrc = isrcs[srcid];
+
+    return isrc->set_feature_value(isrc, idx, v);
+}

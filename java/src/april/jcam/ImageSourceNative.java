@@ -13,12 +13,16 @@ public class ImageSourceNative extends ImageSource
     protected static native ImageSourceFormat image_source_get_format_jni(int isrc, int idx);
     protected static native int image_source_set_format_jni(int isrc, int idx);
     protected static native int image_source_get_current_format_jni(int isrc);
-    protected static native int image_source_set_white_balance(int isrc, int r, int b);
-    protected static native int image_source_get_white_balance(int isrc, char c);
     protected static native int image_source_start_jni(int isrc);
     protected static native byte[] image_source_get_frame_jni(int isrc);
     protected static native int image_source_stop_jni(int isrc);
     protected static native int image_source_close_jni(int isrc);
+    protected static native int image_source_get_num_features(int isrc);
+    protected static native String image_source_get_feature_name(int isrc, int idx);
+    protected static native double image_source_get_feature_min(int isrc, int idx);
+    protected static native double image_source_get_feature_max(int isrc, int idx);
+    protected static native double image_source_get_feature_value(int isrc, int idx);
+    protected static native int image_source_set_feature_value(int isrc, int idx, double v);
     protected static native ArrayList<String> image_source_enumerate_jni();
 
     static {
@@ -98,14 +102,34 @@ public class ImageSourceNative extends ImageSource
         return getFormat(getCurrentFormatIndex());
     }
 
-    public int setWhiteBalance(int r, int b)
+    public int getNumFeatures()
     {
-        return image_source_set_white_balance(srcid, r, b);
+        return image_source_get_num_features(srcid);
     }
 
-    public int getWhiteBalance(char c)
+    public String getFeatureName(int idx)
     {
-        return image_source_get_white_balance(srcid, c);
+        return image_source_get_feature_name(srcid, idx);
+    }
+
+    public double getFeatureMin(int idx)
+    {
+        return image_source_get_feature_min(srcid, idx);
+    }
+
+    public double getFeatureMax(int idx)
+    {
+        return image_source_get_feature_max(srcid, idx);
+    }
+
+    public double getFeatureValue(int idx)
+    {
+        return image_source_get_feature_value(srcid, idx);
+    }
+
+    public int setFeatureValue(int idx, double v)
+    {
+        return image_source_set_feature_value(srcid, idx, v);
     }
 
     public int close()

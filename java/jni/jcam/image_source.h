@@ -27,13 +27,20 @@ struct image_source
     image_source_format_t *(*get_format)(image_source_t *isrc, int idx);
     int (*set_format)(image_source_t *isrc, int idx);
     int (*get_current_format)(image_source_t *isrc);
-    int (*set_white_balance)(image_source_t *isrc, int r, int b);
-    int (*get_white_balance)(image_source_t *isrc, char c);
+//    int (*set_white_balance)(image_source_t *isrc, int r, int b);
+//    int (*get_white_balance)(image_source_t *isrc, char c);
 
     int (*start)(image_source_t *isrc);
     int (*get_frame)(image_source_t *isrc, void **buf, int *buflen);
     int (*release_frame)(image_source_t *isrc, void *buf);
     int (*stop)(image_source_t *isrc);
+
+    int (*num_features)(image_source_t *isrc);
+    const char* (*get_feature_name)(image_source_t *isrc, int idx);
+    double (*get_feature_min)(image_source_t *isrc, int idx);
+    double (*get_feature_max)(image_source_t *isrc, int idx);
+    double (*get_feature_value)(image_source_t *isrc, int idx);
+    int (*set_feature_value)(image_source_t *isrc, int idx, double v);
 
     int (*close)(image_source_t *isrc);
 };

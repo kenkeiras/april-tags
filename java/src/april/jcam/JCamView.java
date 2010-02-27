@@ -19,6 +19,7 @@ public class JCamView
     JImage jim;
     JList  cameraList;
     JList  formatList;
+    JPanel featurePanel;
     JSlider whitebalance_b;
     JSlider whitebalance_r;
 
@@ -51,6 +52,7 @@ public class JCamView
 
         cameraList = new JList(urls.toArray(new String[0]));
         formatList = new JList(new String[0]);
+        featurePanel = new JPanel();
 
         cameraList.addListSelectionListener(new ListSelectionListener() {
             public void valueChanged(ListSelectionEvent e) {
@@ -65,41 +67,19 @@ public class JCamView
             }
 	    });
 
-        // white balance sliders and labels
-        JLabel wbbLabel = new JLabel("White balance: blue");
-        JLabel wbrLabel = new JLabel("White balance: red ");
-
-        whitebalance_b = new JSlider(JSlider.HORIZONTAL,
-                                     0, 1023, 512);
-        whitebalance_r = new JSlider(JSlider.HORIZONTAL,
-                                     0, 1023, 512);
-
-        whitebalance_b.addChangeListener(new ChangeListener() {
-            public void stateChanged(ChangeEvent e){
-                whiteBalanceChanged();
-            }
-        });
-        whitebalance_r.addChangeListener(new ChangeListener() {
-            public void stateChanged(ChangeEvent e){
-                whiteBalanceChanged();
-            }
-        });
-
         cameraList.setSelectedIndex(0); // will trigger call to cameraChanged().
 
-        JSplitPane jsp = new JSplitPane(JSplitPane.VERTICAL_SPLIT, new JScrollPane(cameraList), new JScrollPane(formatList));
-        jsp.setDividerLocation(0.25);
-        jsp.setResizeWeight(0.25);
+        JSplitPane jsp2 = new JSplitPane(JSplitPane.VERTICAL_SPLIT, formatList, featurePanel);
+        jsp2.setDividerLocation(0.5);
+        jsp2.setResizeWeight(0.5);
+
+        JSplitPane jsp = new JSplitPane(JSplitPane.VERTICAL_SPLIT, cameraList, jsp2);
+        jsp.setDividerLocation(0.3);
+        jsp.setResizeWeight(0.3);
 
         infoLabel.setFont(new Font("Monospaced", Font.PLAIN, 12));
         jf.add(jsp, BorderLayout.WEST);
-
-        JSplitPane jsp_wbb = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, wbbLabel, whitebalance_b);
-        JSplitPane jsp_wbr = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, wbrLabel, whitebalance_r);
-
-        JSplitPane jsp_wb = new JSplitPane(JSplitPane.VERTICAL_SPLIT, jsp_wbb, jsp_wbr);
-        JSplitPane jsb_south = new JSplitPane(JSplitPane.VERTICAL_SPLIT, jsp_wb, bottomPanel);
-        jf.add(jsb_south, BorderLayout.SOUTH);
+        jf.add(bottomPanel, BorderLayout.SOUTH);
 
         jf.setSize(600,400);
         jf.setVisible(true);
@@ -123,6 +103,49 @@ public class JCamView
         }
     }
 
+    class FeatureSlider extends JPanel implements ChangeListener
+    {
+        String name;
+        double min, max, value;
+        double scale = 100;
+        ImageSource isrc;
+        int idx;
+
+        JLabel valueLabel = new JLabel();
+        JSlider js;
+
+        public FeatureSlider(ImageSource isrc, int idx)
+        {
+            this.isrc = isrc;
+            this.idx = idx;
+
+            min = isrc.getFeatureMin(idx);
+            max = isrc.getFeatureMax(idx);
+            value = isrc.getFeatureValue(idx);
+
+            js = new JSlider((int) (min*scale), (int) (max*scale), (int) (value*scale));
+
+            setLayout(new BorderLayout());
+            add(new JLabel(isrc.getFeatureName(idx)), BorderLayout.NORTH);
+            add(js, BorderLayout.CENTER);
+            add(valueLabel, BorderLayout.EAST);
+            update();
+            js.addChangeListener(this);
+        }
+
+        void update()
+        {
+            value = isrc.getFeatureValue(idx);
+            valueLabel.setText(""+value);
+        }
+
+        public void stateChanged(ChangeEvent e)
+        {
+            isrc.setFeatureValue(idx, js.getValue()/scale);
+            update();
+        }
+    }
+
     synchronized void cameraChanged()
     {
         stopRunThread();
@@ -140,13 +163,16 @@ public class JCamView
             return;
         }
 
-        int r, b;
-        r = isrc.getWhiteBalance('r');
-        b = isrc.getWhiteBalance('b');
-        if(r != -1 && b != -1)
-        {
-            whitebalance_r.setValue(r);
-            whitebalance_b.setValue(b);
+        if (true) {
+            featurePanel.removeAll();
+            int nfeatures = isrc.getNumFeatures();
+            featurePanel.setLayout(new GridLayout(nfeatures, 1));
+
+            for (int i = 0; i < nfeatures; i++) {
+                System.out.printf("Feature %d : %s (%f, %f, %f)\n", i, isrc.getFeatureName(i), isrc.getFeatureMin(i), isrc.getFeatureMax(i), isrc.getFeatureValue(i));
+
+                featurePanel.add(new FeatureSlider(isrc, i));
+            }
         }
 
         // update the list of formats.
@@ -175,13 +201,6 @@ public class JCamView
 
         runThread = new RunThread();
         runThread.start();
-    }
-
-    synchronized void whiteBalanceChanged()
-    {
-        int r = whitebalance_r.getValue();
-        int b = whitebalance_b.getValue();
-        isrc.setWhiteBalance(r, b);
     }
 
     synchronized void stopRunThread()
@@ -245,8 +264,7 @@ public class JCamView
                         rgb = im.getRGB(mouseListener.imx, mouseListener.imy) & 0xffffff;
 
                     if (frame_mtime - last_info_mtime > 100) {
-                        infoLabel.setText(String.format("fps: %6.2f, RGB: %02x %02x %02x, WB b: %d r: %d", 1.0/(spf+0.00001), (rgb>>16)&0xff, (rgb>>8)&0xff, rgb&0xff,
-                                                        isrc.getWhiteBalance('b'), isrc.getWhiteBalance('r')));
+                        infoLabel.setText(String.format("fps: %6.2f, RGB: %02x %02x %02x", 1.0/(spf+0.00001), (rgb>>16)&0xff, (rgb>>8)&0xff, rgb&0xff));
                         last_info_mtime = frame_mtime;
                     }
 
