@@ -18,7 +18,7 @@ april_jserial_JSerial.h:
 	javah -classpath ../../april.jar  april.jserial.JSerial
 
 clean:
-	rm -f $(LIB_APRIL_JSERIAL_OBJS) *~ april_jserial_JSerial.h *.so
+	rm -f $(LIB_APRIL_JSERIAL_OBJS) *~ april_jserial_JSerial.h *.so $(LIB) $(LDESTLIB)
 
 JNI_INCLUDES = -I/usr/lib/jvm/java-6-sun/include/ -I/usr/lib/jvm/java-6-sun/include/linux
 

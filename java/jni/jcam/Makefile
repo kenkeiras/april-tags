@@ -19,7 +19,7 @@ april_jcam_ImageSourceNative.h:
 	javah -classpath ../../april.jar  april.jcam.ImageSourceNative
 
 clean:
-	rm -f $(OBJS) *~ april_jcam_ImageSourceNative.h april_jcam_ImageSourceFormat.h
+	rm -f $(OBJS) *~ april_jcam_ImageSourceNative.h april_jcam_ImageSourceFormat.h $(LIB) $(DESTLIB)
 
 # If you get an error message saying that you're missing jni.h or
 # jni_md.h, locate those files and add the directories using the -I
