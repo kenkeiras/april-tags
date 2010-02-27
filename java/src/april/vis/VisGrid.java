@@ -1,0 +1,172 @@
+package april.vis;
+
+import java.awt.*;
+import java.awt.geom.*;
+import java.awt.event.*;
+import java.awt.image.*;
+import java.io.*;
+import java.util.*;
+import java.nio.channels.*;
+import java.nio.*;
+
+import javax.media.opengl.*;
+import javax.media.opengl.glu.*;
+import javax.swing.*;
+
+import com.sun.opengl.util.*;
+
+import april.jmat.geom.*;
+import april.jmat.*;
+
+/** Implements a background grid. You shouldn't need to instantiate
+ * this yourself, as VisCanvas provides controls for enabling and
+ * disabling a grid.
+ **/
+public class VisGrid implements VisObject
+{
+    // default spacing for grid. If zero, we'll auto adjust.
+    double spacing;
+
+    public boolean drawGrid = true;
+    public boolean drawGround = false;
+    public Color groundColor = new Color(50, 50, 50);
+    public Color gridColor = new Color(128,128,128);
+
+    // if autoColor, ground/grid colors are chosen automatically.
+    public boolean autoColor = true;
+
+    public VisGrid(double spacing)
+    {
+        this.spacing = spacing;
+    }
+
+    public VisGrid()
+    {
+        // auto spacing when spacing = 0
+    }
+
+
+    /** round the input number to the next number of the form 1*10^n,
+     * 2*10^n, or 5*10^n. */
+    static double round_to_125(double in)
+    {
+        double v = 0.1; // minimum allowable value. Must be of form 1*10^n.
+
+        while (v < in) {
+            if (v < in)
+                v *= 2;
+            if (v < in)
+                v = v/2 * 5;
+            if (v < in)
+                v *= 2;
+        }
+
+        return v;
+    }
+
+    VisText gridText;
+    double  lastSpacing = -1;
+    public void render(VisContext vc, GL gl, GLU glu)
+    {
+        // when looking directly down at the world, about how many grids
+        // should appear across the screen?
+        double grids_per_screen = 10;
+
+        VisViewManager viewManager = vc.getViewManager();
+        VisWorld world = vc.getWorld();
+
+        double eye_dist = LinAlg.distance(viewManager.eyeGoal, viewManager.lookAtGoal);
+        double meters_per_grid = round_to_125(eye_dist / grids_per_screen );
+
+        if (spacing != 0)
+            meters_per_grid = spacing;
+
+        if (meters_per_grid != lastSpacing && (drawGrid || drawGround)) {
+            if (gridText != null)
+                world.removeTemporary(gridText);
+            // the newlines ensure we don't stomp on VisCanvas's window size
+            String label = String.format("Grid: %d m", (int) meters_per_grid);
+            if (meters_per_grid < 1)
+                label = String.format("Grid: %.1f m", meters_per_grid);
+
+            gridText = new VisText(VisText.ANCHOR.CENTER, label);
+            world.addTemporary(gridText, 1.0);
+            lastSpacing = meters_per_grid;
+        }
+
+        /*
+          char txt[64];
+          snprintf (txt, sizeof (txt), "Spacing: %.0fm", meters_per_grid);
+          gtk_label_set_text (GTK_LABEL (self->label), txt);
+        */
+
+        double grid_ox = Math.ceil (viewManager.lookAtGoal[0] / meters_per_grid) * meters_per_grid;
+        double grid_oy = Math.ceil (viewManager.lookAtGoal[1] / meters_per_grid) * meters_per_grid;
+        double grid_oz = 0; // vc.view.lookAt[2];
+        int num_lines = 500;
+
+        VisUtil.pushGLWholeState(gl);
+
+        if (drawGround) {
+            if (autoColor)
+                VisUtil.setColor(gl, ColorUtil.towardsGray(vc.getBackground(), .25));
+            else
+                VisUtil.setColor(gl, groundColor);
+
+            //	    gl.glEnable(gl.GL_BLEND);
+            //	    gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA);
+
+            //	    gl.glDisable(gl.GL_DEPTH_TEST);
+            gl.glBegin(gl.GL_TRIANGLES);
+            gl.glVertex3d(grid_ox + (-num_lines/2)*meters_per_grid,
+                          grid_oy + (-num_lines/2)*meters_per_grid,
+                          grid_oz);
+            gl.glVertex3d(grid_ox + (+num_lines/2)*meters_per_grid,
+                          grid_oy + (-num_lines/2)*meters_per_grid,
+                          grid_oz);
+            gl.glVertex3d(grid_ox + (+num_lines/2)*meters_per_grid,
+                          grid_oy + (+num_lines/2)*meters_per_grid,
+                          grid_oz);
+            gl.glVertex3d(grid_ox + (-num_lines/2)*meters_per_grid,
+                          grid_oy + (-num_lines/2)*meters_per_grid,
+                          grid_oz);
+            gl.glVertex3d(grid_ox + (+num_lines/2)*meters_per_grid,
+                          grid_oy + (+num_lines/2)*meters_per_grid,
+                          grid_oz);
+            gl.glVertex3d(grid_ox + (-num_lines/2)*meters_per_grid,
+                          grid_oy + (+num_lines/2)*meters_per_grid,
+                          grid_oz);
+            gl.glEnd();
+        }
+
+        if (drawGrid) {
+            grid_oz += .0001;
+
+            gl.glLineWidth (1);
+            //	    gl.glEnable(gl.GL_DEPTH_TEST);
+            gl.glBegin(gl.GL_LINES);
+
+            if (autoColor)
+                VisUtil.setColor(gl, ColorUtil.towardsGray(vc.getBackground(), .5));
+            else
+                VisUtil.setColor(gl, gridColor);
+
+            for (int i=0; i<num_lines; i++) {
+                gl.glVertex3d(grid_ox + (-num_lines/2 + i) * meters_per_grid,
+                              grid_oy - num_lines/2 * meters_per_grid, grid_oz);
+                gl.glVertex3d(grid_ox + (-num_lines/2 + i) * meters_per_grid,
+                              grid_oy + num_lines/2 * meters_per_grid, grid_oz);
+
+                gl.glVertex3d(grid_ox - num_lines/2 * meters_per_grid,
+                              grid_oy + (-num_lines/2 + i) * meters_per_grid, grid_oz);
+                gl.glVertex3d(grid_ox + num_lines/2 * meters_per_grid,
+                              grid_oy + (-num_lines/2 + i) * meters_per_grid, grid_oz);
+            }
+            gl.glEnd ();
+            //	    gl.glDisable(gl.GL_DEPTH_TEST);
+            //	    gl.glDisable(gl.GL_BLEND);
+        }
+
+        VisUtil.popGLWholeState(gl);
+    }
+}

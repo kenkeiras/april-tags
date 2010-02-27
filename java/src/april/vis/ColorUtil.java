@@ -1,0 +1,70 @@
+package april.vis;
+
+import java.awt.*;
+import java.util.*;
+
+/** Useful color utilities. **/
+public class ColorUtil
+{
+    static Random r = new Random();
+
+    public static Color seededColor(int seed)
+    {
+        Random r = new Random(seed);
+        return new Color(r.nextInt(255), r.nextInt(255), r.nextInt(255));
+    }
+
+    public static Color randomColor()
+    {
+        return new Color(r.nextInt(255), r.nextInt(255), r.nextInt(255));
+    }
+
+    public static Color randomColor(int alpha)
+    {
+        return new Color(r.nextInt(255), r.nextInt(255), r.nextInt(255), alpha);
+    }
+
+    public static Color setAlpha(Color c, int a)
+    {
+        return new Color(c.getRed(), c.getGreen(), c.getBlue(), a);
+    }
+
+    public static Color invertColor(Color c)
+    {
+        return new Color(255- c.getRed(), 255-c.getGreen(), 255-c.getBlue());
+    }
+
+    // make the color closer to 128,128,128.
+    // if frac=0, no change. if frac=1, returns 128,128,128.
+    public static Color towardsGray(Color c, double frac)
+    {
+        int er = c.getRed() - 128;
+        int eg = c.getGreen() - 128;
+        int eb = c.getBlue() - 128;
+        return new Color(c.getRed() - ((int) (er * frac)),
+                         c.getGreen() - ((int) (eg * frac)),
+                         c.getBlue() - ((int) (eb * frac)));
+    }
+
+    /**
+     * Converts a color to its String representation for VisText and
+     * HTML in the #RRGGBB format
+     */
+    public static String toHTMLString(Color c)
+    {
+        // Either one or two characters long
+        String r = Integer.toHexString(c.getRed());
+        String g = Integer.toHexString(c.getGreen());
+        String b = Integer.toHexString(c.getBlue());
+
+        if ( r.length() == 1)
+            r = "0"+r;
+        if ( g.length() == 1)
+            g = "0"+g;
+        if ( b.length() == 1)
+            b = "0"+b;
+
+        return "#" + r + g + b;
+    }
+}
+
