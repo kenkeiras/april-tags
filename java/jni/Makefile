@@ -4,4 +4,5 @@ all:
 
 clean:
 	cd jcam && make clean
+	cd jserial && make clean
 

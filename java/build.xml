@@ -71,8 +71,8 @@
   </target>
 
   <target name="clean-jni">
-    <exec executable="make" dir="${basedir}">
-      <arg line="-f jni/Makefile clean" />
+    <exec executable="make" dir="${basedir}/jni">
+      <arg line="-f Makefile clean" />
     </exec>
   </target>
 
