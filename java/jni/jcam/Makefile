@@ -2,8 +2,14 @@ GCC = gcc -Wall -g -std=gnu99
 LIBIMAGESOURCE_OBJS = image_source.o image_source_v4l2.o image_source_jni.o image_source_dc1394.o url_parser.o
 OBJS = image_source.o  image_source_v4l2.o image_source_dc1394.o main.o url_parser.o
 
-all: libimagesource.so
-	cp libimagesource.so ../../../lib/
+LIB=libimagesource.so
+DESTLIB=../../../lib/$(LIB)
+
+all: $(DESTLIB)
+
+
+$(DESTLIB): $(LIB)
+	cp $(LIB) $(DESTLIB)
 
 libimagesource.so: april_jcam_ImageSourceNative.h $(LIBIMAGESOURCE_OBJS)
 	ld --shared $(LIBIMAGESOURCE_OBJS) -o libimagesource.so -ldc1394
