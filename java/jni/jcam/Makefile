@@ -3,6 +3,7 @@ LIBIMAGESOURCE_OBJS = image_source.o image_source_v4l2.o image_source_jni.o imag
 OBJS = image_source.o  image_source_v4l2.o image_source_dc1394.o main.o url_parser.o
 
 all: libimagesource.so
+	cp libimagesource.so ../../../lib/
 
 libimagesource.so: april_jcam_ImageSourceNative.h $(LIBIMAGESOURCE_OBJS)
 	ld --shared $(LIBIMAGESOURCE_OBJS) -o libimagesource.so -ldc1394
@@ -10,12 +11,6 @@ libimagesource.so: april_jcam_ImageSourceNative.h $(LIBIMAGESOURCE_OBJS)
 april_jcam_ImageSourceNative.h:
 	echo "Rebuilding JNI headers. Ensure java file has been recently built."
 	javah -classpath ../../april.jar  april.jcam.ImageSourceNative
-
-all: $(OBJS)
-	$(CC) -o istest $(OBJS) -ldc1394
-
-install: libimagesource.so
-	cp libimagesource.so /usr/lib/
 
 clean:
 	rm -f $(OBJS) *~ april_jcam_ImageSourceNative.h april_jcam_ImageSourceFormat.h

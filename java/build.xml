@@ -3,10 +3,10 @@
 <project name="april" default="build" basedir=".">
 
   <!-- Build everything -->
-  <target name="build" depends="build-java,build-jar"/>
+  <target name="build" depends="generate-lcmtypes,build-java,build-jar,build-jni"/>
 
   <!-- Clean everything -->
-  <target name="clean" depends="clean-java"/>
+  <target name="clean" depends="clean-lcmtypes,clean-java,clean-jni"/>
 
   <!-- Dist Clean everyting -->
   <target name="distclean" depends="clean">
@@ -25,6 +25,18 @@
              Public="yes"
              source="1.6"
 	     />
+  </target>
+
+  <target name="clean-lcmtypes">
+    <exec executable="make" dir="${basedir}">
+      <arg line="-f Makefile.lcmgen clean" />
+    </exec>
+  </target>
+
+  <target name="generate-lcmtypes">
+    <exec executable="make" dir="${basedir}">
+      <arg line="-f Makefile.lcmgen" />
+    </exec>
   </target>
 
   <!-- Build Jar -->
@@ -56,6 +68,18 @@
        target="1.5"
        >
     </javac>
+  </target>
+
+  <target name="clean-jni">
+    <exec executable="make" dir="${basedir}">
+      <arg line="-f jni/Makefile clean" />
+    </exec>
+  </target>
+
+  <target name="build-jni">
+    <exec executable="make" dir="${basedir}/jni">
+      <arg line="-f Makefile" />
+    </exec>
   </target>
 
   <target name="clean-java" >
