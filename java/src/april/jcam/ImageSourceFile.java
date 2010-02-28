@@ -162,4 +162,36 @@ public class ImageSourceFile extends ImageSource
     {
         return 0;
     }
+
+    public int getNumFeatures()
+    {
+        return 1;
+    }
+
+    public String getFeatureName(int idx)
+    {
+        return "FPS";
+    }
+
+    public double getFeatureMin(int idx)
+    {
+        return 1;
+    }
+
+    public double getFeatureMax(int idx)
+    {
+        return 100;
+    }
+
+    public double getFeatureValue(int idx)
+    {
+        return Math.max(1, Math.min(fps, 100));
+    }
+
+    /** returns non-zero on error. **/
+    public int setFeatureValue(int idx, double v)
+    {
+        fps = v;
+        return 0;
+    }
 }

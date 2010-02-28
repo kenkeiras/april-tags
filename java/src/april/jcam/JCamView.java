@@ -8,6 +8,7 @@ import java.awt.image.*;
 import java.awt.event.*;
 import javax.swing.*;
 import javax.swing.event.*;
+import javax.imageio.*;
 
 import java.io.*;
 import java.util.*;
@@ -32,6 +33,11 @@ public class JCamView
 
     MyMouseListener mouseListener;
 
+    JPanel mainPanel;
+    JPanel leftPanel;
+
+    RecordPanel recordPanel = new RecordPanel();
+
     public JCamView(ArrayList<String> urls)
     {
         this.urls = urls;
@@ -41,11 +47,10 @@ public class JCamView
         jf.setLayout(new BorderLayout());
 
         jim = new JImage();
-        jf.add(jim, BorderLayout.CENTER);
-
-        JPanel bottomPanel = new JPanel();
-        bottomPanel.setLayout(new FlowLayout());
-        bottomPanel.add(infoLabel);
+        mainPanel = new JPanel();
+        mainPanel.setLayout(new BorderLayout());
+        mainPanel.add(jim, BorderLayout.CENTER);
+        jf.add(mainPanel, BorderLayout.CENTER);
 
         mouseListener = new MyMouseListener();
         jim.addMouseMotionListener(mouseListener);
@@ -69,20 +74,129 @@ public class JCamView
 
         cameraList.setSelectedIndex(0); // will trigger call to cameraChanged().
 
-        JSplitPane jsp2 = new JSplitPane(JSplitPane.VERTICAL_SPLIT, formatList, featurePanel);
-        jsp2.setDividerLocation(0.5);
-        jsp2.setResizeWeight(0.5);
-
-        JSplitPane jsp = new JSplitPane(JSplitPane.VERTICAL_SPLIT, cameraList, jsp2);
-        jsp.setDividerLocation(0.3);
-        jsp.setResizeWeight(0.3);
-
         infoLabel.setFont(new Font("Monospaced", Font.PLAIN, 12));
-        jf.add(jsp, BorderLayout.WEST);
-        jf.add(bottomPanel, BorderLayout.SOUTH);
 
-        jf.setSize(600,400);
+        leftPanel = new JPanel();
+        int vspace = 15;
+        leftPanel.setLayout(new VFlowLayout());
+        leftPanel.add(makeChoicePanel("Cameras", cameraList));
+        leftPanel.add(Box.createVerticalStrut(vspace));
+        leftPanel.add(makeChoicePanel("Formats", formatList));
+        leftPanel.add(Box.createVerticalStrut(vspace));
+        leftPanel.add(makeChoicePanel("Controls", featurePanel));
+        leftPanel.add(Box.createVerticalStrut(vspace));
+        leftPanel.add(makeChoicePanel("Record", recordPanel));
+
+        jf.add(new JScrollPane(leftPanel), BorderLayout.WEST);
+
+        JPanel bottomPanel = new JPanel();
+        bottomPanel.setLayout(new FlowLayout());
+        bottomPanel.add(infoLabel);
+        mainPanel.add(bottomPanel, BorderLayout.SOUTH);
+
+        jf.setSize(800,600);
         jf.setVisible(true);
+    }
+
+    JPanel indentPanel(JComponent c)
+    {
+        JPanel jp = new JPanel();
+        jp.setLayout(new BorderLayout());
+        jp.add(c, BorderLayout.CENTER);
+        jp.add(Box.createHorizontalStrut(20), BorderLayout.WEST);
+        return jp;
+    }
+
+    JPanel makeChoicePanel(String title, JComponent c)
+    {
+        JPanel jp = new JPanel();
+        jp.setLayout(new BorderLayout());
+        jp.add(c, BorderLayout.CENTER);
+        jp.setBorder(BorderFactory.createTitledBorder(title));
+        return jp;
+    }
+
+    class RecordPanel extends JPanel implements ActionListener, ChangeListener
+    {
+        JTextField pathBox = new JTextField("/tmp/jcam-capture/");
+
+        JButton startStopButton = new JButton("Record");
+
+        boolean recording = false;
+
+        JSlider fpsSlider = new JSlider(1, 100, 10);
+        JLabel fpsLabel = new JLabel("");
+
+        long firstms;
+        long lastms = System.currentTimeMillis();
+        int framesWritten = 0;
+        JLabel framesWrittenLabel = new JLabel("");
+
+        public RecordPanel()
+        {
+            setLayout(new VFlowLayout());
+
+            add(new JLabel("Maximum frame rate: "));
+            JPanel fpsPanel = new JPanel();
+            fpsPanel.setLayout(new BorderLayout());
+            fpsPanel.add(fpsSlider, BorderLayout.CENTER);
+            fpsPanel.add(fpsLabel, BorderLayout.EAST);
+            fpsSlider.addChangeListener(this);
+            add(indentPanel(fpsPanel));
+
+            add(new JLabel("Destination path: "));
+            add(indentPanel(pathBox));
+            add(Box.createVerticalStrut(10));
+            add(startStopButton);
+
+            add(framesWrittenLabel);
+
+            stateChanged(null);
+            startStopButton.addActionListener(this);
+        }
+
+        public void stateChanged(ChangeEvent e)
+        {
+            fpsLabel.setText(String.format("%4d", fpsSlider.getValue()));
+        }
+
+        public synchronized void actionPerformed(ActionEvent e)
+        {
+            recording ^= true;
+
+            if (recording) {
+                startStopButton.setText("Stop");
+                framesWritten = 0;
+                firstms = System.currentTimeMillis();
+
+                new File(pathBox.getText()).mkdirs();
+
+            } else {
+                startStopButton.setText("Record");
+            }
+        }
+
+        public synchronized void handleImage(BufferedImage im)
+        {
+            if (!recording)
+                return;
+
+            long nowms = System.currentTimeMillis();
+            long dms = 1000 / fpsSlider.getValue();
+
+            if (nowms >= lastms + dms) {
+                lastms = nowms;
+
+                try {
+                    String path = String.format("%s/image_%06d.png", pathBox.getText(), nowms - firstms);
+                    ImageIO.write(im, "png", new File(path));
+                    framesWritten++;
+                    framesWrittenLabel.setText(String.format("%d frames written", framesWritten));
+                } catch (IOException ex) {
+                    System.out.println("Ex: "+ex);
+                }
+            }
+        }
     }
 
     class MyMouseListener implements MouseMotionListener
@@ -227,7 +341,7 @@ public class JCamView
             // linearly blending fps measures gives funny
             // results. E.g., suppose frame 1 takes 1 second, frame 2
             // takes 0 seconds. Averaging fps would give INF,
-            // averaging spf woudl give 0.5. As a (related) plus,
+            // averaging spf would give 0.5. As a (related) plus,
             // there's no risk of a divide-by-zero.
             double spf = 0;
             double spfAlpha = 0.95;
@@ -252,6 +366,7 @@ public class JCamView
                     continue;
 
                 jim.setImage(im);
+                recordPanel.handleImage(im);
 
                 if (true) {
                     long frame_mtime = System.currentTimeMillis();

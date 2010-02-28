@@ -6,6 +6,8 @@ import javax.swing.*;
 import javax.swing.event.*;
 import java.util.*;
 
+import april.util.*;
+
 class EnabledBuffersFrame extends JFrame implements VisViewListener
 {
     VisCanvas vc;

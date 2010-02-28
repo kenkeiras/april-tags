@@ -1,4 +1,4 @@
-package april.vis;
+package april.util;
 
 import java.awt.*;
 import java.util.*;
