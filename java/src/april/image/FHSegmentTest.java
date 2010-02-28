@@ -33,14 +33,19 @@ public class FHSegmentTest implements ParameterListener
         try {
             ArrayList<String> urls = ImageSource.getCameraURLs();
 
-            String url;
+            String url = null;
             if (urls.size()==1)
                 url = urls.get(0);
-            else
-                url = "dc1394://b09d01008b7777"; // hack
 
             if (args.length > 0)
                 url = args[0];
+
+            if (url == null) {
+                System.out.println("Please specify a camera:");
+                for (String u : urls)
+                    System.out.println(" "+u);
+                return;
+            }
 
             ImageSource is = ImageSource.make(url);
 
