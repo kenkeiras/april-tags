@@ -61,6 +61,8 @@ public class ImageSourceFile extends ImageSource
                 paths.add(dirpath+"/"+child);
             }
 
+            Collections.sort(paths);
+
         } else {
             throw new IOException("ImageSourceFile: invalid URL");
         }
