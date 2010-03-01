@@ -251,6 +251,13 @@ public class Matrix
         r.set(col, v);
     }
 
+    public void set(int row, int col, double v[][])
+    {
+        for (int dr = 0; dr < v.length; dr++)
+            for (int dc = 0; dc < v[dr].length; dc++)
+                set(row+dr, col+dc, v[dr][dc]);
+    }
+
     /** Create a new Vec containing a copy of the column. Changes to
         the Vec do NOT affect the Matrix. **/
     public Vec getColumn(int col)
@@ -766,16 +773,16 @@ public class Matrix
         ArrayList<Vec> nrows = new ArrayList<Vec>();
 
         for (Vec v : rows) {
-            if (newcols >= n)
-                v.setSize(newcols);
+            v.setSize(newcols);
             nrows.add(v);
         }
 
-        for (int i = m; i < newrows; i++)
-            nrows.add(makeVec(n));
+        while (nrows.size() < newrows)
+            nrows.add(makeVec(newcols));
 
         m = newrows;
         n = newcols;
+
         rows = nrows.toArray(new Vec[m]);
     }
 

@@ -23,6 +23,11 @@ public class VisGaussian implements VisObject
 
     public int steps = 100;
 
+    public VisGaussian(Matrix M, VisDataStyle style)
+    {
+        this(new MultiGaussian(M), style);
+    }
+
     public VisGaussian(MultiGaussian mg, VisDataStyle style)
     {
         this(mg, style, new double[] {1});
