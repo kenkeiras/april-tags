@@ -205,6 +205,17 @@ public class Config
         assert(false);
     }
 
+    //For now, we can access Abstract keys individually:
+    public String[] getAbstractStrings(String abstractKey)
+    {
+        return abstractKeys.get(prefix + abstractKey);
+    }
+
+    public String getAbstractString(String abstractKey)
+    {
+        return getAbstractStrings(abstractKey)[0];
+    }
+
     ////////////////////////////
     // boolean
     public boolean[] getBooleans(String key, boolean defaults[])
