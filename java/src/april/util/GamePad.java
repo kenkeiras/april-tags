@@ -8,41 +8,26 @@ public class GamePad
     public static final int NAXES = 16;
     public static final int NBUTTONS = 16;
 
-    String devicePath;
+    String paths[] = new String[] { "/dev/js0", "/dev/input/js0" };
     int    axes[] = new int[NAXES];
     int    buttons[] = new int[NBUTTONS];
 
-    boolean persistent;
-    boolean dead;
-    boolean reset;
+    boolean reconnect;
+    boolean present = false;
 
     ///////////////////////////////////////////////////////
-    public GamePad(boolean _persistent)
+    public GamePad(boolean _reconnect)
     {
-        persistent = _persistent;
-
-        String paths[] = { "/dev/js0","/dev/input/js0"};
-
-        for (int i = 0; i < paths.length; i++) {
-            String path = paths[i];
-            File f = new File(path);
-            if (f.exists()) {
-                this.devicePath = path;
-                break;
-            }
-        }
-
-        if (devicePath == null) {
-            System.out.println("Couldn't find a joystick.");
-            System.exit(-1);
-        }
+        reconnect = _reconnect;
 
         new ReaderThread().start();
     }
 
-    public GamePad(String path)
+    public GamePad(String path, boolean _reconnect)
     {
-        this.devicePath = path;
+        this.reconnect = _reconnect;
+        this.paths = new String[] { path };
+
         new ReaderThread().start();
     }
 
@@ -63,16 +48,9 @@ public class GamePad
         return buttons[button] > 0;
     }
 
-    public boolean isActive()
+    public boolean isPresent()
     {
-        return !dead;
-    }
-
-    public boolean reset()
-    {
-        boolean tmp = reset;
-        reset = false;
-        return tmp;
+        return present;
     }
 
     /** Returns once any button has been pressed, returning the button
@@ -91,10 +69,7 @@ public class GamePad
                 if (getButton(i) != buttonState[i])
                     return i;
 
-            try {
-                Thread.sleep(10);
-            } catch (InterruptedException ex) {
-            }
+            TimeUtil.sleep(10);
         }
     }
 
@@ -102,45 +77,51 @@ public class GamePad
     {
         ReaderThread()
         {
-                setDaemon(true);
+            setDaemon(true);
         }
 
         public void run()
         {
-            //New error catching persistent mode
-            if(persistent){
-                while(true){
-                    try {
-                        runEx();
-                    } catch (IOException ex) {
-                        System.out.println("GamePad ex: "+ex);
-                    }
-                    try {
-                        if(!dead){
-                            //reset output of gamepad
-                            //b/c don't get message unless gp state changes
-                            for(int i = 0; i < NAXES; i++) {
-                                axes[i] = 0;
-                                buttons[i] = 0;
-                            }
-                        }
-                        reset = true;
-                        dead = true;
-                        Thread.sleep(50);
-                    }catch(InterruptedException ex){}
-                }
-            }else{
-                //Old default mode
+            while (true) {
                 try {
                     runEx();
                 } catch (IOException ex) {
-                    System.out.println("GamePad ex: "+ex);
                 }
+
+                if (!reconnect)
+                    System.exit(-1);
+
+                present = false;
+
+                for (int i = 0; i < axes.length; i++)
+                    axes[i] = 0;
+                for (int i = 0; i < buttons.length; i++)
+                    buttons[i] = 0;
+
+                TimeUtil.sleep(500);
             }
         }
 
-        public void runEx() throws IOException
+        // Make one attempt to open and read from the joystick,
+        // returning if an error occurs.
+        void runEx() throws IOException
         {
+            String devicePath = null;
+
+            for (int i = 0; i < paths.length; i++) {
+                String path = paths[i];
+                File f = new File(path);
+                if (f.exists()) {
+                    devicePath = path;
+                    break;
+                }
+            }
+
+            if (devicePath == null)
+                return;
+
+            boolean pressedButton = false;
+
             FileInputStream fins = new  FileInputStream(new File(devicePath));
             byte buf[] = new byte[8];
 
@@ -156,20 +137,26 @@ public class GamePad
                 int type   = buf[6]&0xff;
                 int number = buf[7]&0xff;
 
-                if ((type&0x3)== 1) {
-                    if (number < buttons.length)
+                if ((type&0x3)==1) {
+                    if (number < buttons.length) {
                         buttons[number] = value;
-                    else
+                        if (value == 1)
+                            pressedButton = true;
+                    } else {
                         System.out.println("GamePad: "+number+" buttons!");
+                    }
                 }
 
                 if ((type&0x3) == 2) {
-                    if (number < axes.length)
-                        axes[number] = value;
-                    else
+                    if (number < axes.length) {
+                        if (pressedButton)
+                            axes[number] = value;
+                    } else {
                         System.out.println("GamePad: "+number+" axes!");
+                    }
                 }
-                dead = false;
+
+                present = true;
             }
         }
     }
