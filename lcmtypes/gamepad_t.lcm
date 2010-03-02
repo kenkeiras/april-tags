@@ -1,0 +1,8 @@
+struct gamepad_t
+{
+	int64_t utime;
+	int32_t naxes;
+	double axes[naxes];
+
+	int64_t buttons; // bitmapped
+}
