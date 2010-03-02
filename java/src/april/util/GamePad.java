@@ -13,7 +13,7 @@ public class GamePad
     int    buttons[] = new int[NBUTTONS];
 
     boolean reconnect;
-    boolean present = false;
+    boolean present = false, lastPresent = true;
 
     ///////////////////////////////////////////////////////
     public GamePad(boolean _reconnect)
@@ -92,6 +92,9 @@ public class GamePad
                     System.exit(-1);
 
                 present = false;
+                if (lastPresent != present)
+                    System.out.println("DEBUG: No Gamepad Present");
+                lastPresent = present;
 
                 for (int i = 0; i < axes.length; i++)
                     axes[i] = 0;
@@ -157,6 +160,9 @@ public class GamePad
                 }
 
                 present = true;
+                if (lastPresent != present)
+                    System.out.println("DEBUG: Gamepad Now Present");
+                lastPresent = present;
             }
         }
     }
