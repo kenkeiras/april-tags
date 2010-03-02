@@ -36,7 +36,15 @@ public class ConfigFile extends Config
             if (key.startsWith(srcNameSpace)) { // && key.indexOf('.', srcNameSpace.length()) < 0) {
                 String propertyName = key.substring(srcNameSpace.length());
 
-                newkeys.put(destNameSpace + propertyName, keys.get(key));
+                String newKeyName = destNameSpace + propertyName;
+
+                if (destNameSpace.startsWith(":")) {
+                    newKeyName = ":" + newKeyName.replace(":","");
+                } else {
+                    newKeyName = newKeyName.replace(":","");
+                }
+
+                newkeys.put(newKeyName, keys.get(key));
             }
         }
 
@@ -82,8 +90,14 @@ public class ConfigFile extends Config
             if (!t.hasNext())
                 return;
 
+            String keypart = null;
+
             // parse a key block.
-            String keypart = t.next();
+            if (t.consume(":")) {
+                keypart = ":" + t.next();
+            } else {
+                keypart = t.next();
+            }
 
             if (keypart.endsWith("#")) {
                 System.out.println("*********: "+keypart);
@@ -100,6 +114,7 @@ public class ConfigFile extends Config
             if (t.consume(":")) {
                 while (true) {
                     String superclass = t.next();
+                    copyProperties(":"+superclass+".", keyroot+keypart+".");
                     copyProperties(superclass+".", keyroot+keypart+".");
 
                     if (!t.consume(","))

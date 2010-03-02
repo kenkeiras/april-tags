@@ -85,6 +85,18 @@ contacts.friends = [ "Aaron", "Beth", "Charlie" ];
 In particular, when a config file is parsed, the names of all the
 enclosing blocks are prepended to the keys.
 
+XXX TO DOCUMENT: A scoping block beginning with a colon can be used to
+prevent the key iterator from returning it.  Basically, abstract
+classes should begin with a colon. This allows iteration over all the
+keys without iterating over the abstract base class. E.g.:
+
+:animal { fur = true; }
+
+cat : animal { meows = true; }
+lizard : animal { fur = false; }
+
+
+
 Inheritence
 -----------
 
