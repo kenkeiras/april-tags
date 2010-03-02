@@ -11,6 +11,7 @@ import april.util.*;
 public class Config
 {
     HashMap<String, String[]> keys = new HashMap<String, String[]>();
+    HashMap<String, String[]> abstractKeys = new HashMap<String, String[]>();
 
     String       prefix; // either empty or has a trailing "." so that
                          // prefix+key is always well-formed
@@ -43,6 +44,21 @@ public class Config
         ArrayList<String> subkeys = new ArrayList<String>();
 
         for (String key : keys.keySet()) {
+            if (key.length() <= prefix.length())
+                continue;
+            if (key.startsWith(prefix))
+                subkeys.add(key.substring(prefix.length()));
+        }
+
+        return subkeys.toArray(new String[subkeys.size()]);
+    }
+
+    // Returns keys beginning with ':', which are normally hidden
+    public String[] getAbstractKeys()
+    {
+        ArrayList<String> subkeys = new ArrayList<String>();
+
+        for (String key : abstractKeys.keySet()) {
             if (key.length() <= prefix.length())
                 continue;
             if (key.startsWith(prefix))

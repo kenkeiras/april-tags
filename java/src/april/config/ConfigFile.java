@@ -32,10 +32,18 @@ public class ConfigFile extends Config
     {
         HashMap<String, String[]> newkeys = new HashMap<String, String[]>();
 
-        for (String key : keys.keySet()) {
-            if (key.startsWith(srcNameSpace)) { // && key.indexOf('.', srcNameSpace.length()) < 0) {
-                String propertyName = key.substring(srcNameSpace.length());
+        //Inelegant way to combine two Sets...
+        Set<String> cKeySet = keys.keySet();
+        Set<String> aKeySet = abstractKeys.keySet();
+        ArrayList<String> keyList = new ArrayList<String>(aKeySet.size() + cKeySet.size());
+        for(String aKey : aKeySet) keyList.add(aKey);
+        for(String cKey : cKeySet) keyList.add(cKey);
 
+        //Search in the concrete and abstarct keys together. Watch out for ':' beginning
+        for (String key : keyList) {
+            if (key.startsWith(srcNameSpace))
+            {
+                String propertyName = key.substring(srcNameSpace.length());
                 String newKeyName = destNameSpace + propertyName;
 
                 if (destNameSpace.startsWith(":")) {
@@ -44,12 +52,20 @@ public class ConfigFile extends Config
                     newKeyName = newKeyName.replace(":","");
                 }
 
-                newkeys.put(newKeyName, keys.get(key));
+                if (key.startsWith(":")) {
+                        newkeys.put(newKeyName, abstractKeys.get(key));
+                }else{
+                    newkeys.put(newKeyName, keys.get(key));
+                }
             }
         }
 
         for (String key : newkeys.keySet()) {
-            keys.put(key, newkeys.get(key));
+            if (destNameSpace.startsWith(":")) {
+                abstractKeys.put(key, newkeys.get(key));
+            }else{
+                keys.put(key, newkeys.get(key));
+            }
         }
     }
 
@@ -100,7 +116,7 @@ public class ConfigFile extends Config
             }
 
             if (keypart.endsWith("#")) {
-                System.out.println("*********: "+keypart);
+                // System.out.println("*********: "+keypart);
                 keypart = keypart.substring(0, keypart.length()-1) + instantiateId;
                 instantiateId++;
             }
@@ -170,7 +186,12 @@ public class ConfigFile extends Config
 //                parseError(t, "Duplicate key definition for: "+key);
             }
 
-            keys.put(key, values.toArray(new String[0]));
+            //Check for 'abstract' or 'invisible' keys
+            if (key.startsWith(":")){
+                abstractKeys.put(key, values.toArray(new String[0]));
+            }else{
+                keys.put(key, values.toArray(new String[0]));
+            }
         }
     }
 
@@ -178,14 +199,23 @@ public class ConfigFile extends Config
     {
         try {
             Config cf = new ConfigFile(new File(args[0]));
-            for (String key : cf.getKeys()) {
 
+            System.out.println("Keys: ");
+            for (String key : cf.getKeys()){
                 String vs[] = cf.keys.get(key);
 
                 for (int vidx = 0; vidx < vs.length; vidx++)
-                    System.out.printf("%-40s : %s\n", vidx == 0 ? key : "", vs[vidx]);
+                    System.out.printf("  %-40s : %s\n", vidx == 0 ? key : "", vs[vidx]);
             }
 
+            System.out.println("Abstract keys: ");
+            for (String key : cf.getAbstractKeys()) {
+
+                String vs[] = cf.abstractKeys.get(key);
+
+                for (int vidx = 0; vidx < vs.length; vidx++)
+                    System.out.printf("  %-40s : %s\n", vidx == 0 ? key : "", vs[vidx]);
+            }
         } catch (IOException ex) {
             System.out.println("ex: "+ex);
         }
