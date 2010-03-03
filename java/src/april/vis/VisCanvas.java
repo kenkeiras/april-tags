@@ -58,8 +58,7 @@ public class VisCanvas extends JPanel implements VisWorldListener,
     long last_draw_mtime;
     boolean redrawPending = false;
 
-    ArrayList<ImageCaptureObject> imageCaptureObjects
-	= new ArrayList<ImageCaptureObject>();
+    ArrayList<ImageCaptureObject> imageCaptureObjects = new ArrayList<ImageCaptureObject>();
 
     static
     {
@@ -129,7 +128,7 @@ public class VisCanvas extends JPanel implements VisWorldListener,
         caps.setHardwareAccelerated(hwaccel);
         caps.setDoubleBuffered(doublebuffered);
         caps.setDepthBits(depthbits);
-        caps.setSampleBuffers(aaLevel > 0);
+        caps.setSampleBuffers(aalevel > 0);
         if (aalevel > 0)
             caps.setNumSamples(aalevel);
 

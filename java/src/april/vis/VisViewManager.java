@@ -28,15 +28,16 @@ public class VisViewManager
     double followPos[] = new double[3];
     double followQuat[] = new double[] {1, 0, 0, 0};
 
-    VisCanvas vc;
-
     HashMap<String, Boolean> enabledBuffers = new HashMap<String, Boolean>();
 
     ArrayList<VisViewListener> listeners = new ArrayList<VisViewListener>();
 
-    public VisViewManager(VisCanvas vc)
+    VisContext vc;
+
+    public VisViewManager(VisContext vc)
     {
         this.vc = vc;
+
         perspectiveness = 1.0;
         perspective_vertical_fov_degrees = 60;
     }
@@ -60,6 +61,9 @@ public class VisViewManager
     {
         interfaceMode = d;
         adjustForInterfaceMode();
+
+        for (VisViewListener vvl: listeners)
+            vvl.viewCameraChanged(vc);
         vc.draw();
     }
 
@@ -69,6 +73,7 @@ public class VisViewManager
 
         for (VisViewListener vvl : listeners)
             vvl.viewBufferEnabledChanged(vc, buffer, b);
+        vc.draw();
     }
 
     public boolean isBufferEnabled(String buffer)
@@ -235,7 +240,6 @@ public class VisViewManager
 
         for (VisViewListener vvl: listeners)
             vvl.viewCameraChanged(vc);
-
         vc.draw();
     }
 
