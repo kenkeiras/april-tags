@@ -69,6 +69,28 @@ public class VisOffscreenCanvas implements VisContext
         pbuffer.addGLEventListener(new MyGLEventListener());
     }
 
+    public void destroy()
+    {
+        pbuffer.destroy();
+    }
+
+    public void setSize(int width, int height)
+    {
+        if (width == this.width && height == this.height)
+            return;
+
+        this.width = width;
+        this.height = height;
+
+        destroy();
+
+        pbuffer = GLDrawableFactory.getFactory().createGLPbuffer(makeCapabilities(16, true, true, aaLevel),
+                                                                 null,
+                                                                 width, height,
+                                                                 null);
+        pbuffer.addGLEventListener(new MyGLEventListener());
+    }
+
     public int getWidth()
     {
         return width;
