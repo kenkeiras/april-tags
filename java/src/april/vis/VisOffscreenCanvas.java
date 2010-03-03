@@ -40,6 +40,10 @@ public class VisOffscreenCanvas implements VisContext
 
     public boolean debug = false;
 
+    boolean drawGrid = false;
+    boolean drawGround = false;
+    boolean drawOrigin = false;
+
     class RenderObject
     {
         BufferedImage im;
@@ -104,6 +108,20 @@ public class VisOffscreenCanvas implements VisContext
         {
             if (debug)
                 System.out.println("display");
+
+            if (true) {
+                VisWorld.Buffer vb = vw.getBuffer("__VISCANVAS_GROUND");
+                vb.setDrawOrder(-10000);
+                VisGrid vg = new VisGrid();
+                vg.drawGrid = drawGrid;
+                vg.drawGround = drawGround;
+                vb.addBuffered(new VisDepthTest(false, vg));
+
+                if (drawOrigin)
+                    vb.addBuffered(new VisData(new VisDataPointStyle(Color.gray, 4),
+                                               new double[3]));
+                vb.switchBuffer();
+            }
 
             GL gl = drawable.getGL();
             GLU glu = new GLU();

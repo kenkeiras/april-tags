@@ -35,6 +35,8 @@ public class VisGrid implements VisObject
     // if autoColor, ground/grid colors are chosen automatically.
     public boolean autoColor = true;
 
+    public boolean textHints = true;
+
     public VisGrid(double spacing)
     {
         this.spacing = spacing;
@@ -81,24 +83,20 @@ public class VisGrid implements VisObject
         if (spacing != 0)
             meters_per_grid = spacing;
 
-        if (meters_per_grid != lastSpacing && (drawGrid || drawGround)) {
-            if (gridText != null)
-                world.removeTemporary(gridText);
-            // the newlines ensure we don't stomp on VisCanvas's window size
-            String label = String.format("Grid: %d m", (int) meters_per_grid);
-            if (meters_per_grid < 1)
-                label = String.format("Grid: %.1f m", meters_per_grid);
+        if (textHints) {
+            if (meters_per_grid != lastSpacing && (drawGrid || drawGround)) {
+                if (gridText != null)
+                    world.removeTemporary(gridText);
+                // the newlines ensure we don't stomp on VisCanvas's window size
+                String label = String.format("Grid: %d m", (int) meters_per_grid);
+                if (meters_per_grid < 1)
+                    label = String.format("Grid: %.1f m", meters_per_grid);
 
-            gridText = new VisText(VisText.ANCHOR.CENTER, label);
-            world.addTemporary(gridText, 1.0);
-            lastSpacing = meters_per_grid;
+                gridText = new VisText(VisText.ANCHOR.CENTER, label);
+                world.addTemporary(gridText, 1.0);
+                lastSpacing = meters_per_grid;
+            }
         }
-
-        /*
-          char txt[64];
-          snprintf (txt, sizeof (txt), "Spacing: %.0fm", meters_per_grid);
-          gtk_label_set_text (GTK_LABEL (self->label), txt);
-        */
 
         double grid_ox = Math.ceil (viewManager.lookAtGoal[0] / meters_per_grid) * meters_per_grid;
         double grid_oy = Math.ceil (viewManager.lookAtGoal[1] / meters_per_grid) * meters_per_grid;
