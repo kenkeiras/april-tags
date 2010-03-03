@@ -66,90 +66,12 @@ public class VideoPlugin implements SpyPlugin
             LCM.getSingleton().subscribe(cd.name, this);
         }
 
-        BufferedImage handleRAW(image_t v)
-        {
-            BufferedImage bi = new BufferedImage(v.width, v.height, BufferedImage.TYPE_INT_RGB);
-
-            for (int y = 0; y < v.height; y++) {
-                for (int x = 0; x < v.width; x++) {
-                    bi.setRGB(x, y, grayToRGB(v.image[x+y*v.stride]));
-                }
-            }
-
-            return bi;
-        }
-
-        BufferedImage handleRGB(image_t v)
-        {
-            BufferedImage bi = new BufferedImage(v.width, v.height, BufferedImage.TYPE_INT_RGB);
-
-            for (int y = 0; y < v.height; y++) {
-                for (int x = 0; x < v.width; x++) {
-                    int index = 3*x+y*v.stride;
-                    byte r = v.image[index +0];
-                    byte g = v.image[index +1];
-                    byte b = v.image[index +2];
-
-
-                    int r_int = r & 0xff;
-                    int g_int = g & 0xff;
-                    int b_int = b & 0xff;
-
-                    Color col = new Color(r_int,g_int,b_int);
-                    bi.setRGB(x, y, col.getRGB());
-                }
-            }
-
-            return bi;
-        }
-
-
-        BufferedImage handleJPEG(image_t v)
-        {
-            try {
-                return ImageIO.read(new ByteArrayInputStream(v.image));
-            } catch (IOException ex) {
-                return null;
-            }
-        }
-
-        public void handleImage(image_t v)
-        {
-            if (v.width==0 || v.height==0)
-                return;
-
-            BufferedImage bi = null;
-
-            switch (v.pixelformat)
-            {
-                case 1196444237:
-                    bi = handleJPEG(v);
-                    break;
-
-                case 859981650:
-                    bi = handleRGB(v);
-                    break;
-
-                default:
-                    bi = handleRAW(v);
-                    break;
-
-            }
-
-            ji.setImage(bi);
-        }
-
-        final int grayToRGB(byte v)
-        {
-            int g = v&0xff;
-            return (g<<16)|(g<<8)|g;
-        }
-
         public void messageReceived(LCM lcm, String channel, LCMDataInputStream ins)
         {
             try {
                 image_t v = new image_t(ins);
-                handleImage(v);
+                BufferedImage bi = image_t_util.decode(v);
+                ji.setImage(bi);
             } catch (IOException ex) {
                 System.out.println("ex: "+ex);
                 return;

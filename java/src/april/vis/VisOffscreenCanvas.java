@@ -38,6 +38,8 @@ public class VisOffscreenCanvas implements VisContext
 
     ArrayList<RenderObject> requests = new ArrayList<RenderObject>();
 
+    public boolean debug = false;
+
     class RenderObject
     {
         BufferedImage im;
@@ -94,12 +96,14 @@ public class VisOffscreenCanvas implements VisContext
     {
         public void init(GLAutoDrawable drawable)
         {
-            System.out.println("init");
+            if (debug)
+                System.out.println("init");
         }
 
         public void display(GLAutoDrawable drawable)
         {
-            System.out.println("display");
+            if (debug)
+                System.out.println("display");
 
             GL gl = drawable.getGL();
             GLU glu = new GLU();
@@ -238,12 +242,14 @@ public class VisOffscreenCanvas implements VisContext
 
         public void reshape(GLAutoDrawable drawable, int x, int y, int width, int height)
         {
-            System.out.println("reshape");
+            if (debug)
+                System.out.println("reshape");
         }
 
         public void displayChanged(GLAutoDrawable drawable, boolean modeChanged, boolean deviceChanged)
         {
-            System.out.println("changed");
+            if (debug)
+                System.out.println("changed");
         }
     }
 
@@ -257,9 +263,10 @@ public class VisOffscreenCanvas implements VisContext
         return viewManager;
     }
 
+    /** No-op: we only render frames when explicitly requested by getFrame() **/
     public void draw()
     {
-        System.out.println("DRAW");
+        // don't do anything.
     }
 
     public VisView getRenderingView()
