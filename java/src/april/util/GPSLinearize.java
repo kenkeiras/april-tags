@@ -48,7 +48,12 @@ public class GPSLinearize
 
     }
 
-    public double[] ll2m(double latlon[])
+    public double[] getOriginLL()
+    {
+        return new double[] { lat0_deg, lon0_deg };
+    }
+
+    public double[] ll2xy(double latlon[])
     {
         final double latlon_rad [] = {
             Math.toRadians(latlon[LAT]),
@@ -65,7 +70,7 @@ public class GPSLinearize
 
     }
 
-    public double[] m2ll(double xy[])
+    public double[] xy2ll(double xy[])
     {
         double dlat_rad =
             Math.asin(xy[Y] / radius_ns);

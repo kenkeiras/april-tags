@@ -48,6 +48,18 @@ public class GamePad
         return buttons[button] > 0;
     }
 
+    /** Return first 32 buttons encoded as one bit per button. **/
+    public int getButtons()
+    {
+        int b = 0;
+
+        for (int i = 0; i < Math.min(32, buttons.length); i++)
+            if (buttons[i] > 0)
+                b |= (1 << i);
+
+        return b;
+    }
+
     public boolean isPresent()
     {
         return present;
