@@ -63,6 +63,16 @@ public class VisOffscreenCanvas implements VisContext
         pbuffer.addGLEventListener(new MyGLEventListener());
     }
 
+    public int getWidth()
+    {
+        return width;
+    }
+
+    public int getHeight()
+    {
+        return height;
+    }
+
     GLCapabilities makeCapabilities(int depthbits, boolean hwaccel, boolean doublebuffered, int aalevel)
     {
         GLCapabilities caps = new GLCapabilities();
