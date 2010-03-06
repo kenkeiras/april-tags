@@ -402,18 +402,21 @@ public class JCamView
     {
         System.out.println("java.library.path: "+System.getProperty("java.library.path"));
 
-        System.out.println("Found cameras: ");
-        ArrayList<String> urls = ImageSource.getCameraURLs();
-        for (String s : urls)
-            System.out.println("  "+s);
-
-        if (urls.size() == 0) {
-            System.out.println("No cameras found.");
-            return;
-        }
+        ArrayList<String> urls = new ArrayList<String>();
 
         for (String arg : args)
             urls.add(arg);
+
+        System.out.println("Found cameras: ");
+        for (String s : ImageSource.getCameraURLs()) {
+            System.out.println("  "+s);
+            urls.add(s);
+        }
+
+        if (urls.size() == 0) {
+            System.out.println("No image sources found or specified on command line.");
+            return;
+        }
 
         new JCamView(urls);
     }
