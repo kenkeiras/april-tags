@@ -41,10 +41,10 @@ public class DenseVec extends Vec
         return X;
     }
 
-    public final void setSize(int newlength)
+    public final void resize(int newlength)
     {
         double newv[] = new double[newlength];
-        for (int i = 0; i < v.length; i++)
+        for (int i = 0; i < Math.min(newlength, v.length); i++)
             newv[i] = v[i];
         v = newv;
     }

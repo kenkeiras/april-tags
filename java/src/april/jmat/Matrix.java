@@ -760,11 +760,9 @@ public class Matrix
         return solve(identity(m,m));
     }
 
-    public void enlarge(int newrows, int newcols)
+    /** Truncate or add zeros as appropriate. **/
+    public void resize(int newrows, int newcols)
     {
-        assert(newrows >= m);
-        assert(newcols >= n);
-
         // this could be inefficient if we're adding many rows.
         // alternative: allow rows.length to be oversized (and make
         // sure the code only touches the first m of them.) Then
@@ -772,8 +770,9 @@ public class Matrix
 
         ArrayList<Vec> nrows = new ArrayList<Vec>();
 
-        for (Vec v : rows) {
-            v.setSize(newcols);
+        for (int ridx = 0; ridx < Math.min(m, newrows); ridx++) {
+            Vec v = rows[ridx];
+            v.resize(newcols);
             nrows.add(v);
         }
 

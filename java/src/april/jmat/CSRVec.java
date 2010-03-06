@@ -97,9 +97,18 @@ public class CSRVec extends Vec
         nz++;
     }
 
-    public final void setSize(int newlength)
+    public final void resize(int newlength)
     {
-        this.length = newlength;
+        if (this.length <= newlength) {
+            this.length = newlength;
+            return;
+        }
+
+        while (nz > 0 && indices[nz-1] >= newlength) {
+            indices[nz-1] = 0;
+            values[nz-1] = 0;
+            nz--;
+        }
     }
 
     final void sort()

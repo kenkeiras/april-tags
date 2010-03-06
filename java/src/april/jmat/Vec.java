@@ -29,8 +29,8 @@ public abstract class Vec
     /** Make a copy of the vector **/
     public abstract Vec copy();
 
-    /** only allowed to lengthen the vector. **/
-    public abstract void setSize(int newlength);
+    /** Resize the vector, truncating or adding zeros as appropriate. **/
+    public abstract void resize(int newlength);
 
     /** create a new, smaller vector beginning at element i0, going
 	through i1 (inclusive). The length of this vector will be i1-i0+1.

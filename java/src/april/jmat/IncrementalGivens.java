@@ -80,7 +80,7 @@ public class IncrementalGivens
         ncols += n;
 
         for (CSRVec csr : rows)
-            csr.setSize(ncols);
+            csr.resize(ncols);
     }
 
     void rotate(CSRVec csr0, CSRVec csr1, double s, double c, int thiscol)
