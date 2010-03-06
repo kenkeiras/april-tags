@@ -58,7 +58,11 @@ public class ImageSourceFile extends ImageSource
             File dir = new File(dirpath);
 
             for (String child : dir.list()) {
-                paths.add(dirpath+"/"+child);
+                String childpath = dirpath+"/"+child;
+                String tmp = childpath.toLowerCase();
+                if (tmp.endsWith("jpeg") || tmp.endsWith("jpg") || tmp.endsWith("png") ||
+                    tmp.endsWith("bmp") || tmp.endsWith("wbmp") || tmp.endsWith("gif"))
+                    paths.add(childpath);
             }
 
             Collections.sort(paths);
