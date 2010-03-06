@@ -34,10 +34,10 @@ public final class LinAlg
         return v*v;
     }
 
-    public static final double[] enlarge(double v[], int newlength)
+    public static final double[] resize(double v[], int newlength)
     {
         double r[] = new double[newlength];
-        for (int i = 0; i < v.length; i++)
+        for (int i = 0; i < Math.min(newlength, v.length); i++)
             r[i] = v[i];
         return r;
     }
