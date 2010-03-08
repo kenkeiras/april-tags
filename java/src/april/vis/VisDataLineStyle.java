@@ -35,7 +35,7 @@ public class VisDataLineStyle implements VisDataStyle
         gl.glBegin( loop ? gl.GL_LINE_LOOP : gl.GL_LINE_STRIP );
 
         for (double p[] : points) {
-            if (p.length == 3)
+            if (p.length >= 3)
                 gl.glVertex3dv(p, 0);
             else
                 gl.glVertex2dv(p, 0);
