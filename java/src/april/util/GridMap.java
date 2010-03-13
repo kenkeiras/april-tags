@@ -29,7 +29,8 @@ public final class GridMap
      * exactly metersPerPixel dimensions. When recentering the
      * gridmap, the value in defaultFill will be used.
      **/
-    public GridMap(double cx, double cy, double sizex, double sizey, double metersPerPixel, int defaultFill)
+    public GridMap(double cx, double cy, double sizex, double sizey, double metersPerPixel,
+                   int defaultFill)
     {
         this.cx = cx;
         this.cy = cy;
@@ -82,6 +83,13 @@ public final class GridMap
     {
         for (int i = 0; i < data.length; i++)
             data[i] = values[data[i]&0xff];
+    }
+
+    /** Modify data with all new values. **/
+    public void setData(byte values[])
+    {
+        for (int i = 0; i < data.length && i < values.length; i++)
+            data[i] = values[i];
     }
 
     public GridMap copy()
