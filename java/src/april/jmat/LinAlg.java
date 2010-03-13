@@ -1109,6 +1109,13 @@ public final class LinAlg
         return X;
     }
 
+    public static void print(byte v[])
+    {
+        for (int i = 0; i < v.length; i++)
+            System.out.printf("%15d\n", v[i]);
+        System.out.printf("\n");
+    }
+
     public static void print(int v[])
     {
         for (int i = 0; i < v.length; i++)
