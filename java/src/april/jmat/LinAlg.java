@@ -488,17 +488,19 @@ public final class LinAlg
         return r;
     }
 
+    public static double[] crossProduct(double a[], double b[], double r[])
+    {
+        if(r == null)
+            r = new double[a.length];
+        r[0] = a[1] * b[2] - a[2] * b[1];
+        r[1] = a[2] * b[0] - a[0] * b[2];
+        r[2] = a[0] * b[1] - a[1] * b[0];
+        return r;
+    }
+
     public static double[] crossProduct(double a[], double b[])
     {
-        assert(a.length == 3);
-        assert(b.length == 3);
-
-        double r[] = new double[a.length];
-        r[0] = a[1]*b[2] - a[2]*b[1];
-        r[1] = a[2]*b[0] - a[0]*b[2];
-        r[2] = a[0]*b[1] - a[1]*b[0];
-
-        return r;
+        return crossProduct(a, b, null);
     }
 
     /** Consider the directed 2D line that travels from p0 to p1. is q
@@ -539,6 +541,15 @@ public final class LinAlg
         for (int i = 0; i < Math.min(len, a.length); i++)
             r[i] = a[i];
 
+        return r;
+    }
+
+    public static double[] copy(double a[], int a0, int len)
+    {
+        assert(a.length >= a0 + len);
+        double r[] = new double[len];
+        for (int i = 0; i < len; i++)
+            r[i] = a[i + a0];
         return r;
     }
 
