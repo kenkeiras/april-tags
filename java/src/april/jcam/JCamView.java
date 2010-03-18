@@ -407,10 +407,12 @@ public class JCamView
         for (String arg : args)
             urls.add(arg);
 
-        System.out.println("Found cameras: ");
-        for (String s : ImageSource.getCameraURLs()) {
-            System.out.println("  "+s);
-            urls.add(s);
+        if (urls.size()==0) {
+            System.out.println("Found cameras: ");
+            for (String s : ImageSource.getCameraURLs()) {
+                System.out.println("  "+s);
+                urls.add(s);
+            }
         }
 
         if (urls.size() == 0) {

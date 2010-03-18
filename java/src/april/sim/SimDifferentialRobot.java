@@ -6,6 +6,8 @@ import april.jmat.*;
 
 import java.util.*;
 
+import april.sim.collision.*;
+
 /** Simulates a differentially driven robot. Note that robot masses
  * must be built into the motor objects.
  *
@@ -16,13 +18,11 @@ import java.util.*;
  * Basic collision checking can be handled by passing in an
  * CollisionTester object.
 **/
-
 public class SimDifferentialRobot
 {
     SimMotor leftMotor, rightMotor;
 
-    double radius;
-    CollisionTester collisionTester;
+    CollisionSet collisionSet;
 
     pose_t pose_truth = new pose_t();
     pose_t pose_odom = new pose_t();
@@ -31,21 +31,18 @@ public class SimDifferentialRobot
 
     Random r = new Random();
 
-    /** radius: Simulated robot radius for collision
-     * tester. CollisionTester can be null.
-     *
+    /**
      * odomNoise: simulate odometry noise by adding noise to
      * translations/rotations is a multiple of the actual motion. (The
      * product yields a standard deviation.)
      **/
-    public SimDifferentialRobot(SimMotor leftMotor, SimMotor rightMotor, double radius, CollisionTester collisionTester,
+    public SimDifferentialRobot(SimMotor leftMotor, SimMotor rightMotor, double radius, CollisionSet collisionSet,
                                 double odomNoiseTranslate, double odomNoiseRotate)
     {
         this.leftMotor = leftMotor;
         this.rightMotor = rightMotor;
 
-        this.radius = radius;
-        this.collisionTester = collisionTester;
+        this.collisionSet = collisionSet;
 
         this.odomNoiseTranslate = odomNoiseTranslate;
         this.odomNoiseRotate = odomNoiseRotate;
@@ -100,7 +97,7 @@ public class SimDifferentialRobot
         double noisy_dquat[] = LinAlg.rollPitchYawToQuat(new double[] {0, 0, dtheta + r.nextGaussian()*dtheta*odomNoiseRotate});
 
         double newpos[] = LinAlg.add(pose_truth.pos, dpos);
-        if (collisionTester != null && !collisionTester.isCollision(newpos[0], newpos[1], radius)) {
+        if (collisionSet != null && collisionSet.collisionPointDistance(new double[] { newpos[0], newpos[1], 0, 1 }) > 0) {
             pose_truth.pos = newpos;
             pose_truth.orientation = LinAlg.quatMultiply(pose_truth.orientation, dquat);
 
