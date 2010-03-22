@@ -58,6 +58,11 @@ public class JImageAlbum extends JPanel
         return jlist.getSelectedIndex();
     }
 
+    public void setSelectedIndex(int i)
+    {
+        jlist.setSelectedIndex(i);
+    }
+
     public BufferedImage getImage(int idx)
     {
         ImageRecord ir = (ImageRecord) model.getElementAt(idx);
