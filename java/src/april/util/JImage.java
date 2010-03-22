@@ -17,10 +17,10 @@ public class JImage extends JComponent
 
     boolean flipy = false;
 
-    public BufferedImage im;
-    public boolean fit = false;
+    BufferedImage im;
+    boolean fit = false;
     JPopupMenu popupMenu = new JPopupMenu("JImage Menu");
-    public AffineTransform t = new AffineTransform();
+    AffineTransform t = new AffineTransform();
 
     public JImage()
     {
@@ -49,6 +49,16 @@ public class JImage extends JComponent
     public BufferedImage getImage()
     {
         return im;
+    }
+
+    public AffineTransform getAffine()
+    {
+        return t;
+    }
+
+    public void setFit(boolean f)
+    {
+        fit = f;
     }
 
     public void setFlipY(boolean e)
