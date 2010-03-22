@@ -48,9 +48,19 @@ public class JImageAlbum extends JPanel
         jsp.setResizeWeight(0);
     }
 
+    public void setFit(boolean fit)
+    {
+        jim.setFit(fit);
+    }
+
     public int getSelectedIndex()
     {
         return jlist.getSelectedIndex();
+    }
+
+    public void setSelectedIndex(int i)
+    {
+        jlist.setSelectedIndex(i);
     }
 
     public BufferedImage getImage(int idx)
