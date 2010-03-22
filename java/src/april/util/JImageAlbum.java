@@ -77,6 +77,7 @@ public class JImageAlbum extends JPanel
     public synchronized void clear()
     {
         model.clear();
+        jim.setImage(null);
     }
 
     public synchronized void addImage(String name, BufferedImage im)
@@ -93,7 +94,7 @@ public class JImageAlbum extends JPanel
     {
         int idx = jlist.getSelectedIndex();
 
-        if (idx >= 0)
+        if (idx >= 0 && idx < images.size())
             jim.setImage(images.get(idx).im);
     }
 
