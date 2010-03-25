@@ -48,9 +48,19 @@ public class JImageAlbum extends JPanel
         jsp.setResizeWeight(0);
     }
 
+    public void setFit(boolean fit)
+    {
+        jim.setFit(fit);
+    }
+
     public int getSelectedIndex()
     {
         return jlist.getSelectedIndex();
+    }
+
+    public void setSelectedIndex(int i)
+    {
+        jlist.setSelectedIndex(i);
     }
 
     public BufferedImage getImage(int idx)
@@ -67,6 +77,7 @@ public class JImageAlbum extends JPanel
     public synchronized void clear()
     {
         model.clear();
+        jim.setImage(null);
     }
 
     public synchronized void addImage(String name, BufferedImage im)
@@ -83,7 +94,7 @@ public class JImageAlbum extends JPanel
     {
         int idx = jlist.getSelectedIndex();
 
-        if (idx >= 0)
+        if (idx >= 0 && idx < images.size())
             jim.setImage(images.get(idx).im);
     }
 
