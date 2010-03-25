@@ -124,26 +124,67 @@ static int set_format(image_source_t *isrc, int idx)
 
 static int num_features(image_source_t *isrc)
 {
-    return 2;
+    return 5;
 }
 
 static const char* get_feature_name(image_source_t *isrc, int idx)
 {
-    if (idx==0)
+    switch(idx)
+    {
+    case 0:
         return "WHITEBALANCE_RED";
-    if (idx==1)
+    case 1:
         return "WHITEBALANCE_BLUE";
-    return NULL;
+    case 2:
+        return "EXPOSURE";
+    case 3:
+        return "BRIGHTNESS";
+    case 4:
+        return "GAMMA";
+    case 5:
+        return "FRAME_RATE";
+    default:
+        return NULL;
+    }
 }
 
 static double get_feature_min(image_source_t *isrc, int idx)
 {
-    return 0;
+    switch(idx)
+    {
+    case 0:
+    case 1:
+    case 2:
+        return 0;
+    case 3:
+        return 1;
+    case 4:
+        return 0;
+    case 5:
+        return 9; // XXX Hack
+    default:
+        return 0;
+    }
 }
 
 static double get_feature_max(image_source_t *isrc, int idx)
 {
-    return 1023;
+    switch(idx)
+    {
+    case 0:
+    case 1:
+        return 1023;
+    case 2:
+        return 62;
+    case 3:
+        return 255;
+    case 4:
+        return 1;
+    case 5:
+        return 61; // XXX Hack
+    default:
+        return 0;
+    }
 }
 
 static double get_feature_value(image_source_t *isrc, int idx)
@@ -151,12 +192,45 @@ static double get_feature_value(image_source_t *isrc, int idx)
     uint32_t r, b;
     impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
 
-    dc1394_feature_whitebalance_get_value(impl->cam, &b, &r);
+    switch (idx)
+    {
+    case 0:
+    case 1: {
+        dc1394_feature_whitebalance_get_value(impl->cam, &b, &r);
 
-    if (idx == 0)
-        return r;
+        if (idx == 0)
+            return r;
 
-    return b;
+        return b;
+    }
+
+    case 2: {
+        uint32_t v = 0;
+        dc1394_feature_get_value(impl->cam, DC1394_FEATURE_EXPOSURE, &v); // XXX error checking
+        return v;
+    }
+
+    case 3: {
+        uint32_t v = 0;
+        dc1394_feature_get_value(impl->cam, DC1394_FEATURE_BRIGHTNESS, &v); // XXX error checking
+        return v;
+    }
+
+    case 4: {
+        uint32_t v = 0;
+        dc1394_feature_get_value(impl->cam, DC1394_FEATURE_GAMMA, &v); // XXX error checking
+        return v;
+    }
+
+    case 5: {
+        uint32_t v = 0;
+        dc1394_feature_get_value(impl->cam, DC1394_FEATURE_FRAME_RATE, &v); // XXX error checking
+        return v;
+    }
+
+    default:
+        return 0;
+    }
 }
 
 static int set_feature_value(image_source_t *isrc, int idx, double v)
@@ -166,7 +240,10 @@ static int set_feature_value(image_source_t *isrc, int idx, double v)
 
     dc1394_feature_whitebalance_get_value(impl->cam, &b, &r);
 
-    if (idx < 2) {
+    switch (idx)
+    {
+    case 0:
+    case 1: {
         if (idx==0)
             r = (uint32_t) v;
         if (idx==1)
@@ -175,7 +252,21 @@ static int set_feature_value(image_source_t *isrc, int idx, double v)
         return dc1394_feature_whitebalance_set_value(impl->cam, (uint32_t) b, (uint32_t) r);
     }
 
-    return 0;
+    case 2:
+        return dc1394_feature_set_value(impl->cam, DC1394_FEATURE_EXPOSURE, (uint32_t) v);
+
+    case 3:
+        return dc1394_feature_set_value(impl->cam, DC1394_FEATURE_BRIGHTNESS, (uint32_t) v);
+
+    case 4:
+        return dc1394_feature_set_value(impl->cam, DC1394_FEATURE_GAMMA, (uint32_t) v);
+
+    case 5:
+        return dc1394_feature_set_value(impl->cam, DC1394_FEATURE_FRAME_RATE, (uint32_t) v);
+
+    default:
+        return 0;
+    }
 }
 
 static int start(image_source_t *isrc)
