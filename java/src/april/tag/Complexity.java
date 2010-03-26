@@ -18,32 +18,6 @@ public class Complexity
         return computeComplexity(a);
     }
 
-/*    // our goal pattern as input
-    static int computeComplexity(int goal[][])
-    {
-        int width = goal[0].length, height = goal.length;
-
-        int state[][] = new int[height][width];
-        int numrectangles = 0;
-
-        // initialize output to invalid color.
-        for (int y = 0; y < height; y++)
-            for (int x = 0; x < width; x++)
-                state[y][x] = -1;
-
-        int whiten[][] = new int[height][width];
-        int blacken[][] = new int[height][width];
-
-        while (true) {
-            for (int y = 0; y < height; y++) {
-                for (int x = 0; x < width; x++) {
-                    if (goal[y][x] == 1) {
-                        wh
-
-        }
-    }
-*/
-
     /** Given a 2D array of "pixels", what is the minimum number of
      * rectangles needed to draw that pattern? This is a measure of
      * the complexity of the pattern.

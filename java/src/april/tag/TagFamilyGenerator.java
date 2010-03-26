@@ -64,52 +64,52 @@ public class TagFamilyGenerator
     }
 
 /*
-    class ComputeThread extends Thread
-    {
-        boolean stop = false;
-        long iter0;
-        int nthreads;
-        int threadid;
+  class ComputeThread extends Thread
+  {
+  boolean stop = false;
+  long iter0;
+  int nthreads;
+  int threadid;
 
-        public ComputeThread(long iter0, int nthreads, int threadid)
-        {
-            this.iter0 = iter0;
-            this.nthreads = nthreads;
-            this.threadid = threadid;
-        }
+  public ComputeThread(long iter0, int nthreads, int threadid)
+  {
+  this.iter0 = iter0;
+  this.nthreads = nthreads;
+  this.threadid = threadid;
+  }
 
-        public void run()
-        {
-            long v = v0;
+  public void run()
+  {
+  long v = v0;
 
-            for (long iter = iter0; iter < (1L<<nbits) && !stop; iter += nthreads) {
-                v = v0 + 982451653*(iter+1);
-                v &= ((1L<<nbits) - 1);
+  for (long iter = iter0; iter < (1L<<nbits) && !stop; iter += nthreads) {
+  v = v0 + 982451653*(iter+1);
+  v &= ((1L<<nbits) - 1);
 
-                boolean good = true;
+  boolean good = true;
 
-                for (int widx = 0; widx < nrotcodes; widx++) {
+  for (int widx = 0; widx < nrotcodes; widx++) {
 
-                    long w = rotcodes[widx];
+  long w = rotcodes[widx];
 
-                    if (!hammingDistanceAtLeast(v, w, minhamming)) {
-                        good = false;
-                        break;
-                    }
-                }
+  if (!hammingDistanceAtLeast(v, w, minhamming)) {
+  good = false;
+  break;
+  }
+  }
 
-                if (good) {
-                    int complexity = computeComplexity(v, d);
-                    if (complexity < mincomplexity)
-                        good = false;
-                }
+  if (good) {
+  int complexity = computeComplexity(v, d);
+  if (complexity < mincomplexity)
+  good = false;
+  }
 
-                if (good) {
+  if (good) {
 
-                }
-            }
-        }
-    }
+  }
+  }
+  }
+  }
 */
 
     public TagFamily compute()

@@ -74,7 +74,7 @@ public class TagDetector
     // minimum number of pixels in a segment before we'll fit a line to it.
     public double minimumSegmentSize = 4;
 
-   // minimum size of tag (in pixels) as measured along edges and diagonals.
+    // minimum size of tag (in pixels) as measured along edges and diagonals.
     public double minimumTagSize = 6;
 
     /** Early pruning of quads which have insane aspect ratios. **/
