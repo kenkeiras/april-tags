@@ -26,9 +26,9 @@ public class JSerial
         System.loadLibrary("jserial");
     }
 
-    public JSerial(String url, int baudrate, String mode, int blocking) throws IOException
+    public JSerial(String url, int baudrate, String mode, boolean blocking) throws IOException
     {
-        fd = serial_open_jni(url, baudrate, blocking);
+        fd = serial_open_jni(url, baudrate, blocking ? 1 : 0);
         setMode(mode);
 
         if (fd < 0)
