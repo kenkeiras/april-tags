@@ -291,10 +291,11 @@ static double get_feature_value(image_source_t *isrc, int idx)
     }
 
     case 7: { // gamma-manual
-        dc1394feature_mode_t mode = DC1394_FEATURE_MODE_AUTO;
-        dc1394_feature_get_mode(impl->cam, DC1394_FEATURE_GAMMA, &mode);
-        return mode == DC1394_FEATURE_MODE_MANUAL;
+        dc1394switch_t mode = DC1394_OFF;
+        dc1394_feature_get_power(impl->cam, DC1394_FEATURE_GAMMA, &mode);
+        return mode == DC1394_ON;
     }
+
     case 8: { // gamma
         uint32_t v = 0;
         dc1394_feature_get_value(impl->cam, DC1394_FEATURE_GAMMA, &v); // XXX error checking
@@ -381,9 +382,12 @@ static int set_feature_value(image_source_t *isrc, int idx, double v)
         return dc1394_feature_set_value(impl->cam, DC1394_FEATURE_BRIGHTNESS, (uint32_t) v);
 
     case 7: { // gamma-manual
-        dc1394_feature_set_power(impl->cam, DC1394_FEATURE_GAMMA, DC1394_ON);
-        dc1394_feature_set_mode(impl->cam, DC1394_FEATURE_GAMMA, v!=0 ? DC1394_FEATURE_MODE_MANUAL :
-                                DC1394_FEATURE_MODE_AUTO);
+        if (v==1) {
+            dc1394_feature_set_power(impl->cam, DC1394_FEATURE_GAMMA, DC1394_ON);
+            dc1394_feature_set_mode(impl->cam, DC1394_FEATURE_GAMMA, DC1394_FEATURE_MODE_MANUAL);
+        } else {
+            dc1394_feature_set_power(impl->cam, DC1394_FEATURE_GAMMA, DC1394_OFF);
+        }
     }
 
     case 8: // gamma
