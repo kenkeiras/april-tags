@@ -18,6 +18,8 @@
 #define IMAGE_SOURCE_UTILS
 #include "image_source.h"
 
+// XXX: We only attempt to support dc1394 Format 7 cameras
+
 #define IMPL_TYPE 0x44431394
 
 typedef struct impl_dc1394 impl_dc1394_t;
@@ -35,6 +37,12 @@ struct impl_dc1394
     int                   num_buffers;
 
     dc1394video_frame_t   *current_frame;
+
+    dc1394featureset_t    features;
+
+    uint32_t              packet_size;
+
+    uint32_t              started;
 };
 
 
@@ -124,7 +132,7 @@ static int set_format(image_source_t *isrc, int idx)
 
 static int num_features(image_source_t *isrc)
 {
-    return 5;
+    return 11;
 }
 
 static const char* get_feature_name(image_source_t *isrc, int idx)
@@ -132,36 +140,69 @@ static const char* get_feature_name(image_source_t *isrc, int idx)
     switch(idx)
     {
     case 0:
-        return "WHITEBALANCE_RED";
+        return "white-balance-manual";
     case 1:
-        return "WHITEBALANCE_BLUE";
+        return "white-balance-red";
     case 2:
-        return "EXPOSURE";
+        return "white-balance-blue";
     case 3:
-        return "BRIGHTNESS";
+        return "exposure-manual";
     case 4:
-        return "GAMMA";
+        return "exposure";
     case 5:
-        return "FRAME_RATE";
+        return "brightness-manual";
+    case 6:
+        return "brightness";
+    case 7:
+        return "gamma-manual";
+    case 8:
+        return "gamma";
+    case 9:
+        return "timestamps-enable";
+    case 10:
+        return "packetsize";
     default:
         return NULL;
     }
+}
+
+static dc1394feature_info_t *find_feature(image_source_t *isrc, dc1394feature_t id)
+{
+    impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
+
+    for (int i = 0; i < DC1394_FEATURE_NUM; i++) {
+        if (impl->features.feature[i].id == id)
+            return &impl->features.feature[i];
+    }
+
+    return NULL;
 }
 
 static double get_feature_min(image_source_t *isrc, int idx)
 {
     switch(idx)
     {
-    case 0:
-    case 1:
-    case 2:
+    case 0: // white-balance-manual
         return 0;
-    case 3:
+    case 1: // white-balance-red
+    case 2: // white-balance-blue
+        return find_feature(isrc, DC1394_FEATURE_WHITE_BALANCE)->min;
+    case 3: // exposure-manual
+        return 0;
+    case 4: // exposure
+        return find_feature(isrc, DC1394_FEATURE_EXPOSURE)->min;
+    case 5: // brightness-manual
+        return 0;
+    case 6: // brightness
+        return find_feature(isrc, DC1394_FEATURE_BRIGHTNESS)->min;
+    case 7: // gamma-manual
+        return 0;
+    case 8: // gamma
+        return find_feature(isrc, DC1394_FEATURE_GAMMA)->min;
+    case 9: // timestamps-enable
+        return 0;
+    case 10: // packet size
         return 1;
-    case 4:
-        return 0;
-    case 5:
-        return 9; // XXX Hack
     default:
         return 0;
     }
@@ -169,63 +210,113 @@ static double get_feature_min(image_source_t *isrc, int idx)
 
 static double get_feature_max(image_source_t *isrc, int idx)
 {
+    impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
+
     switch(idx)
     {
-    case 0:
-    case 1:
-        return 1023;
-    case 2:
-        return 62;
-    case 3:
-        return 255;
-    case 4:
+    case 0: // white-balance-manual
         return 1;
-    case 5:
-        return 61; // XXX Hack
+    case 1: // white-balance-red
+    case 2: // white-balance-blue
+        return find_feature(isrc, DC1394_FEATURE_WHITE_BALANCE)->max;
+    case 3: // exposure-manual
+        return 1;
+    case 4: // exposure
+        return find_feature(isrc, DC1394_FEATURE_EXPOSURE)->max;
+    case 5: // brightness-manual
+        return 1;
+    case 6: // brightness
+        return find_feature(isrc, DC1394_FEATURE_BRIGHTNESS)->max;
+    case 7: // gamma-manual
+        return 1;
+    case 8: // gamma
+        return find_feature(isrc, DC1394_FEATURE_GAMMA)->max;
+    case 9: // timestamps-enable
+        return 1;
+    case 10: { // packetsize
+        return 4192;
+    }
     default:
         return 0;
     }
 }
 
+// Some features are controlled via ON/OFF (e.g., WHITE_BALANCE), some
+// by mode AUTO/MANUAL (e.g., most of the rest). We try to hide this
+// variation and just "make it work".
 static double get_feature_value(image_source_t *isrc, int idx)
 {
-    uint32_t r, b;
     impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
 
     switch (idx)
     {
-    case 0:
-    case 1: {
+    case 0: { // white-balance-manual
+        dc1394switch_t mode = DC1394_OFF;
+        dc1394_feature_get_power(impl->cam, DC1394_FEATURE_WHITE_BALANCE, &mode);
+        return mode == DC1394_ON;
+    }
+
+    case 1:   // white-balance-red
+    case 2: { // white-balance-blue
+        uint32_t b=0, r=0;
+
         dc1394_feature_whitebalance_get_value(impl->cam, &b, &r);
 
-        if (idx == 0)
+        if (idx == 1)
             return r;
 
         return b;
     }
 
-    case 2: {
+    case 3: { // exposure-manual
+        dc1394feature_mode_t mode = DC1394_FEATURE_MODE_AUTO;
+        dc1394_feature_get_mode(impl->cam, DC1394_FEATURE_EXPOSURE, &mode);
+        return mode == DC1394_FEATURE_MODE_MANUAL;
+    }
+    case 4: { // exposure
         uint32_t v = 0;
         dc1394_feature_get_value(impl->cam, DC1394_FEATURE_EXPOSURE, &v); // XXX error checking
         return v;
     }
 
-    case 3: {
+    case 5: {// brightness-manual
+        dc1394feature_mode_t mode = DC1394_FEATURE_MODE_AUTO;
+        dc1394_feature_get_mode(impl->cam, DC1394_FEATURE_BRIGHTNESS, &mode);
+        return mode == DC1394_FEATURE_MODE_MANUAL;
+    }
+    case 6: { // brightness
         uint32_t v = 0;
         dc1394_feature_get_value(impl->cam, DC1394_FEATURE_BRIGHTNESS, &v); // XXX error checking
         return v;
     }
 
-    case 4: {
+    case 7: { // gamma-manual
+        dc1394feature_mode_t mode = DC1394_FEATURE_MODE_AUTO;
+        dc1394_feature_get_mode(impl->cam, DC1394_FEATURE_GAMMA, &mode);
+        return mode == DC1394_FEATURE_MODE_MANUAL;
+    }
+    case 8: { // gamma
         uint32_t v = 0;
         dc1394_feature_get_value(impl->cam, DC1394_FEATURE_GAMMA, &v); // XXX error checking
         return v;
     }
 
-    case 5: {
-        uint32_t v = 0;
-        dc1394_feature_get_value(impl->cam, DC1394_FEATURE_FRAME_RATE, &v); // XXX error checking
-        return v;
+    case 9: { // timestamps-enable
+        uint32_t value;
+        if (dc1394_get_adv_control_register(impl->cam, 0x2F8, &value) != DC1394_SUCCESS)
+            return 0;
+
+        return value & 1;
+    }
+
+    case 10: { // packetsize
+        if (impl->packet_size != 0)
+            return impl->packet_size;
+        image_source_format_t *format = impl->formats[impl->current_format_idx];
+        struct format_priv *format_priv = format->priv;
+        uint32_t packet_size;
+        dc1394_format7_get_packet_size(impl->cam, format_priv->dc1394_mode, &packet_size);
+        return packet_size;
     }
 
     default:
@@ -242,31 +333,97 @@ static int set_feature_value(image_source_t *isrc, int idx, double v)
 
     switch (idx)
     {
-    case 0:
-    case 1: {
-        if (idx==0)
-            r = (uint32_t) v;
+    case 0: { // white-balance-manual
+        if (v==1) {
+            dc1394_feature_set_power(impl->cam, DC1394_FEATURE_WHITE_BALANCE, DC1394_ON);
+            dc1394_feature_set_mode(impl->cam, DC1394_FEATURE_WHITE_BALANCE, DC1394_FEATURE_MODE_MANUAL);
+        } else {
+            dc1394_feature_set_power(impl->cam, DC1394_FEATURE_WHITE_BALANCE, DC1394_OFF);
+        }
+
+        break;
+    }
+
+    case 1: // white-balance-red
+    case 2: { // white-balance-blue
+        uint32_t b=0, r=0;
+
+        dc1394_feature_whitebalance_get_value(impl->cam, &b, &r);
+
         if (idx==1)
+            r = (uint32_t) v;
+        if (idx==2)
             b = (uint32_t) v;
 
         return dc1394_feature_whitebalance_set_value(impl->cam, (uint32_t) b, (uint32_t) r);
     }
 
-    case 2:
-        return dc1394_feature_set_value(impl->cam, DC1394_FEATURE_EXPOSURE, (uint32_t) v);
+    case 3: { // exposure-manual
+        dc1394_feature_set_power(impl->cam, DC1394_FEATURE_EXPOSURE, DC1394_ON);
+        dc1394_feature_set_mode(impl->cam, DC1394_FEATURE_EXPOSURE, v!=0 ? DC1394_FEATURE_MODE_MANUAL :
+                                DC1394_FEATURE_MODE_AUTO);
+        break;
+    }
 
-    case 3:
+    case 4: { // exposure
+        return dc1394_feature_set_value(impl->cam, DC1394_FEATURE_EXPOSURE, (uint32_t) v);
+        break;
+    }
+
+    case 5: { // brightness-manual
+        dc1394_feature_set_power(impl->cam, DC1394_FEATURE_BRIGHTNESS, DC1394_ON);
+        dc1394_feature_set_mode(impl->cam, DC1394_FEATURE_BRIGHTNESS, v!=0 ? DC1394_FEATURE_MODE_MANUAL :
+                                DC1394_FEATURE_MODE_AUTO);
+        break;
+    }
+
+    case 6: // brightness
         return dc1394_feature_set_value(impl->cam, DC1394_FEATURE_BRIGHTNESS, (uint32_t) v);
 
-    case 4:
+    case 7: { // gamma-manual
+        dc1394_feature_set_power(impl->cam, DC1394_FEATURE_GAMMA, DC1394_ON);
+        dc1394_feature_set_mode(impl->cam, DC1394_FEATURE_GAMMA, v!=0 ? DC1394_FEATURE_MODE_MANUAL :
+                                DC1394_FEATURE_MODE_AUTO);
+    }
+
+    case 8: // gamma
         return dc1394_feature_set_value(impl->cam, DC1394_FEATURE_GAMMA, (uint32_t) v);
 
-    case 5:
-        return dc1394_feature_set_value(impl->cam, DC1394_FEATURE_FRAME_RATE, (uint32_t) v);
+
+    case 9: { // timestamps-enable
+        uint32_t value;
+        if (dc1394_get_adv_control_register(impl->cam, 0x2F8, &value) != DC1394_SUCCESS)
+            return -1;
+
+        value &= (~1);
+        value |= (int) v;
+
+        if (dc1394_set_adv_control_register(impl->cam, 0x2F8, value) != DC1394_SUCCESS)
+            return -1;
+
+        break;
+    }
+
+    case 10: { // packetsize
+        image_source_format_t *format = impl->formats[impl->current_format_idx];
+        struct format_priv *format_priv = format->priv;
+
+        dc1394_format7_set_packet_size(impl->cam, format_priv->dc1394_mode, (int) v);
+        impl->packet_size = (int) v;
+
+        if (impl->started) {
+            isrc->stop(isrc);
+            isrc->start(isrc);
+        }
+
+        break;
+    }
 
     default:
         return 0;
     }
+
+    return 0;
 }
 
 static int start(image_source_t *isrc)
@@ -300,9 +457,20 @@ restart:
 
     uint32_t psize_unit, psize_max;
     dc1394_format7_get_packet_parameters(impl->cam, format_priv->dc1394_mode, &psize_unit, &psize_max);
-    int packet_size = psize_max; //4096;
 
-    dc1394_format7_set_packet_size(impl->cam, format_priv->dc1394_mode, packet_size);
+    if (impl->packet_size == 0) {
+        impl->packet_size = psize_max; //4096;
+    } else {
+        impl->packet_size = psize_unit * (impl->packet_size / psize_unit);
+        if (impl->packet_size > psize_max)
+            impl->packet_size = psize_max;
+        if (impl->packet_size < psize_unit)
+            impl->packet_size = psize_unit;
+    }
+
+    // printf("psize_unit: %d, psize_max: %d, packet_size: %d\n", psize_unit, psize_max, impl->packet_size);
+
+    dc1394_format7_set_packet_size(impl->cam, format_priv->dc1394_mode, impl->packet_size);
     uint64_t bytes_per_frame;
     dc1394_format7_get_total_bytes(impl->cam, format_priv->dc1394_mode, &bytes_per_frame);
 
@@ -321,6 +489,8 @@ restart:
         goto fail;
 
     impl->fd = dc1394_capture_get_fileno (impl->cam);
+
+    impl->started = 1;
 
     return 0;
 
@@ -395,6 +565,7 @@ static int stop(image_source_t *isrc)
 
     dc1394_capture_stop(impl->cam);
 
+    impl->started = 0;
 
     return 0;
 }
@@ -474,7 +645,9 @@ image_source_t *image_source_dc1394_open(int64_t guid)
         }
     }
 
-    if (1) {
+    dc1394_feature_get_all(impl->cam, &impl->features);
+
+    if (0) {
         // work around an intermittent bug where sometimes some
         // garbage causes the camera data to be offset by about a
         // third of a scanline.
@@ -512,6 +685,9 @@ char** image_source_enumerate_dc1394(char **urls)
     // display all cameras for convenience
     for (int i = 0; i < list->num; i++) {
         dc1394camera_t *cam = dc1394_camera_new(dc1394, list->ids[i].guid);
+        if (cam == NULL)
+            continue;
+
         char buf[1024];
 
         // other useful fields: cam->vendor, cam->model);

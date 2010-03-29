@@ -27,8 +27,6 @@ struct image_source
     image_source_format_t *(*get_format)(image_source_t *isrc, int idx);
     int (*set_format)(image_source_t *isrc, int idx);
     int (*get_current_format)(image_source_t *isrc);
-//    int (*set_white_balance)(image_source_t *isrc, int r, int b);
-//    int (*get_white_balance)(image_source_t *isrc, char c);
 
     int (*start)(image_source_t *isrc);
     int (*get_frame)(image_source_t *isrc, void **buf, int *buflen);
@@ -40,6 +38,7 @@ struct image_source
     double (*get_feature_min)(image_source_t *isrc, int idx);
     double (*get_feature_max)(image_source_t *isrc, int idx);
     double (*get_feature_value)(image_source_t *isrc, int idx);
+    // returns non-zero on error
     int (*set_feature_value)(image_source_t *isrc, int idx, double v);
 
     int (*close)(image_source_t *isrc);

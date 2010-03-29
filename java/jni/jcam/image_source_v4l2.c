@@ -87,6 +87,7 @@ static int set_format(image_source_t *isrc, int idx)
     assert(idx>=0 && idx < impl->nformats);
 
     if (ioctl (impl->fd, VIDIOC_S_FMT, impl->formats[idx]->priv) < 0) {
+        printf("set format failed\n");
         return -1;
     }
 
