@@ -39,10 +39,10 @@ url_parser_t *url_parser_create(const char *s)
 
     int slashpos = strpos(s, "://");
     urlp->protocol = strndup(s, slashpos+3);
-    
+
     int parampos = strpos(s, "?");
     urlp->location = strndup(&s[slashpos+3], parampos < 0 ? 9999 : parampos - slashpos - 3);
-    
+
     while (parampos >= 0) {
         int nextparampos = strposat(s, "&", parampos+1);
 
@@ -96,4 +96,19 @@ const char* url_parser_get_parameter(url_parser_t *urlp, const char *key, const 
             return urlp->values[i];
     }
     return def;
+}
+
+int url_parser_num_parameters(url_parser_t *urlp)
+{
+    return urlp->nparams;
+}
+
+const char* url_parser_get_parameter_name(url_parser_t *urlp, int idx)
+{
+    return urlp->keys[idx];
+}
+
+const char* url_parser_get_parameter_value(url_parser_t *urlp, int idx)
+{
+    return urlp->values[idx];
 }

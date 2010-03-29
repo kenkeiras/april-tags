@@ -261,7 +261,10 @@ public class JCamView
         void updateLabel()
         {
             value = isrc.getFeatureValue(idx);
-            valueLabel.setText(""+value);
+            if (value == (int) value)
+                valueLabel.setText(""+value);
+            else
+                valueLabel.setText(String.format("%.2f", value));
         }
 
         public void actionPerformed(ActionEvent e)

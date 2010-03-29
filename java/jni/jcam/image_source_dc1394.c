@@ -11,6 +11,7 @@
 #include <inttypes.h>
 #include <errno.h>
 #include <stdint.h>
+#include <sys/types.h>
 
 #include <dc1394/control.h>
 #include <dc1394/vendor/avt.h>
@@ -45,13 +46,39 @@ struct impl_dc1394
     uint32_t              started;
 };
 
-
 struct format_priv
 {
     dc1394video_mode_t dc1394_mode;
     int format7_mode_idx;
     int color_coding_idx;
 };
+
+// convert a base-16 number in ASCII ('len' characters long) to a 64
+// bit integer. Result is written to *ov, 0 is returned if parsing is
+// successful. Otherwise -1 is returned.
+static int strto64(const char *s, int maxlen, int64_t *ov)
+{
+    int64_t acc = 0;
+    for (int i = 0; i < maxlen; i++) {
+        char c = s[i];
+        if (c==0)
+            break;
+        int ic = 0;
+        if (c >= 'a' && c <='f')
+            ic = c - 'a' + 10;
+        else if (c >= 'A' && c <= 'F')
+            ic = c - 'A' + 10;
+        else if (c >= '0' && c <= '9')
+            ic = c - '0';
+        else
+            printf("%c", c); //return -1;
+        acc = (acc<<4) + ic;
+    }
+
+    *ov = acc;
+    return 0;
+}
+
 
 static const char *toformat(dc1394color_coding_t color, dc1394color_filter_t filter)
 {
@@ -132,7 +159,7 @@ static int set_format(image_source_t *isrc, int idx)
 
 static int num_features(image_source_t *isrc)
 {
-    return 11;
+    return 12;
 }
 
 static const char* get_feature_name(image_source_t *isrc, int idx)
@@ -160,6 +187,10 @@ static const char* get_feature_name(image_source_t *isrc, int idx)
     case 9:
         return "timestamps-enable";
     case 10:
+        return "frame-rate-manual";
+    case 11:
+        return "frame-rate";
+    case 12:
         return "packetsize";
     default:
         return NULL;
@@ -201,7 +232,11 @@ static double get_feature_min(image_source_t *isrc, int idx)
         return find_feature(isrc, DC1394_FEATURE_GAMMA)->min;
     case 9: // timestamps-enable
         return 0;
-    case 10: // packet size
+    case 10: // frame-rate-mode
+        return 0;
+    case 11: // frame-rate
+        return find_feature(isrc, DC1394_FEATURE_FRAME_RATE)->abs_min;
+    case 12: // packet size
         return 1;
     default:
         return 0;
@@ -210,8 +245,6 @@ static double get_feature_min(image_source_t *isrc, int idx)
 
 static double get_feature_max(image_source_t *isrc, int idx)
 {
-    impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
-
     switch(idx)
     {
     case 0: // white-balance-manual
@@ -233,9 +266,12 @@ static double get_feature_max(image_source_t *isrc, int idx)
         return find_feature(isrc, DC1394_FEATURE_GAMMA)->max;
     case 9: // timestamps-enable
         return 1;
-    case 10: { // packetsize
+    case 10: // frame-rate-mode
+        return 1;
+    case 11: // frame-rate
+        return find_feature(isrc, DC1394_FEATURE_FRAME_RATE)->abs_max;
+    case 12: // packetsize
         return 4192;
-    }
     default:
         return 0;
     }
@@ -310,7 +346,19 @@ static double get_feature_value(image_source_t *isrc, int idx)
         return value & 1;
     }
 
-    case 10: { // packetsize
+    case 10: { // frame-rate-mode
+        dc1394feature_mode_t mode = DC1394_FEATURE_MODE_AUTO;
+        dc1394_feature_get_mode(impl->cam, DC1394_FEATURE_FRAME_RATE, &mode);
+        return mode == DC1394_FEATURE_MODE_MANUAL;
+    }
+
+    case 11: { // frame rate
+        float v = 0;
+        dc1394_feature_get_absolute_value(impl->cam, DC1394_FEATURE_FRAME_RATE, &v); // XXX error checking
+        return v;
+    }
+
+    case 12: { // packetsize
         if (impl->packet_size != 0)
             return impl->packet_size;
         image_source_format_t *format = impl->formats[impl->current_format_idx];
@@ -356,7 +404,8 @@ static int set_feature_value(image_source_t *isrc, int idx, double v)
         if (idx==2)
             b = (uint32_t) v;
 
-        return dc1394_feature_whitebalance_set_value(impl->cam, (uint32_t) b, (uint32_t) r);
+        dc1394_feature_whitebalance_set_value(impl->cam, (uint32_t) b, (uint32_t) r);
+        break;
     }
 
     case 3: { // exposure-manual
@@ -367,7 +416,7 @@ static int set_feature_value(image_source_t *isrc, int idx, double v)
     }
 
     case 4: { // exposure
-        return dc1394_feature_set_value(impl->cam, DC1394_FEATURE_EXPOSURE, (uint32_t) v);
+        dc1394_feature_set_value(impl->cam, DC1394_FEATURE_EXPOSURE, (uint32_t) v);
         break;
     }
 
@@ -379,7 +428,8 @@ static int set_feature_value(image_source_t *isrc, int idx, double v)
     }
 
     case 6: // brightness
-        return dc1394_feature_set_value(impl->cam, DC1394_FEATURE_BRIGHTNESS, (uint32_t) v);
+        dc1394_feature_set_value(impl->cam, DC1394_FEATURE_BRIGHTNESS, (uint32_t) v);
+        break;
 
     case 7: { // gamma-manual
         if (v==1) {
@@ -408,7 +458,20 @@ static int set_feature_value(image_source_t *isrc, int idx, double v)
         break;
     }
 
-    case 10: { // packetsize
+    case 10: { // frame-rate-mode
+        dc1394_feature_set_power(impl->cam, DC1394_FEATURE_FRAME_RATE, DC1394_ON);
+        dc1394_feature_set_mode(impl->cam, DC1394_FEATURE_FRAME_RATE, v!=0 ? DC1394_FEATURE_MODE_MANUAL :
+                                DC1394_FEATURE_MODE_AUTO);
+
+        break;
+    }
+
+    case 11: { // frame rate
+        dc1394_feature_set_absolute_value(impl->cam, DC1394_FEATURE_FRAME_RATE, (float) v);
+        break;
+    }
+
+    case 12: { // packetsize
         image_source_format_t *format = impl->formats[impl->current_format_idx];
         struct format_priv *format_priv = format->priv;
 
@@ -583,8 +646,17 @@ static int my_close(image_source_t *isrc)
 }
 
 /** Open the given guid, or if -1, open the first camera available. **/
-image_source_t *image_source_dc1394_open(int64_t guid)
+image_source_t *image_source_dc1394_open(url_parser_t *urlp)
 {
+    const char *protocol = url_parser_get_protocol(urlp);
+    const char *location = url_parser_get_location(urlp);
+
+    int64_t guid = 0;
+    if (strto64(location, strlen(location), &guid)) {
+        printf("image_source_open: dc1394 guid '%s' is not a valid integer.\n", location);
+        return NULL;
+    }
+
     image_source_t *isrc = calloc(1, sizeof(image_source_t));
     impl_dc1394_t *impl = calloc(1, sizeof(impl_dc1394_t));
 
@@ -650,6 +722,23 @@ image_source_t *image_source_dc1394_open(int64_t guid)
     }
 
     dc1394_feature_get_all(impl->cam, &impl->features);
+
+    if (1) {
+        // ptgrey cameras don't seem to have any cases of this...
+        int reread = 0;
+
+        for (int i = 0; i < DC1394_FEATURE_NUM; i++) {
+            dc1394feature_info_t *f = &impl->features.feature[i];
+            if (f->available && f->absolute_capable && !f->abs_control) {
+                printf("absolute mode\n");
+                dc1394_feature_set_absolute_control(impl->cam, f->id, DC1394_ON);
+                reread = 1;
+            }
+        }
+
+        if (reread)
+            dc1394_feature_get_all(impl->cam, &impl->features);
+    }
 
     if (0) {
         // work around an intermittent bug where sometimes some

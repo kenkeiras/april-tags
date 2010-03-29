@@ -7,6 +7,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "url_parser.h"
+
 typedef struct image_source_format image_source_format_t;
 struct image_source_format
 {
@@ -46,7 +48,7 @@ struct image_source
 
 image_source_t *image_source_open(const char *url);
 image_source_t *image_source_v4l2_open(const char *path);
-image_source_t *image_source_dc1394_open(int64_t guid);
+image_source_t *image_source_dc1394_open(url_parser_t *urlp);
 
 char** image_source_enumerate();
 void image_source_enumerate_free(char **b);
