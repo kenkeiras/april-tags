@@ -320,7 +320,7 @@ public class JCamView
 
         formatList.setListData(fmts.toArray(new String[0]));
 
-        formatList.setSelectedIndex(0); // will trigger call to formatChanged.
+        formatList.setSelectedIndex(isrc.getCurrentFormatIndex()); // will trigger call to formatChanged.
     }
 
     synchronized void formatChanged()

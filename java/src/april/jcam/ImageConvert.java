@@ -2,7 +2,11 @@ package april.jcam;
 
 import java.awt.*;
 import java.awt.image.*;
+import javax.imageio.*;
+import javax.imageio.stream.*;
+import javax.imageio.plugins.jpeg.*;
 
+import java.io.*;
 import java.util.*;
 
 import april.util.*;
@@ -225,6 +229,26 @@ public class ImageConvert
             if (b.length == d.length)
                 System.arraycopy(d, 0, b, 0, d.length);
             return im;
+        }
+
+        if (format.equals("MJPG")) {
+            try {
+                ImageReader reader = ImageIO.getImageReadersBySuffix("jpg").next();
+                reader.setInput(new MemoryCacheImageInputStream(new ByteArrayInputStream(d)));
+
+                JPEGImageReadParam params = new JPEGImageReadParam();
+                params.setDecodeTables(new JPEGQTable[] { JPEGQTable.K1Luminance},
+                                       new JPEGHuffmanTable[] { JPEGHuffmanTable.StdDCLuminance,
+                                                                JPEGHuffmanTable.StdDCChrominance },
+                                       new JPEGHuffmanTable[] { JPEGHuffmanTable.StdACLuminance,
+                                                                JPEGHuffmanTable.StdACChrominance });
+
+                BufferedImage im = reader.read(0, params);
+                return im;
+            } catch (IOException ex) {
+                System.out.println("ImageConvert: MJPG decode failed: "+ex);
+                return null;
+            }
         }
 
         System.out.println("ImageConvert: Unknown type "+format);

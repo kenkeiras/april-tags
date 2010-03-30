@@ -368,7 +368,7 @@ image_source_t *image_source_v4l2_open(const char *path)
     isrc->stop = stop;
     isrc->close = my_close;
 
-    impl->fd = open(path, O_RDWR | O_NONBLOCK, 0);
+    impl->fd = open(path, O_RDWR, 0); // | O_NONBLOCK, 0);
     if (impl->fd < 0)
         goto fail;
 
@@ -383,28 +383,30 @@ image_source_t *image_source_v4l2_open(const char *path)
         }
     }
 
-    struct v4l2_cropcap cropcap;
-    struct v4l2_crop crop;
-    memset(&crop, 0, sizeof(struct v4l2_crop));
-    memset(&cropcap, 0, sizeof(struct v4l2_cropcap));
+    if (0) {
+        struct v4l2_cropcap cropcap;
+        struct v4l2_crop crop;
+        memset(&crop, 0, sizeof(struct v4l2_crop));
+        memset(&cropcap, 0, sizeof(struct v4l2_cropcap));
 
-    cropcap.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    if (0 == ioctl (impl->fd, VIDIOC_CROPCAP, &cropcap)) {
-        crop.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-        crop.c = cropcap.defrect; /* reset to default */
+        cropcap.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        if (0 == ioctl (impl->fd, VIDIOC_CROPCAP, &cropcap)) {
+            crop.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+            crop.c = cropcap.defrect; /* reset to default */
 
-        if (-1 == ioctl (impl->fd, VIDIOC_S_CROP, &crop)) {
-            switch (errno) {
-            case EINVAL:
-                // Cropping not supported.
-                break;
-            default:
-                // Errors ignored.
-                break;
+            if (-1 == ioctl (impl->fd, VIDIOC_S_CROP, &crop)) {
+                switch (errno) {
+                case EINVAL:
+                    // Cropping not supported.
+                    break;
+                default:
+                    // Errors ignored.
+                    break;
+                }
             }
+        } else {
+            // Errors ignored.
         }
-    } else {
-        // Errors ignored.
     }
 
     struct v4l2_fmtdesc fmt;
