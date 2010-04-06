@@ -27,11 +27,11 @@ public class StringUtil
             String variableName = matcher.group().split("\\W")[1];
             String variableValue = System.getenv(variableName);
 
-            if(variableValue != null){
+            if (variableValue != null) {
                 // Keep last character of matched regex
-                variableValue += match.charAt(match.length() -1);
+                variableValue += match.charAt(match.length() - 1);
                 resolved = resolved.replace(match, variableValue);
-            }else{
+            } else {
                 System.err.println("Ignoring unknown environment variable: "+match);
             }
 
