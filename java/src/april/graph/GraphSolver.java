@@ -1,6 +1,6 @@
 package april.graph;
 
-public interface Solver
+public interface GraphSolver
 {
     /** Perform one iteration/step **/
     public void iterate();

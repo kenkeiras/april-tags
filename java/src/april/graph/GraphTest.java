@@ -23,7 +23,7 @@ public class GraphTest implements ParameterListener
     VisCanvas    vc = new VisCanvas(vw);
     ParameterGUI pg = new ParameterGUI();
     Graph        g;
-    Solver       solver;
+    GraphSolver  solver;
     RunThread    runThread;
 
     public static void main(String args[])
