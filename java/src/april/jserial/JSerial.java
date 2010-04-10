@@ -26,9 +26,9 @@ public class JSerial
         System.loadLibrary("jserial");
     }
 
-    public JSerial(String url, int baudrate, String mode, int blocking) throws IOException
+    public JSerial(String url, int baudrate, String mode, boolean blocking) throws IOException
     {
-        fd = serial_open_jni(url, baudrate, blocking);
+        fd = serial_open_jni(url, baudrate, blocking ? 1 : 0);
         setMode(mode);
 
         if (fd < 0)
@@ -88,6 +88,26 @@ public class JSerial
     public int read(byte buf[], int offset, int len)
     {
         return read(fd, buf, offset, len);
+    }
+
+    /** Combines characters until a newline is read; the newline is
+     * stripped. The timeout applies to each individual character, not
+     * the whole string. **/
+    public String readLine(int mstimeout)
+    {
+        StringBuffer sb = new StringBuffer();
+        while (true) {
+            byte buf[] = new byte[1];
+            int len = readTimeout(buf, 0, 1, mstimeout);
+            if (len < 1)
+                return null;
+            char c = (char) buf[0];
+            if (c=='\n' || c=='\r')
+                break;
+            sb.append(c);
+        }
+
+        return sb.toString();
     }
 
     public int write(String s)
