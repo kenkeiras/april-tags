@@ -7,32 +7,6 @@
 #include "image_source.h"
 #include "url_parser.h"
 
-// convert a base-16 number in ASCII ('len' characters long) to a 64
-// bit integer. Result is written to *ov, 0 is returned if parsing is
-// successful. Otherwise -1 is returned.
-static int strto64(const char *s, int maxlen, int64_t *ov)
-{
-    int64_t acc = 0;
-    for (int i = 0; i < maxlen; i++) {
-        char c = s[i];
-        if (c==0)
-            break;
-        int ic = 0;
-        if (c >= 'a' && c <='f')
-            ic = c - 'a' + 10;
-        else if (c >= 'A' && c <= 'F')
-            ic = c - 'A' + 10;
-        else if (c >= '0' && c <= '9')
-            ic = c - '0';
-        else 
-            printf("%c", c); //return -1;
-        acc = (acc<<4) + ic;
-    }
-
-    *ov = acc;
-    return 0;
-}
-
 image_source_t *image_source_open(const char *url)
 {
     image_source_t *isrc = NULL;
@@ -47,17 +21,34 @@ image_source_t *image_source_open(const char *url)
     if (!strcmp(protocol, "v4l2://"))
         isrc = image_source_v4l2_open(location);
     else if (!strcmp(protocol, "dc1394://")) {
-        int64_t guid = 0;
-        if (strto64(location, strlen(location), &guid)) {
-            printf("image_source_open: dc1394 guid '%s' is not a valid integer.\n", &url[9]);
-            return NULL;
-        }
-        isrc = image_source_dc1394_open(guid);
+        isrc = image_source_dc1394_open(urlp);
     }
 
     if (isrc != NULL) {
-        int fidx = atoi(url_parser_get_parameter(urlp, "fidx", "0"));
-        isrc->set_format(isrc, fidx);
+        // handle parameters
+        for (int idx = 0; idx < url_parser_num_parameters(urlp); idx++) {
+            const char *key = url_parser_get_parameter_name(urlp, idx);
+            const char *value = url_parser_get_parameter_value(urlp, idx);
+
+            if (!strcmp(key, "fidx")) {
+                int fidx = atoi(url_parser_get_parameter(urlp, "fidx", "0"));
+                isrc->set_format(isrc, fidx);
+                continue;
+            }
+
+            // pass through a device-specific parameter.
+            int found = 0;
+            for (int fidx = 0; fidx < isrc->num_features(isrc); fidx++) {
+                if (!strcmp(isrc->get_feature_name(isrc, fidx), key)) {
+                    isrc->set_feature_value(isrc, fidx, strtod(value, NULL));
+                    found = 1;
+                    break;
+                }
+            }
+
+            if (!found)
+                printf("Unhandled parameter %s\n", key);
+        }
     }
 
     url_parser_destroy(urlp);

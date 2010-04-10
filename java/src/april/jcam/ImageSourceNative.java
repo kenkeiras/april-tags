@@ -44,37 +44,37 @@ public class ImageSourceNative extends ImageSource
         return image_source_enumerate_jni();
     }
 
-    public void start()
+    public synchronized void start()
     {
         image_source_start_jni(srcid);
     }
 
-    public void stop()
+    public synchronized void stop()
     {
         image_source_stop_jni(srcid);
     }
 
     /** Will return null in the event of an I/O error. **/
-    public byte[] getFrame()
+    public synchronized byte[] getFrame()
     {
         byte b[] = image_source_get_frame_jni(srcid);
 
         return b;
     }
 
-    public int getNumFormats()
+    public synchronized int getNumFormats()
     {
         return image_source_num_formats_jni(srcid);
     }
 
-    public ImageSourceFormat getFormat(int idx)
+    public synchronized ImageSourceFormat getFormat(int idx)
     {
         return image_source_get_format_jni(srcid, idx);
     }
 
     /** Try to find a format with the given format string. The first such format will be selected.
         e.g., format = "GRAY8" or "BAYER_RGGB". Returns true on success. **/
-    public boolean setFormat(String format)
+    public synchronized boolean setFormat(String format)
     {
         for (int i = 0; i < getNumFormats(); i++) {
             ImageSourceFormat ifmt = getFormat(i);
@@ -87,52 +87,52 @@ public class ImageSourceNative extends ImageSource
         return false;
     }
 
-    public void setFormat(int idx)
+    public synchronized void setFormat(int idx)
     {
         image_source_set_format_jni(srcid, idx);
     }
 
-    public int getCurrentFormatIndex()
+    public synchronized int getCurrentFormatIndex()
     {
         return image_source_get_current_format_jni(srcid);
     }
 
-    public ImageSourceFormat getCurrentFormat()
+    public synchronized ImageSourceFormat getCurrentFormat()
     {
         return getFormat(getCurrentFormatIndex());
     }
 
-    public int getNumFeatures()
+    public synchronized int getNumFeatures()
     {
         return image_source_get_num_features(srcid);
     }
 
-    public String getFeatureName(int idx)
+    public synchronized String getFeatureName(int idx)
     {
         return image_source_get_feature_name(srcid, idx);
     }
 
-    public double getFeatureMin(int idx)
+    public synchronized double getFeatureMin(int idx)
     {
         return image_source_get_feature_min(srcid, idx);
     }
 
-    public double getFeatureMax(int idx)
+    public synchronized double getFeatureMax(int idx)
     {
         return image_source_get_feature_max(srcid, idx);
     }
 
-    public double getFeatureValue(int idx)
+    public synchronized double getFeatureValue(int idx)
     {
         return image_source_get_feature_value(srcid, idx);
     }
 
-    public int setFeatureValue(int idx, double v)
+    public synchronized int setFeatureValue(int idx, double v)
     {
         return image_source_set_feature_value(srcid, idx, v);
     }
 
-    public int close()
+    public synchronized int close()
     {
         return image_source_close_jni(srcid);
     }

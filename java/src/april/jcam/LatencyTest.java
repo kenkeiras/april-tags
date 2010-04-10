@@ -82,7 +82,6 @@ public class LatencyTest
             System.out.printf("%3d: %10d x %-10d %s\n", i, ifmt.width, ifmt.height, ifmt.format);
         }
 
-        isrc.setFormat(0);
         isrc.start();
 
         LatencyTest lt = new LatencyTest();

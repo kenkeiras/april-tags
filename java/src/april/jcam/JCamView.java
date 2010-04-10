@@ -50,7 +50,6 @@ public class JCamView
         mainPanel = new JPanel();
         mainPanel.setLayout(new BorderLayout());
         mainPanel.add(jim, BorderLayout.CENTER);
-        jf.add(mainPanel, BorderLayout.CENTER);
 
         mouseListener = new MyMouseListener();
         jim.addMouseMotionListener(mouseListener);
@@ -87,12 +86,16 @@ public class JCamView
         leftPanel.add(Box.createVerticalStrut(vspace));
         leftPanel.add(makeChoicePanel("Record", recordPanel));
 
-        jf.add(new JScrollPane(leftPanel), BorderLayout.WEST);
-
         JPanel bottomPanel = new JPanel();
         bottomPanel.setLayout(new FlowLayout());
         bottomPanel.add(infoLabel);
         mainPanel.add(bottomPanel, BorderLayout.SOUTH);
+
+        JSplitPane jsp = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, new JScrollPane(leftPanel), mainPanel);
+        jsp.setDividerLocation(30 + (int) leftPanel.getPreferredSize().getWidth());
+        jsp.setResizeWeight(0.2);
+
+        jf.add(jsp, BorderLayout.CENTER);
 
         jf.setSize(800,600);
         jf.setVisible(true);
@@ -217,7 +220,7 @@ public class JCamView
         }
     }
 
-    class FeatureSlider extends JPanel implements ChangeListener
+    class FeatureControl extends JPanel implements ChangeListener, ActionListener
     {
         String name;
         double min, max, value;
@@ -227,8 +230,9 @@ public class JCamView
 
         JLabel valueLabel = new JLabel();
         JSlider js;
+        JCheckBox jcb;
 
-        public FeatureSlider(ImageSource isrc, int idx)
+        public FeatureControl(ImageSource isrc, int idx)
         {
             this.isrc = isrc;
             this.idx = idx;
@@ -237,26 +241,44 @@ public class JCamView
             max = isrc.getFeatureMax(idx);
             value = isrc.getFeatureValue(idx);
 
-            js = new JSlider((int) (min*scale), (int) (max*scale), (int) (value*scale));
-
             setLayout(new BorderLayout());
-            add(new JLabel(isrc.getFeatureName(idx)), BorderLayout.NORTH);
-            add(js, BorderLayout.CENTER);
-            add(valueLabel, BorderLayout.EAST);
-            update();
-            js.addChangeListener(this);
+
+            if (min==0 && max==1) {
+                jcb = new JCheckBox(isrc.getFeatureName(idx), value==1);
+                jcb.addActionListener(this);
+                add(jcb, BorderLayout.CENTER);
+            } else {
+                js = new JSlider((int) (min*scale), (int) (max*scale), (int) (value*scale));
+                js.addChangeListener(this);
+                add(new JLabel(isrc.getFeatureName(idx)), BorderLayout.NORTH);
+                add(js, BorderLayout.CENTER);
+                add(valueLabel, BorderLayout.EAST);
+            }
+
+            updateLabel();
         }
 
-        void update()
+        void updateLabel()
         {
             value = isrc.getFeatureValue(idx);
-            valueLabel.setText(""+value);
+            if (value == (int) value)
+                valueLabel.setText(""+value);
+            else
+                valueLabel.setText(String.format("%.2f", value));
+        }
+
+        public void actionPerformed(ActionEvent e)
+        {
+            if (jcb != null)
+                isrc.setFeatureValue(idx, jcb.isSelected() ? 1 : 0);
+            updateLabel();
         }
 
         public void stateChanged(ChangeEvent e)
         {
-            isrc.setFeatureValue(idx, js.getValue()/scale);
-            update();
+            if (js != null)
+                isrc.setFeatureValue(idx, js.getValue()/scale);
+            updateLabel();
         }
     }
 
@@ -283,9 +305,9 @@ public class JCamView
             featurePanel.setLayout(new GridLayout(nfeatures, 1));
 
             for (int i = 0; i < nfeatures; i++) {
-                System.out.printf("Feature %d : %s (%f, %f, %f)\n", i, isrc.getFeatureName(i), isrc.getFeatureMin(i), isrc.getFeatureMax(i), isrc.getFeatureValue(i));
+//                System.out.printf("Feature %d : %s (%f, %f, %f)\n", i, isrc.getFeatureName(i), isrc.getFeatureMin(i), isrc.getFeatureMax(i), isrc.getFeatureValue(i));
 
-                featurePanel.add(new FeatureSlider(isrc, i));
+                featurePanel.add(new FeatureControl(isrc, i));
             }
         }
 
@@ -298,7 +320,7 @@ public class JCamView
 
         formatList.setListData(fmts.toArray(new String[0]));
 
-        formatList.setSelectedIndex(0); // will trigger call to formatChanged.
+        formatList.setSelectedIndex(isrc.getCurrentFormatIndex()); // will trigger call to formatChanged.
     }
 
     synchronized void formatChanged()
