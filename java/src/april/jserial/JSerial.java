@@ -90,6 +90,26 @@ public class JSerial
         return read(fd, buf, offset, len);
     }
 
+    /** Combines characters until a newline is read; the newline is
+     * stripped. The timeout applies to each individual character, not
+     * the whole string. **/
+    public String readLine(int mstimeout)
+    {
+        StringBuffer sb = new StringBuffer();
+        while (true) {
+            byte buf[] = new byte[1];
+            int len = readTimeout(buf, 0, 1, mstimeout);
+            if (len < 1)
+                return null;
+            char c = (char) buf[0];
+            if (c=='\n' || c=='\r')
+                break;
+            sb.append(c);
+        }
+
+        return sb.toString();
+    }
+
     public int write(String s)
     {
         byte b[] = s.getBytes();
