@@ -12,8 +12,8 @@ public class JPEGTableFactory
 {
     float quality = 0.5f;
     JPEGQTable[] qTables = { JPEGQTable.K2Chrominance.getScaledInstance(8f, false) };
-    final JPEGHuffmanTable[] dcHuffmanTables = { JPEGHuffmanTable.StdDCChrominance };
-    final JPEGHuffmanTable[] acHuffmanTables = { JPEGHuffmanTable.StdACChrominance };
+    final JPEGHuffmanTable[] dcHuffmanTables = { JPEGHuffmanTable.StdDCChrominance, JPEGHuffmanTable.StdDCLuminance };
+    final JPEGHuffmanTable[] acHuffmanTables = { JPEGHuffmanTable.StdACChrominance, JPEGHuffmanTable.StdACLuminance };
 
     public JPEGQTable[] getQTables()
     {

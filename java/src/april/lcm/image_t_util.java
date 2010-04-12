@@ -1,18 +1,64 @@
 package april.lcm;
 
-import april.lcmtypes.*;
+import java.awt.Color;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.Iterator;
 
-import java.awt.*;
-import java.awt.image.*;
-import java.io.*;
-import java.util.*;
-import javax.imageio.*;
-import javax.imageio.stream.*;
+import javax.imageio.IIOImage;
+import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.ImageTypeSpecifier;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.ImageWriter;
+import javax.imageio.metadata.IIOInvalidTreeException;
+import javax.imageio.metadata.IIOMetadata;
+import javax.imageio.plugins.jpeg.JPEGImageReadParam;
+import javax.imageio.plugins.jpeg.JPEGImageWriteParam;
+import javax.imageio.stream.MemoryCacheImageInputStream;
+import javax.imageio.stream.MemoryCacheImageOutputStream;
+
+import org.w3c.dom.Node;
+
+import april.lcmtypes.image_t;
 
 public class image_t_util
 {
     public static final int FORMAT_JPEG = 1196444237;
     public static final int FORMAT_RGB = 859981650;
+    public static final int FORMAT_MJP0 = 0x30504A4D;
+    public static final int FORMAT_MJP1 = 0x31504A4D;
+    public static final int FORMAT_MJP2 = 0x32504A4D;
+    public static final int FORMAT_MJP3 = 0x33504A4D;
+    public static final int FORMAT_MJP4 = 0x34504A4D;
+    public static final int FORMAT_MJP5 = 0x35504A4D;
+    public static final int FORMAT_MJP6 = 0x36504A4D;
+    public static final int FORMAT_MJP7 = 0x37504A4D;
+    public static final int FORMAT_MJP8 = 0x38504A4D;
+    public static final int FORMAT_MJP9 = 0x39504A4D;
+
+    static final JPEGTableFactory tableFactory = new JPEGTableFactory();
+    static final IIOMetadata customMetaData;
+
+    static {
+        //
+        // Construct custom meta-data used for MJPEG encoding
+        //
+        final Iterator<ImageWriter> iter = ImageIO.getImageWritersByMIMEType("image/jpeg");
+        final ImageWriter writer = iter.next();
+
+        customMetaData = writer.getDefaultImageMetadata(
+                ImageTypeSpecifier.createFromBufferedImageType(BufferedImage.TYPE_INT_RGB), null);
+        try {
+            removeTables(customMetaData);
+
+        } catch (final IIOInvalidTreeException ex) {
+            System.out.println("ERR: Could not create custom metadata for MJPEG: " + ex);
+            System.exit(1);
+        }
+    }
 
     public static BufferedImage decode(image_t v) throws IOException
     {
@@ -53,6 +99,50 @@ public class image_t_util
         } catch (IOException ex) {
             System.out.println("WRN: "+ex);
             return null;
+        }
+
+        v.image = bouts.toByteArray();
+        v.size = v.image.length;
+
+        return v;
+    }
+
+    /** Quality: 0 = low, 1 = high **/
+    public static image_t encodeMJPEG(BufferedImage bi, float quality) throws IOException
+    {
+        // Quantize quality setting into 10 levels [0.0, 0.9]
+        final int qualityQuantum = (int)(quality*10);
+        quality = qualityQuantum / 10f;
+        quality = Math.min(quality, 0.9f);
+
+        final image_t v = new image_t();
+        v.width = (short) bi.getWidth();
+        v.height = (short) bi.getHeight();
+        v.stride = v.width; // unused
+        v.pixelformat = FORMAT_MJP0 | ((0x30 + qualityQuantum) << 24) ;
+
+        tableFactory.setQuality( quality );
+
+        final Iterator<ImageWriter> iter = ImageIO.getImageWritersByMIMEType("image/jpeg");
+        final ImageWriter writer = iter.next();
+
+        final JPEGImageWriteParam param = (JPEGImageWriteParam) writer.getDefaultWriteParam();
+        param.setCompressionMode(ImageWriteParam.MODE_COPY_FROM_METADATA);
+        param.setEncodeTables(tableFactory.getQTables(), tableFactory.getDCHuffTables(),
+                tableFactory.getACHuffTables());
+
+        final ByteArrayOutputStream bouts = new ByteArrayOutputStream();
+
+        try {
+            writer.setOutput(new MemoryCacheImageOutputStream(bouts));
+            writer.write(null, new IIOImage(bi, null, customMetaData), param);
+
+        }
+        catch (final IOException ex) {
+            System.out.println("WRN: " + ex);
+        }
+        finally {
+            writer.dispose();
         }
 
         v.image = bouts.toByteArray();
@@ -102,5 +192,47 @@ public class image_t_util
         }
 
         return bi;
+    }
+
+    public static BufferedImage decodeMJPEG(image_t v)
+    {
+        try {
+            final ImageReader reader = ImageIO.getImageReadersBySuffix("jpg").next();
+            reader.setInput(new MemoryCacheImageInputStream(new ByteArrayInputStream(v.image)));
+
+            final float quality = ((v.pixelformat >> 24) - 0x30) / 10f;
+            tableFactory.setQuality(quality);
+
+            final JPEGImageReadParam param = new JPEGImageReadParam();
+            param.setDecodeTables(tableFactory.getQTables(), tableFactory.getDCHuffTables(),
+                    tableFactory.getACHuffTables());
+
+            final BufferedImage im = reader.read(0, param);
+            return im;
+        } catch (final IOException ex) {
+            System.out.println("ImageConvert: MJPG decode failed: " + ex);
+            return null;
+        }
+    }
+
+    private static void removeTables(IIOMetadata metadata) throws IIOInvalidTreeException
+    {
+        final String format = metadata.getNativeMetadataFormatName();
+        if (!"javax_imageio_jpeg_image_1.0".equals(format))
+            throw new IllegalArgumentException("Unrecognized meta format: " + format);
+
+        // Chop off everything under the marker sequence tag
+        final Node root = metadata.getAsTree(format);
+        final Node markerSeq = root.getFirstChild().getNextSibling();
+
+        Node child = markerSeq.getFirstChild();
+        while (child != null) {
+            final Node nextChild = child.getNextSibling();
+            markerSeq.removeChild(child);
+            child = nextChild;
+        }
+
+        // Commit changes
+        metadata.setFromTree(format, root);
     }
 }
