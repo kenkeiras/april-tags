@@ -94,7 +94,7 @@ public class JSerial
     public int read()
     {
         byte b[] = new byte[1];
-        int ret = readFully(fd, b, 0, 1);
+        int ret = readFully(b, 0, 1);
         return b[0]&0xff;
     }
 
