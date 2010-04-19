@@ -85,9 +85,12 @@ public class VisCanvas extends JPanel implements VisWorldListener,
         GLCapabilities capsv[] = new GLCapabilities[] {
             makeCapabilities(32, true, true, aaLevel),
             makeCapabilities(24, true, true, aaLevel),
+            makeCapabilities(16, true, true, aaLevel),
             makeCapabilities(32, true, true, 0),
             makeCapabilities(24, true, true, 0),
-            makeCapabilities(24, false, false, 0) };
+            makeCapabilities(16, true, true, 0),
+            makeCapabilities(24, false, false, 0),
+            makeCapabilities(16, false, false, 0) };
 
         if (VisUtil.getProperty("vis.glcanvas", true))
             canvas = createGLCanvasWorkaround(capsv);
@@ -140,6 +143,8 @@ public class VisCanvas extends JPanel implements VisWorldListener,
         for (GLCapabilities cap : capsv) {
             try {
                 GLCanvas canvas = new GLCanvas(cap);
+                if (debug)
+                    System.out.println("GLCanvas has accepted: "+cap);
                 return canvas;
             } catch (Exception ex) {
                 System.out.println("GLCanvas has rejected "+cap);
