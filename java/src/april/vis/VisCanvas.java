@@ -349,8 +349,8 @@ public class VisCanvas extends JPanel implements VisWorldListener,
                             backgroundColor.getBlue()/255f,
                             1.0f);
 
-            gl.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT); // |  GL.GL_ACCUM_BUFFER_BIT | GL.GL_STENCIL_BUFFER_BIT);
             gl.glClearDepth(1.0f);
+            gl.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT); // |  GL.GL_ACCUM_BUFFER_BIT | GL.GL_STENCIL_BUFFER_BIT);
 
             gl.glEnable(GL.GL_NORMALIZE);
 
