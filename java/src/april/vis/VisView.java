@@ -20,9 +20,13 @@ public class VisView
 
     public double perspectiveness;
 
-    public Matrix projectionMatrix;
-    public Matrix modelMatrix;
+//    public Matrix projectionMatrix;
+//    public Matrix modelMatrix;
     public int viewport[];
+
+    public double perspective_fovy_degrees = 60;
+    public double zclip_near = 0.01;
+    public double zclip_far = 1000;
 
     GLU glu = new GLU();
 
@@ -30,20 +34,23 @@ public class VisView
     {
     }
 
-    /** Apply this view to the camera. **/
-    public void setupCamera(GL gl, GLU glu)
+    public Matrix getProjectionMatrix()
     {
-        gl.glGetIntegerv(gl.GL_VIEWPORT, viewport, 0);
+        int width = viewport[2] - viewport[0];
+        int height = viewport[3] - viewport[1];
 
-        /////////// PROJECTION MATRIX ////////////////
-        gl.glMatrixMode(gl.GL_PROJECTION);
-        gl.glLoadIdentity();
-        gl.glMultMatrixd(projectionMatrix.getColumnPackedCopy(), 0);
+        double aspect = ((double) width) / height;
+        double dist = LinAlg.distance(eye, lookAt);
 
-        /////////// MODEL MATRIX ////////////////
-        gl.glMatrixMode(gl.GL_MODELVIEW);
-        gl.glLoadIdentity();
-        gl.glMultMatrixd(modelMatrix.getColumnPackedCopy(), 0);
+        Matrix pM = VisUtil.gluPerspective(perspective_fovy_degrees, aspect, zclip_near, zclip_far);
+        Matrix oM = VisUtil.glOrtho(-dist * aspect / 2, dist*aspect / 2, -dist/2, dist/2, -zclip_far, zclip_far);
+
+        return pM.times(perspectiveness).plus(oM.times(1-perspectiveness));
+    }
+
+    public Matrix getModelViewMatrix()
+    {
+        return VisUtil.lookAt(eye, lookAt, up);
     }
 
     public GRay3D computeRay(double winx, double winy)
@@ -53,8 +60,8 @@ public class VisView
 
         winy = viewport[3] - winy;
 
-        double proj_matrix[] = projectionMatrix.getColumnPackedCopy();
-        double model_matrix[] = modelMatrix.getColumnPackedCopy();
+        double proj_matrix[] = getProjectionMatrix().getColumnPackedCopy();
+        double model_matrix[] = getModelViewMatrix().getColumnPackedCopy();
 
         glu.gluUnProject(winx, winy, 0, model_matrix, 0, proj_matrix, 0, viewport, 0, ray_start, 0);
 
@@ -65,8 +72,8 @@ public class VisView
 
     public double[] unprojectPoint(double winx, double winy, double winz)
     {
-        double proj_matrix[] = projectionMatrix.getColumnPackedCopy();
-        double model_matrix[] = modelMatrix.getColumnPackedCopy();
+        double proj_matrix[] = getProjectionMatrix().getColumnPackedCopy();
+        double model_matrix[] = getModelViewMatrix().getColumnPackedCopy();
 
         double xyz[] = new double[3];
 
@@ -79,8 +86,9 @@ public class VisView
     public double[] projectPoint(double x, double y, double z)
     {
         double result[] = { 0, 0, 0 };
-        double proj_matrix[] = projectionMatrix.getColumnPackedCopy();
-        double model_matrix[] = modelMatrix.getColumnPackedCopy();
+        double proj_matrix[] = getProjectionMatrix().getColumnPackedCopy();
+        double model_matrix[] = getModelViewMatrix().getColumnPackedCopy();
+
         glu.gluProject(x, y, z, model_matrix, 0, proj_matrix, 0, viewport, 0, result, 0);
         result[1] = viewport[3] - result[1];
         return result;

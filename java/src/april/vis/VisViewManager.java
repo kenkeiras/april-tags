@@ -86,24 +86,11 @@ public class VisViewManager
     public VisView getView(int viewport[])
     {
         VisView vv = new VisView();
+
         vv.viewport = LinAlg.copy(viewport);
-
-        int width = viewport[2] - viewport[0];
-        int height = viewport[3] - viewport[1];
-
         vv.eye = LinAlg.copy(eyeGoal);
         vv.lookAt = LinAlg.copy(lookAtGoal);
         vv.up = LinAlg.copy(upGoal);
-
-        double aspect = ((double) width) / height;
-        double dist = LinAlg.distance(vv.eye, vv.lookAt);
-
-        Matrix pM = VisUtil.gluPerspective(perspective_vertical_fov_degrees, aspect, 0.01, 10000);
-        Matrix oM = VisUtil.glOrtho(-dist * aspect / 2, dist*aspect / 2, -dist/2, dist/2, -10000, 10000);
-
-        vv.projectionMatrix = pM.times(perspectiveness).plus(oM.times(1-perspectiveness));
-        vv.modelMatrix = VisUtil.lookAt(vv.eye, vv.lookAt, vv.up);
-        vv.perspectiveness = perspectiveness;
 
         return vv;
     }

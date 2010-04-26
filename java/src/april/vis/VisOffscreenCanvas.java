@@ -220,15 +220,12 @@ public class VisOffscreenCanvas implements VisContext
             /////////// PROJECTION MATRIX ////////////////
             gl.glMatrixMode(gl.GL_PROJECTION);
             gl.glLoadIdentity();
-            gl.glMultMatrixd(thisView.projectionMatrix.getColumnPackedCopy(), 0);
+            gl.glMultMatrixd(thisView.getProjectionMatrix().getColumnPackedCopy(), 0);
 
             /////////// MODEL MATRIX ////////////////
             gl.glMatrixMode(gl.GL_MODELVIEW);
             gl.glLoadIdentity();
-            gl.glMultMatrixd(thisView.modelMatrix.getColumnPackedCopy(), 0);
-
-            //	    gl.glGetDoublev(gl.GL_MODELVIEW_MATRIX, model_matrix, 0);
-            //	    gl.glGetDoublev(gl.GL_PROJECTION_MATRIX, proj_matrix, 0);
+            gl.glMultMatrixd(thisView.getModelViewMatrix().getColumnPackedCopy(), 0);
 
             if (aaLevel > 0)
                 gl.glEnable(GL.GL_MULTISAMPLE);
@@ -397,7 +394,18 @@ public class VisOffscreenCanvas implements VisContext
 
         RenderData rd = vc.getImageData(true);
         FloatImage depth = rd.depth;
-        System.out.printf("%15f\n", rd.depth.get(depth.width/2, depth.height/2));
+
+        double n = 0.01;
+        double f = 10000;
+
+        double pz = rd.depth.get(depth.width/2, depth.height/2);
+//        pz = (pz - .5) * 2;
+//        double z = -2*f*n / (pz*(f-n)-(f+n));
+
+        pz = (pz - .5) * 2;
+        double z = -2*f*n / ((pz-.5)*2*(f-n)-(f+n));
+
+        System.out.printf("%15f %15f\n", pz, z);
 
         JImage jim = new JImage(rd.depth.makeImage());
 //        JImage jim = new JImage(vc.getImage());

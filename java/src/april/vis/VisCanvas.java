@@ -400,29 +400,22 @@ public class VisCanvas extends JPanel implements VisWorldListener,
 
                 gl.glEnable(GL.GL_LINE_SMOOTH);
                 gl.glHint(GL.GL_LINE_SMOOTH_HINT, GL.GL_NICEST);
-
-                //		gl.glLineStipple(1, (short) 0xffff);
-                //		gl.glEnable(GL.GL_LINE_STIPPLE);
             }
 
             /////////// PROJECTION MATRIX ////////////////
             gl.glMatrixMode(gl.GL_PROJECTION);
             gl.glLoadIdentity();
-            gl.glMultMatrixd(thisView.projectionMatrix.getColumnPackedCopy(), 0);
+            gl.glMultMatrixd(thisView.getProjectionMatrix().getColumnPackedCopy(), 0);
 
             /////////// MODEL MATRIX ////////////////
             gl.glMatrixMode(gl.GL_MODELVIEW);
             gl.glLoadIdentity();
-            gl.glMultMatrixd(thisView.modelMatrix.getColumnPackedCopy(), 0);
-
-            //	    gl.glGetDoublev(gl.GL_MODELVIEW_MATRIX, model_matrix, 0);
-            //	    gl.glGetDoublev(gl.GL_PROJECTION_MATRIX, proj_matrix, 0);
+            gl.glMultMatrixd(thisView.getModelViewMatrix().getColumnPackedCopy(), 0);
 
             if (aaLevel > 0)
                 gl.glEnable(GL.GL_MULTISAMPLE);
 
             //////// hover
-
             if (pickingHandler == null && lastMousePosition != null) {
 
                 GRay3D ray = thisView.computeRay(lastMousePosition.getX(), lastMousePosition.getY());

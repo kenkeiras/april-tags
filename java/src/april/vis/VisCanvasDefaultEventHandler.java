@@ -591,8 +591,8 @@ public class VisCanvasDefaultEventHandler extends VisCanvasEventAdapter
         double win_dq[] = new double[3];
         GLU glu = new GLU();
 
-        double model_matrix[] = view.modelMatrix.getColumnPackedCopy();
-        double proj_matrix[] = view.projectionMatrix.getColumnPackedCopy();
+        double model_matrix[] = view.getModelViewMatrix().getColumnPackedCopy();
+        double proj_matrix[] = view.getProjectionMatrix().getColumnPackedCopy();
 
         glu.gluProject(dq[0], dq[1], dq[2],
                        model_matrix, 0, proj_matrix, 0, view.viewport, 0, win_dq, 0);
@@ -642,8 +642,8 @@ public class VisCanvasDefaultEventHandler extends VisCanvasEventAdapter
         double win_dq[] = new double[3];
         GLU glu = new GLU();
         glu.gluProject(dq[0], dq[1], dq[2],
-                       view.modelMatrix.getColumnPackedCopy(), 0,
-                       view.projectionMatrix.getColumnPackedCopy(),
+                       view.getModelViewMatrix().getColumnPackedCopy(), 0,
+                       view.getProjectionMatrix().getColumnPackedCopy(),
                        0, view.viewport, 0, win_dq, 0);
 
         double up[] = LinAlg.normalize(view.up);
@@ -702,8 +702,8 @@ public class VisCanvasDefaultEventHandler extends VisCanvasEventAdapter
             double detAfter = A.det();
 
             glu.gluProject(dq[0], dq[1], dq[2],
-                           view.modelMatrix.getColumnPackedCopy(), 0,
-                           view.projectionMatrix.getColumnPackedCopy(),
+                           view.getModelViewMatrix().getColumnPackedCopy(), 0,
+                           view.getProjectionMatrix().getColumnPackedCopy(),
                            0, view.viewport, 0, win_dq, 0);
 
             double newerr = Math.sqrt(LinAlg.sq(x - win_dq[0]) + LinAlg.sq(y - win_dq[1]));
