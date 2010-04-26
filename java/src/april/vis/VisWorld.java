@@ -19,6 +19,8 @@ public class VisWorld
     static final String UNBUFFERED = "__UNBUFFERED";
     static final String DEFAULT = "__DEFAULT";
 
+    static boolean debug = VisUtil.getProperty("vis.debug", false);
+
     static class TemporaryObject implements Comparable<TemporaryObject>
     {
         VisObject vo;
@@ -185,9 +187,11 @@ public class VisWorld
 
         vo.render(vc, gl, glu);
 
-        int err = gl.glGetError();
-        if (err != gl.GL_NO_ERROR) {
-            System.out.println("GL Error while rendering "+vo+": "+glu.gluErrorString(err));
+        if (debug) {
+            int err = gl.glGetError();
+            if (err != gl.GL_NO_ERROR) {
+                System.out.println("GL Error while rendering "+vo+": "+glu.gluErrorString(err));
+            }
         }
 
         VisUtil.popGLState(gl);

@@ -4,7 +4,7 @@ import april.jmat.*;
 
 import java.util.*;
 
-public class GaussSeidelSolver implements Solver
+public class GaussSeidelSolver implements GraphSolver
 {
     Graph g;
     int preprocessedEdges;

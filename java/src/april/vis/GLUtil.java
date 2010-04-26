@@ -15,13 +15,13 @@ public class GLUtil
         gl.glVertex3d ( 0.5,  0.5, -0.5);
         gl.glVertex3d (-0.5,  0.5, -0.5);
 
-        gl.glNormal3d (0, -1, 0);
+        gl.glNormal3d (0, 1, 0);
         gl.glVertex3d (-0.5, -0.5, -0.5);
         gl.glVertex3d ( 0.5, -0.5, -0.5);
         gl.glVertex3d ( 0.5, -0.5,  0.5);
         gl.glVertex3d (-0.5, -0.5,  0.5);
 
-        gl.glNormal3d (-1, 0, 0);
+        gl.glNormal3d (1, 0, 0);
         gl.glVertex3d (-0.5, -0.5, -0.5);
         gl.glVertex3d (-0.5,  0.5, -0.5);
         gl.glVertex3d (-0.5,  0.5,  0.5);
