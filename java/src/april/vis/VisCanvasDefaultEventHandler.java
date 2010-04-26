@@ -476,15 +476,17 @@ public class VisCanvasDefaultEventHandler extends VisCanvasEventAdapter
     {
         double xyz[] = null;
 
+/*
         if (false) {
-            VisCanvas.DepthBuffer db = vc.getDepthBuffer();
-            double z = db.data[(db.height - winy)*db.width + winx];
+            FloatImage fim = vc.getDepthBuffer();
+            double z = fim.get(fim.getHeight() - winy, winx);
             xyz = view.unprojectPoint(winx, winy, z);
 
             double dist = LinAlg.distance(view.eye, xyz);
             if (dist < 1000)
                 return xyz;
         }
+*/
 
         double interfaceMode = vc.getViewManager().getInterfaceMode();
 

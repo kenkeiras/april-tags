@@ -21,6 +21,7 @@ import com.sun.opengl.util.*;
 import april.jmat.geom.*;
 import april.jmat.*;
 import april.util.*;
+import april.image.*;
 
 public class VisOffscreenCanvas implements VisContext
 {
@@ -36,7 +37,7 @@ public class VisOffscreenCanvas implements VisContext
 
     GLPbuffer pbuffer;
 
-    ArrayList<RenderObject> requests = new ArrayList<RenderObject>();
+    ArrayList<RenderData> requests = new ArrayList<RenderData>();
 
     public boolean debug = false;
 
@@ -44,14 +45,15 @@ public class VisOffscreenCanvas implements VisContext
     boolean drawGround = false;
     boolean drawOrigin = false;
 
-    class RenderObject
-    {
-        BufferedImage im;
-    }
-
     static
     {
         JoglLoader.initialize();
+    }
+
+    public static class RenderData
+    {
+        public BufferedImage im;
+        public FloatImage depth;
     }
 
     public VisOffscreenCanvas(int width, int height, VisWorld vw)
@@ -248,10 +250,33 @@ public class VisOffscreenCanvas implements VisContext
             flipImage(width*3, height, imdata);
 
             synchronized (requests) {
-                for (RenderObject r : requests) {
-                    synchronized(r) {
-                        r.im = im;
-                        r.notifyAll();
+                FloatImage depth = null;
+
+                for (RenderData rd : requests) {
+                    synchronized(rd) {
+                        rd.im = im;
+
+                        // They're requesting a depth buffer
+                        if (rd.depth != null) {
+
+                            // we need to compute the depth buffer
+                            if (depth == null) {
+                                float data[] = new float[width*height];
+                                depth = new FloatImage(width, height, data);
+
+                                int e1 = gl.glGetError();
+
+                                gl.glPixelStorei(GL.GL_PACK_ALIGNMENT, 4);
+                                gl.glReadPixels(0, 0, width, height, GL.GL_DEPTH_COMPONENT,
+                                                GL.GL_FLOAT, FloatBuffer.wrap(data));
+
+                                int e2 = gl.glGetError();
+                            }
+
+                            rd.depth = depth;
+                        }
+
+                        rd.notifyAll();
                     }
                 }
             }
@@ -319,31 +344,39 @@ public class VisOffscreenCanvas implements VisContext
         return backgroundColor;
     }
 
-    public BufferedImage getImage()
+    public RenderData getImageData(boolean needDepth)
     {
-        BufferedImage im = null;
+        RenderData rd = new RenderData();
 
-        RenderObject r = new RenderObject();
+        if (needDepth)
+            rd.depth = new FloatImage(0,0); // will be replaced. non-null entry means it's needed.
+
         synchronized (requests) {
-            requests.add(r);
+            requests.add(rd);
         }
 
         pbuffer.repaint();
 
-        synchronized (r) {
-            if (r.im == null) {
+        synchronized (rd) {
+            if (rd.im == null) {
                 try {
-                    r.wait();
+                    rd.wait();
                 } catch (InterruptedException ex) {
                 }
             }
         }
 
         synchronized (requests) {
-            requests.remove(r);
+            requests.remove(rd);
         }
 
-        return r.im;
+        return rd;
+    }
+
+    public BufferedImage getImage()
+    {
+        RenderData rd = getImageData(false);
+        return rd.im;
     }
 
     public static void main(String args[])
@@ -361,7 +394,13 @@ public class VisOffscreenCanvas implements VisContext
 
         JFrame jf = new JFrame("VisOffscreenCanvas Test");
         jf.setLayout(new BorderLayout());
-        JImage jim = new JImage(vc.getImage());
+
+        RenderData rd = vc.getImageData(true);
+        FloatImage depth = rd.depth;
+        System.out.printf("%15f\n", rd.depth.get(depth.width/2, depth.height/2));
+
+        JImage jim = new JImage(rd.depth.makeImage());
+//        JImage jim = new JImage(vc.getImage());
         jf.add(jim, BorderLayout.CENTER);
         jf.setSize(600,400);
         jf.setVisible(true);
