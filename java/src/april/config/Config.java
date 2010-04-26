@@ -18,10 +18,13 @@ public class Config
 
     String       basePath;   // root directory for any paths that aren't fully specified
 
+    Config       root;   // a config whose prefix is empty ("")
+
     public Config()
     {
         this.prefix = "";
         this.basePath = "";
+        this.root = this;
     }
 
     public Config getChild(String childprefix)
@@ -35,8 +38,14 @@ public class Config
         child.prefix = child.prefix+childprefix+".";
 
         child.basePath = basePath;
+        child.root = root;
 
         return child;
+    }
+
+    public Config getRoot()
+    {
+        return root;
     }
 
     public String[] getKeys()
@@ -83,7 +92,7 @@ public class Config
     // int
     public int[] getInts(String key, int defaults[])
     {
-        String vs[] = keys.get(key);
+        String vs[] = keys.get(prefix + key);
         if (vs == null)
             return defaults;
 
@@ -220,7 +229,7 @@ public class Config
     // boolean
     public boolean[] getBooleans(String key, boolean defaults[])
     {
-        String vs[] = keys.get(key);
+        String vs[] = keys.get(prefix + key);
         if (vs == null)
             return defaults;
 
@@ -272,7 +281,7 @@ public class Config
     // double
     public double[] getDoubles(String key, double defaults[])
     {
-        String vs[] = keys.get(key);
+        String vs[] = keys.get(prefix + key);
         if (vs == null)
             return defaults;
 

@@ -8,6 +8,11 @@ import april.util.*;
 /** Concrete implementation of Config using a file. **/
 public class ConfigFile extends Config
 {
+    public ConfigFile(String path) throws IOException
+    {
+        this(new File(path));
+    }
+
     public ConfigFile(File f) throws IOException
     {
         prefix = "";
@@ -54,7 +59,7 @@ public class ConfigFile extends Config
 
                 if (key.startsWith(":")) {
                         newkeys.put(newKeyName, abstractKeys.get(key));
-                }else{
+                } else {
                     newkeys.put(newKeyName, keys.get(key));
                 }
             }
@@ -63,7 +68,7 @@ public class ConfigFile extends Config
         for (String key : newkeys.keySet()) {
             if (destNameSpace.startsWith(":")) {
                 abstractKeys.put(key, newkeys.get(key));
-            }else{
+            } else {
                 keys.put(key, newkeys.get(key));
             }
         }
