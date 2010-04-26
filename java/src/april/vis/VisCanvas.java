@@ -20,6 +20,7 @@ import com.sun.opengl.util.*;
 
 import april.jmat.geom.*;
 import april.jmat.*;
+import april.image.*;
 
 /** A JComponent allowing a view into a VisWorld using JOGL **/
 public class VisCanvas extends JPanel implements VisWorldListener,
@@ -609,35 +610,27 @@ public class VisCanvas extends JPanel implements VisWorldListener,
         }
     }
 
-    public static class DepthBuffer
-    {
-        int width;
-        int height;
-
-        float data[];
-    }
-
-    public DepthBuffer getDepthBuffer()
+    public FloatImage getDepthBuffer()
     {
         GLContext glc = canvas.getContext();
         glc.makeCurrent();
         GL gl = glc.getGL();
 
-        DepthBuffer db = new DepthBuffer();
-        db.width = canvas.getWidth();
-        db.height = canvas.getHeight();
-        db.data = new float[db.width*db.height];
+        int width = canvas.getWidth();
+        int height = canvas.getHeight();
+        float data[] = new float[width*height];
+        FloatImage fim = new FloatImage(width, height, data);
 
         int e1 = gl.glGetError();
 
         gl.glPixelStorei(GL.GL_PACK_ALIGNMENT, 4);
-        gl.glReadPixels(0, 0, db.width, db.height, GL.GL_DEPTH_COMPONENT,
-                        GL.GL_FLOAT, FloatBuffer.wrap(db.data));
+        gl.glReadPixels(0, 0, width, height, GL.GL_DEPTH_COMPONENT,
+                        GL.GL_FLOAT, FloatBuffer.wrap(data));
 
         int e2 = gl.glGetError();
 
         glc.release();
-        return db;
+        return fim;
     }
 
     public void movieBegin(String path) throws IOException
