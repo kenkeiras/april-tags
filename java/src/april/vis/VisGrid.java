@@ -47,7 +47,6 @@ public class VisGrid implements VisObject
         // auto spacing when spacing = 0
     }
 
-
     /** round the input number to the next number of the form 1*10^n,
      * 2*10^n, or 5*10^n. */
     static double round_to_125(double in)
@@ -149,15 +148,17 @@ public class VisGrid implements VisObject
             else
                 VisUtil.setColor(gl, gridColor);
 
+            double big = 1000;
+
             for (int i=0; i<num_lines; i++) {
                 gl.glVertex3d(grid_ox + (-num_lines/2 + i) * meters_per_grid,
-                              grid_oy - num_lines/2 * meters_per_grid, grid_oz);
+                              grid_oy - big, grid_oz);
                 gl.glVertex3d(grid_ox + (-num_lines/2 + i) * meters_per_grid,
-                              grid_oy + num_lines/2 * meters_per_grid, grid_oz);
+                              grid_oy + big, grid_oz);
 
-                gl.glVertex3d(grid_ox - num_lines/2 * meters_per_grid,
+                gl.glVertex3d(grid_ox - big,
                               grid_oy + (-num_lines/2 + i) * meters_per_grid, grid_oz);
-                gl.glVertex3d(grid_ox + num_lines/2 * meters_per_grid,
+                gl.glVertex3d(grid_ox + big,
                               grid_oy + (-num_lines/2 + i) * meters_per_grid, grid_oz);
             }
             gl.glEnd ();

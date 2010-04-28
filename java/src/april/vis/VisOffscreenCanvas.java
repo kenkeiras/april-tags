@@ -163,33 +163,24 @@ public class VisOffscreenCanvas implements VisContext
                             backgroundColor.getBlue()/255f,
                             1.0f);
 
-            gl.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT); // |  GL.GL_ACCUM_BUFFER_BIT | GL.GL_STENCIL_BUFFER_BIT);
+            gl.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT);
             gl.glClearDepth(1.0f);
 
             gl.glEnable(GL.GL_NORMALIZE);
 
-            if (true) {
-                gl.glLightModeli(GL.GL_LIGHT_MODEL_TWO_SIDE, GL.GL_TRUE);
-                gl.glLightfv(GL.GL_LIGHT0, GL.GL_AMBIENT, new float[] {.4f, .4f, .4f, 1.0f}, 0);
-                gl.glLightfv(GL.GL_LIGHT0, GL.GL_DIFFUSE, new float[] {.8f, .8f, .8f, 1.0f}, 0);
-                gl.glLightfv(GL.GL_LIGHT0, GL.GL_SPECULAR, new float[] {.5f, .5f, .5f, 1.0f}, 0);
-                gl.glLightfv(GL.GL_LIGHT0, GL.GL_POSITION, new float[] {100f, 150f, 120f, 1}, 0);
+            gl.glEnable(GL.GL_LIGHTING);
+            gl.glLightModeli(GL.GL_LIGHT_MODEL_TWO_SIDE, GL.GL_TRUE);
+            gl.glEnable(GL.GL_COLOR_MATERIAL);
+            gl.glColorMaterial(GL.GL_FRONT_AND_BACK, GL.GL_AMBIENT_AND_DIFFUSE);
 
-                gl.glEnable(GL.GL_LIGHTING);
-                gl.glEnable(GL.GL_LIGHT0);
-                gl.glEnable(GL.GL_COLOR_MATERIAL);
-                gl.glColorMaterial(GL.GL_FRONT_AND_BACK, GL.GL_AMBIENT_AND_DIFFUSE);
-            }
+            for (int i = 0; i < vw.lights.size(); i++) {
+                VisLight light = vw.lights.get(i);
+                gl.glLightfv(GL.GL_LIGHT0 + i, GL.GL_POSITION, light.position, 0);
+                gl.glLightfv(GL.GL_LIGHT0 + i, GL.GL_AMBIENT, light.ambient, 0);
+                gl.glLightfv(GL.GL_LIGHT0 + i, GL.GL_DIFFUSE, light.diffuse, 0);
+                gl.glLightfv(GL.GL_LIGHT0 + i, GL.GL_SPECULAR, light.specular, 0);
 
-            if (true) {
-                gl.glLightfv(GL.GL_LIGHT1, GL.GL_AMBIENT, new float[] {.1f, .1f, .1f, 1.0f}, 0);
-                gl.glLightfv(GL.GL_LIGHT1, GL.GL_DIFFUSE, new float[] {.1f, .1f, .1f, 1.0f}, 0);
-                gl.glLightfv(GL.GL_LIGHT1, GL.GL_SPECULAR, new float[] {.5f, .5f, .5f, 1.0f}, 0);
-                gl.glLightfv(GL.GL_LIGHT1, GL.GL_POSITION, new float[] {-100f, -150f, 120f, 1}, 0);
-
-                gl.glEnable(GL.GL_LIGHTING);
-                gl.glEnable(GL.GL_LIGHT1);
-                gl.glEnable(GL.GL_COLOR_MATERIAL);
+                gl.glEnable(GL.GL_LIGHT0 + i);
             }
 
             gl.glDepthFunc(GL.GL_LEQUAL);
@@ -212,9 +203,6 @@ public class VisOffscreenCanvas implements VisContext
 
                 gl.glEnable(GL.GL_LINE_SMOOTH);
                 gl.glHint(GL.GL_LINE_SMOOTH_HINT, GL.GL_NICEST);
-
-                //		gl.glLineStipple(1, (short) 0xffff);
-                //		gl.glEnable(GL.GL_LINE_STIPPLE);
             }
 
             /////////// PROJECTION MATRIX ////////////////
@@ -268,6 +256,16 @@ public class VisOffscreenCanvas implements VisContext
                                                 GL.GL_FLOAT, FloatBuffer.wrap(data));
 
                                 int e2 = gl.glGetError();
+
+                                // convert from normalized z coordinates back to depth.
+                                double f = thisView.zclip_far;
+                                double n = thisView.zclip_near;
+
+                                for (int i = 0; i < data.length; i++) {
+                                    double pz = data[i];
+
+                                    data[i] = (float) (-2*f*n / ((pz-.5)*2*(f-n)-(f+n)));
+                                }
                             }
 
                             rd.depth = depth;
@@ -395,17 +393,9 @@ public class VisOffscreenCanvas implements VisContext
         RenderData rd = vc.getImageData(true);
         FloatImage depth = rd.depth;
 
-        double n = 0.01;
-        double f = 10000;
-
         double pz = rd.depth.get(depth.width/2, depth.height/2);
-//        pz = (pz - .5) * 2;
-//        double z = -2*f*n / (pz*(f-n)-(f+n));
 
-        pz = (pz - .5) * 2;
-        double z = -2*f*n / ((pz-.5)*2*(f-n)-(f+n));
-
-        System.out.printf("%15f %15f\n", pz, z);
+        System.out.printf("%15f \n", pz);
 
         JImage jim = new JImage(rd.depth.makeImage());
 //        JImage jim = new JImage(vc.getImage());

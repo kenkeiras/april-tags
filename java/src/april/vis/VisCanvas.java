@@ -355,28 +355,19 @@ public class VisCanvas extends JPanel implements VisWorldListener,
 
             gl.glEnable(GL.GL_NORMALIZE);
 
-            if (true) {
-                gl.glLightModeli(GL.GL_LIGHT_MODEL_TWO_SIDE, GL.GL_TRUE);
-                gl.glLightfv(GL.GL_LIGHT0, GL.GL_AMBIENT, new float[] {.4f, .4f, .4f, 1.0f}, 0);
-                gl.glLightfv(GL.GL_LIGHT0, GL.GL_DIFFUSE, new float[] {.8f, .8f, .8f, 1.0f}, 0);
-                gl.glLightfv(GL.GL_LIGHT0, GL.GL_SPECULAR, new float[] {.5f, .5f, .5f, 1.0f}, 0);
-                gl.glLightfv(GL.GL_LIGHT0, GL.GL_POSITION, new float[] {100f, 150f, 120f, 1}, 0);
+            gl.glEnable(GL.GL_LIGHTING);
+            gl.glLightModeli(GL.GL_LIGHT_MODEL_TWO_SIDE, GL.GL_TRUE);
+            gl.glEnable(GL.GL_COLOR_MATERIAL);
+            gl.glColorMaterial(GL.GL_FRONT_AND_BACK, GL.GL_AMBIENT_AND_DIFFUSE);
 
-                gl.glEnable(GL.GL_LIGHTING);
-                gl.glEnable(GL.GL_LIGHT0);
-                gl.glEnable(GL.GL_COLOR_MATERIAL);
-                gl.glColorMaterial(GL.GL_FRONT_AND_BACK, GL.GL_AMBIENT_AND_DIFFUSE);
-            }
+            for (int i = 0; i < world.lights.size(); i++) {
+                VisLight light = world.lights.get(i);
+                gl.glLightfv(GL.GL_LIGHT0 + i, GL.GL_POSITION, light.position, 0);
+                gl.glLightfv(GL.GL_LIGHT0 + i, GL.GL_AMBIENT, light.ambient, 0);
+                gl.glLightfv(GL.GL_LIGHT0 + i, GL.GL_DIFFUSE, light.diffuse, 0);
+                gl.glLightfv(GL.GL_LIGHT0 + i, GL.GL_SPECULAR, light.specular, 0);
 
-            if (true) {
-                gl.glLightfv(GL.GL_LIGHT1, GL.GL_AMBIENT, new float[] {.1f, .1f, .1f, 1.0f}, 0);
-                gl.glLightfv(GL.GL_LIGHT1, GL.GL_DIFFUSE, new float[] {.1f, .1f, .1f, 1.0f}, 0);
-                gl.glLightfv(GL.GL_LIGHT1, GL.GL_SPECULAR, new float[] {.5f, .5f, .5f, 1.0f}, 0);
-                gl.glLightfv(GL.GL_LIGHT1, GL.GL_POSITION, new float[] {-100f, -150f, 120f, 1}, 0);
-
-                gl.glEnable(GL.GL_LIGHTING);
-                gl.glEnable(GL.GL_LIGHT1);
-                gl.glEnable(GL.GL_COLOR_MATERIAL);
+                gl.glEnable(GL.GL_LIGHT0 + i);
             }
 
             gl.glDepthFunc(GL.GL_LEQUAL);

@@ -9,6 +9,7 @@ import javax.media.opengl.glu.*;
 public class VisWorld
 {
     ArrayList<TemporaryObject> temporaryObjects = new ArrayList<TemporaryObject>();
+    ArrayList<VisLight> lights = new ArrayList<VisLight>();
 
     HashMap<String, Buffer> bufferMap = new HashMap<String, Buffer>();
     ArrayList<Buffer> buffers = new ArrayList<Buffer>();
@@ -92,6 +93,20 @@ public class VisWorld
                 Collections.sort(buffers);
             }
         }
+    }
+
+    public VisWorld()
+    {
+        lights.add(new VisLight(new float[] { 100f, 150f, 120f, 1.0f },
+                                new float[] { .4f, .4f, .4f, 1.0f},
+                                new float[] { .8f, .8f, .8f, 1.0f },
+                                new float[] { .5f, .5f, .5f, 1.0f}));
+
+
+        lights.add(new VisLight(new float[] { -100f, -150f, 120f, 1.0f },
+                                new float[] { .1f, .1f, .1f, 1.0f},
+                                new float[] { .1f, .1f, .1f, 1.0f },
+                                new float[] { .5f, .5f, .5f, 1.0f}));
     }
 
     public synchronized void clear()

@@ -18,15 +18,15 @@ public class VisView
     public double eye[] = new double[] {0, 0, 10};
     public double up[] = new double[] {0, 1, 0};
 
-    public double perspectiveness;
+    public double perspectiveness = 1.0;
 
     public int viewport[] = new int[] {0, 0, 100, 100};
 
-    public double perspective_fovy_degrees = 60;
+    public double perspective_fovy_degrees = 50;
     public double zclip_near = 0.01;
     public double zclip_far = 1000;
 
-    GLU glu = new GLU();
+    static GLU glu = new GLU();
 
     public VisView()
     {

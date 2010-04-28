@@ -532,7 +532,8 @@ public class VisCanvasDefaultEventHandler extends VisCanvasEventAdapter
         boolean shift=(mods&MouseEvent.SHIFT_DOWN_MASK)>0;
         boolean control=(mods&MouseEvent.CTRL_DOWN_MASK)>0;
 
-        VisView view = vc.getLastView();
+        VisView view = vc.getViewManager().viewGoal;
+
         double mp[] = getManipulationPoint(view, e.getX(), e.getY()); //view.viewport[2]/2, view.viewport[3]/2);
 
         if (amount > 0)
@@ -549,8 +550,6 @@ public class VisCanvasDefaultEventHandler extends VisCanvasEventAdapter
         // doesn't move. (The zoom above just made it move, so our pan
         // will move it back.)
 
-        view = vc.getLastView();
-
         // the signs are tricky and confusing.
         windowSpacePanTo(view, mp, e.getX(), e.getY(), false);
 
@@ -566,23 +565,26 @@ public class VisCanvasDefaultEventHandler extends VisCanvasEventAdapter
 
     void zoom(double ratio)
     {
-        VisView view = vc.getLastView();
-        VisViewManager viewManager = vc.getViewManager();
+        VisView view = vc.getViewManager().viewGoal;
 
         double dist = LinAlg.distance(view.eye, view.lookAt);
+
+        /*
         if (dist < 1 && ratio < 1) {
             double dxyz[] = LinAlg.scale(LinAlg.subtract(view.lookAt, view.eye), 1-ratio);
 
-            viewManager.viewGoal.lookAt(LinAlg.add(view.eye, dxyz),
-                                        LinAlg.add(view.lookAt, dxyz),
-                                        view.up);
+            view.lookAt(LinAlg.add(view.eye, dxyz),
+                        LinAlg.add(view.lookAt, dxyz),
+                        view.up);
         } else {
+        */
+
             double look2eye[] = LinAlg.scale(LinAlg.subtract(view.eye, view.lookAt), ratio);
 
-            viewManager.viewGoal.lookAt(LinAlg.add(view.lookAt, look2eye),
-                                        view.lookAt,
-                                        view.up);
-        }
+            view.lookAt(LinAlg.add(view.lookAt, look2eye),
+                        view.lookAt,
+                        view.up);
+//        }
     }
 
     Matrix computePanJacobian(VisView view, double dq[], double up[], double left[])
