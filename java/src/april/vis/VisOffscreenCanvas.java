@@ -151,10 +151,10 @@ public class VisOffscreenCanvas implements VisContext
             GLU glu = new GLU();
 
             int viewport[] = new int[4];
-
             gl.glGetIntegerv(gl.GL_VIEWPORT, viewport, 0);
+            viewManager.viewGoal.viewport = viewport;
 
-            thisView = viewManager.getView(viewport);
+            thisView = viewManager.getView();
 
             // reminder: alpha is 4th channel. 1.0=opaque.
             Color backgroundColor = getBackground();
@@ -381,9 +381,9 @@ public class VisOffscreenCanvas implements VisContext
         VisWorld vw = new VisWorld();
         VisOffscreenCanvas vc = new VisOffscreenCanvas(300, 200, vw);
 
-        vc.getViewManager().lookAt(new double[] {0, 0, 4},
-                                   new double[] {0, 0, 0},
-                                   new double[] { 0, 1, 0 });
+        vc.getViewManager().viewGoal.lookAt(new double[] {0, 0, 4},
+                                            new double[] {0, 0, 0},
+                                            new double[] { 0, 1, 0 });
 
         VisWorld.Buffer vb = vw.getBuffer("foo");
         vb.addBuffered(new VisBox(0, 0, 0, 1, 1, 1, Color.blue));

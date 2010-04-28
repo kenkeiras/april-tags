@@ -492,7 +492,7 @@ public class RWX implements VisObject
             System.out.println("ex: "+ex);
         }
 
-        vc.getViewManager().lookAt(new double[] {0,0,.2}, new double[3], new double[] {0,1,0});
+        vc.getViewManager().viewGoal.lookAt(new double[] {0,0,.2}, new double[3], new double[] {0,1,0});
         f.add(vc);
         f.setSize(600, 400);
         f.setVisible(true);

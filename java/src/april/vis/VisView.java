@@ -20,9 +20,7 @@ public class VisView
 
     public double perspectiveness;
 
-//    public Matrix projectionMatrix;
-//    public Matrix modelMatrix;
-    public int viewport[];
+    public int viewport[] = new int[] {0, 0, 100, 100};
 
     public double perspective_fovy_degrees = 60;
     public double zclip_near = 0.01;
@@ -32,6 +30,43 @@ public class VisView
 
     public VisView()
     {
+    }
+
+    public VisView copy()
+    {
+        VisView vv = new VisView();
+        vv.viewport = LinAlg.copy(viewport);
+        vv.eye = LinAlg.copy(eye);
+        vv.lookAt = LinAlg.copy(lookAt);
+        vv.up = LinAlg.copy(up);
+
+        vv.perspectiveness = perspectiveness;
+        vv.perspective_fovy_degrees = perspective_fovy_degrees;
+        vv.zclip_near = zclip_near;
+        vv.zclip_far = zclip_far;
+
+        return vv;
+    }
+
+    public void lookAt(double eye[], double lookAt[], double up[])
+    {
+        this.eye = LinAlg.copy(eye);
+        this.lookAt = LinAlg.copy(lookAt);
+        this.up = LinAlg.copy(up);
+    }
+
+    /** Set ortho projection that contains the rectangle whose corners are specified. **/
+    public void fit2D(double xy0[], double xy1[])
+    {
+        this.perspectiveness = 0;
+        lookAt = new double[] {(xy0[0]+xy1[0])/2.0,
+                                             (xy0[1]+xy1[1])/2.0,
+                                             0};
+        up = new double[] {0, 1, 0};
+
+        // XXX: Approximate
+        double dist = Math.sqrt(Math.pow(xy0[0]-xy1[0],2) + Math.pow(xy0[1]-xy1[1],2));
+        eye = new double[] {lookAt[0], lookAt[1], dist};
     }
 
     public Matrix getProjectionMatrix()
@@ -92,5 +127,43 @@ public class VisView
         glu.gluProject(x, y, z, model_matrix, 0, proj_matrix, 0, viewport, 0, result, 0);
         result[1] = viewport[3] - result[1];
         return result;
+    }
+
+    void adjustForInterfaceMode(double interfaceMode)
+    {
+        if (interfaceMode == 2.0) {
+            eye[0] = lookAt[0];
+            eye[1] = lookAt[1];
+            eye[2] = Math.abs(eye[2]);
+            up[2] = 0;
+            if (LinAlg.magnitude(up) < 1E-10)
+                up = new double[] {0, 1, 0};
+            else
+                up = LinAlg.normalize(up);
+            lookAt[2] = 0;
+        } else if (interfaceMode == 2.5) {
+            double p2eye[] = LinAlg.normalize(LinAlg.subtract(eye, lookAt));
+            double bad[] = LinAlg.crossProduct(new double[] {0,0,1}, p2eye);
+            double dot = LinAlg.dotProduct(bad, up);
+            up = LinAlg.subtract(up, LinAlg.scale(bad, dot));
+        }
+
+        up = LinAlg.normalize(up);
+    }
+
+    // rotate field of view, preserving current lookAt
+    public void rotate(double q[])
+    {
+        double toEyeVec[] = LinAlg.subtract(eye, lookAt);
+        double newToEyeVec[] = LinAlg.quatRotate(q, toEyeVec);
+        double neweye[] = LinAlg.add(lookAt, newToEyeVec);
+        double newup[] = LinAlg.quatRotate(q, up);
+
+        lookAt(neweye, lookAt, newup);
+    }
+
+    public void rotate(double angle, double axis[])
+    {
+        rotate(LinAlg.angleAxisToQuat(angle, axis));
     }
 }

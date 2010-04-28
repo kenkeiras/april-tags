@@ -81,7 +81,7 @@ public class TagTransmit implements ParameterListener
         jf.setSize(800,600);
         jf.setVisible(true);
 
-        vc.getViewManager().fit2D(new double[] {0,0}, new double[] { 752, 480});
+        vc.getViewManager().viewGoal.fit2D(new double[] {0,0}, new double[] { 752, 480});
         new RunThread().start();
 
         pg.addListener(this);

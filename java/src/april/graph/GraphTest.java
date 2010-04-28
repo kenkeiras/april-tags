@@ -61,7 +61,7 @@ public class GraphTest implements ParameterListener
         double xyz1[] = bounds.get(1);
         double cxyz[] = new double[] { (xyz0[0] + xyz1[0]) / 2, (xyz0[1] + xyz1[1]) / 2, (xyz0[2] + xyz1[2]) / 2 };
         double dist = LinAlg.distance(xyz0, xyz1);
-        vc.getViewManager().lookAt(LinAlg.add(cxyz, new double[] { 0, 0, dist }), cxyz, new double[] { 0, 1, 0 });
+        vc.getViewManager().viewGoal.lookAt(LinAlg.add(cxyz, new double[] { 0, 0, dist }), cxyz, new double[] { 0, 1, 0 });
         update();
     }
 

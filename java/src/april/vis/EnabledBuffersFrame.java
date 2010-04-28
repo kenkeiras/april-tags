@@ -73,10 +73,6 @@ class EnabledBuffersFrame extends JFrame implements VisViewListener
         setVisible(true);
     }
 
-    public void viewCameraChanged(VisContext vc)
-    {
-    }
-
     public void viewBufferEnabledChanged(VisContext vc, String bufferName, boolean enabled)
     {
         JCheckBox jcb = checkboxMap.get(bufferName);

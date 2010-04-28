@@ -257,7 +257,7 @@ class VisCanvasPopupMenu extends JPopupMenu
 
     void orthographic()
     {
-        vc.getViewManager().setPerspectiveness(orthoItem.getState() ? 0 : 1);
+        vc.getViewManager().viewGoal.perspectiveness = orthoItem.getState() ? 0 : 1;
         vc.draw();
     }
 
@@ -372,18 +372,18 @@ class VisCanvasPopupMenu extends JPopupMenu
 
         lookvec = snapTo(lookvec);
 
-        vc.getViewManager().lookAt(LinAlg.subtract(view.lookAt, LinAlg.scale(lookvec, lookdist)),
-                                   view.lookAt,
-                                   snapTo(view.up));
+        vc.getViewManager().viewGoal.lookAt(LinAlg.subtract(view.lookAt, LinAlg.scale(lookvec, lookdist)),
+                                            view.lookAt,
+                                            snapTo(view.up));
     }
 
     public void findFollow()
     {
         VisViewManager viewManager = vc.getViewManager();
 
-        viewManager.lookAt(LinAlg.add(viewManager.followPos, new double[] {0, 0, 100}),
-                           viewManager.followPos,
-                           new double[] {0, 1, 0});
+        viewManager.viewGoal.lookAt(LinAlg.add(viewManager.followPos, new double[] {0, 0, 100}),
+                                    viewManager.followPos,
+                                    new double[] {0, 1, 0});
     }
 
     JFrame helpFrame;

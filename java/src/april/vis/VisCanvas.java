@@ -218,7 +218,7 @@ public class VisCanvas extends JPanel implements VisWorldListener,
     public VisView getLastView()
     {
         if (lastView == null)
-            return viewManager.getView(new int[] { 0, 0, 800, 600 });
+            return viewManager.getView();
 
         return lastView;
     }
@@ -227,11 +227,10 @@ public class VisCanvas extends JPanel implements VisWorldListener,
     public VisView getRenderingView()
     {
         if (thisView == null)
-            return viewManager.getView(new int[] { 0, 0, 800, 600 });
+            return viewManager.getView();
 
         return thisView;
     }
-
 
     public void setDrawGrid(boolean b)
     {
@@ -341,7 +340,8 @@ public class VisCanvas extends JPanel implements VisWorldListener,
 
             gl.glGetIntegerv(gl.GL_VIEWPORT, viewport, 0);
 
-            thisView = viewManager.getView(viewport);
+            viewManager.viewGoal.viewport = viewport;
+            thisView = viewManager.getView();
 
             // reminder: alpha is 4th channel. 1.0=opaque.
             Color backgroundColor = getBackground();

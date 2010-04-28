@@ -4,6 +4,4 @@ package april.vis;
 public interface VisViewListener
 {
     public void viewBufferEnabledChanged(VisContext vc, String bufferName, boolean enabled);
-
-    public void viewCameraChanged(VisContext vc);
 }

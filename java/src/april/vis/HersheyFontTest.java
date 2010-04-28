@@ -75,9 +75,9 @@ public class HersheyFontTest
 
         double cx = numCols*gridSize/2;
         double cy = -numRows*gridSize/2;
-        vc.getViewManager().lookAt(new double[] {cx, cy, 2*Math.sqrt(cx*cx + cy*cy)},
-                                   new double[] {cx, cy, 0},
-                                   new double[] {0, 1, 0});
+        vc.getViewManager().viewGoal.lookAt(new double[] {cx, cy, 2*Math.sqrt(cx*cx + cy*cy)},
+                                            new double[] {cx, cy, 0},
+                                            new double[] {0, 1, 0});
 
         vc.addEventHandler(new MyEventHandler());
     }

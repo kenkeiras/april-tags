@@ -178,21 +178,21 @@ public class VisCanvasDefaultEventHandler extends VisCanvasEventAdapter
             switch (code)
             {
                 case KeyEvent.VK_LEFT:
-                    vc.getViewManager().rotate(-ROTATE_KEY_AMOUNT, view.up);
+                    vc.getViewManager().viewGoal.rotate(-ROTATE_KEY_AMOUNT, view.up);
                     lastRotateAxis = LinAlg.copy(view.up);
                     break;
 
                 case KeyEvent.VK_RIGHT:
-                    vc.getViewManager().rotate(+ROTATE_KEY_AMOUNT, view.up);
+                    vc.getViewManager().viewGoal.rotate(+ROTATE_KEY_AMOUNT, view.up);
                     lastRotateAxis = LinAlg.copy(view.up);
                     break;
 
                 case KeyEvent.VK_UP:
-                    vc.getViewManager().rotate(+ROTATE_KEY_AMOUNT, left);
+                    vc.getViewManager().viewGoal.rotate(+ROTATE_KEY_AMOUNT, left);
                     break;
 
                 case KeyEvent.VK_DOWN:
-                    vc.getViewManager().rotate(-ROTATE_KEY_AMOUNT, left);
+                    vc.getViewManager().viewGoal.rotate(-ROTATE_KEY_AMOUNT, left);
                     break;
 
             }
@@ -426,7 +426,7 @@ public class VisCanvasDefaultEventHandler extends VisCanvasEventAdapter
             lastRotateRadPerSec = aa[0] / dt;
             mouseDraggedLastMTime = time;
 
-            vc.getViewManager().rotate(qcum);
+            vc.getViewManager().viewGoal.rotate(qcum);
 
             lastx = e.getX();
             lasty = e.getY();
@@ -467,7 +467,7 @@ public class VisCanvasDefaultEventHandler extends VisCanvasEventAdapter
 
         double newUp[] = LinAlg.crossProduct(newlook, left);
 
-        vc.getViewManager().lookAt(newEye, view.lookAt, newUp);
+        vc.getViewManager().viewGoal.lookAt(newEye, view.lookAt, newUp);
 
         vc.draw();
     }
@@ -549,7 +549,7 @@ public class VisCanvasDefaultEventHandler extends VisCanvasEventAdapter
         // doesn't move. (The zoom above just made it move, so our pan
         // will move it back.)
 
-        view = vc.getViewManager().getView(view.viewport);
+        view = vc.getLastView();
 
         // the signs are tricky and confusing.
         windowSpacePanTo(view, mp, e.getX(), e.getY(), false);
@@ -573,15 +573,15 @@ public class VisCanvasDefaultEventHandler extends VisCanvasEventAdapter
         if (dist < 1 && ratio < 1) {
             double dxyz[] = LinAlg.scale(LinAlg.subtract(view.lookAt, view.eye), 1-ratio);
 
-            viewManager.lookAt(LinAlg.add(view.eye, dxyz),
-                               LinAlg.add(view.lookAt, dxyz),
-                               view.up);
+            viewManager.viewGoal.lookAt(LinAlg.add(view.eye, dxyz),
+                                        LinAlg.add(view.lookAt, dxyz),
+                                        view.up);
         } else {
             double look2eye[] = LinAlg.scale(LinAlg.subtract(view.eye, view.lookAt), ratio);
 
-            viewManager.lookAt(LinAlg.add(view.lookAt, look2eye),
-                               view.lookAt,
-                               view.up);
+            viewManager.viewGoal.lookAt(LinAlg.add(view.lookAt, look2eye),
+                                        view.lookAt,
+                                        view.up);
         }
     }
 
@@ -621,7 +621,6 @@ public class VisCanvasDefaultEventHandler extends VisCanvasEventAdapter
             double res = _windowSpacePanTo(view, dq, x, y, preservez);
             if (res < 0.001)
                 break;
-            view = vc.getViewManager().getView(view.viewport);
         }
     }
 
@@ -693,10 +692,10 @@ public class VisCanvasDefaultEventHandler extends VisCanvasEventAdapter
 
             // try performing the move. But if it makes the pan
             // jacobian ill-conditioned, un-do the move.
-            viewManager.lookAt(LinAlg.subtract(view.eye, motion),
-                               LinAlg.subtract(view.lookAt, motion),
-                               view.up);
-            view = viewManager.getView(view.viewport);
+            viewManager.viewGoal.lookAt(LinAlg.subtract(view.eye, motion),
+                                        LinAlg.subtract(view.lookAt, motion),
+                                        view.up);
+            view = viewManager.viewGoal;
 
             A = computePanJacobian(view, dq, up, left);
             double detAfter = A.det();
@@ -709,7 +708,7 @@ public class VisCanvasDefaultEventHandler extends VisCanvasEventAdapter
             double newerr = Math.sqrt(LinAlg.sq(x - win_dq[0]) + LinAlg.sq(y - win_dq[1]));
 
             if (detAfter < detBefore && detAfter < 0.01) {
-                viewManager.lookAt(oldEye, oldLookAt, oldUp);
+                viewManager.viewGoal.lookAt(oldEye, oldLookAt, oldUp);
             }
 
         }
@@ -795,11 +794,11 @@ public class VisCanvasDefaultEventHandler extends VisCanvasEventAdapter
                     // our interpolation function.
                     double prog = (Math.sin(Math.PI*frac - Math.PI/2)+1)/2.0;
 
-                    viewManager.lookAt(LinAlg.add(LinAlg.scale(src.eye, 1-prog), (LinAlg.scale(dest.eye, prog))),
-                                       LinAlg.add(LinAlg.scale(src.lookat, 1-prog), (LinAlg.scale(dest.lookat, prog))),
-                                       LinAlg.add(LinAlg.scale(src.up, 1-prog), (LinAlg.scale(dest.up, prog))));
+                    viewManager.viewGoal.lookAt(LinAlg.add(LinAlg.scale(src.eye, 1-prog), (LinAlg.scale(dest.eye, prog))),
+                                                LinAlg.add(LinAlg.scale(src.lookat, 1-prog), (LinAlg.scale(dest.lookat, prog))),
+                                                LinAlg.add(LinAlg.scale(src.up, 1-prog), (LinAlg.scale(dest.up, prog))));
 
-                    viewManager.perspectiveness = src.perspectiveness * (1-prog) + dest.perspectiveness*prog;
+                    viewManager.viewGoal.perspectiveness = src.perspectiveness * (1-prog) + dest.perspectiveness*prog;
 
                     // done with animation?
                     if (frac == 1.0) {
@@ -835,7 +834,7 @@ public class VisCanvasDefaultEventHandler extends VisCanvasEventAdapter
                           rotate(rotateVelocity[0]*dt, rotateVelocity[1]*dt);
                         */
                         if (rotateRadPerSec != 0) {
-                            viewManager.rotate(LinAlg.angleAxisToQuat(rotateRadPerSec*dt, rotateAxis));
+                            viewManager.viewGoal.rotate(LinAlg.angleAxisToQuat(rotateRadPerSec*dt, rotateAxis));
                             vc.canvas.repaint();
                         }
                     }
