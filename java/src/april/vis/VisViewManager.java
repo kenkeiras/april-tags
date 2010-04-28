@@ -98,7 +98,7 @@ public class VisViewManager
         double aspect = ((double) width) / height;
         double dist = LinAlg.distance(vv.eye, vv.lookAt);
 
-        Matrix pM = VisUtil.gluPerspective(perspective_vertical_fov_degrees, aspect, 0.1, 10000);
+        Matrix pM = VisUtil.gluPerspective(perspective_vertical_fov_degrees, aspect, 0.01, 10000);
         Matrix oM = VisUtil.glOrtho(-dist * aspect / 2, dist*aspect / 2, -dist/2, dist/2, -10000, 10000);
 
         vv.projectionMatrix = pM.times(perspectiveness).plus(oM.times(1-perspectiveness));

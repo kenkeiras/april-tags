@@ -90,6 +90,24 @@ public class JSerial
         return read(fd, buf, offset, len);
     }
 
+    /** Read a single byte. **/
+    public int read()
+    {
+        byte b[] = new byte[1];
+        int ret = readFully(b, 0, 1);
+        return b[0]&0xff;
+    }
+
+    public int read32()
+    {
+        return (read()<<24) + (read()<<16) + (read()<<8) + read();
+    }
+
+    public long read64()
+    {
+        return (read32()<<32L) + (read32());
+    }
+
     /** Combines characters until a newline is read; the newline is
      * stripped. The timeout applies to each individual character, not
      * the whole string. **/

@@ -110,7 +110,7 @@ public class MultiResolutionScanMatcher
         // low-resolution samples.
         MultiGaussianEstimator mge = new MultiGaussianEstimator(3);
 
-        if (true) {
+        if (false) {
             double xyt[] = new double[3];
 
             for (int tidx = 0; tidx < lowResScores.length; tidx++) {
@@ -161,7 +161,7 @@ public class MultiResolutionScanMatcher
             if (iters > 100)
                 System.out.println(iters);
 
-            //  Find the next best score that's less than maxscore
+            // Find the next best score that's less than maxscore
             // This implementation just researches the entire low
             // resolution volume. We could do better with a MaxHeap
             // type data structure, but emperically, this does not
@@ -214,6 +214,8 @@ public class MultiResolutionScanMatcher
             }
 
             if (thisBestHighResScore > thisBestLowResScore) {
+                // TODO: Investigate cases where this
+                // happens. Numerical precision problems?
                 System.out.printf("%10d %10d %10d [%5d %5d %5d] [%5d %5d]\n",
                                   thisBestLowResScore, thisBestHighResScore,
                                   thisBestHighResScore - thisBestLowResScore,
