@@ -13,7 +13,6 @@ public class FloatImage
 
     static Random r = new Random();
 
-
     public FloatImage(int width, int height)
     {
         this.width = width;

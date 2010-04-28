@@ -511,6 +511,18 @@ public final class GridMap
         }
     }
 
+    /** Subtract from every value the value 'v', stopping at zero. **/
+    public void subtract(int v)
+    {
+        for (int i = 0; i < data.length; i++) {
+            int w = data[i]&0xff;
+            w -= v;
+            if (w < 0)
+                w = 0;
+            data[i] = (byte) w;
+        }
+    }
+
     public boolean isCompatible(GridMap gm)
     {
         return !(gm.cx != cx || gm.cy != cy ||

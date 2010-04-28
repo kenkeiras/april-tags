@@ -44,7 +44,7 @@ public class VisShowPosition implements VisObject
         gl.glGetDoublev(GL.GL_MODELVIEW_MATRIX, model_matrix, 0);
 
         Matrix M = Matrix.columnPackedMatrix(model_matrix, 4, 4);
-        Matrix T = vv.modelMatrix.inverse().times(M);
+        Matrix T = vv.getModelViewMatrix().inverse().times(M);
         String s = String.format(visTextFormat, T.get(0,3), T.get(1,3), T.get(2,3));
 
         VisText vt = new VisText(new double[] {0,0,0}, VisText.ANCHOR.CENTER, s);

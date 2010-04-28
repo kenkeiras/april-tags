@@ -20,6 +20,7 @@ import com.sun.opengl.util.*;
 
 import april.jmat.geom.*;
 import april.jmat.*;
+import april.image.*;
 
 /** A JComponent allowing a view into a VisWorld using JOGL **/
 public class VisCanvas extends JPanel implements VisWorldListener,
@@ -217,7 +218,7 @@ public class VisCanvas extends JPanel implements VisWorldListener,
     public VisView getLastView()
     {
         if (lastView == null)
-            return viewManager.getView(new int[] { 0, 0, 800, 600 });
+            return viewManager.getView();
 
         return lastView;
     }
@@ -226,11 +227,10 @@ public class VisCanvas extends JPanel implements VisWorldListener,
     public VisView getRenderingView()
     {
         if (thisView == null)
-            return viewManager.getView(new int[] { 0, 0, 800, 600 });
+            return viewManager.getView();
 
         return thisView;
     }
-
 
     public void setDrawGrid(boolean b)
     {
@@ -340,7 +340,8 @@ public class VisCanvas extends JPanel implements VisWorldListener,
 
             gl.glGetIntegerv(gl.GL_VIEWPORT, viewport, 0);
 
-            thisView = viewManager.getView(viewport);
+            viewManager.viewGoal.viewport = viewport;
+            thisView = viewManager.getView();
 
             // reminder: alpha is 4th channel. 1.0=opaque.
             Color backgroundColor = getBackground();
@@ -354,28 +355,19 @@ public class VisCanvas extends JPanel implements VisWorldListener,
 
             gl.glEnable(GL.GL_NORMALIZE);
 
-            if (true) {
-                gl.glLightModeli(GL.GL_LIGHT_MODEL_TWO_SIDE, GL.GL_TRUE);
-                gl.glLightfv(GL.GL_LIGHT0, GL.GL_AMBIENT, new float[] {.4f, .4f, .4f, 1.0f}, 0);
-                gl.glLightfv(GL.GL_LIGHT0, GL.GL_DIFFUSE, new float[] {.8f, .8f, .8f, 1.0f}, 0);
-                gl.glLightfv(GL.GL_LIGHT0, GL.GL_SPECULAR, new float[] {.5f, .5f, .5f, 1.0f}, 0);
-                gl.glLightfv(GL.GL_LIGHT0, GL.GL_POSITION, new float[] {100f, 150f, 120f, 1}, 0);
+            gl.glEnable(GL.GL_LIGHTING);
+            gl.glLightModeli(GL.GL_LIGHT_MODEL_TWO_SIDE, GL.GL_TRUE);
+            gl.glEnable(GL.GL_COLOR_MATERIAL);
+            gl.glColorMaterial(GL.GL_FRONT_AND_BACK, GL.GL_AMBIENT_AND_DIFFUSE);
 
-                gl.glEnable(GL.GL_LIGHTING);
-                gl.glEnable(GL.GL_LIGHT0);
-                gl.glEnable(GL.GL_COLOR_MATERIAL);
-                gl.glColorMaterial(GL.GL_FRONT_AND_BACK, GL.GL_AMBIENT_AND_DIFFUSE);
-            }
+            for (int i = 0; i < world.lights.size(); i++) {
+                VisLight light = world.lights.get(i);
+                gl.glLightfv(GL.GL_LIGHT0 + i, GL.GL_POSITION, light.position, 0);
+                gl.glLightfv(GL.GL_LIGHT0 + i, GL.GL_AMBIENT, light.ambient, 0);
+                gl.glLightfv(GL.GL_LIGHT0 + i, GL.GL_DIFFUSE, light.diffuse, 0);
+                gl.glLightfv(GL.GL_LIGHT0 + i, GL.GL_SPECULAR, light.specular, 0);
 
-            if (true) {
-                gl.glLightfv(GL.GL_LIGHT1, GL.GL_AMBIENT, new float[] {.1f, .1f, .1f, 1.0f}, 0);
-                gl.glLightfv(GL.GL_LIGHT1, GL.GL_DIFFUSE, new float[] {.1f, .1f, .1f, 1.0f}, 0);
-                gl.glLightfv(GL.GL_LIGHT1, GL.GL_SPECULAR, new float[] {.5f, .5f, .5f, 1.0f}, 0);
-                gl.glLightfv(GL.GL_LIGHT1, GL.GL_POSITION, new float[] {-100f, -150f, 120f, 1}, 0);
-
-                gl.glEnable(GL.GL_LIGHTING);
-                gl.glEnable(GL.GL_LIGHT1);
-                gl.glEnable(GL.GL_COLOR_MATERIAL);
+                gl.glEnable(GL.GL_LIGHT0 + i);
             }
 
             gl.glDepthFunc(GL.GL_LEQUAL);
@@ -399,29 +391,22 @@ public class VisCanvas extends JPanel implements VisWorldListener,
 
                 gl.glEnable(GL.GL_LINE_SMOOTH);
                 gl.glHint(GL.GL_LINE_SMOOTH_HINT, GL.GL_NICEST);
-
-                //		gl.glLineStipple(1, (short) 0xffff);
-                //		gl.glEnable(GL.GL_LINE_STIPPLE);
             }
 
             /////////// PROJECTION MATRIX ////////////////
             gl.glMatrixMode(gl.GL_PROJECTION);
             gl.glLoadIdentity();
-            gl.glMultMatrixd(thisView.projectionMatrix.getColumnPackedCopy(), 0);
+            gl.glMultMatrixd(thisView.getProjectionMatrix().getColumnPackedCopy(), 0);
 
             /////////// MODEL MATRIX ////////////////
             gl.glMatrixMode(gl.GL_MODELVIEW);
             gl.glLoadIdentity();
-            gl.glMultMatrixd(thisView.modelMatrix.getColumnPackedCopy(), 0);
-
-            //	    gl.glGetDoublev(gl.GL_MODELVIEW_MATRIX, model_matrix, 0);
-            //	    gl.glGetDoublev(gl.GL_PROJECTION_MATRIX, proj_matrix, 0);
+            gl.glMultMatrixd(thisView.getModelViewMatrix().getColumnPackedCopy(), 0);
 
             if (aaLevel > 0)
                 gl.glEnable(GL.GL_MULTISAMPLE);
 
             //////// hover
-
             if (pickingHandler == null && lastMousePosition != null) {
 
                 GRay3D ray = thisView.computeRay(lastMousePosition.getX(), lastMousePosition.getY());
@@ -614,35 +599,27 @@ public class VisCanvas extends JPanel implements VisWorldListener,
         }
     }
 
-    public static class DepthBuffer
-    {
-        int width;
-        int height;
-
-        float data[];
-    }
-
-    public DepthBuffer getDepthBuffer()
+    public FloatImage getDepthBuffer()
     {
         GLContext glc = canvas.getContext();
         glc.makeCurrent();
         GL gl = glc.getGL();
 
-        DepthBuffer db = new DepthBuffer();
-        db.width = canvas.getWidth();
-        db.height = canvas.getHeight();
-        db.data = new float[db.width*db.height];
+        int width = canvas.getWidth();
+        int height = canvas.getHeight();
+        float data[] = new float[width*height];
+        FloatImage fim = new FloatImage(width, height, data);
 
         int e1 = gl.glGetError();
 
         gl.glPixelStorei(GL.GL_PACK_ALIGNMENT, 4);
-        gl.glReadPixels(0, 0, db.width, db.height, GL.GL_DEPTH_COMPONENT,
-                        GL.GL_FLOAT, FloatBuffer.wrap(db.data));
+        gl.glReadPixels(0, 0, width, height, GL.GL_DEPTH_COMPONENT,
+                        GL.GL_FLOAT, FloatBuffer.wrap(data));
 
         int e2 = gl.glGetError();
 
         glc.release();
-        return db;
+        return fim;
     }
 
     public void movieBegin(String path) throws IOException

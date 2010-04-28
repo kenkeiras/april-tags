@@ -47,7 +47,6 @@ public class VisGrid implements VisObject
         // auto spacing when spacing = 0
     }
 
-
     /** round the input number to the next number of the form 1*10^n,
      * 2*10^n, or 5*10^n. */
     static double round_to_125(double in)
@@ -77,7 +76,7 @@ public class VisGrid implements VisObject
         VisViewManager viewManager = vc.getViewManager();
         VisWorld world = vc.getWorld();
 
-        double eye_dist = LinAlg.distance(viewManager.eyeGoal, viewManager.lookAtGoal);
+        double eye_dist = LinAlg.distance(viewManager.viewGoal.eye, viewManager.viewGoal.lookAt);
         double meters_per_grid = round_to_125(eye_dist / grids_per_screen );
 
         if (spacing != 0)
@@ -98,8 +97,8 @@ public class VisGrid implements VisObject
             }
         }
 
-        double grid_ox = Math.ceil (viewManager.lookAtGoal[0] / meters_per_grid) * meters_per_grid;
-        double grid_oy = Math.ceil (viewManager.lookAtGoal[1] / meters_per_grid) * meters_per_grid;
+        double grid_ox = Math.ceil (viewManager.viewGoal.lookAt[0] / meters_per_grid) * meters_per_grid;
+        double grid_oy = Math.ceil (viewManager.viewGoal.lookAt[1] / meters_per_grid) * meters_per_grid;
         double grid_oz = 0; // vc.view.lookAt[2];
         int num_lines = 500;
 
@@ -149,15 +148,17 @@ public class VisGrid implements VisObject
             else
                 VisUtil.setColor(gl, gridColor);
 
+            double big = 1000;
+
             for (int i=0; i<num_lines; i++) {
                 gl.glVertex3d(grid_ox + (-num_lines/2 + i) * meters_per_grid,
-                              grid_oy - num_lines/2 * meters_per_grid, grid_oz);
+                              grid_oy - big, grid_oz);
                 gl.glVertex3d(grid_ox + (-num_lines/2 + i) * meters_per_grid,
-                              grid_oy + num_lines/2 * meters_per_grid, grid_oz);
+                              grid_oy + big, grid_oz);
 
-                gl.glVertex3d(grid_ox - num_lines/2 * meters_per_grid,
+                gl.glVertex3d(grid_ox - big,
                               grid_oy + (-num_lines/2 + i) * meters_per_grid, grid_oz);
-                gl.glVertex3d(grid_ox + num_lines/2 * meters_per_grid,
+                gl.glVertex3d(grid_ox + big,
                               grid_oy + (-num_lines/2 + i) * meters_per_grid, grid_oz);
             }
             gl.glEnd ();
