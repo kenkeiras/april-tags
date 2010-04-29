@@ -283,7 +283,6 @@ public class VisCanvasDefaultEventHandler extends VisCanvasEventAdapter
         }
 
         if (e.getButton() == MouseEvent.BUTTON1) {
-
             /*	    if (ctrl) {
                     VisView lastView = vc.getLastView();
                     vc.getViewManager().lookAt(lastView.eye,

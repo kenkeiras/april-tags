@@ -142,13 +142,13 @@ public class VisView
                 up = LinAlg.normalize(up);
             lookAt[2] = 0;
         } else if (interfaceMode == 2.5) {
+            up = LinAlg.normalize(up);
+
             double p2eye[] = LinAlg.normalize(LinAlg.subtract(eye, lookAt));
             double bad[] = LinAlg.crossProduct(new double[] {0,0,1}, p2eye);
             double dot = LinAlg.dotProduct(bad, up);
             up = LinAlg.subtract(up, LinAlg.scale(bad, dot));
         }
-
-        up = LinAlg.normalize(up);
     }
 
     // rotate field of view, preserving current lookAt

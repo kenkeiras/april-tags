@@ -449,22 +449,24 @@ public class VisCanvas extends JPanel implements VisWorldListener,
                 newStatusLine = "";
 
             if (true) {
-                VisWorld.Buffer vb = world.getBuffer("__VISCANVAS_STATUS");
+                VisWorld.Buffer vb = world.getBuffer("__VISCANVAS_STATUS:" + VisCanvas.this.hashCode());
 
                 if (!newStatusLine.equals(lastStatusLine) || fpsLine.length()>0) {
                     lastStatusLine = newStatusLine;
-                    vb.addBuffered(new VisText(VisText.ANCHOR.BOTTOM_LEFT,
-                                               newStatusLine));
+                    vb.addBuffered(new VisContextSpecific(VisCanvas.this,
+                                                          new VisText(VisText.ANCHOR.BOTTOM_LEFT,
+                                                                      newStatusLine)));
                 }
 
                 if (popupMenu.showLookAt.isSelected()) {
-                    vb.addBuffered(new VisText(VisText.ANCHOR.BOTTOM_RIGHT,
-                                               String.format("eye:    %10f %10f %10f\n" +
-                                                             "lookAt: %10f %10f %10f\n" +
-                                                             "up:     %10f %10f %10f\n",
-                                                             thisView.eye[0], thisView.eye[1], thisView.eye[2],
-                                                             thisView.lookAt[0], thisView.lookAt[1], thisView.lookAt[2],
-                                                             thisView.up[0], thisView.up[1], thisView.up[2])));
+                    vb.addBuffered(new VisContextSpecific(VisCanvas.this,
+                                                          new VisText(VisText.ANCHOR.BOTTOM_RIGHT,
+                                                                      String.format("eye:    %10f %10f %10f\n" +
+                                                                                    "lookAt: %10f %10f %10f\n" +
+                                                                                    "up:     %10f %10f %10f\n",
+                                                                                    thisView.eye[0], thisView.eye[1], thisView.eye[2],
+                                                                                    thisView.lookAt[0], thisView.lookAt[1], thisView.lookAt[2],
+                                                                                    thisView.up[0], thisView.up[1], thisView.up[2]))));
                 }
                 vb.switchBuffer();
                 vb.setDrawOrder(99);
@@ -588,7 +590,8 @@ public class VisCanvas extends JPanel implements VisWorldListener,
             if (reshapeText != null)
                 world.removeTemporary(reshapeText);
             reshapeText = new VisText(VisText.ANCHOR.CENTER, ""+width+" x "+height);
-            world.addTemporary(reshapeText, 1.0);
+            world.addTemporary(new VisContextSpecific(VisCanvas.this, reshapeText), 1.0);
+
             if (debug)
                 System.out.printf("VisCanvas.reshape (%d x %d)\n", width, height);
         }

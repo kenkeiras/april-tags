@@ -92,7 +92,7 @@ public class VisGrid implements VisObject
                     label = String.format("Grid: %.1f m", meters_per_grid);
 
                 gridText = new VisText(VisText.ANCHOR.CENTER, label);
-                world.addTemporary(gridText, 1.0);
+                world.addTemporary(new VisContextSpecific(vc, gridText), 1.0);
                 lastSpacing = meters_per_grid;
             }
         }
@@ -114,6 +114,7 @@ public class VisGrid implements VisObject
             //	    gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA);
 
             //	    gl.glDisable(gl.GL_DEPTH_TEST);
+            gl.glNormal3d(0, 0, 1);
             gl.glBegin(gl.GL_TRIANGLES);
             gl.glVertex3d(grid_ox + (-num_lines/2)*meters_per_grid,
                           grid_oy + (-num_lines/2)*meters_per_grid,
@@ -137,7 +138,7 @@ public class VisGrid implements VisObject
         }
 
         if (drawGrid) {
-            grid_oz += .0001;
+            grid_oz += .001;
 
             gl.glLineWidth (1);
             //	    gl.glEnable(gl.GL_DEPTH_TEST);

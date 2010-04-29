@@ -10,8 +10,8 @@ LDFLAGS += -lcurses -lpthread -lm
 
 
 gpsd:=$(BIN_PATH)/gpsd
-gps_lcm_listen:=gps_lcm_listen
-#gps_lcm_listen:=$(BIN_PATH)/gps_lcm_listen
+#gps_lcm_listen:=gps_lcm_listen
+gps_lcm_listen:=$(BIN_PATH)/gps_lcm_listen
 
 gpsd_obj:=gps.o main.o gps_display.o
 gps_lcm_listen_obj:=gps_lcm_listen.o gps_display.o
@@ -30,9 +30,9 @@ $(gps_lcm_listen): $(gps_lcm_listen_obj)
 
 %.o: %.c
 	@echo "    [$@]"
-	$(CC) -c -o $@ $< $(CFLAGS) 
+	$(CC) -c -o $@ $< $(CFLAGS)
 
-test: 
+test:
 	@echo gps18 : nothing to test
 
 clean: tidy
