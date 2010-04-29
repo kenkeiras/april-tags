@@ -170,4 +170,50 @@ public final class VisUtil
         System.out.println(name+": Bad value "+s);
         return def;
     }
+
+    // vertically flip image
+    public static void flipImage(int stride, int height, byte b[])
+    {
+        byte tmp[] = new byte[stride];
+
+        for (int row = 0; row < (height-1)/2; row++) {
+
+            int rowa = row;
+            int rowb = height-1 - rowa;
+
+            // swap rowa and rowb
+
+            // tmp <-- rowa
+            System.arraycopy(b, rowa*stride, tmp, 0, stride);
+
+            // rowa <-- rowb
+            System.arraycopy(b, rowb*stride, b, rowa*stride, stride);
+
+            // rowb <-- tmp
+            System.arraycopy(tmp, 0, b, rowb*stride, stride);
+        }
+    }
+
+    // vertically flip image
+    public static void flipImage(int stride, int height, float b[])
+    {
+        float tmp[] = new float[stride];
+
+        for (int row = 0; row < (height-1)/2; row++) {
+
+            int rowa = row;
+            int rowb = height-1 - rowa;
+
+            // swap rowa and rowb
+
+            // tmp <-- rowa
+            System.arraycopy(b, rowa*stride, tmp, 0, stride);
+
+            // rowa <-- rowb
+            System.arraycopy(b, rowb*stride, b, rowa*stride, stride);
+
+            // rowb <-- tmp
+            System.arraycopy(tmp, 0, b, rowb*stride, stride);
+        }
+    }
 }

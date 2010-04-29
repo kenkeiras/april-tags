@@ -479,7 +479,7 @@ public class VisCanvas extends JPanel implements VisWorldListener,
                     gl.glPixelStorei(GL.GL_PACK_ALIGNMENT, 1);
                     gl.glReadPixels(0, 0, width, height, GL.GL_RGB,
                                     GL.GL_UNSIGNED_BYTE, ByteBuffer.wrap(imdata));
-                    flipImage(width*3, height, imdata);
+                    VisUtil.flipImage(width*3, height, imdata);
 
                     try {
                         String hdr = "";
@@ -512,7 +512,7 @@ public class VisCanvas extends JPanel implements VisWorldListener,
                     gl.glReadPixels(0, 0, width, height, GL.GL_BGR,
                                     GL.GL_UNSIGNED_BYTE, ByteBuffer.wrap(imdata));
 
-                    flipImage(width*3, height, imdata);
+                    VisUtil.flipImage(width*3, height, imdata);
 
                     for (ImageCaptureObject ico : imageCaptureObjects) {
                         if (ico.file != null)  {
@@ -537,29 +537,6 @@ public class VisCanvas extends JPanel implements VisWorldListener,
             lastView = thisView;
 
             //	    VisCanvas.this.canvas.swapBuffers();
-        }
-
-        // vertically flip image
-        void flipImage(int stride, int height, byte b[])
-        {
-            byte tmp[] = new byte[stride];
-
-            for (int row = 0; row < (height-1)/2; row++) {
-
-                int rowa = row;
-                int rowb = height-1 - rowa;
-
-                // swap rowa and rowb
-
-                // tmp <-- rowa
-                System.arraycopy(b, rowa*stride, tmp, 0, stride);
-
-                // rowa <-- rowb
-                System.arraycopy(b, rowb*stride, b, rowa*stride, stride);
-
-                // rowb <-- tmp
-                System.arraycopy(tmp, 0, b, rowb*stride, stride);
-            }
         }
 
         VisObject reshapeText;

@@ -130,6 +130,24 @@ public class FloatImage
         }
     **/
 
+    public FloatImage clamp(float minv, float maxv)
+    {
+        float r[] = new float[width*height];
+
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                float v = d[y*width+x];
+                if (v < minv)
+                    v = minv;
+                if (v > maxv)
+                    v = maxv;
+                r[y*width+x] = v;
+            }
+        }
+
+        return new FloatImage(width, height, r);
+    }
+
     /** Rescale all values so that they are between [0,1] **/
     public FloatImage normalize()
     {
