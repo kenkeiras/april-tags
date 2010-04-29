@@ -338,6 +338,9 @@ public class VisCanvas extends JPanel implements VisWorldListener,
             gl.glLightModeli(GL.GL_LIGHT_MODEL_TWO_SIDE, GL.GL_TRUE);
             gl.glEnable(GL.GL_COLOR_MATERIAL);
             gl.glColorMaterial(GL.GL_FRONT_AND_BACK, GL.GL_AMBIENT_AND_DIFFUSE);
+            gl.glMaterialf(GL.GL_FRONT_AND_BACK, GL.GL_SHININESS, 0);
+
+            gl.glMaterialfv(GL.GL_FRONT_AND_BACK, GL.GL_SPECULAR, new float[] {.1f, .1f, .1f, .1f}, 0);
 
             for (int i = 0; i < world.lights.size(); i++) {
                 VisLight light = world.lights.get(i);
@@ -354,8 +357,9 @@ public class VisCanvas extends JPanel implements VisWorldListener,
             gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
             gl.glEnable(GL.GL_DEPTH_TEST);
 
-
-            gl.glPolygonMode(GL.GL_FRONT_AND_BACK, GL.GL_FILL);
+            gl.glPolygonMode(GL.GL_FRONT, GL.GL_FILL);
+            gl.glPolygonMode(GL.GL_BACK, GL.GL_FILL);
+//            gl.glPolygonMode(GL.GL_BACK, GL.GL_LINE);
 
             gl.glDisable(GL.GL_LINE_STIPPLE);
 
