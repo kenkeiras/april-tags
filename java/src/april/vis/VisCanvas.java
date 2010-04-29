@@ -232,27 +232,6 @@ public class VisCanvas extends JPanel implements VisWorldListener,
         return thisView;
     }
 
-    public void setDrawGrid(boolean b)
-    {
-        popupMenu.gridEnabledItem.setState(b);
-        popupMenu.updateGround();
-        drawNow();
-    }
-
-    public void setDrawGround(boolean b)
-    {
-        popupMenu.groundEnabledItem.setState(b);
-        popupMenu.updateGround();
-        drawNow();
-    }
-
-    public void setDrawOrigin(boolean b)
-    {
-        popupMenu.originEnabledItem.setState(b);
-        popupMenu.updateGround();
-        drawNow();
-    }
-
     public void setOrthographic(boolean b)
     {
         popupMenu.orthoItem.setState(b);

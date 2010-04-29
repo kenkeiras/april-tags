@@ -66,6 +66,12 @@ public class VisWorld
             notifyListeners();
         }
 
+        public synchronized void addFront(VisObject vo)
+                                 {
+                                     front.add(vo);
+                                     notifyListeners();
+                                 }
+
         public synchronized void switchBuffer()
                                  {
                                      front = back;
