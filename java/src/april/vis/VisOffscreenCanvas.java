@@ -103,6 +103,21 @@ public class VisOffscreenCanvas implements VisContext
         return height;
     }
 
+    public void setDrawGrid(boolean b)
+    {
+        drawGrid = b;
+    }
+
+    public void setDrawGround(boolean b)
+    {
+        drawGround = b;
+    }
+
+    public void setDrawOrigin(boolean b)
+    {
+        drawOrigin = b;
+    }
+
     GLCapabilities makeCapabilities(int depthbits, boolean hwaccel, boolean doublebuffered, int aalevel)
     {
         GLCapabilities caps = new GLCapabilities();
