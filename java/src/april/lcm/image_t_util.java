@@ -70,6 +70,18 @@ public class image_t_util
             case FORMAT_RGB:  // raw RGB
                 return decodeRGB(v);
 
+            case FORMAT_MJP0: // Motion JPEG (JPEG without headers)
+            case FORMAT_MJP1:
+            case FORMAT_MJP2:
+            case FORMAT_MJP3:
+            case FORMAT_MJP4:
+            case FORMAT_MJP5:
+            case FORMAT_MJP6:
+            case FORMAT_MJP7:
+            case FORMAT_MJP8:
+            case FORMAT_MJP9:
+            	return decodeMJPEG(v);
+            
             default:        // uncompressed gray scale.
                 return decodeRAW(v);
         }
@@ -194,7 +206,7 @@ public class image_t_util
         return bi;
     }
 
-    public static BufferedImage decodeMJPEG(image_t v)
+    private static BufferedImage decodeMJPEG(image_t v)
     {
         try {
             final ImageReader reader = ImageIO.getImageReadersBySuffix("jpg").next();
