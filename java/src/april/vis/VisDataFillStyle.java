@@ -14,6 +14,7 @@ public class VisDataFillStyle implements VisDataStyle
     Color c;
     static boolean warned = false;
     Colorizer colorizer;
+    float shininess = 0;;
 
     public VisDataFillStyle(Colorizer colorizer)
     {
@@ -25,6 +26,12 @@ public class VisDataFillStyle implements VisDataStyle
         this.c = c;
     }
 
+    public VisDataFillStyle(Color c, float shininess)
+    {
+        this.c = c;
+        this.shininess = shininess;
+    }
+
     public void renderStyle(VisContext vc, GL gl, GLU glu, ArrayList<double[]> points)
     {
         if (c != null)
@@ -32,6 +39,7 @@ public class VisDataFillStyle implements VisDataStyle
 
         april.jmat.geom.Polygon p = new april.jmat.geom.Polygon(points);
 
+        gl.glMaterialf(GL.GL_FRONT_AND_BACK, GL.GL_SHININESS, shininess);
         gl.glBegin(GL.GL_TRIANGLES);
 
         for (int triangle[] : p.getTriangles()) {
@@ -49,6 +57,8 @@ public class VisDataFillStyle implements VisDataStyle
         }
 
         gl.glEnd();
+
+        gl.glMaterialf(GL.GL_FRONT_AND_BACK, GL.GL_SHININESS, 0);
     }
 }
 

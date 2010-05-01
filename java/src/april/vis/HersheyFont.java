@@ -25,11 +25,22 @@ public class HersheyFont
 {
     ArrayList<byte[]> cdatas = new ArrayList<byte[]>(); // character data
 
+    static HersheyFont defaultHersheyFont;
+
     /** Create default font (based on rowmans) **/
-    public HersheyFont()
+    public HersheyFont(byte fontData[][])
     {
-        for (int i = 0; i < defaultFont.length; i++)
-            cdatas.add(defaultFont[i]);
+        for (int i = 0; i < fontData.length; i++)
+            cdatas.add(fontData[i]);
+    }
+
+    public static HersheyFont getDefaultFont()
+    {
+        if (defaultHersheyFont == null) {
+            defaultHersheyFont = new HersheyFont(defaultFont);
+        }
+
+        return defaultHersheyFont;
     }
 
     /** Load a font from a file. **/
@@ -99,16 +110,14 @@ public class HersheyFont
     }
 
     /* This returns how far apart the letters should be drawn,
-     * including white space. This is probably not what we want.
+     * including white space. This is probably not what we want. **/
+    public int getCharacterWidth(int idx)
+    {
+        if (idx >= cdatas.size())
+            return 0;
 
-     public int getCharacterSpacing(int idx)
-     {
-     if (idx >= cdatas.size())
-     return 0;
-
-     return cdatas.get(idx)[1]-cdatas.get(idx)[0];
-     }
-    */
+        return cdatas.get(idx)[1]-cdatas.get(idx)[0];
+    }
 
     /** How far above the character's origin does the letter extend?
      * This is not the same as Ascent (which is relative to the

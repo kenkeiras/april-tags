@@ -65,8 +65,9 @@ public class VisCylinder implements VisObject
             double xya[] = xys.get(i % xys.size());
 
             gl.glNormal3d(xya[0], xya[1], 0); // this normal isn't quite right for cones.
-            gl.glVertex3d(xya[0]*r0, xya[1]*r0, h0);
             gl.glVertex3d(xya[0]*r1, xya[1]*r1, h1);
+            gl.glVertex3d(xya[0]*r0, xya[1]*r0, h0);
+
         }
         gl.glEnd();
 
@@ -83,7 +84,7 @@ public class VisCylinder implements VisObject
         if (drawBottom) {
             gl.glBegin(GL.GL_TRIANGLE_FAN);
             gl.glNormal3d(0, 0, 1);
-            for (int i = 0; i <= xys.size(); i++) {
+            for (int i = xys.size()-1; i >= 0; i--) {
                 double xy[] = xys.get(i % xys.size());
                 gl.glVertex3d(r0*xy[0], r0*xy[1], h0);
             }

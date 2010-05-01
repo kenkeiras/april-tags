@@ -71,6 +71,24 @@ public class VisHersheyText implements VisObject
         return xoffset;
     }
 
+    public double getHeight()
+    {
+        return hf.getMaxCharacterHeight();
+    }
+
+    public double getWidth()
+    {
+        int width = 0;
+
+        for (int sidx = 0; sidx < s.length(); sidx++) {
+            int cidx = -32 + (s.charAt(sidx)&0xffff);
+
+            width += hf.getCharacterWidth(cidx);
+        }
+
+        return width;
+    }
+
     public void render(VisContext vc, GL gl, GLU glu)
     {
         double xoffset = 0;

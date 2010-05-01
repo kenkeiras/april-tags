@@ -154,6 +154,7 @@ public class VisOffscreenCanvas implements VisContext
             gl.glLightModeli(GL.GL_LIGHT_MODEL_TWO_SIDE, GL.GL_TRUE);
             gl.glEnable(GL.GL_COLOR_MATERIAL);
             gl.glColorMaterial(GL.GL_FRONT_AND_BACK, GL.GL_AMBIENT_AND_DIFFUSE);
+            gl.glMaterialf(GL.GL_FRONT_AND_BACK, GL.GL_SHININESS, 0);
 
             for (int i = 0; i < vw.lights.size(); i++) {
                 VisLight light = vw.lights.get(i);

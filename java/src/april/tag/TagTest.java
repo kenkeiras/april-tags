@@ -178,6 +178,13 @@ public class TagTest implements ParameterListener
                                                           new VisData(new VisDataLineStyle(Color.red, 4), p0, p3))); // y axis
 
                     System.out.printf("id %3d err %3d\n", d.id, d.hammingDistance);
+
+                    double M[][] = CameraUtil.homographyToPose(360, 360 * (480.0 / 752), d.homography);
+
+                    LinAlg.print(M);
+
+                    double rpy[] = LinAlg.matrixToRollPitchYaw(M);
+                    LinAlg.print(rpy);
                 }
                 vbDetections.switchBuffer();
             }
