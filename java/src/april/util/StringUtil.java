@@ -5,6 +5,7 @@ import java.util.regex.Pattern;
 
 public class StringUtil
 {
+
     /**
      *  Method to replace occurrences of named environment variables
      *  in a string with their true values. Note that this method only
@@ -20,25 +21,39 @@ public class StringUtil
         Pattern pattern = Pattern.compile("\\$\\w+\\W??$??");
         Matcher matcher = pattern.matcher(value);
 
-        String resolved = new String(value);
+        String resolved = value;
 
         while (matcher.find()) {
             String match = matcher.group();
-            String variableName = matcher.group().split("\\W")[1];
+            int start = matcher.start();
+            int len = match.length();
+
+            String variableName = match.split("\\W")[1];
             String variableValue = System.getenv(variableName);
 
             if (variableValue != null) {
-                resolved = resolved.replace(match, variableValue);
+                resolved = resolved.substring(0, start) + variableValue +
+                    resolved.substring(start+len,resolved.length());
             } else {
                 System.out.println("WRN: Ignoring unknown environment variable: >"+variableName+"<");
+                break;
             }
 
+            // Iteratively keep matching on the resolved string
+            matcher = pattern.matcher(resolved);
         }
-
         return resolved;
     }
 
     public static void main(String args[])
+    {
+        if (args.length == 1)
+            unittest(Integer.parseInt(args[0]));
+        else
+            unittest(-1);
+    }
+
+    private static void unittest( int specific)
     {
         // Test cases: Be sure to export USER_HOME before starting
         // unit test
@@ -67,8 +82,15 @@ public class StringUtil
                             true_user_home+"/",true_user+" "+true_user_home};
 
 
+        int start = 0;
+        int end = examples.length;
+        if (specific != -1) {
+            start = specific;
+            end = start + 1;
+        }
+
         boolean allGood = true;
-        for (int i = 0; i < examples.length; i++) {
+        for (int i = start; i < end; i++) {
             String src = examples[i];
             String ans = answers[i];
             String result = StringUtil.replaceEnvironmentVariables(examples[i]);
