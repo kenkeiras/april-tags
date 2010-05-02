@@ -17,7 +17,7 @@ public class StringUtil
      */
     public static String replaceEnvironmentVariables(String value)
     {
-        Pattern pattern = Pattern.compile("\\$\\w*\\W");
+        Pattern pattern = Pattern.compile("\\$\\w+\\W??$??");
         Matcher matcher = pattern.matcher(value);
 
         String resolved = new String(value);
@@ -28,11 +28,9 @@ public class StringUtil
             String variableValue = System.getenv(variableName);
 
             if (variableValue != null) {
-                // Keep last character of matched regex
-                variableValue += match.charAt(match.length() - 1);
                 resolved = resolved.replace(match, variableValue);
             } else {
-                System.err.println("Ignoring unknown environment variable: "+match);
+                System.out.println("WRN: Ignoring unknown environment variable: >"+variableName+"<");
             }
 
         }
