@@ -18,6 +18,7 @@ public class LaserExample implements LCMSubscriber
     JFrame       jf;
     VisWorld     vw = new VisWorld();
     VisCanvas    vc = new VisCanvas(vw);
+    VisView      view = vc.getViewManager().viewGoal;
 
     LaserHarris  lh=new LaserHarris();
 
@@ -42,6 +43,8 @@ public class LaserExample implements LCMSubscriber
         lcm=new LCM();
         lcm.subscribe(laserName, this);
         lcm.subscribe(poseName, this);
+
+        setCamera();
     }
 
     public void messageReceived(LCM lcm, String channel, LCMDataInputStream ins)
@@ -97,6 +100,15 @@ public class LaserExample implements LCMSubscriber
             vbMap.addBuffered(new VisData(pointSet,new VisDataPointStyle(Color.yellow,1)));
         vbMap.switchBuffer();
         vbFeature.switchBuffer();
+    }
+
+
+    private void setCamera()
+    {
+        view.perspective_fovy_degrees = 45;
+        view.eye =    new double[] { 0, 0, 100};
+        view.lookAt = new double[] { 0, 0, 0};
+        view.up =     new double[] { 0, 1, 0};
     }
 
     public static void main(String arg[])
