@@ -1219,6 +1219,14 @@ public final class LinAlg
         return nz;
     }
 
+    /** return a vector close to a that is perpendicular to b. **/
+    public static double[] makePerpendicular(double a[], double b[])
+    {
+        double bdir[] = LinAlg.normalize(b);
+        double dot = LinAlg.dotProduct(a, bdir);
+        return LinAlg.subtract(a, LinAlg.scale(bdir, dot));
+    }
+
     public static double dotProduct(double a[], double b[])
     {
         assert(a.length == b.length);
