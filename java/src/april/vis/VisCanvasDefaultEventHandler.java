@@ -496,7 +496,7 @@ public class VisCanvasDefaultEventHandler extends VisCanvasEventAdapter
         // from a reasonable overhead angle, then use the
         // intersection with the plane. Otherwise, use the point
         // on the line closest to the lookAt point.
-        if (interfaceMode < 3 && Math.abs(dot) > 0.8)
+        if (interfaceMode < 3) // && Math.abs(dot) > 0.8)
             xyz = view.computeRay(winx, winy).intersectPlaneXY();
         else
             xyz = view.computeRay(winx, winy).getLine().pointOnLineClosestTo(view.lookAt);
@@ -566,24 +566,16 @@ public class VisCanvasDefaultEventHandler extends VisCanvasEventAdapter
     {
         VisView view = vc.getViewManager().viewGoal;
 
-        double dist = LinAlg.distance(view.eye, view.lookAt);
+        double dist = LinAlg.distance(view.eye, view.lookAt) * ratio;
 
-        /*
-        if (dist < 1 && ratio < 1) {
-            double dxyz[] = LinAlg.scale(LinAlg.subtract(view.lookAt, view.eye), 1-ratio);
+        dist = Math.max(vc.getViewManager().zoom_dist_min, dist);
+        dist = Math.min(vc.getViewManager().zoom_dist_max, dist);
 
-            view.lookAt(LinAlg.add(view.eye, dxyz),
-                        LinAlg.add(view.lookAt, dxyz),
-                        view.up);
-        } else {
-        */
+        double look2eye[] = LinAlg.scale(LinAlg.normalize(LinAlg.subtract(view.eye, view.lookAt)), dist);
 
-            double look2eye[] = LinAlg.scale(LinAlg.subtract(view.eye, view.lookAt), ratio);
-
-            view.lookAt(LinAlg.add(view.lookAt, look2eye),
-                        view.lookAt,
-                        view.up);
-//        }
+        view.lookAt(LinAlg.add(view.lookAt, look2eye),
+                    view.lookAt,
+                    view.up);
     }
 
     Matrix computePanJacobian(VisView view, double dq[], double up[], double left[])

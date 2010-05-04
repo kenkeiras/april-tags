@@ -24,7 +24,7 @@ public class VisView
 
     public double perspective_fovy_degrees = 50;
     public double zclip_near = 0.01;
-    public double zclip_far = 1000;
+    public double zclip_far = 10000;
 
     static GLU glu = new GLU();
 
@@ -129,6 +129,16 @@ public class VisView
         return result;
     }
 
+    public double[] getForward()
+    {
+        return LinAlg.normalize(LinAlg.subtract(lookAt, eye));
+    }
+
+    public double[] getLeft()
+    {
+        return LinAlg.crossProduct(up, getForward());
+    }
+
     void adjustForInterfaceMode(double interfaceMode)
     {
         if (interfaceMode == 2.0) {
@@ -141,13 +151,28 @@ public class VisView
             else
                 up = LinAlg.normalize(up);
             lookAt[2] = 0;
+
         } else if (interfaceMode == 2.5) {
+
+            lookAt[2] = 0;
+
+            // step one: make sure horizon is level
+            double left[] = getLeft();
+            left[2] = 0;
+            left = LinAlg.normalize(left);
+
+            // step two: don't allow them to get us "upside down". This has the nice effect
+            // that it is easy for the user to "lock" into looking straight down.
+            up[2] = Math.max(0.0, up[2]);
+            up = LinAlg.makePerpendicular(up, left);
             up = LinAlg.normalize(up);
 
-            double p2eye[] = LinAlg.normalize(LinAlg.subtract(eye, lookAt));
-            double bad[] = LinAlg.crossProduct(new double[] {0,0,1}, p2eye);
-            double dot = LinAlg.dotProduct(bad, up);
-            up = LinAlg.subtract(up, LinAlg.scale(bad, dot));
+            // Now, recompute the eye position by computing the new lookAt direction.
+            double dir[] = LinAlg.crossProduct(up, left);
+
+            // preserve the previous distance from camera to lookAt
+            double dist = LinAlg.distance(eye, lookAt);
+            eye = LinAlg.add(lookAt, LinAlg.scale(dir, dist));
         }
     }
 
