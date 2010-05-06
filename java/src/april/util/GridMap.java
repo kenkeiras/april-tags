@@ -24,10 +24,19 @@ public final class GridMap
     {
     }
 
-    /** Create a new grid map. The size will be adjusted slightly so
+    /** 
+     * Create a new grid map. The size will be adjusted slightly so
      * that the gridmap contains an integer number of pixels of
      * exactly metersPerPixel dimensions. When recentering the
      * gridmap, the value in defaultFill will be used.
+     * 
+     * @param cx                Center of map (x)
+     * @param cy                Center of map (y)
+     * @param sizex             Map size in meters (x)
+     * @param sizey             Map size in meters (y)
+     * @param metersPerPixel    Exact dimension of each pixel in map
+     * @param defaultFill       Default fill value for grid
+     * @return                  GridMap class
      **/
     public GridMap(double cx, double cy, double sizex, double sizey, double metersPerPixel,
                    int defaultFill)
