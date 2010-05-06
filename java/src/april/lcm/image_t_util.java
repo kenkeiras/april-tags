@@ -124,8 +124,8 @@ public class image_t_util
     {
         // Quantize quality setting into 10 levels [0.0, 0.9]
         final int qualityQuantum = Math.min((int)(quality*10), 9);
-        quality = qualityQuantum / 10f;
-
+        quality = (qualityQuantum + 1) / 10f;
+        
         final image_t v = new image_t();
         v.width = (short) bi.getWidth();
         v.height = (short) bi.getHeight();
@@ -205,7 +205,7 @@ public class image_t_util
         return bi;
     }
 
-    private static BufferedImage decodeMJPEG(image_t v)
+    static BufferedImage decodeMJPEG(image_t v)
     {
         try {
             final ImageReader reader = ImageIO.getImageReadersBySuffix("jpg").next();
