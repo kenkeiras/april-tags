@@ -3,9 +3,13 @@ package april.util;
 import java.awt.image.*;
 import java.util.*;
 
+import april.image.*;
+
 /** pixel coordinates are obtained via:
     ix = (x - x0) / metersPerPixel
     iy = (y - y0) / metersPerPixel
+
+    access internal state with care!
 **/
 public final class GridMap
 {
@@ -15,10 +19,10 @@ public final class GridMap
     public double metersPerPixel;
     public double pixelsPerMeter;
 
-    int width, height; // in pixels
-    byte data[];
+    public int width, height; // in pixels
+    public byte data[];
 
-    byte defaultFill;
+    public byte defaultFill;
 
     protected GridMap()
     {
@@ -40,7 +44,7 @@ public final class GridMap
         this.pixelsPerMeter = 1.0 / this.metersPerPixel;
         this.defaultFill = (byte) defaultFill;
 
-        assert(this.defaultFill == defaultFill);
+//        assert(this.defaultFill == defaultFill);
 
         // compute pixel dimensions
         this.width = (int) (sizex / metersPerPixel + 1);
@@ -72,7 +76,6 @@ public final class GridMap
     public void fill(int v)
     {
         byte bv = (byte) v;
-        assert(bv == v);
 
         for (int i = 0; i < data.length; i++)
             data[i] = bv;
@@ -303,6 +306,18 @@ public final class GridMap
       return 0;
       }
     */
+
+    /** Return a float image with 0 mapped to 0 and 255 mapped to 1.0 **/
+    public FloatImage makeFloatImage()
+    {
+        FloatImage fim = new FloatImage(width, height);
+
+        for (int i = 0; i < data.length; i++) {
+            fim.d[i] = ((data[i]&0xff)/255.0f);
+        }
+
+        return fim;
+    }
 
     /** Create a buffered image, mapping values to grayscale. **/
     public BufferedImage makeBufferedImage()
@@ -669,10 +684,10 @@ public final class GridMap
     /** Linear mapping: index i corresponds to a distance of i*metersPerPixel **/
     public static class LUT
     {
-        double metersPerPixel;
-        double pixelsPerMeter;
+        public double metersPerPixel;
+        public double pixelsPerMeter;
 
-        int lut[];
+        public int lut[];
     }
 
     /** Make a lut that has value of 255 for the first
@@ -716,6 +731,17 @@ public final class GridMap
             lut.lut[i] = 255 - i;
         }
 
+        return lut;
+    }
+
+    public LUT makeConstantLUT(int v, double width_meters)
+    {
+        LUT lut = new LUT();
+        lut.metersPerPixel = width_meters;
+        lut.pixelsPerMeter = 1.0 / lut.metersPerPixel;
+
+        lut.lut = new int[1];
+        lut.lut[0] = v;
         return lut;
     }
 
