@@ -997,4 +997,66 @@ public final class GridMap
         return scores;
     }
 
+    public byte[] getSurroundingTerrain(double[] xy, int maxCost)
+    {
+        int px = (int) Math.floor((xy[0] - x0) * pixelsPerMeter);
+        int py = (int) Math.floor((xy[1] - y0) * pixelsPerMeter);
+
+        UnionFindSimple uf = new UnionFindSimple(data.length);
+
+        // We connect the following points around pixel 'o':
+        // . . x
+        // . o x
+        // . x x
+
+        // To avoid checking bounds per neighbor, we adjust the 
+        // bounds of x and y
+        for (int y=1; y < height-1; y++)
+        {
+            for (int x=0; x < width-1; x++)
+            {
+                int a = y*width + x;
+
+                if ((((int) data[a]) & 0xFF) > maxCost)
+                    continue;
+
+                int b;
+                // x+1, y-1
+                b = (y-1)*width + (x+1);
+                if ((((int) data[b]) & 0xFF) <= maxCost)
+                    uf.connectNodes(uf.getRepresentative(a),
+                                    uf.getRepresentative(b));
+
+                // x+1, y
+                b = (y)*width + (x+1);
+                if ((((int) data[b]) & 0xFF) <= maxCost)
+                    uf.connectNodes(uf.getRepresentative(a),
+                                    uf.getRepresentative(b));
+
+                // x+1, y+1
+                b = (y+1)*width + (x+1);
+                if ((((int) data[b]) & 0xFF) <= maxCost)
+                    uf.connectNodes(uf.getRepresentative(a),
+                                    uf.getRepresentative(b));
+
+                // x  , y+1
+                b = (y+1)*width + (x);
+                if ((((int) data[b]) & 0xFF) <= maxCost)
+                    uf.connectNodes(uf.getRepresentative(a),
+                                    uf.getRepresentative(b));
+            }
+        }
+
+        // get id of union around robot
+        int cid = uf.getRepresentative(py*width + px);
+
+        byte[] res = new byte[data.length];
+        for (int i=0; i < data.length; i++)
+        {
+            if (uf.getRepresentative(i) == cid)
+                res[i] = (byte) 0x1;
+        }
+
+        return res;
+    }
 }
