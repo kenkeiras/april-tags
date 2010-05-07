@@ -702,11 +702,11 @@ public final class GridMap
         // solve expression for distance, setting v = 1. Then round 'd' up.
         double maxDistance = cliffDistMeters + Math.sqrt(Math.log(255*scale)/expDecayMSq);
 
-        int length = (int) (maxDistance * pixelsPerMeter + 1);
+        int length = (int) (maxDistance * lut.pixelsPerMeter + 1);
 
         lut.lut = new int[length];
         for (int i = 0; i < length; i++) {
-            double d = Math.max(0, i * metersPerPixel - cliffDistMeters);
+            double d = Math.max(0, i * lut.metersPerPixel - cliffDistMeters);
             lut.lut[i] = (int) (255*scale*Math.exp(-d*d*expDecayMSq));
         }
 
