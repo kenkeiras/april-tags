@@ -1061,29 +1061,26 @@ public final class GridMap
     }
 
     /** Calculate wavefront map from cost map.
-      * @param pose    - Robot pose.  Required to be within gridmap
-      * @param target  - Goal for wavefront.  Also must be in gridmap range
-      * @param maxCost - maximum cost used to compute driveable terrain.
+      * @param pose      - Robot pose.  Required to be within gridmap
+      * @param target    - Goal for wavefront.  Also must be in gridmap range
+      * @param neighbors - List of options for cell neighbors (e.g. [0, +1])
+      * @param maxCost   - maximum cost used to compute driveable terrain.
       **/
-    public int[] getWavefront(double[] pose, double[] target, int maxCost)
+    public int[] getWavefront(double[] pose, double[] target, 
+                              int[][] neighbors, int maxCost)
     {
         // for convenience, robot and pose indices in the gridmap
         int tx = (int) Math.floor((target[0] - x0) * pixelsPerMeter);
         int ty = (int) Math.floor((target[1] - y0) * pixelsPerMeter);
-        int px = (int) Math.floor((pose[0] - y0) * pixelsPerMeter);
+        int px = (int) Math.floor((pose[0] - x0) * pixelsPerMeter);
         int py = (int) Math.floor((pose[1] - y0) * pixelsPerMeter);
         assert(tx >= 0 && ty >= 0 && px >= 0 && py >= 0);
         assert(tx < width && ty < height && px < width && py < height);
 
-        // Options for cell neighbors
-        int[][] neighbors = new int[][] { { 0,  1}, 
-                                          { 1,  0}, 
-                                          { 0, -1}, 
-                                          {-1,  0} };
-
         // Wavefront data structures
         int[] wavemap = new int[data.length];
         ArrayList<int[]> wavefront = new ArrayList<int[]>();
+        ArrayList<int[]> newWavefront = new ArrayList<int[]>();
 
         // Initialize wavefront and wavemap costs
         wavefront.add(new int[] {tx, ty});
@@ -1094,9 +1091,9 @@ public final class GridMap
         wavemap[ty*width+tx] = ((int) data[ty*width+tx]) & 0xFF;
 
         // compute wavefront
-        while (wavefront.size() > 0)
+        while (!wavefront.isEmpty())
         {
-            ArrayList<int[]> newWavefront = new ArrayList<int[]>();
+            newWavefront.clear();
 
             for (int[] node : wavefront)
             {
@@ -1105,27 +1102,35 @@ public final class GridMap
 
                 for (int[] neighbor : neighbors)
                 {
-                    int nxp = node[0] + neighbor[0];
-                    int nyp = node[1] + neighbor[1];
+                    int npx = node[0] + neighbor[0];
+                    int npy = node[1] + neighbor[1];
 
-                    // skip if out of bounds or not an option
-                    if (nxp >= width  || nxp < 0 ||
-                        nyp >= height || nyp < 0 ||
-                        (((int) data[nyp*width+nxp]) & 0xFF) > maxCost)
+                    // skip if out of bounds
+                    if (npx >= width  || npx < 0 ||
+                        npy >= height || npy < 0)
                         continue;
 
-                    // add for future expansion
-                    newWavefront.add(new int[] {nxp, nyp});
+                    // skip if too costly to plan on
+                    int npcost = ((int) data[npy*width+npx]) & 0xFF;
+                    if (npcost > maxCost)
+                        continue;
 
-                    // compute new cost
-                    int npcost = ((int) data[nyp*width+nxp]) & 0xFF;
-                    wavemap[ny*width+nx] = 
-                        Math.min(wavemap[nyp*width+nxp],
-                                 wavemap[ny*width+nx] + npcost);
+                    // compute new cost and add to wavefront if new minimum
+                    // newval is wavefront(n) + cost(n') + 1 to ensure that
+                    // cost increases with distance in the presence of no 
+                    // potential in the cost map
+                    int oldval = wavemap[npy*width+npx];
+                    int newval = wavemap[ny*width+nx] + npcost + 1;
+                    if (newval < oldval)
+                    {
+                        wavemap[npy*width+npx] = newval;
+                        newWavefront.add(new int[] {npx, npy});
+                    }
                 }
             }
 
-            wavefront = newWavefront;
+            wavefront.clear();
+            wavefront.addAll(newWavefront);
         }
 
         return wavemap;
