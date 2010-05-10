@@ -11,7 +11,7 @@ import javax.imageio.plugins.jpeg.JPEGQTable;
 public class JPEGTableFactory
 {
     float quality = 0.5f;
-    JPEGQTable[] qTables = { JPEGQTable.K2Chrominance.getScaledInstance(8f, false) };
+    JPEGQTable[] qTables = { JPEGQTable.K2Chrominance };
     final JPEGHuffmanTable[] dcHuffmanTables = { JPEGHuffmanTable.StdDCChrominance, JPEGHuffmanTable.StdDCLuminance };
     final JPEGHuffmanTable[] acHuffmanTables = { JPEGHuffmanTable.StdACChrominance, JPEGHuffmanTable.StdACLuminance };
 

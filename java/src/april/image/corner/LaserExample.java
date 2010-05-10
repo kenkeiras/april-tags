@@ -1,15 +1,24 @@
 package april.image.corner;
 
-import java.awt.*;
-import java.io.*;
-import java.util.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.io.IOException;
+import java.util.ArrayList;
 
-import javax.swing.*;
+import javax.swing.JFrame;
 
-import april.jmat.*;
-import lcm.lcm.*;
-import april.lcmtypes.*;
-import april.vis.*;
+import lcm.lcm.LCM;
+import lcm.lcm.LCMDataInputStream;
+import lcm.lcm.LCMSubscriber;
+import april.image.Corner;
+import april.jmat.LinAlg;
+import april.lcmtypes.laser_t;
+import april.lcmtypes.pose_t;
+import april.vis.VisCanvas;
+import april.vis.VisData;
+import april.vis.VisDataPointStyle;
+import april.vis.VisView;
+import april.vis.VisWorld;
 
 public class LaserExample implements LCMSubscriber
 {
