@@ -1,6 +1,7 @@
-package april.image;
+package april.image.corner;
 
 import april.jmat.*;
+import april.image.*;
 
 public class KanadeTomasi
 {
