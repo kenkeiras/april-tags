@@ -19,6 +19,7 @@ class Tokenizer
         gt.addEscape("OP", "+{ { } = : , ; [ ]");
         gt.add("SYMBOL", "[a-zA-Z_\\.0-9\\-\\+#]+");
 
+        gt.add(null, "#[^\n]*\\n"); // comment
         gt.add(null, "//[^\n]*\\n"); // comment
         gt.add(null, "\\s+");        // whitespace
     }

@@ -60,6 +60,10 @@ public class ContourExtractor
         alwaysAcceptDistance = config.getDouble("always_accept_distance", alwaysAcceptDistance);
     }
 
+    public ContourExtractor()
+    {
+    }
+
     static class Join implements Comparable<Join>
     {
         int    a, b; // which points might we join?

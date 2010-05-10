@@ -1,28 +1,26 @@
 package april.util;
 
-import april.lcmtypes.*;
-
-import lcm.lcm.*;
-
 import java.io.*;
 
-/** Subscribes to pose_t and find the pose_t whose timestamp is
- * closest to the requested value. 
+import lcm.lcm.*;
+import april.lcmtypes.*;
+
+/**
+ * Subscribes to pose_t and find the pose_t whose timestamp is closest to the requested value.
  **/
 public class PoseTracker implements LCMSubscriber
 {
-    String channel;
-    LCM lcm = LCM.getSingleton();
-
-    pose_t queue[] = new pose_t[50];
-    int queue_inpos = 0;
-
+    String             channel;
+    LCM                lcm         = LCM.getSingleton();
+    pose_t             queue[]     = new pose_t[50];
+    int                queue_inpos = 0;
     static PoseTracker pt;
     static PoseTracker ptTruth;
 
     public static PoseTracker getSingleton()
     {
-        if (pt == null) {
+        if (pt == null)
+        {
             pt = new PoseTracker("POSE");
         }
         return pt;
@@ -30,7 +28,8 @@ public class PoseTracker implements LCMSubscriber
 
     public static PoseTracker getTruthSingleton()
     {
-        if (ptTruth == null) {
+        if (ptTruth == null)
+        {
             ptTruth = new PoseTracker("POSE_TRUTH");
         }
         return ptTruth;
@@ -44,16 +43,18 @@ public class PoseTracker implements LCMSubscriber
 
     public void messageReceived(LCM lcm, String channel, LCMDataInputStream ins)
     {
-        try {
+        try
+        {
             messageReceivedEx(channel, ins);
-        } catch (IOException ex) {
-            System.out.println("Exception: "+ex);
+        } catch (IOException ex)
+        {
+            System.out.println("Exception: " + ex);
         }
     }
 
     public synchronized pose_t get()
     {
-        return queue[(queue_inpos - 1 + queue.length)%queue.length];
+        return queue[(queue_inpos - 1 + queue.length) % queue.length];
     }
 
     public synchronized pose_t get(long utime)
@@ -67,18 +68,15 @@ public class PoseTracker implements LCMSubscriber
         long besterr = Long.MAX_VALUE;
 
         for (int age = 0; age < queue.length; age++) {
-            int i = (queue_inpos - 1 - age + queue.length)%queue.length;
+            int i = (queue_inpos - 1 - age + queue.length) % queue.length;
 
-            //	for (int i = (queue_inpos+queue.length-1)%queue.length; i!=queue_inpos; i=(i+queue.length-1)%queue.length) {
             if (queue[i] == null)
                 return bestpose;
 
             long err = Math.abs(utime - queue[i].utime);
-
             // error has gone up: we're done searching.
             if (err > besterr)
                 break;
-
             bestpose = queue[i];
             besterr = err;
         }
@@ -87,20 +85,21 @@ public class PoseTracker implements LCMSubscriber
             return bestpose;
 
         pose_t intpose = bestpose.copy();
-        double dt = (utime - bestpose.utime)/1000000.0;
+        double dt = (utime - bestpose.utime) / 1000000.0;
         for (int i = 0; i < 3; i++)
-            intpose.pos[i] += intpose.vel[i]*dt;
-
+            intpose.pos[i] += intpose.vel[i] * dt;
         return intpose;
     }
 
     void messageReceivedEx(String channel, LCMDataInputStream ins) throws IOException
     {
-        if (channel.equals(this.channel)) {
+        if (channel.equals(this.channel))
+        {
             pose_t p = new pose_t(ins);
-            synchronized(this) {
+            synchronized (this)
+            {
                 queue[queue_inpos] = p;
-                queue_inpos = (queue_inpos+1)%queue.length;
+                queue_inpos = (queue_inpos + 1) % queue.length;
             }
         }
     }

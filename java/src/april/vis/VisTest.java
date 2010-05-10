@@ -32,6 +32,8 @@ public class VisTest
         frame.setSize(600,400);
         frame.setVisible(true);
 
+        world.getBuffer("grid").addFront(new VisGrid());
+
         VisData vd = new VisData(new VisDataPointStyle(Color.blue, 4.0),
                                  new VisDataLineStyle(Color.yellow, 1.0));
 
