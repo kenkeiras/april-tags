@@ -139,6 +139,12 @@ public final class GridMap
         return v*v;
     }
 
+    static double magnitude(int[] v)
+    {
+        assert (v.length == 2);
+        return Math.pow(v[0]*v[0] + v[1]*v[1], 0.5);
+    }
+
     static int sgn(double v)
     {
         if (v > 0)
@@ -1115,12 +1121,16 @@ public final class GridMap
                     if (npcost > maxCost)
                         continue;
 
-                    // compute new cost and add to wavefront if new minimum
+                    // Compute new cost and add to wavefront if new minimum
                     // newval is wavefront(n) + cost(n') + 1 to ensure that
                     // cost increases with distance in the presence of no 
                     // potential in the cost map
                     int oldval = wavemap[npy*width+npx];
-                    int newval = wavemap[ny*width+nx] + npcost + 1;
+                    // Transition cost is distance between cells (due to diagonals)
+                    double transition = magnitude(neighbor);
+                    // Only keep to one decimal place (just scale the new parts)
+                    int newval = (int) Math.round(wavemap[ny*width+nx] + (npcost + transition)*10);
+
                     if (newval < oldval)
                     {
                         wavemap[npy*width+npx] = newval;
