@@ -7,7 +7,7 @@ public class SigProc
     static boolean warned = false;
 
     /** Convolve the input 'a' (which begins at offset aoff and is
-     * alen bytes in length) with the filter 'f', depositing the
+     * alen elements in length) with the filter 'f', depositing the
      * result in 'r' at the offset 'roff'. f.length should be odd. The
      * output is shifted by -f.length/2, so that there is no net time
      * delay.
@@ -45,6 +45,44 @@ public class SigProc
                     acc += a[aoff + alen - 1] * f[j];
                 else
                     acc += a[aoff + i - j] * f[j];
+            }
+            r[roff + i - f.length/2] = (float) acc;
+        }
+    }
+
+    public static final void convolveSymmetricCenteredMax(float a[], int aoff, int alen, float f[], float r[], int roff)
+    {
+        if ((f.length&1)==0 && !warned) {
+            System.out.println("SigProc.convolveSymmetricCentered Warning: filter is not odd length");
+            warned = true;
+        }
+
+        for (int i = f.length/2; i < f.length; i++) {
+            double acc = 0;
+            for (int j = 0; j < f.length; j++) {
+                if ((aoff + i - j) < 0 || (aoff + i - j) >= alen)
+                    acc = Math.max(acc, a[aoff] * f[j]);
+                else
+                    acc = Math.max(acc, a[aoff + i - j] * f[j]);
+            }
+            r[roff + i - f.length/2] = (float) acc;
+        }
+
+        for (int i = f.length; i < alen; i++) {
+            double acc = 0;
+            for (int j = 0; j < f.length; j++) {
+                acc = Math.max(acc, a[aoff + i - j] * f[j]);
+            }
+            r[roff + i - f.length/2] = (float) acc;
+        }
+
+        for (int i = alen; i < alen + f.length/2; i++) {
+            double acc = 0;
+            for (int j = 0; j < f.length; j++) {
+                if ((aoff + i - j) >= alen || (aoff + i - j) < 0)
+                    acc = Math.max(acc, a[aoff + alen - 1] * f[j]);
+                else
+                    acc = Math.max(acc, a[aoff + i - j] * f[j]);
             }
             r[roff + i - f.length/2] = (float) acc;
         }

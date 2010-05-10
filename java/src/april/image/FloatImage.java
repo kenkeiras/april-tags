@@ -89,6 +89,38 @@ public class FloatImage
         return new FloatImage(width, height, r);
     }
 
+    /** Perform 2D convolution using f as the factor of a separable
+     * filter, shifting the output by -f.length/2 so there is no net
+     * shift.
+     **/
+    public FloatImage filterFactoredCenteredMax(float fhoriz[], float fvert[])
+    {
+        // do horizontal
+        float r[] = new float[d.length];
+
+        for (int y = 0; y < height; y++) {
+            SigProc.convolveSymmetricCenteredMax(d, y*width, width, fhoriz, r, y*width);
+        }
+
+        // do vertical
+        float tmp[] = new float[height];  // the column before convolution
+        float tmp2[] = new float[height]; // the column after convolution.
+
+        for (int x = 0; x < width; x++) {
+
+            // copy the column out for locality.
+            for (int y = 0; y < height; y++)
+                tmp[y] = r[y*width + x];
+
+            SigProc.convolveSymmetricCenteredMax(tmp, 0, height, fvert, tmp2, 0);
+
+            for (int y = 0; y < height; y++)
+                r[y*width + x] = tmp2[y];
+        }
+
+        return new FloatImage(width, height, r);
+    }
+
     public FloatImage filterHorizontalCentered(float f[])
     {
         float r[] = new float[d.length];
