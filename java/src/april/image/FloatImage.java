@@ -27,6 +27,18 @@ public class FloatImage
         this.d = d;
     }
 
+    /** Make FloatImage from byte array, scaling inputs to
+      * range (0,1)
+      **/
+    public FloatImage(int width, int height, byte d[])
+    {
+        this.width = width;
+        this.height = height;
+        this.d = new float[width*height];
+        for (int i=0; i < d.length; i++)
+            this.d[i] = ((float) (d[i] & 0xff)) / (float) 255.0;
+    }
+
     public FloatImage(BufferedImage im)
     {
         this(im, 8);
@@ -45,6 +57,16 @@ public class FloatImage
         for (int i = 0; i < d.length; i++)
             r[i] = d[i];
         return new FloatImage(width, height, r);
+    }
+
+    /** Get byte data from FloatImage scaled from 0 to 255
+      **/
+    public final byte[] getByteData()
+    {
+        byte r[] = new byte[d.length];
+        for (int i=0; i < d.length; i++)
+            r[i] = (byte) (255*d[i]);
+        return r;
     }
 
     public final float get(int x, int y)
