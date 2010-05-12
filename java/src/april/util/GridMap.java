@@ -1098,8 +1098,8 @@ public final class GridMap
       * @param neighbors - List of options for cell neighbors (e.g. [0, +1])
       * @param maxCost   - maximum cost used to compute driveable terrain.
       **/
-    public int[] getWavefront(double[] pose, double[] target, 
-                              int[][] neighbors, int maxCost)
+    public double[] getWavefront(double[] pose, double[] target, 
+                                 int[][] neighbors, int maxCost)
     {
         // for convenience, robot and pose indices in the gridmap
         int tx = (int) Math.floor((target[0] - x0) * pixelsPerMeter);
@@ -1110,7 +1110,7 @@ public final class GridMap
         assert(tx < width && ty < height && px < width && py < height);
 
         // Wavefront data structures
-        int[] wavemap = new int[data.length];
+        double[] wavemap = new double[data.length];
         ArrayList<int[]> wavefront = new ArrayList<int[]>();
         ArrayList<int[]> newWavefront = new ArrayList<int[]>();
 
@@ -1118,9 +1118,12 @@ public final class GridMap
         wavefront.add(new int[] {tx, ty});
         for (int y=0; y < height; y++)
             for (int x=0; x < width; x++)
-                wavemap[y*width+x] = Integer.MAX_VALUE;
+                wavemap[y*width+x] = Double.MAX_VALUE;
 
-        wavemap[ty*width+tx] = ((int) data[ty*width+tx]) & 0xFF;
+        // get cost for goal
+        // min cost in 1
+        wavemap[ty*width + tx] = ((int) data[ty*width + tx]) & 0xFF;
+        wavemap[ty*width + tx] = Math.max(wavemap[ty*width + tx], 1);
 
         // compute wavefront
         while (!wavefront.isEmpty())
@@ -1142,8 +1145,9 @@ public final class GridMap
                         npy >= height || npy < 0)
                         continue;
 
-                    // skip if too costly to plan on
-                    int npcost = ((int) data[npy*width+npx]) & 0xFF;
+                    // skip if too costly to plan on n'
+                    double npcost = ((int) data[npy*width + npx]) & 0xFF;
+                    npcost = Math.max(npcost, 1); // minimum cell cost is 1
                     if (npcost > maxCost)
                         continue;
 
@@ -1151,15 +1155,20 @@ public final class GridMap
                     // newval is wavefront(n) + cost(n') + 1 to ensure that
                     // cost increases with distance in the presence of no 
                     // potential in the cost map
-                    int oldval = wavemap[npy*width+npx];
+                    double oldval = wavemap[npy*width + npx];
+
                     // Transition cost is distance between cells (due to diagonals)
                     double transition = magnitude(neighbor);
-                    // Only keep to one decimal place (just scale the new parts)
-                    int newval = (int) Math.round(wavemap[ny*width+nx] + (npcost + transition)*10);
+
+                    // Only keep to "precision" (just scale the new parts)
+                    // XXX this use of transition cost is wrong
+                    //int newval = (int) Math.round(wavemap[ny*width + nx] + (npcost + transition)*precisionScale);
+                    //int newval = (int) Math.round(wavemap[ny*width + nx] + transition*precisionScale);
+                    double newval = wavemap[ny*width + nx] + transition*npcost;
 
                     if (newval < oldval)
                     {
-                        wavemap[npy*width+npx] = newval;
+                        wavemap[npy*width + npx] = newval;
                         newWavefront.add(new int[] {npx, npy});
                     }
                 }
