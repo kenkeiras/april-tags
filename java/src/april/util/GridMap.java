@@ -1099,7 +1099,8 @@ public final class GridMap
       * @param maxCost   - maximum cost used to compute driveable terrain.
       **/
     public double[] getWavefront(double[] pose, double[] target, 
-                                 int[][] neighbors, int maxCost)
+                                 int[][] neighbors, int maxCost, int steps, 
+                                 boolean print, boolean doSkip)
     {
         // for convenience, robot and pose indices in the gridmap
         int tx = (int) Math.floor((target[0] - x0) * pixelsPerMeter);
@@ -1115,7 +1116,7 @@ public final class GridMap
         ArrayList<int[]> newWavefront = new ArrayList<int[]>();
 
         // Initialize wavefront and wavemap costs
-        wavefront.add(new int[] {tx, ty});
+        wavefront.add(new int[] {tx, ty, 0});
         for (int y=0; y < height; y++)
             for (int x=0; x < width; x++)
                 wavemap[y*width+x] = Double.MAX_VALUE;
@@ -1124,21 +1125,50 @@ public final class GridMap
         // min cost in 1
         wavemap[ty*width + tx] = ((int) data[ty*width + tx]) & 0xFF;
         wavemap[ty*width + tx] = Math.max(wavemap[ty*width + tx], 1);
+        if(print)
+            System.out.println("Goal: ("+tx+","+ty+"): "+wavemap[ty*width+tx]);
 
         // compute wavefront
-        while (!wavefront.isEmpty())
+        int skipped = 0;
+        int total = 0;
+        int step = 0;
+        wavefrontLoop: while (!wavefront.isEmpty())
         {
             newWavefront.clear();
+            if(print)
+                System.out.println("New front");
 
-            for (int[] node : wavefront)
+            for (int i=0; i < wavefront.size(); i++)
             {
+                int node[] = wavefront.get(i);
                 int nx = node[0];
                 int ny = node[1];
+                double oldCost = (double) node[2] / 1000.0;
+                int n = ny*width + nx;
+
+                if(print)
+                {
+                    System.out.printf("Expanding (%2d,%2d): was: %8.3f is: %8.3f",nx,ny,oldCost,wavemap[n]);
+                    if(oldCost > wavemap[n])
+                        System.out.println(" do skip   ");
+                    else
+                        System.out.println(" don't skip");
+                }
+
+
+                total++;
+                if (oldCost > wavemap[n])
+                {
+                    skipped++;
+                    if (doSkip)
+                        continue;
+                }
 
                 for (int[] neighbor : neighbors)
                 {
-                    int npx = node[0] + neighbor[0];
-                    int npy = node[1] + neighbor[1];
+                    int npx = nx + neighbor[0];
+                    int npy = ny + neighbor[1];
+                    int np = npy*width+npx;
 
                     // skip if out of bounds
                     if (npx >= width  || npx < 0 ||
@@ -1146,37 +1176,58 @@ public final class GridMap
                         continue;
 
                     // skip if too costly to plan on n'
-                    double npcost = ((int) data[npy*width + npx]) & 0xFF;
-                    npcost = Math.max(npcost, 1); // minimum cell cost is 1
-                    if (npcost > maxCost)
+                    // minimum cell cost is 1
+                    double curCost = Math.max(1, ((int) data[n])  & 0xFF);
+                    double newCost = Math.max(1, ((int) data[np]) & 0xFF);
+                    if (newCost > maxCost)
                         continue;
 
                     // Compute new cost and add to wavefront if new minimum
                     // newval is wavefront(n) + cost(n') + 1 to ensure that
                     // cost increases with distance in the presence of no 
                     // potential in the cost map
-                    double oldval = wavemap[npy*width + npx];
+                    double oldval = wavemap[np];
 
                     // Transition cost is distance between cells (due to diagonals)
                     double transition = magnitude(neighbor);
+                    double newval = wavemap[n] + transition*(newCost+curCost)/2.0;
 
-                    // Only keep to "precision" (just scale the new parts)
-                    // XXX this use of transition cost is wrong
-                    //int newval = (int) Math.round(wavemap[ny*width + nx] + (npcost + transition)*precisionScale);
-                    //int newval = (int) Math.round(wavemap[ny*width + nx] + transition*precisionScale);
-                    double newval = wavemap[ny*width + nx] + transition*npcost;
+                    if(print)
+                    {
+                        System.out.printf("   neighbor (%2d,%2d)",neighbor[0],neighbor[1]);
+                        System.out.printf(" (%3d,%3d)",npx,npy);
+                        System.out.printf(" curCost: %3.0f newCost: %3.0f ",curCost, newCost);
+
+                        if(oldval == Double.MAX_VALUE)
+                            System.out.printf("oldval:  inf    ");
+                        else
+                            System.out.printf("oldval: %8.3f",oldval);
+
+                        System.out.printf(" newval: %8.3f updated: ",newval);
+                    }
 
                     if (newval < oldval)
                     {
-                        wavemap[npy*width + npx] = newval;
-                        newWavefront.add(new int[] {npx, npy});
+                        if(print)
+                            System.out.println("True");
+                        wavemap[np] = newval;
+                        newWavefront.add(new int[] {npx, npy, (int) Math.floor(newval*1000)});
+                    }
+                    else
+                    {
+                        if(print)
+                            System.out.println("False");
                     }
                 }
+                if(step++ >= steps)
+                    break wavefrontLoop;
             }
 
             wavefront.clear();
             wavefront.addAll(newWavefront);
         }
+
+        System.out.println("Skipped "+skipped+" expansions. "+total+" expansions in total.");
 
         return wavemap;
     }
