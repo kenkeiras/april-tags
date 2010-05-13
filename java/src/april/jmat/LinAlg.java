@@ -139,6 +139,17 @@ public final class LinAlg
     }
 
     /** length of the vector **/
+    public static double magnitude(int a[])
+    {
+        double mag = 0;
+
+        for (int i = 0; i < a.length; i++)
+            mag += sq(a[i]);
+
+        return Math.sqrt(mag);
+    }
+
+    /** length of the vector **/
     public static float magnitude(float a[])
     {
         double mag = 0;
@@ -1217,6 +1228,14 @@ public final class LinAlg
             }
         }
         return nz;
+    }
+
+    /** return a vector close to a that is perpendicular to b. **/
+    public static double[] makePerpendicular(double a[], double b[])
+    {
+        double bdir[] = LinAlg.normalize(b);
+        double dot = LinAlg.dotProduct(a, bdir);
+        return LinAlg.subtract(a, LinAlg.scale(bdir, dot));
     }
 
     public static double dotProduct(double a[], double b[])

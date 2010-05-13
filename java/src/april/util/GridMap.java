@@ -3,9 +3,13 @@ package april.util;
 import java.awt.image.*;
 import java.util.*;
 
+import april.image.*;
+
 /** pixel coordinates are obtained via:
     ix = (x - x0) / metersPerPixel
     iy = (y - y0) / metersPerPixel
+
+    access internal state with care!
 **/
 public final class GridMap
 {
@@ -15,10 +19,10 @@ public final class GridMap
     public double metersPerPixel;
     public double pixelsPerMeter;
 
-    int width, height; // in pixels
-    byte data[];
+    public int width, height; // in pixels
+    public byte data[];
 
-    byte defaultFill;
+    public byte defaultFill;
 
     protected GridMap()
     {
@@ -49,7 +53,7 @@ public final class GridMap
         this.pixelsPerMeter = 1.0 / this.metersPerPixel;
         this.defaultFill = (byte) defaultFill;
 
-        assert(this.defaultFill == defaultFill);
+//        assert(this.defaultFill == defaultFill);
 
         // compute pixel dimensions
         this.width = (int) (sizex / metersPerPixel + 1);
@@ -81,7 +85,6 @@ public final class GridMap
     public void fill(int v)
     {
         byte bv = (byte) v;
-        assert(bv == v);
 
         for (int i = 0; i < data.length; i++)
             data[i] = bv;
@@ -137,12 +140,6 @@ public final class GridMap
     static double sq(double v)
     {
         return v*v;
-    }
-
-    static double magnitude(int[] v)
-    {
-        assert (v.length == 2);
-        return Math.pow(v[0]*v[0] + v[1]*v[1], 0.5);
     }
 
     static int sgn(double v)
@@ -319,6 +316,18 @@ public final class GridMap
       }
     */
 
+    /** Return a float image with 0 mapped to 0 and 255 mapped to 1.0 **/
+    public FloatImage makeFloatImage()
+    {
+        FloatImage fim = new FloatImage(width, height);
+
+        for (int i = 0; i < data.length; i++) {
+            fim.d[i] = ((data[i]&0xff)/255.0f);
+        }
+
+        return fim;
+    }
+
     /** Create a buffered image, mapping values to grayscale. **/
     public BufferedImage makeBufferedImage()
     {
@@ -387,7 +396,7 @@ public final class GridMap
     /** Get the maximum x and y coordinates **/
     public double[] getXY1()
     {
-        return new double[] { x0 + sizex, y0 + sizey };
+        return new double[] { x0 + width*metersPerPixel, y0 + height*metersPerPixel };
     }
 
     public int getValue(double x, double y)
@@ -684,10 +693,10 @@ public final class GridMap
     /** Linear mapping: index i corresponds to a distance of i*metersPerPixel **/
     public static class LUT
     {
-        double metersPerPixel;
-        double pixelsPerMeter;
+        public double metersPerPixel;
+        public double pixelsPerMeter;
 
-        int lut[];
+        public int lut[];
     }
 
     /** Make a lut that has value of 255 for the first
@@ -731,6 +740,17 @@ public final class GridMap
             lut.lut[i] = 255 - i;
         }
 
+        return lut;
+    }
+
+    public LUT makeConstantLUT(int v, double width_meters)
+    {
+        LUT lut = new LUT();
+        lut.metersPerPixel = width_meters;
+        lut.pixelsPerMeter = 1.0 / lut.metersPerPixel;
+
+        lut.lut = new int[1];
+        lut.lut[0] = v;
         return lut;
     }
 
@@ -1003,7 +1023,12 @@ public final class GridMap
         return scores;
     }
 
-    public byte[] getSurroundingTerrain(double[] xy, int maxCost)
+    /** Get 8-connected nodes around point xy with cost under maxCost
+      * @param xy      - Continuous-domain point around which to find
+      *                  connected nodes
+      * @param maxCost - Maximum cost for which a node can be considered valid
+      **/
+    public byte[] getConnectedLessThan(double[] xy, int maxCost)
     {
         int px = (int) Math.floor((xy[0] - x0) * pixelsPerMeter);
         int py = (int) Math.floor((xy[1] - y0) * pixelsPerMeter);
@@ -1066,83 +1091,31 @@ public final class GridMap
         return res;
     }
 
-    /** Calculate wavefront map from cost map.
-      * @param pose      - Robot pose.  Required to be within gridmap
-      * @param target    - Goal for wavefront.  Also must be in gridmap range
-      * @param neighbors - List of options for cell neighbors (e.g. [0, +1])
-      * @param maxCost   - maximum cost used to compute driveable terrain.
-      **/
-    public int[] getWavefront(double[] pose, double[] target, 
-                              int[][] neighbors, int maxCost)
+    public void filterFactoredCenteredMax(float fhoriz[], float fvert[])
     {
-        // for convenience, robot and pose indices in the gridmap
-        int tx = (int) Math.floor((target[0] - x0) * pixelsPerMeter);
-        int ty = (int) Math.floor((target[1] - y0) * pixelsPerMeter);
-        int px = (int) Math.floor((pose[0] - x0) * pixelsPerMeter);
-        int py = (int) Math.floor((pose[1] - y0) * pixelsPerMeter);
-        assert(tx >= 0 && ty >= 0 && px >= 0 && py >= 0);
-        assert(tx < width && ty < height && px < width && py < height);
+        byte r[] = new byte[data.length];
 
-        // Wavefront data structures
-        int[] wavemap = new int[data.length];
-        ArrayList<int[]> wavefront = new ArrayList<int[]>();
-        ArrayList<int[]> newWavefront = new ArrayList<int[]>();
-
-        // Initialize wavefront and wavemap costs
-        wavefront.add(new int[] {tx, ty});
-        for (int y=0; y < height; y++)
-            for (int x=0; x < width; x++)
-                wavemap[y*width+x] = Integer.MAX_VALUE;
-
-        wavemap[ty*width+tx] = ((int) data[ty*width+tx]) & 0xFF;
-
-        // compute wavefront
-        while (!wavefront.isEmpty())
-        {
-            newWavefront.clear();
-
-            for (int[] node : wavefront)
-            {
-                int nx = node[0];
-                int ny = node[1];
-
-                for (int[] neighbor : neighbors)
-                {
-                    int npx = node[0] + neighbor[0];
-                    int npy = node[1] + neighbor[1];
-
-                    // skip if out of bounds
-                    if (npx >= width  || npx < 0 ||
-                        npy >= height || npy < 0)
-                        continue;
-
-                    // skip if too costly to plan on
-                    int npcost = ((int) data[npy*width+npx]) & 0xFF;
-                    if (npcost > maxCost)
-                        continue;
-
-                    // Compute new cost and add to wavefront if new minimum
-                    // newval is wavefront(n) + cost(n') + 1 to ensure that
-                    // cost increases with distance in the presence of no 
-                    // potential in the cost map
-                    int oldval = wavemap[npy*width+npx];
-                    // Transition cost is distance between cells (due to diagonals)
-                    double transition = magnitude(neighbor);
-                    // Only keep to one decimal place (just scale the new parts)
-                    int newval = (int) Math.round(wavemap[ny*width+nx] + (npcost + transition)*10);
-
-                    if (newval < oldval)
-                    {
-                        wavemap[npy*width+npx] = newval;
-                        newWavefront.add(new int[] {npx, npy});
-                    }
-                }
-            }
-
-            wavefront.clear();
-            wavefront.addAll(newWavefront);
+        // do horizontal
+        for (int y = 0; y < height; y++) {
+            april.image.SigProc.convolveSymmetricCenteredMax(data, y*width, width, fhoriz, r, y*width);
         }
 
-        return wavemap;
+        // do vertical
+        byte tmp[] = new byte[height];  // the column before convolution
+        byte tmp2[] = new byte[height]; // the column after convolution.
+
+        for (int x = 0; x < width; x++) {
+
+            // copy the column out for locality.
+            for (int y = 0; y < height; y++)
+                tmp[y] = r[y*width + x];
+
+            SigProc.convolveSymmetricCenteredMax(tmp, 0, height, fvert, tmp2, 0);
+
+            for (int y = 0; y < height; y++)
+                r[y*width + x] = tmp2[y];
+        }
+
+        this.data = r;
     }
 }
