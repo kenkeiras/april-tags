@@ -179,8 +179,10 @@ public class TagTest implements ParameterListener
 
                     System.out.printf("id %3d err %3d\n", d.id, d.hammingDistance);
 
-                    double M[][] = CameraUtil.homographyToPose(360, 360 * (480.0 / 752), d.homography);
-
+                    double tagsize_m = 0.216;
+                    double f = 485.6;
+                    double aspect = 752.0 / 480.0;
+                    double M[][] = CameraUtil.homographyToPose(f, f, tagsize_m, d.homography);
                     LinAlg.print(M);
 
                     double rpy[] = LinAlg.matrixToRollPitchYaw(M);

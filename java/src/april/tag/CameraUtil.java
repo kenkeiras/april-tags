@@ -8,7 +8,9 @@ public class CameraUtil
      * camera, compute the pose of the tag. The focal lengths should
      * be given in pixels. For example, if the camera's focal length
      * is twice the width of the sensor, and the sensor is 600 pixels
-     * across, the focal length in pixels is 2*600.
+     * across, the focal length in pixels is 2*600. Note that the
+     * focal lengths in the fx and fy direction will be approximately
+     * equal for most lenses, and is not a function of aspect ratio.
      *
      * Theory: The homography matrix is the product of the camera
      * projection matrix and the tag's pose matrix (the matrix that
@@ -40,24 +42,21 @@ public class CameraUtil
      * matrix to be 1. We use the geometric average scale. The sign of
      * the scale factor is recovered by constraining the observed tag
      * to be in front of the camera. Once scaled, we recover the first
-     * two columns of the rotation matrix. The third column is the
+     * two colmuns of the rotation matrix. The third column is the
      * cross product of these.
      *
      * The second wrinkle is that the computed rotation matrix might
      * not be exactly orthogonal, so we perform a polar decomposition
      * to find a good pure rotation approximation.
+     *
+     * Tagsize is the size of the tag in your desired units. I.e., if
+     * your tag measures 0.25m along the side, your tag size is
+     * 0.25. (The homography is computed in terms of *half* the tag
+     * size, i.e., that a tag is 2 units wide as it spans from -1 to
+     * +1, but this code makes the appropriate adjustment.)
      **/
-    public static double[][] homographyToPose(double fx, double fy, double h[][])
+    public static double[][] homographyToPose(double fx, double fy, double tagSize, double h[][])
     {
-        // The math below is concerned in the length (in pixels) of
-        // the camera's focal length PER normalized camera unit. Since
-        // the camera observes from ([-1, 1]), the camera's focal
-        // length is TWO normalized camera units. Thus, the focal
-        // length passed in (which represents the entire width of the
-        // sensor) is too large by a factor of two.
-        fx *= 0.5;
-        fy *= 0.5;
-
         // flip the homography along the Y axis to align the
         // conventional image coordinate system (y=0 at the top) with
         // the conventional camera coordinate system (y=0 at the
@@ -69,10 +68,6 @@ public class CameraUtil
         h = LinAlg.matrixAB(F, h);
 
         double M[][] = new double[4][4];
-
-        // y coordinate values are inverted to account for the
-        // fact that we detect targets in *pixel* coordinates, in
-        // which y is at the bottom.
         M[0][0] =  h[0][0] / fx;
         M[0][1] =  h[0][1] / fx;
         M[0][3] =  h[0][2] / fx;
@@ -83,16 +78,28 @@ public class CameraUtil
         M[2][1] =  h[2][1];
         M[2][3] =  h[2][2];
 
+        // Compute the scale. The columns of M should be made to be
+        // unit vectors. This is over-determined, so we take the
+        // geometric average.
         double scale0 = Math.sqrt(sq(M[0][0]) + sq(M[1][0]) + sq(M[2][0]));
         double scale1 = Math.sqrt(sq(M[0][1]) + sq(M[1][1]) + sq(M[2][1]));
         double scale = Math.sqrt(scale0*scale1);
 
         M = LinAlg.scale(M, 1.0/scale);
-        M[3][3] = 1;
 
         // recover sign of scale factor by noting that observations must occur in front of the camera.
         if (M[2][3] > 0)
             M = LinAlg.scale(M, -1);
+
+        // The bottom row should always be [0 0 0 1].  We reset the
+        // first three elements, even though they must be zero, in
+        // order to make sure that they are +0. (We could have -0 due
+        // to the sign flip above. This is theoretically harmless but
+        // annoying in practice.)
+        M[3][0] = 0;
+        M[3][1] = 0;
+        M[3][2] = 0;
+        M[3][3] = 1;
 
         // recover third rotation vector by crossproduct of the other two rotation vectors.
         double a[] = new double[] { M[0][0], M[1][0], M[2][0] };
@@ -115,6 +122,12 @@ public class CameraUtil
         for (int i = 0; i < 3; i++)
             for (int j = 0; j < 3; j++)
                 M[i][j] = MR.get(i,j);
+
+        // Scale the results based on the scale in the homography. The
+        // homography assumes that tags span from -1 to +1, i.e., that
+        // they are two units wide (and tall).
+        for (int i = 0; i < 3; i++)
+            M[i][3] *= tagSize / 2;
 
         return M;
     }

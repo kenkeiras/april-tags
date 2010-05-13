@@ -139,6 +139,17 @@ public final class LinAlg
     }
 
     /** length of the vector **/
+    public static double magnitude(int a[])
+    {
+        double mag = 0;
+
+        for (int i = 0; i < a.length; i++)
+            mag += sq(a[i]);
+
+        return Math.sqrt(mag);
+    }
+
+    /** length of the vector **/
     public static float magnitude(float a[])
     {
         double mag = 0;

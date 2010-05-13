@@ -142,12 +142,6 @@ public final class GridMap
         return v*v;
     }
 
-    static double magnitude(int[] v)
-    {
-        assert (v.length == 2);
-        return Math.pow(v[0]*v[0] + v[1]*v[1], 0.5);
-    }
-
     static int sgn(double v)
     {
         if (v > 0)
@@ -402,7 +396,7 @@ public final class GridMap
     /** Get the maximum x and y coordinates **/
     public double[] getXY1()
     {
-        return new double[] { x0 + sizex, y0 + sizey };
+        return new double[] { x0 + width*metersPerPixel, y0 + height*metersPerPixel };
     }
 
     public int getValue(double x, double y)
@@ -1029,7 +1023,12 @@ public final class GridMap
         return scores;
     }
 
-    public byte[] getSurroundingTerrain(double[] xy, int maxCost)
+    /** Get 8-connected nodes around point xy with cost under maxCost
+      * @param xy      - Continuous-domain point around which to find
+      *                  connected nodes
+      * @param maxCost - Maximum cost for which a node can be considered valid
+      **/
+    public byte[] getConnectedLessThan(double[] xy, int maxCost)
     {
         int px = (int) Math.floor((xy[0] - x0) * pixelsPerMeter);
         int py = (int) Math.floor((xy[1] - y0) * pixelsPerMeter);
@@ -1090,5 +1089,33 @@ public final class GridMap
         }
 
         return res;
+    }
+
+    public void filterFactoredCenteredMax(float fhoriz[], float fvert[])
+    {
+        byte r[] = new byte[data.length];
+
+        // do horizontal
+        for (int y = 0; y < height; y++) {
+            april.image.SigProc.convolveSymmetricCenteredMax(data, y*width, width, fhoriz, r, y*width);
+        }
+
+        // do vertical
+        byte tmp[] = new byte[height];  // the column before convolution
+        byte tmp2[] = new byte[height]; // the column after convolution.
+
+        for (int x = 0; x < width; x++) {
+
+            // copy the column out for locality.
+            for (int y = 0; y < height; y++)
+                tmp[y] = r[y*width + x];
+
+            SigProc.convolveSymmetricCenteredMax(tmp, 0, height, fvert, tmp2, 0);
+
+            for (int y = 0; y < height; y++)
+                r[y*width + x] = tmp2[y];
+        }
+
+        this.data = r;
     }
 }
