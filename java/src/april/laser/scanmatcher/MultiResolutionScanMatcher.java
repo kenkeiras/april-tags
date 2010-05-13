@@ -158,8 +158,8 @@ public class MultiResolutionScanMatcher
 
         for (int iters = 0; true; iters++) {
 
-            if (iters > 100)
-                System.out.println(iters);
+            if (iters >= 100 && (iters & (iters - 1))==0)
+                System.out.printf("WRN: MultiResolutionScanMatcher: many iterations (%d)\n", iters);
 
             // Find the next best score that's less than maxscore
             // This implementation just researches the entire low
@@ -216,7 +216,7 @@ public class MultiResolutionScanMatcher
             if (thisBestHighResScore > thisBestLowResScore) {
                 // TODO: Investigate cases where this
                 // happens. Numerical precision problems?
-                System.out.printf("%10d %10d %10d [%5d %5d %5d] [%5d %5d]\n",
+                System.out.printf("DEBUG: MultiResolutionScanMatcher %10d %10d %10d [%5d %5d %5d] [%5d %5d]\n",
                                   thisBestLowResScore, thisBestHighResScore,
                                   thisBestHighResScore - thisBestLowResScore,
                                   bestLowResIdx[0], bestLowResIdx[1], bestLowResIdx[2],

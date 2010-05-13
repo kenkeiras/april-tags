@@ -88,6 +88,53 @@ public class SigProc
         }
     }
 
+    static final byte clampByte(double v)
+    {
+        if (v < 0)
+            return 0;
+        if (v > 255)
+            return (byte) 255;
+        return (byte) v;
+    }
+
+    public static final void convolveSymmetricCenteredMax(byte a[], int aoff, int alen, float f[], byte r[], int roff)
+    {
+        if ((f.length&1)==0 && !warned) {
+            System.out.println("SigProc.convolveSymmetricCentered Warning: filter is not odd length");
+            warned = true;
+        }
+
+        for (int i = f.length/2; i < f.length; i++) {
+            double acc = 0;
+            for (int j = 0; j < f.length; j++) {
+                if ((aoff + i - j) < 0 || (aoff + i - j) >= alen)
+                    acc = Math.max(acc, (a[aoff]&0xff) * f[j]);
+                else
+                    acc = Math.max(acc, (a[aoff + i - j]&0xff) * f[j]);
+            }
+            r[roff + i - f.length/2] = clampByte(acc);
+        }
+
+        for (int i = f.length; i < alen; i++) {
+            double acc = 0;
+            for (int j = 0; j < f.length; j++) {
+                acc = Math.max(acc, (a[aoff + i - j]&0xff) * f[j]);
+            }
+            r[roff + i - f.length/2] = clampByte(acc);
+        }
+
+        for (int i = alen; i < alen + f.length/2; i++) {
+            double acc = 0;
+            for (int j = 0; j < f.length; j++) {
+                if ((aoff + i - j) >= alen || (aoff + i - j) < 0)
+                    acc = Math.max(acc, (a[aoff + alen - 1]&0xff) * f[j]);
+                else
+                    acc = Math.max(acc, (a[aoff + i - j]&0xff) * f[j]);
+            }
+            r[roff + i - f.length/2] = clampByte(acc);
+        }
+    }
+
     public static final float[] convolve(float a[], float b[])
     {
         float r[] = new float[a.length + b.length - 1];
