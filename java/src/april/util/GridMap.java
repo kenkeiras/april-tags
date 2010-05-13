@@ -1099,8 +1099,15 @@ public final class GridMap
       * @param maxCost   - maximum cost used to compute driveable terrain.
       **/
     public double[] getWavefront(double[] pose, double[] target, 
-                                 int[][] neighbors, int maxCost, int steps, 
-                                 boolean print, boolean doSkip)
+                                 int[][] neighbors, int maxCost)
+    {
+        return getWavefront(pose, target, neighbors, maxCost, Integer.MAX_VALUE);
+    }
+
+    /** Calculate wavefront from cost map to a finite number of steps
+      **/
+    public double[] getWavefront(double[] pose, double[] target, 
+                                 int[][] neighbors, int maxCost, int steps)
     {
         // for convenience, robot and pose indices in the gridmap
         int tx = (int) Math.floor((target[0] - x0) * pixelsPerMeter);
@@ -1112,122 +1119,80 @@ public final class GridMap
 
         // Wavefront data structures
         double[] wavemap = new double[data.length];
-        ArrayList<int[]> wavefront = new ArrayList<int[]>();
-        ArrayList<int[]> newWavefront = new ArrayList<int[]>();
+        IntMaxHeap wavefront = new IntMaxHeap();
 
         // Initialize wavefront and wavemap costs
-        wavefront.add(new int[] {tx, ty, 0});
         for (int y=0; y < height; y++)
+        {
             for (int x=0; x < width; x++)
-                wavemap[y*width+x] = Double.MAX_VALUE;
+            {
+                double cost = ((int) data[y*width+x]) & 0xFF;
+                if (cost > maxCost)
+                    wavemap[y*width+x] = Double.MAX_VALUE;
+                else
+                    wavemap[y*width+x] = -1;
+            }
+        }
 
         // get cost for goal
         // min cost in 1
-        wavemap[ty*width + tx] = ((int) data[ty*width + tx]) & 0xFF;
-        wavemap[ty*width + tx] = Math.max(wavemap[ty*width + tx], 1);
-        if(print)
-            System.out.println("Goal: ("+tx+","+ty+"): "+wavemap[ty*width+tx]);
+        wavemap[ty*width + tx] = Math.max(((int) data[ty*width + tx]) & 0xFF, 1);
+        int c = c = ((tx & 0xFFFF) << 16) | (ty & 0xFFFF);
+        wavefront.add(c, -wavemap[ty*width+tx]);
 
         // compute wavefront
-        int skipped = 0;
-        int total = 0;
         int step = 0;
-        wavefrontLoop: while (!wavefront.isEmpty())
+
+      computeFront:
+        while (wavefront.size() > 0)
         {
-            newWavefront.clear();
-            if(print)
-                System.out.println("New front");
+            IntHeapPair ihp = wavefront.removeMaxPair();
+            int nx = (ihp.o >> 16) & 0xFFFF;
+            int ny =  ihp.o        & 0xFFFF;
+            int n = ny*width + nx;
 
-            for (int i=0; i < wavefront.size(); i++)
+            for (int[] neighbor : neighbors)
             {
-                int node[] = wavefront.get(i);
-                int nx = node[0];
-                int ny = node[1];
-                double oldCost = (double) node[2] / 1000.0;
-                int n = ny*width + nx;
+                int npx = nx + neighbor[0];
+                int npy = ny + neighbor[1];
+                int np = npy*width+npx;
 
-                if(print)
-                {
-                    System.out.printf("Expanding (%2d,%2d): was: %8.3f is: %8.3f",nx,ny,oldCost,wavemap[n]);
-                    if(oldCost > wavemap[n])
-                        System.out.println(" do skip   ");
-                    else
-                        System.out.println(" don't skip");
-                }
+                // skip if out of bounds
+                if (npx >= width  || npx < 0 ||
+                    npy >= height || npy < 0)
+                    continue;
 
+                // was it already set?
+                if (wavemap[np] > 0)
+                    continue;
 
-                total++;
-                if (oldCost > wavemap[n])
-                {
-                    skipped++;
-                    if (doSkip)
-                        continue;
-                }
+                // Get costs for n and n'
+                // note that we already ensured that we are not dealing
+                // with infinite costs when we initialized some nodes in
+                // the wavemap to Double.MAX_VALUE, above
+                double nCost  = Math.max(1, ((int) data[n])  & 0xFF);
+                double npCost = Math.max(1, ((int) data[np]) & 0xFF);
 
-                for (int[] neighbor : neighbors)
-                {
-                    int npx = nx + neighbor[0];
-                    int npy = ny + neighbor[1];
-                    int np = npy*width+npx;
+                // Clearly we have 1) a valid node which 2) has not been 
+                // assigned a wavefront cost and  does not exceed the max
+                // cost threshold for its terrain cost.  We must now compute
+                // the wavefront value
 
-                    // skip if out of bounds
-                    if (npx >= width  || npx < 0 ||
-                        npy >= height || npy < 0)
-                        continue;
+                // Transition cost is distance between cells (due to diagonals)
+                double transition = magnitude(neighbor);
+                // newval is the minimum possible cost for this node because
+                // we are only expanding from the min heap
+                double newval = wavemap[n] + transition*(npCost + nCost)/2.0;
+                wavemap[np] = newval;
+                c = c = ((npx & 0xFFFF) << 16) | (npy & 0xFFFF);
 
-                    // skip if too costly to plan on n'
-                    // minimum cell cost is 1
-                    double curCost = Math.max(1, ((int) data[n])  & 0xFF);
-                    double newCost = Math.max(1, ((int) data[np]) & 0xFF);
-                    if (newCost > maxCost)
-                        continue;
-
-                    // Compute new cost and add to wavefront if new minimum
-                    // newval is wavefront(n) + cost(n') + 1 to ensure that
-                    // cost increases with distance in the presence of no 
-                    // potential in the cost map
-                    double oldval = wavemap[np];
-
-                    // Transition cost is distance between cells (due to diagonals)
-                    double transition = magnitude(neighbor);
-                    double newval = wavemap[n] + transition*(newCost+curCost)/2.0;
-
-                    if(print)
-                    {
-                        System.out.printf("   neighbor (%2d,%2d)",neighbor[0],neighbor[1]);
-                        System.out.printf(" (%3d,%3d)",npx,npy);
-                        System.out.printf(" curCost: %3.0f newCost: %3.0f ",curCost, newCost);
-
-                        if(oldval == Double.MAX_VALUE)
-                            System.out.printf("oldval:  inf    ");
-                        else
-                            System.out.printf("oldval: %8.3f",oldval);
-
-                        System.out.printf(" newval: %8.3f updated: ",newval);
-                    }
-
-                    if (newval < oldval)
-                    {
-                        if(print)
-                            System.out.println("True");
-                        wavemap[np] = newval;
-                        newWavefront.add(new int[] {npx, npy, (int) Math.floor(newval*1000)});
-                    }
-                    else
-                    {
-                        if(print)
-                            System.out.println("False");
-                    }
-                }
-                if(step++ >= steps)
-                    break wavefrontLoop;
+                // store the negative wavefront cost because we're implementing
+                // a min heap with a max heap class
+                wavefront.add(c, -newval);
             }
-
-            wavefront.clear();
-            wavefront.addAll(newWavefront);
+            if (step++ >= steps)
+                break computeFront;
         }
-
-        System.out.println("Skipped "+skipped+" expansions. "+total+" expansions in total.");
 
         return wavemap;
     }
