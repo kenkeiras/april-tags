@@ -1101,10 +1101,18 @@ public final class GridMap
     public double[] getWavefront(double[] pose, double[] target, 
                                  int[][] neighbors, int maxCost)
     {
-        return getWavefront(pose, target, neighbors, maxCost, Integer.MAX_VALUE);
+        // terminate upon connecting goal to pose
+        int steps = 0;
+        return getWavefront(pose, target, neighbors, maxCost, steps);
     }
 
-    /** Calculate wavefront from cost map to a finite number of steps
+    /** Calculate wavefront map from cost map to a finite number of steps.
+      * @param pose      - Robot pose.  Required to be within gridmap
+      * @param target    - Goal for wavefront.  Also must be in gridmap range
+      * @param neighbors - List of options for cell neighbors (e.g. [0, +1])
+      * @param maxCost   - Maximum cost used to compute driveable terrain.
+      * @param steps     - Number of nodes to expand until quitting
+      *                    Set steps < 1 to run until reaching "pose"
       **/
     public double[] getWavefront(double[] pose, double[] target, 
                                  int[][] neighbors, int maxCost, int steps)
@@ -1189,8 +1197,14 @@ public final class GridMap
                 // store the negative wavefront cost because we're implementing
                 // a min heap with a max heap class
                 wavefront.add(c, -newval);
+
+                // Stop upon reaching the robot?
+                if (steps < 1 && npx == px && npy == py)
+                    break computeFront;
             }
-            if (step++ >= steps)
+
+            // Stop if we've exceeded the number of steps requested
+            if (steps >= 1 && step++ >= steps)
                 break computeFront;
         }
 
