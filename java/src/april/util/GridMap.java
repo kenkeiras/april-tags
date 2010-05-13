@@ -387,7 +387,7 @@ public final class GridMap
     /** Get the maximum x and y coordinates **/
     public double[] getXY1()
     {
-        return new double[] { x0 + sizex, y0 + sizey };
+        return new double[] { x0 + width*metersPerPixel, y0 + height*metersPerPixel };
     }
 
     public int getValue(double x, double y)
@@ -1014,4 +1014,31 @@ public final class GridMap
         return scores;
     }
 
+    public void filterFactoredCenteredMax(float fhoriz[], float fvert[])
+    {
+        byte r[] = new byte[data.length];
+
+        // do horizontal
+        for (int y = 0; y < height; y++) {
+            april.image.SigProc.convolveSymmetricCenteredMax(data, y*width, width, fhoriz, r, y*width);
+        }
+
+        // do vertical
+        byte tmp[] = new byte[height];  // the column before convolution
+        byte tmp2[] = new byte[height]; // the column after convolution.
+
+        for (int x = 0; x < width; x++) {
+
+            // copy the column out for locality.
+            for (int y = 0; y < height; y++)
+                tmp[y] = r[y*width + x];
+
+            SigProc.convolveSymmetricCenteredMax(tmp, 0, height, fvert, tmp2, 0);
+
+            for (int y = 0; y < height; y++)
+                r[y*width + x] = tmp2[y];
+        }
+
+        this.data = r;
+    }
 }
