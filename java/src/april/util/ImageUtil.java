@@ -56,8 +56,12 @@ public class ImageUtil
     {
         BufferedImage out = new BufferedImage(newwidth, newheight, in.getType());
         Graphics2D g = out.createGraphics();
-        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
-                           RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        
+        final Object interp = (newwidth < in.getWidth() && newheight < in.getHeight()) ?
+                    RenderingHints.VALUE_INTERPOLATION_BILINEAR :
+                    RenderingHints.VALUE_INTERPOLATION_BICUBIC;
+        
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, interp);
         g.drawImage(in, 0, 0, out.getWidth(), out.getHeight(), null);
         g.dispose();
         return out;
