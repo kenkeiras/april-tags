@@ -88,6 +88,69 @@ public class SigProc
         }
     }
 
+    public static final void convolveCenteredDisc2DMax(float a[], int width, int height, int radius, float r[])
+    {
+        convolveCenteredDisc2DMax(a, width, height, radius, r, Float.MAX_VALUE);
+    }
+
+    public static final void convolveCenteredDisc2DMax(float a[], int width, int height, int radius, float r[], float maxVal)
+    {
+        // get indices
+        int len = 2*radius+1;
+        int valid[]   = new int[len*len];
+        int temp_ks[] = new int[valid.length];
+        int temp_ls[] = new int[valid.length];
+
+        int count = 0;
+        for (int y=0; y < len; y++) {
+            for (int x=0; x < len; x++) {
+                int i = y*len + x;
+                temp_ks[i] = y-radius;
+                temp_ls[i] = x-radius;
+                if ((x-radius)*(x-radius) + (y-radius)*(y-radius) <= radius*radius) {
+                    valid[i] = 1;
+                    count++;
+                }
+            }
+        }
+
+        int ks[] = new int[count];
+        int ls[] = new int[count];
+        int idx = 0;
+        for (int i=0; i < valid.length; i++) {
+            if (valid[i] == 1) {
+                ks[idx]   = temp_ks[i];
+                ls[idx++] = temp_ls[i];
+            }
+        }
+
+        // convolve
+        for (int y=0; y < height; y++) {
+          perPixel:
+            for (int x=0; x < width; x++) {
+                double acc = 0;
+
+                for (int i=0; i < count; i++) {
+                    int k = ks[i];
+                    int l = ls[i];
+                    int n = (y+k)*width + (x+l);
+
+                    if (y+k < 0 || y+k >= height || x+l < 0 || x+l >= width)
+                        continue;
+
+                    if (a[n] >= maxVal) {
+                        r[y*width + x] = a[n];
+                        continue perPixel;
+                    }
+
+                    acc = Math.max(acc, a[n]);
+                }
+
+                r[y*width + x] = (float) acc;
+            }
+        }
+    }
+
     static final byte clampByte(double v)
     {
         if (v < 0)
