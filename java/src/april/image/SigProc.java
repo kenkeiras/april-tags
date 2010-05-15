@@ -124,6 +124,13 @@ public class SigProc
             }
         }
 
+        // TODO
+        // * fix redundent bounds checking
+        // * port to ints
+        // * port to C
+        // * block unrolling
+        // *** reordering (put offset loop outside for quick memory traversal)
+
         // convolve
         for (int y=0; y < height; y++) {
           perPixel:
