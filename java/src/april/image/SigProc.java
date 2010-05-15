@@ -129,31 +129,24 @@ public class SigProc
         // * port to ints
         // * port to C
         // * block unrolling
-        // *** reordering (put offset loop outside for quick memory traversal)
 
         // convolve
-        for (int y=0; y < height; y++) {
-          perPixel:
-            for (int x=0; x < width; x++) {
-                double acc = 0;
+        for (int i=0; i < count; i++) {
+            int k = ks[i];
+            int l = ls[i];
 
-                for (int i=0; i < count; i++) {
-                    int k = ks[i];
-                    int l = ls[i];
-                    int n = (y+k)*width + (x+l);
+            int ymin = Math.max(0, 0-k);
+            int ymax = Math.min(height, height - k);
+            int xmin = Math.max(0, 0-l);
+            int xmax = Math.min(width, width - l);
 
-                    if (y+k < 0 || y+k >= height || x+l < 0 || x+l >= width)
-                        continue;
-
-                    if (a[n] >= maxVal) {
-                        r[y*width + x] = a[n];
-                        continue perPixel;
-                    }
-
-                    acc = Math.max(acc, a[n]);
+            for (int y = ymin; y < ymax; y++) {
+                int n = (y+k)*width + (xmin+l);
+                int o = y*width + xmin;
+                for (int x = xmin; x < xmax; x++) {
+                    r[o] = (float) Math.max(r[o], a[n++]);
+                    o++;
                 }
-
-                r[y*width + x] = (float) acc;
             }
         }
     }
