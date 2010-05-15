@@ -88,64 +88,53 @@ public class SigProc
         }
     }
 
-    public static final void convolveCenteredDisc2DMax(float a[], int width, int height, int radius, float r[])
+    public static final void convolveCenteredDisc2DMax(int a[], int width, int height, int radius, int r[])
     {
-        convolveCenteredDisc2DMax(a, width, height, radius, r, Float.MAX_VALUE);
-    }
+        for (int k=-radius; k <= radius; k++) {
+            for (int l=-radius; l <= radius; l++) {
+                // is it within the radius?
+                if (k*k + l*l > radius*radius)
+                    continue;
+                
+                int ymin = Math.max(0, 0-k);
+                int ymax = Math.min(height, height - k);
+                int xmin = Math.max(0, 0-l);
+                int xmax = Math.min(width, width - l);
 
-    public static final void convolveCenteredDisc2DMax(float a[], int width, int height, int radius, float r[], float maxVal)
-    {
-        // get indices
-        int len = 2*radius+1;
-        int valid[]   = new int[len*len];
-        int temp_ks[] = new int[valid.length];
-        int temp_ls[] = new int[valid.length];
+                for (int y = ymin; y < ymax; y++) {
+                    int n = (y+k)*width + (xmin+l);
+                    int o = y*width + xmin;
 
-        int count = 0;
-        for (int y=0; y < len; y++) {
-            for (int x=0; x < len; x++) {
-                int i = y*len + x;
-                temp_ks[i] = y-radius;
-                temp_ls[i] = x-radius;
-                if ((x-radius)*(x-radius) + (y-radius)*(y-radius) <= radius*radius) {
-                    valid[i] = 1;
-                    count++;
+                    for (int x = xmin; x < xmax; x++) {
+                        r[o] = (int) Math.max(r[o], a[n++]);
+                        o++;
+                    }
                 }
             }
         }
+    }
 
-        int ks[] = new int[count];
-        int ls[] = new int[count];
-        int idx = 0;
-        for (int i=0; i < valid.length; i++) {
-            if (valid[i] == 1) {
-                ks[idx]   = temp_ks[i];
-                ls[idx++] = temp_ls[i];
-            }
-        }
+    public static final void convolveCenteredDisc2DMax(float a[], int width, int height, int radius, float r[])
+    {
+        for (int k=-radius; k <= radius; k++) {
+            for (int l=-radius; l <= radius; l++) {
+                // is it within the radius?
+                if (k*k + l*l > radius*radius)
+                    continue;
+                
+                int ymin = Math.max(0, 0-k);
+                int ymax = Math.min(height, height - k);
+                int xmin = Math.max(0, 0-l);
+                int xmax = Math.min(width, width - l);
 
-        // TODO
-        // * fix redundent bounds checking
-        // * port to ints
-        // * port to C
-        // * block unrolling
+                for (int y = ymin; y < ymax; y++) {
+                    int n = (y+k)*width + (xmin+l);
+                    int o = y*width + xmin;
 
-        // convolve
-        for (int i=0; i < count; i++) {
-            int k = ks[i];
-            int l = ls[i];
-
-            int ymin = Math.max(0, 0-k);
-            int ymax = Math.min(height, height - k);
-            int xmin = Math.max(0, 0-l);
-            int xmax = Math.min(width, width - l);
-
-            for (int y = ymin; y < ymax; y++) {
-                int n = (y+k)*width + (xmin+l);
-                int o = y*width + xmin;
-                for (int x = xmin; x < xmax; x++) {
-                    r[o] = (float) Math.max(r[o], a[n++]);
-                    o++;
+                    for (int x = xmin; x < xmax; x++) {
+                        r[o] = (float) Math.max(r[o], a[n++]);
+                        o++;
+                    }
                 }
             }
         }
