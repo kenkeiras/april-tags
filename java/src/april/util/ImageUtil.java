@@ -55,10 +55,19 @@ public class ImageUtil
     public static BufferedImage scale(BufferedImage in, int newwidth, int newheight)
     {
         BufferedImage out = new BufferedImage(newwidth, newheight, in.getType());
-        Graphics g = out.getGraphics();
+        Graphics2D g = out.createGraphics();
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+                           RenderingHints.VALUE_INTERPOLATION_BICUBIC);
         g.drawImage(in, 0, 0, out.getWidth(), out.getHeight(), null);
         g.dispose();
         return out;
+    }
+
+    public static BufferedImage scale(BufferedImage in, int newwidth)
+    {
+        int newheight = in.getHeight()*newwidth / in.getWidth();
+
+        return scale(in, newwidth, newheight);
     }
 
 }
