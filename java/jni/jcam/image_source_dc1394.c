@@ -652,7 +652,26 @@ image_source_t *image_source_dc1394_open(url_parser_t *urlp)
     const char *location = url_parser_get_location(urlp);
 
     int64_t guid = 0;
-    if (strto64(location, strlen(location), &guid)) {
+
+    if (strlen(location) == 0) {
+        // use the first dc1394 camera in the system
+        dc1394_t *dc1394 = dc1394_new();
+        if (dc1394 == NULL)
+            return NULL;
+
+        dc1394camera_list_t *list;
+
+        if (dc1394_camera_enumerate(dc1394, &list)) {
+            dc1394_free(dc1394);
+            return NULL;
+        }
+
+        if (list->num > 0) {
+            guid = list->ids[0].guid;
+        }
+
+        dc1394_camera_free_list(list);
+    } else if (strto64(location, strlen(location), &guid)) {
         printf("image_source_open: dc1394 guid '%s' is not a valid integer.\n", location);
         return NULL;
     }
