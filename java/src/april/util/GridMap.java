@@ -28,12 +28,12 @@ public final class GridMap
     {
     }
 
-    /** 
+    /**
      * Create a new grid map. The size will be adjusted slightly so
      * that the gridmap contains an integer number of pixels of
      * exactly metersPerPixel dimensions. When recentering the
      * gridmap, the value in defaultFill will be used.
-     * 
+     *
      * @param cx                Center of map (x)
      * @param cy                Center of map (y)
      * @param sizex             Map size in meters (x)
@@ -1028,7 +1028,7 @@ public final class GridMap
       *                  connected nodes
       * @param maxCost - Maximum cost for which a node can be considered valid
       **/
-    public byte[] getConnectedLessThan(double[] xy, int maxCost)
+    public byte[] getConnectedWithin(double[] xy, int maxCost)
     {
         int px = (int) Math.floor((xy[0] - x0) * pixelsPerMeter);
         int py = (int) Math.floor((xy[1] - y0) * pixelsPerMeter);
@@ -1040,7 +1040,7 @@ public final class GridMap
         // . o x
         // . x x
 
-        // To avoid checking bounds per neighbor, we adjust the 
+        // To avoid checking bounds per neighbor, we adjust the
         // bounds of x and y
         for (int y=1; y < height-1; y++)
         {
