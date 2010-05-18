@@ -766,6 +766,37 @@ public final class LinAlg
         return r;
     }
 
+    /** Interpolate quaternions from q0 (w=0) to q1 (w=1). **/
+    public static double[] slerp(double q0[], double q1[], double w)
+    {
+        double dot = LinAlg.dotProduct(q0, q1);
+
+        if (dot < 0) {
+            // flip sign on one of them so we don't spin the "wrong
+            // way" around. This doesn't change the rotation that the
+            // quaternion represents.
+            dot = -dot;
+            q1 = LinAlg.scale(q1, -1);
+        }
+
+        if (false && dot > 0.95) {
+            // just do a linear interpolation ... why? (SLERP should still work)
+            return LinAlg.add(LinAlg.scale(q0, 1 - w),
+                              LinAlg.scale(q1, w));
+        }
+
+        // normal slerp interpolation.
+        double angle = Math.acos(dot);
+
+        // they're the same... don't blow up with divide by zero.
+        if (angle == 0)
+            return LinAlg.copy(q0);
+
+        // SLERP.
+        return LinAlg.normalize(LinAlg.add(LinAlg.scale(q0, Math.sin(angle*(1-w))),
+                                           LinAlg.scale(q1, Math.sin(angle*w))));
+    }
+
     /** Rotate the vector v by the quaternion q **/
     public static double[] quatRotate(double q[], double v[])
     {
