@@ -131,6 +131,7 @@ public class VisDataGrid implements VisObject
 
                 VisUtil.setColor(gl, c);
 
+                // TODO: Use only GL_LINES for performance
                 gl.glBegin (GL.GL_LINE_LOOP);
                 gl.glVertex3d (x,    y,    0);
                 gl.glVertex3d (x+dx, y,    0);
