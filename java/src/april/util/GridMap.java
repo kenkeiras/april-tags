@@ -13,7 +13,7 @@ import april.image.*;
 **/
 public final class GridMap
 {
-    double cx, cy; // center x, y
+    public double cx, cy; // center x, y
     public double x0, y0; // minimum x, y (lower-left corner of lower-left pixel);
     public double sizex, sizey;  // size in meters
     public double metersPerPixel;
