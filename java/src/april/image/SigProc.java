@@ -88,6 +88,58 @@ public class SigProc
         }
     }
 
+    public static final void convolveCenteredDisc2DMax(int a[], int width, int height, int radius, int r[])
+    {
+        for (int k=-radius; k <= radius; k++) {
+            for (int l=-radius; l <= radius; l++) {
+                // is it within the radius?
+                if (k*k + l*l > radius*radius)
+                    continue;
+                
+                int ymin = Math.max(0, 0-k);
+                int ymax = Math.min(height, height - k);
+                int xmin = Math.max(0, 0-l);
+                int xmax = Math.min(width, width - l);
+
+                for (int y = ymin; y < ymax; y++) {
+                    int n = (y+k)*width + (xmin+l);
+                    int o = y*width + xmin;
+
+                    for (int x = xmin; x < xmax; x++) {
+                        r[o] = (int) Math.max(r[o], a[n++]);
+                        o++;
+                    }
+                }
+            }
+        }
+    }
+
+    public static final void convolveCenteredDisc2DMax(float a[], int width, int height, int radius, float r[])
+    {
+        for (int k=-radius; k <= radius; k++) {
+            for (int l=-radius; l <= radius; l++) {
+                // is it within the radius?
+                if (k*k + l*l > radius*radius)
+                    continue;
+                
+                int ymin = Math.max(0, 0-k);
+                int ymax = Math.min(height, height - k);
+                int xmin = Math.max(0, 0-l);
+                int xmax = Math.min(width, width - l);
+
+                for (int y = ymin; y < ymax; y++) {
+                    int n = (y+k)*width + (xmin+l);
+                    int o = y*width + xmin;
+
+                    for (int x = xmin; x < xmax; x++) {
+                        r[o] = (float) Math.max(r[o], a[n++]);
+                        o++;
+                    }
+                }
+            }
+        }
+    }
+
     static final byte clampByte(double v)
     {
         if (v < 0)
