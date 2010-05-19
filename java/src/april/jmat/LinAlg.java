@@ -1739,6 +1739,23 @@ public final class LinAlg
         return R;
     }
 
+    /** Create byte vector from 2D byte array **/
+    public static byte[] unwrap(byte m[][])
+    {
+        int height = m.length;
+        if (height <= 0)
+            return null;
+
+        int width = m[0].length;
+
+        byte[] res = new byte[height*width];
+        for (int y=0; y < height; y++)
+            for (int x=0; x < width; x++)
+                res[y*width + x] = m[y][x];
+
+        return res;
+    }
+
     public static double[][] diag(double d[])
     {
         double M[][] = new double[d.length][d.length];
