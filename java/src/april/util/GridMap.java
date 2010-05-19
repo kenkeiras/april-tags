@@ -13,7 +13,7 @@ import april.image.*;
 **/
 public final class GridMap
 {
-    double cx, cy; // center x, y
+    public double cx, cy; // center x, y
     public double x0, y0; // minimum x, y (lower-left corner of lower-left pixel);
     public double sizex, sizey;  // size in meters
     public double metersPerPixel;
@@ -28,10 +28,19 @@ public final class GridMap
     {
     }
 
-    /** Create a new grid map. The size will be adjusted slightly so
+    /**
+     * Create a new grid map. The size will be adjusted slightly so
      * that the gridmap contains an integer number of pixels of
      * exactly metersPerPixel dimensions. When recentering the
      * gridmap, the value in defaultFill will be used.
+     *
+     * @param cx                Center of map (x)
+     * @param cy                Center of map (y)
+     * @param sizex             Map size in meters (x)
+     * @param sizey             Map size in meters (y)
+     * @param metersPerPixel    Exact dimension of each pixel in map
+     * @param defaultFill       Default fill value for grid
+     * @return                  GridMap class
      **/
     public GridMap(double cx, double cy, double sizex, double sizey, double metersPerPixel,
                    int defaultFill)
@@ -708,11 +717,11 @@ public final class GridMap
         // solve expression for distance, setting v = 1. Then round 'd' up.
         double maxDistance = cliffDistMeters + Math.sqrt(Math.log(255*scale)/expDecayMSq);
 
-        int length = (int) (maxDistance * pixelsPerMeter + 1);
+        int length = (int) (maxDistance * lut.pixelsPerMeter + 1);
 
         lut.lut = new int[length];
         for (int i = 0; i < length; i++) {
-            double d = Math.max(0, i * metersPerPixel - cliffDistMeters);
+            double d = Math.max(0, i * lut.metersPerPixel - cliffDistMeters);
             lut.lut[i] = (int) (255*scale*Math.exp(-d*d*expDecayMSq));
         }
 
@@ -1012,6 +1021,74 @@ public final class GridMap
         }
 
         return scores;
+    }
+
+    /** Get 8-connected nodes around point xy with cost under maxCost
+      * @param xy      - Continuous-domain point around which to find
+      *                  connected nodes
+      * @param maxCost - Maximum cost for which a node can be considered valid
+      **/
+    public byte[] getConnectedWithin(double[] xy, int maxCost)
+    {
+        int px = (int) Math.floor((xy[0] - x0) * pixelsPerMeter);
+        int py = (int) Math.floor((xy[1] - y0) * pixelsPerMeter);
+
+        UnionFindSimple uf = new UnionFindSimple(data.length);
+
+        // We connect the following points around pixel 'o':
+        // . . x
+        // . o x
+        // . x x
+
+        // To avoid checking bounds per neighbor, we adjust the
+        // bounds of x and y
+        for (int y=1; y < height-1; y++)
+        {
+            for (int x=0; x < width-1; x++)
+            {
+                int a = y*width + x;
+
+                if ((((int) data[a]) & 0xFF) > maxCost)
+                    continue;
+
+                int b;
+                // x+1, y-1
+                b = (y-1)*width + (x+1);
+                if ((((int) data[b]) & 0xFF) <= maxCost)
+                    uf.connectNodes(uf.getRepresentative(a),
+                                    uf.getRepresentative(b));
+
+                // x+1, y
+                b = (y)*width + (x+1);
+                if ((((int) data[b]) & 0xFF) <= maxCost)
+                    uf.connectNodes(uf.getRepresentative(a),
+                                    uf.getRepresentative(b));
+
+                // x+1, y+1
+                b = (y+1)*width + (x+1);
+                if ((((int) data[b]) & 0xFF) <= maxCost)
+                    uf.connectNodes(uf.getRepresentative(a),
+                                    uf.getRepresentative(b));
+
+                // x  , y+1
+                b = (y+1)*width + (x);
+                if ((((int) data[b]) & 0xFF) <= maxCost)
+                    uf.connectNodes(uf.getRepresentative(a),
+                                    uf.getRepresentative(b));
+            }
+        }
+
+        // get id of union around robot
+        int cid = uf.getRepresentative(py*width + px);
+
+        byte[] res = new byte[data.length];
+        for (int i=0; i < data.length; i++)
+        {
+            if (uf.getRepresentative(i) == cid)
+                res[i] = (byte) 0x1;
+        }
+
+        return res;
     }
 
     public void filterFactoredCenteredMax(float fhoriz[], float fvert[])
