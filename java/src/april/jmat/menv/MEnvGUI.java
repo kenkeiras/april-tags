@@ -11,6 +11,7 @@ import javax.swing.text.*;
 import javax.swing.event.*;
 
 import april.jmat.*;
+import april.util.*;
 
 /*
   function fibb(n) { if (n<2) return 1; else return fibb(n-1)+fibb(n-2); }

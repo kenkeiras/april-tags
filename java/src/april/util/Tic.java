@@ -1,4 +1,4 @@
-package april.jmat;
+package april.util;
 
 /** Execution time measurement. **/
 public class Tic

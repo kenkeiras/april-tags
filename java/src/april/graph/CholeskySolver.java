@@ -2,6 +2,7 @@ package april.graph;
 
 import april.jmat.*;
 import april.jmat.ordering.*;
+import april.util.*;
 
 public class CholeskySolver implements GraphSolver
 {
