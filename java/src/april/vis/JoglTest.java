@@ -14,6 +14,8 @@ import java.util.jar.JarFile;
 import javax.media.opengl.*;
 import javax.media.opengl.glu.*;
 
+import april.util.*;
+
 /** Basic JOGL functionality test. **/
 public class JoglTest
 {
@@ -50,7 +52,7 @@ public class JoglTest
         caps.setSampleBuffers(true);
         caps.setNumSamples(4);
 
-        if (VisUtil.getProperty("vis.glcanvas", true))
+        if (EnvUtil.getProperty("vis.glcanvas", true))
             panel = new GLCanvas(caps);
         else
             panel = new GLJPanel(caps);

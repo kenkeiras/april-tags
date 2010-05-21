@@ -10,8 +10,8 @@ import april.util.*;
  **/
 public class Config
 {
-    HashMap<String, String[]> keys = new HashMap<String, String[]>();
-    HashMap<String, String[]> abstractKeys = new HashMap<String, String[]>();
+    HashMap<String, String[]> keys = new VerboseHashMap<String, String[]>();
+    HashMap<String, String[]> abstractKeys = new VerboseHashMap<String, String[]>();
 
     String       prefix; // either empty or has a trailing "." so that
                          // prefix+key is always well-formed
@@ -20,11 +20,37 @@ public class Config
 
     Config       root;   // a config whose prefix is empty ("")
 
+    public boolean verbose = EnvUtil.getProperty("april.config.debug", false);
+
     public Config()
     {
         this.prefix = "";
         this.basePath = "";
         this.root = this;
+    }
+
+    class VerboseHashMap<K,V> extends HashMap<K,V>
+    {
+        public V get(Object k)
+        {
+            V v = super.get(k);
+            if (verbose) {
+                StringBuffer sb = new StringBuffer();
+                if (v == null)
+                    sb.append("null");
+                else {
+                    if (v != null) {
+                        String vs[] = (String[]) v;
+                        for (String s : vs) {
+                            sb.append(s+" ");
+                        }
+                    }
+                }
+
+                System.out.printf("Config: %s = %s\n", k, sb.toString());
+            }
+            return v;
+        }
     }
 
     public Config getChild(String childprefix)
