@@ -21,6 +21,9 @@ public class TagTest implements ParameterListener
     VisWorld  vw = new VisWorld();
     VisCanvas vc = new VisCanvas(vw);
 
+    VisWorld vw2 = new VisWorld();
+    VisCanvas vc2 = new VisCanvas(vw2);
+
     ImageSource is;
 
     ParameterGUI pg;
@@ -84,15 +87,24 @@ public class TagTest implements ParameterListener
 
         jf = new JFrame("TagTest");
         jf.setLayout(new BorderLayout());
-        jf.add(vc, BorderLayout.CENTER);
+
+        JSplitPane jsp = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, vc, vc2);
+        jsp.setDividerLocation(0.5);
+        jsp.setResizeWeight(0.5);
+
+        jf.add(jsp, BorderLayout.CENTER);
         jf.add(pg, BorderLayout.SOUTH);
 
+        vc2.getViewManager().viewGoal.lookAt(new double[] {0, -2, 1.65},
+                                             new double[] {0, 2, 0},
+                                             new double[] {0, .37, 0.927});
         jf.setSize(800,600);
         jf.setVisible(true);
 
         vc.getViewManager().viewGoal.fit2D(new double[] {0,0}, new double[] { 752, 480});
         new RunThread().start();
 
+        vw2.getBuffer("grid").addFront(new VisGrid());
         pg.addListener(this);
     }
 
@@ -115,11 +127,15 @@ public class TagTest implements ParameterListener
             VisWorld.Buffer vbThetas = vw.getBuffer("thetas");
             VisWorld.Buffer vbMag = vw.getBuffer("mag");
             VisWorld.Buffer vbDetections = vw.getBuffer("detections");
+            VisWorld.Buffer vbClock = vw.getBuffer("clock");
+
+            VisWorld.Buffer vbTag3D = vw2.getBuffer("taglocs");
 
             detector.debugSegments  = vw.getBuffer("segments");
             detector.debugQuads     = vw.getBuffer("quads");
             detector.debugSamples   = vw.getBuffer("samples");
             detector.debugLabels    = vw.getBuffer("labels");
+
 
             while (true) {
                 byte buf[] = is.getFrame();
@@ -162,7 +178,11 @@ public class TagTest implements ParameterListener
                     vbMag.addBuffered(new VisLighting(false, new VisImage(detector.debugMag)));
                 vbMag.switchBuffer();
 
-                System.out.printf("***************************** %8.2f ms\n", dt*1000);
+                vbClock.addBuffered(new VisText(VisText.ANCHOR.BOTTOM_RIGHT,
+                                                VisText.JUSTIFICATION.RIGHT,
+                                                String.format("<<blue>>%8.2f ms", dt*1000)));
+                vbClock.switchBuffer();
+
                 for (TagDetection d : detections) {
                     double p0[] = d.interpolate(-1,-1);
                     double p1[] = d.interpolate(1,-1);
@@ -177,17 +197,26 @@ public class TagTest implements ParameterListener
                                                           new VisData(new VisDataLineStyle(Color.green, 4), p0, p1), // x axis
                                                           new VisData(new VisDataLineStyle(Color.red, 4), p0, p3))); // y axis
 
-                    System.out.printf("id %3d err %3d\n", d.id, d.hammingDistance);
-
+                    // You need to adjust the tag size (measured
+                    // across the whole tag in meters and the focal
+                    // length.
                     double tagsize_m = 0.216;
                     double f = 485.6;
                     double aspect = 752.0 / 480.0;
                     double M[][] = CameraUtil.homographyToPose(f, f, tagsize_m, d.homography);
-                    LinAlg.print(M);
 
-                    double rpy[] = LinAlg.matrixToRollPitchYaw(M);
-                    LinAlg.print(rpy);
+                    vbTag3D.addBuffered(new VisChain(LinAlg.rotateX(Math.PI/2),
+                                                     M,
+                                                     new VisImage(new VisTexture(tf.makeImage(d.id)),
+                                                                  new double[] {-tagsize_m/2, -tagsize_m/2},
+                                                                  new double[] {tagsize_m/2, tagsize_m/2},
+                                                                  true)));
                 }
+
+                vbTag3D.addBuffered(new VisChain(LinAlg.rotateX(Math.PI/2),
+                                                 new VisCamera()));
+                vbTag3D.switchBuffer();
+
                 vbDetections.switchBuffer();
             }
         }
