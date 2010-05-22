@@ -708,7 +708,7 @@ public final class GridMap
     public LUT makeExponentialLUT(double scale, double cliffDistMeters, double expDecayMSq)
     {
         LUT lut = new LUT();
-        lut.metersPerPixel = metersPerPixel / 8.0;
+        lut.metersPerPixel = metersPerPixel;
         lut.pixelsPerMeter = 1.0 / lut.metersPerPixel;
 
         assert(expDecayMSq > 0);

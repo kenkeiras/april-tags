@@ -22,11 +22,23 @@ public class ScanMatcher
     ContourExtractor contourExtractor;
     MultiResolutionScanMatcher matcher;
 
-    double metersPerPixel = 0.025;
-    double thetaResolution = Math.toRadians(1);
+    double metersPerPixel = 0.05;
     boolean useOdometry = true;
     double rangeCovariance = 0.1;
     int    maxScanHistory = 5;
+    int    decimate = 1; // throw away all but every Nth scan. (1 = keep all).
+
+    double search_x_m = 0.2;
+    double search_y_m = 0.2;
+    double search_theta_rad = Math.toRadians(15);
+    double search_theta_res_rad = Math.toRadians(1);
+
+    double pose_dist_thresh_m = 0.4;
+    double pose_theta_thresh_rad = Math.toRadians(25);
+
+    int old_scan_decay = 5; // in units of gray-scale values per age of scan kept.
+
+    int    decimateCounter;
 
     ArrayList<Scan> scans = new ArrayList<Scan>();
 
@@ -55,11 +67,20 @@ public class ScanMatcher
 
         this.metersPerPixel = config.getDouble("meters_per_pixel", metersPerPixel);
         this.useOdometry = config.getBoolean("use_odometry", useOdometry);
-        this.thetaResolution = Math.toRadians(config.getDouble("theta_search_resolution_deg", Math.toDegrees(thetaResolution)));
-        this.rangeCovariance = config.getDouble("range_covariance", rangeCovariance);
-        this.maxScanHistory = config.getInt("max_scan_history", maxScanHistory);
 
-        matcher = new MultiResolutionScanMatcher(config.getChild("matcher"));
+        this.rangeCovariance = config.getDouble("range_covariance", rangeCovariance); // used for rendering
+        this.maxScanHistory = config.getInt("max_scan_history", maxScanHistory);
+        this.decimate = config.getInt("decimate", decimate);
+        this.search_x_m = config.getDouble("search_x_m", search_x_m);
+        this.search_y_m = config.getDouble("search_y_m", search_y_m);
+        this.search_theta_rad = Math.toRadians(config.getDouble("search_theta_deg", Math.toDegrees(search_theta_rad)));
+        this.search_theta_res_rad = Math.toRadians(config.getDouble("search_theta_res_deg", Math.toDegrees(search_theta_res_rad)));
+        this.old_scan_decay = config.getInt("old_scan_decay", old_scan_decay);
+
+        this.pose_dist_thresh_m = config.getDouble("pose_dist_thresh_m", pose_dist_thresh_m);
+        this.pose_theta_thresh_rad = Math.toRadians(config.getDouble("pose_dist_theta_thresh_deg", Math.toDegrees(pose_theta_thresh_rad)));
+
+        matcher = new MultiResolutionScanMatcher(config);
 
         gm = new GridMap(0, 0, 50, 50, metersPerPixel, 0);
     }
@@ -112,19 +133,12 @@ public class ScanMatcher
             return;
         }
 
-        // not our first scan. Scan match against our raster
-/*        if (gm == null || gmDirty) {
-            updateRaster();
-            gmDirty = false;
-        }
-*/
+        decimateCounter++;
+        if (decimateCounter != decimate)
+            return;
+        decimateCounter = 0;
 
-        double range_x = 0.2;
-        double range_y = 0.2;
-        double range_theta = Math.toRadians(15);
-        double theta_resolution = Math.toRadians(1);
-
-        MultiGaussian posterior = matcher.match(rpoints, xyt, null, range_x, range_y, range_theta, theta_resolution);
+        MultiGaussian posterior = matcher.match(rpoints, xyt, null, search_x_m, search_y_m, search_theta_rad, search_theta_res_rad);
         xyt = posterior.getMean();
 
         // where was our last scan?
@@ -132,7 +146,7 @@ public class ScanMatcher
         double ddist = LinAlg.distance(xyt, lastxyt, 2);
         double dtheta = Math.abs(MathUtil.mod2pi(xyt[2] - lastxyt[2]));
 
-        if (ddist > 0.2 || dtheta > Math.toRadians(15)) {
+        if (ddist > pose_dist_thresh_m || dtheta > pose_theta_thresh_rad) {
 
             GXYTNode gn = new GXYTNode();
             gn.state = xyt;
@@ -180,7 +194,7 @@ public class ScanMatcher
 
         gm.recenter((minx+maxx)/2, (miny+maxy)/2, 5);
 
-        gm.subtract(5);
+        gm.subtract(old_scan_decay);
 
         GridMap.LUT lut = gm.makeExponentialLUT(1.0, 0, 1.0 / rangeCovariance);
 
