@@ -57,10 +57,10 @@ public class ScanMatcherTest implements LCMSubscriber, ParameterListener
         Config smconfig = config.getChild("scanmatcher_manager");
         this.channel = smconfig.getString("channel", channel);
 
+        scanMatcher = new ScanMatcher(config.getChild("scanmatcher"));
+
         lcm.subscribe("POSE", this);
         lcm.subscribe(channel, this);
-
-        scanMatcher = new ScanMatcher(config.getChild("scanmatcher"));
       }
 
     public void parameterChanged(ParameterGUI pg, String name)
@@ -99,7 +99,7 @@ public class ScanMatcherTest implements LCMSubscriber, ParameterListener
         }
 
        ///////////////////////////////////////////////////////////
-        if (channel.equals(channel)) {
+        if (channel.equals(this.channel)) {
             laser_t ldata = new laser_t(ins);
 
             //////////////////////////////
