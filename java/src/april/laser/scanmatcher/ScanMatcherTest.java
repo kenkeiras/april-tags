@@ -29,6 +29,8 @@ public class ScanMatcherTest implements LCMSubscriber, ParameterListener
 
     ArrayList<pose_t> poses = new ArrayList<pose_t>();
 
+    String channel = "LIDAR";
+
     public static void main(String args[])
     {
         Config config = ConfigUtil.getDefaultConfig(args);
@@ -40,6 +42,8 @@ public class ScanMatcherTest implements LCMSubscriber, ParameterListener
     {
         this.config = config;
 
+        pg.addCheckBoxes("showallscans", "Show all scans", true);
+
         pg.addButtons("clear", "clear");
         pg.addListener(this);
 
@@ -50,9 +54,11 @@ public class ScanMatcherTest implements LCMSubscriber, ParameterListener
         jf.setSize(600,400);
         jf.setVisible(true);
 
-        lcm.subscribe("LIDAR.*", this);
-        lcm.subscribe("LASER.*", this);
+        Config smconfig = config.getChild("scanmatcher_manager");
+        this.channel = smconfig.getString("channel", channel);
+
         lcm.subscribe("POSE", this);
+        lcm.subscribe(channel, this);
 
         scanMatcher = new ScanMatcher(config.getChild("scanmatcher"));
       }
@@ -93,7 +99,7 @@ public class ScanMatcherTest implements LCMSubscriber, ParameterListener
         }
 
        ///////////////////////////////////////////////////////////
-        if (channel.startsWith("LASER") || channel.startsWith("LIDAR")) {
+        if (channel.equals(channel)) {
             laser_t ldata = new laser_t(ins);
 
             //////////////////////////////
@@ -154,9 +160,13 @@ public class ScanMatcherTest implements LCMSubscriber, ParameterListener
                 for (GNode gn : g.nodes) {
                     ArrayList<double[]> p = (ArrayList<double[]>) gn.getAttribute("points");
                     vb.addBuffered(new VisChain(LinAlg.xytToMatrix(gn.state),
-                                                new VisRobot(Color.blue),
-                                                new VisData(new VisDataPointStyle(Color.blue, 1),
-                                                            p)));
+                                                new VisRobot(Color.blue)));
+
+                    if (pg.gb("showallscans")) {
+                        vb.addBuffered(new VisChain(LinAlg.xytToMatrix(gn.state),
+                                                    new VisData(new VisDataPointStyle(Color.blue, 1),
+                                                                p)));
+                    }
                 }
 
                 vb.switchBuffer();

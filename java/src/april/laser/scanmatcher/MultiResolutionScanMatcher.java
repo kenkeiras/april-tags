@@ -8,7 +8,8 @@ import april.config.*;
 
 public class MultiResolutionScanMatcher
 {
-    int decimate;
+    int decimate = 10;
+    boolean debug = false;
 
     boolean refine;
     double refine_initial_stepsize[];
@@ -25,7 +26,8 @@ public class MultiResolutionScanMatcher
     /** Pass in a Config whose scope is already set to the scanmatcher. **/
     public MultiResolutionScanMatcher(Config config)
     {
-        this.decimate = config.getInt("decimate", 10);
+        this.decimate = config.getInt("decimate", decimate);
+        this.debug = config.getBoolean("debug", debug);
 
         this.refine = config.getBoolean("refine", true);
         this.refine_initial_stepsize = config.getDoubles("refine_initial_stepsize", new double[] { 0.1, 0.1, 0.09 });
@@ -213,7 +215,7 @@ public class MultiResolutionScanMatcher
                 bestHighResXYT[2] = xyt1[2];
             }
 
-            if (thisBestHighResScore > thisBestLowResScore) {
+            if (thisBestHighResScore > thisBestLowResScore && debug) {
                 // TODO: Investigate cases where this
                 // happens. Numerical precision problems?
                 System.out.printf("DEBUG: MultiResolutionScanMatcher %10d %10d %10d [%5d %5d %5d] [%5d %5d]\n",

@@ -21,6 +21,7 @@ import com.sun.opengl.util.*;
 import april.jmat.geom.*;
 import april.jmat.*;
 import april.image.*;
+import april.util.*;
 
 /** A JComponent allowing a view into a VisWorld using JOGL **/
 public class VisCanvas extends JPanel implements VisWorldListener,
@@ -79,9 +80,9 @@ public class VisCanvas extends JPanel implements VisWorldListener,
         this.world = world;
         this.viewManager = new VisViewManager(this);
 
-        debug = VisUtil.getProperty("vis.debug", false);
-        aaLevel = VisUtil.getProperty("vis.aalevel", aaLevel);
-        faster = VisUtil.getProperty("vis.faster", faster);
+        debug = EnvUtil.getProperty("vis.debug", false);
+        aaLevel = EnvUtil.getProperty("vis.aalevel", aaLevel);
+        faster = EnvUtil.getProperty("vis.faster", faster);
 
         GLCapabilities capsv[] = new GLCapabilities[] {
             makeCapabilities(32, true, true, aaLevel),
@@ -93,7 +94,7 @@ public class VisCanvas extends JPanel implements VisWorldListener,
             makeCapabilities(24, false, false, 0),
             makeCapabilities(16, false, false, 0) };
 
-        if (VisUtil.getProperty("vis.glcanvas", true))
+        if (EnvUtil.getProperty("vis.glcanvas", true))
             canvas = createGLCanvasWorkaround(capsv);
         else
             canvas = new GLJPanel(capsv[0]); // this doesn't seem to be nearly as buggy as GLCanvas

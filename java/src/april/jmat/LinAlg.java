@@ -766,6 +766,46 @@ public final class LinAlg
         return r;
     }
 
+    /** Interpolate quaternions from q0 (w=0) to q1 (w=1). **/
+    public static double[] slerp(double q0[], double q1[], double w)
+    {
+        double dot = LinAlg.dotProduct(q0, q1);
+
+        if (dot < 0) {
+            // flip sign on one of them so we don't spin the "wrong
+            // way" around. This doesn't change the rotation that the
+            // quaternion represents.
+            dot = -dot;
+            q1 = LinAlg.scale(q1, -1);
+        }
+
+        if (false && dot > 0.95) {
+            // just do a linear interpolation ... why? (SLERP should still work)
+            return LinAlg.add(LinAlg.scale(q0, 1 - w),
+                              LinAlg.scale(q1, w));
+        }
+
+        // normal slerp interpolation.
+        double angle = Math.acos(dot);
+
+        // they're the same... don't blow up with divide by zero.
+        if (angle == 0)
+            return LinAlg.copy(q0);
+
+        // SLERP.
+        return LinAlg.normalize(LinAlg.add(LinAlg.scale(q0, Math.sin(angle*(1-w))),
+                                           LinAlg.scale(q1, Math.sin(angle*w))));
+
+        /* Test code template
+           Try -45,-45 ; -45 +45 ; -45 134; -45 136 ; 0 90
+
+        double q0[] = LinAlg.rollPitchYawToQuat(new double[] {0, 0, Math.toRadians(-45)});
+        double q1[] = LinAlg.rollPitchYawToQuat(new double[] {0, 0, Math.toRadians(-45)});
+        for (double w = 0; w <= 1; w+= 0.1)
+            System.out.printf("%15f\n", Math.toDegrees(LinAlg.quatToRollPitchYaw(LinAlg.slerp(q0, q1, w))[2]));
+        */
+    }
+
     /** Rotate the vector v by the quaternion q **/
     public static double[] quatRotate(double q[], double v[])
     {
@@ -1958,4 +1998,40 @@ public final class LinAlg
         return MM.det();
     }
 
+    /** Find the best plane fit to a set of points using SVD. **/
+    public static double[] fitPlaneNormal(ArrayList<double[]> points)
+    {
+        double A[][] = new double[3][3];
+        double M[] = new double[3];
+
+        for (double p[] : points) {
+            LinAlg.plusEquals(M, p);
+        }
+
+        for (int i = 0; i < M.length; i++)
+            M[i] /= points.size();
+
+        for (double p[] : points) {
+            double p0 = p[0] - M[0];
+            double p1 = p[1] - M[1];
+            double p2 = p[2] - M[2];
+
+            A[0][0] += p0*p0;
+            A[0][1] += p0*p1;
+            A[0][2] += p0*p2;
+            A[1][1] += p1*p1;
+            A[1][2] += p1*p2;
+            A[2][2] += p2*p2;
+        }
+
+        // make symmetric
+        A[1][0] = A[0][1];
+        A[2][0] = A[0][2];
+        A[2][1] = A[1][2];
+
+        Matrix V = new SingularValueDecomposition(new Matrix(A)).getV();
+        return new double[] { V.get(0, 2),
+                              V.get(1, 2),
+                              V.get(2, 2) };
+    }
 }

@@ -4,6 +4,7 @@ import java.util.*;
 
 import april.jmat.menv.inst.*;
 import april.jmat.*;
+import april.util.*;
 
 public class Optimizer
 {

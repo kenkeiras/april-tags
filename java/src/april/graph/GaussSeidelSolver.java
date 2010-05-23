@@ -1,6 +1,7 @@
 package april.graph;
 
 import april.jmat.*;
+import april.util.*;
 
 import java.util.*;
 

@@ -5,6 +5,8 @@ import java.util.*;
 import javax.media.opengl.*;
 import javax.media.opengl.glu.*;
 
+import april.util.*;
+
 /** Contains the VisObjects in a world. **/
 public class VisWorld
 {
@@ -20,7 +22,7 @@ public class VisWorld
     static final String UNBUFFERED = "__UNBUFFERED";
     static final String DEFAULT = "__DEFAULT";
 
-    static boolean debug = VisUtil.getProperty("vis.debug", false);
+    static boolean debug = EnvUtil.getProperty("vis.debug", false);
 
     static class TemporaryObject implements Comparable<TemporaryObject>
     {
