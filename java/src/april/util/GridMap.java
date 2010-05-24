@@ -424,6 +424,27 @@ public final class GridMap
         return new double[] { x0 + width*metersPerPixel, y0 + height*metersPerPixel };
     }
 
+    public void setValue(double x, double y, byte v)
+    {
+        int ix = (int) ((x - x0) * pixelsPerMeter);
+        int iy = (int) ((y - y0) * pixelsPerMeter);
+
+        setValueIndexSafe(ix, iy, v);
+    }
+
+    public void setValueIndex(int ix, int iy, byte v)
+    {
+        data[iy*width + ix] = v;
+    }
+
+    public void setValueIndexSafe(int ix, int iy, byte v)
+    {
+        if (iy < 0 || ix < 0 || ix >= width || iy >= height)
+            return;
+
+        data[iy*width + ix] = v;
+    }
+
     public int getValue(double x, double y)
     {
         int ix = (int) ((x - x0) * pixelsPerMeter);
