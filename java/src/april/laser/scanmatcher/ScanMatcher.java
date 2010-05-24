@@ -38,7 +38,7 @@ public class ScanMatcher
 
     int old_scan_decay = 5; // in units of gray-scale values per age of scan kept.
 
-    int    decimateCounter;
+    public int decimateCounter;
 
     ArrayList<Scan> scans = new ArrayList<Scan>();
 
