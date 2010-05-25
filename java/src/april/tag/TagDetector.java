@@ -53,9 +53,11 @@ public class TagDetector
     public boolean segDecimate = false;
 
     /** Do not consider pixels whose gradient magnitude is less than
-     * minMag. This is mostly for runtime optimization, as it reduces
-     * the number of edges. **/
-    public double minMag = 0.001;
+     * minMag. Small values make the detector more sensitive, but also
+     * force us to consider many more edges resulting in slower
+     * computation time. A value of 0.001 is very sensitive. A value
+     * of 0.01 is quite fast. **/
+    public double minMag = 0.004;
 
     /** When connecting edges, what is the maximum range allowed for
      * the gradient directions? **/
@@ -66,7 +68,6 @@ public class TagDetector
      * thresholds determine how much. **/
     public double thetaThresh = 100;
     public double magThresh = 1200;
-
 
     // in pixels. Set based on minimum plausible decoding size for Tag9 family.
     public double minimumLineLength = 4;
@@ -97,23 +98,39 @@ public class TagDetector
     /** The optical center of the current frame, which is needed to correctly compute the homography. **/
     double opticalCenter[];
 
-    /** We used fixed-point arithmetic for theta. This is the scale
-     * factor... don't change this, since the scaled THETA must fit in
-     * the allocated number of bits! **/
-    static final int THETA_SCALE = 10000;
+    /** During segmentation, the weight of an edge is related to the
+     * change in theta between the two pixels. This change is
+     * normalized via maxEdgeCost, resulting in a number[0,1]. We then
+     * convert this number to fixed-point by multiplying it by
+     * WEIGHT_SCALE. The resulting number must fit in the number of
+     * bits allocated to it, currently 16 (see Step 3). Large values
+     * of WEIGHT_SCALE are good because they lead to better
+     * fixed-point approximations. However, small numbers are better,
+     * because there are fewer discrete values of edge costs, which
+     * means that there is more spatial/temporal coherence when
+     * processing the sorted edges. This results in faster
+     * processing. Given that these orientations are pretty noisy to
+     * begin with, some quantization error is acceptable.
+     **/
+    static final int WEIGHT_SCALE = 10;//10000;
 
     public TagDetector(TagFamily tagFamily)
     {
         this.tagFamily = tagFamily;
     }
 
-    static final int edgeCost(double theta0, double mag0, double theta1, double mag1, double minMag)
+    static final int edgeCost(double theta0, double mag0, double theta1, double mag1, double minMag, double maxEdgeCost)
     {
         if (mag0 < minMag || mag1 < minMag)
             return -1;
 
         double thetaErr = Math.abs(MathUtil.mod2pi(theta1 - theta0));
-        return (int) (thetaErr * THETA_SCALE);
+        if (thetaErr > maxEdgeCost)
+            return -1;
+
+        double normErr = thetaErr / maxEdgeCost;
+
+        return (int) (normErr * WEIGHT_SCALE);
     }
 
     // lousy approximation of arctan function, but good enough for our purposes (about 4 degrees)
@@ -144,7 +161,7 @@ public class TagDetector
      * of v[i]&amp;mask. The maximum value in the array 'v' is maxv
      * (if maxv is negative, maxv will be found). These weights must
      * be small enough to fit in an integer. This implementation is
-     * not stable.
+     * stable.
      **/
     static long[] countingSortLongArray(long v[], int vlength, int maxv, long mask)
     {
@@ -153,11 +170,17 @@ public class TagDetector
                 maxv = Math.max(maxv, (int) (v[i]&mask));
         }
 
-        int counts[] = new int[maxv+1];
+        // For weight 'w', counts[w] will give the output position for
+        // the next sample with weight w.  To build this, we begin by
+        // counting how many samples there are with each weight. (Note
+        // that the initial position for weight w is only affected by
+        // the number of weights less than w, hence the +1 in
+        // counts[w+1].
+        int counts[] = new int[maxv+2];
 
         for (int i = 0; i < vlength; i++) {
             int w = (int) (v[i]&mask);
-            counts[w]++;
+            counts[w+1]++;
         }
 
         // accumulate.
@@ -167,9 +190,17 @@ public class TagDetector
         long newv[] = new long[vlength];
         for (int i = 0; i < vlength; i++) {
             int w = (int) (v[i]&mask);
-            counts[w]--;
             newv[counts[w]] = v[i];
+            counts[w]++;
         }
+
+/*       // test (debugging code)
+        for (int i = 0; i+1 < newv.length; i++) {
+            int w0 = (int) (newv[i]&mask);
+            int w1 = (int) (newv[i+1]&mask);
+            assert(w0 <= w1);
+        }
+*/
 
         return newv;
     }
@@ -289,21 +320,25 @@ public class TagDetector
 
                     int edgeCost;
 
-                    edgeCost = edgeCost(theta0, mag0, fimTheta.get(x+1, y), fimMag.get(x+1,y), minMag);
-                    if (edgeCost >= 0 && edgeCost < maxEdgeCost*THETA_SCALE)
+                    edgeCost = edgeCost(theta0, mag0, fimTheta.get(x+1, y), fimMag.get(x+1,y), minMag, maxEdgeCost);
+                    if (edgeCost >= 0)
                         edges[nedges++] = (((long) y*width+x)<<IDA_SHIFT) + (((long) y*width+x+1)<<IDB_SHIFT) + edgeCost;
 
-                    edgeCost = edgeCost(theta0, mag0, fimTheta.get(x, y+1), fimMag.get(x,y+1), minMag);
-                    if (edgeCost >= 0 && edgeCost < maxEdgeCost*THETA_SCALE)
+                    edgeCost = edgeCost(theta0, mag0, fimTheta.get(x, y+1), fimMag.get(x,y+1), minMag, maxEdgeCost);
+                    if (edgeCost >= 0)
                         edges[nedges++] = ((long) (y*width+x)<<IDA_SHIFT) + (((long) (y+1)*width+x)<<IDB_SHIFT) + edgeCost;
 
-                    edgeCost = edgeCost(theta0, mag0, fimTheta.get(x+1, y+1), fimMag.get(x+1,y+1), minMag);
-                    if (edgeCost >= 0 && edgeCost < maxEdgeCost*THETA_SCALE)
+                    edgeCost = edgeCost(theta0, mag0, fimTheta.get(x+1, y+1), fimMag.get(x+1,y+1), minMag, maxEdgeCost);
+                    if (edgeCost >= 0)
                         edges[nedges++] = (((long) y*width+x)<<IDA_SHIFT) + (((long) (y+1)*width+x+1)<<IDB_SHIFT) + edgeCost;
 
-                    edgeCost = (x == 0) ? -1 : edgeCost(theta0, mag0, fimTheta.get(x-1, y+1), fimMag.get(x-1,y+1), minMag);
-                    if (edgeCost >= 0 && edgeCost < maxEdgeCost*THETA_SCALE)
+                    edgeCost = (x == 0) ? -1 : edgeCost(theta0, mag0, fimTheta.get(x-1, y+1), fimMag.get(x-1,y+1), minMag, maxEdgeCost);
+                    if (edgeCost >= 0)
                         edges[nedges++] = (((long) y*width+x)<<IDA_SHIFT) + (((long) (y+1)*width+x-1)<<IDB_SHIFT) + edgeCost;
+
+                    // XXX Would 8 connectivity help for rotated tags?
+                    // (Probably not much, so long as input filtering
+                    // hasn't been disabled.)
                 }
             }
 
@@ -342,7 +377,6 @@ public class TagDetector
 
                 if (tmaxab - tminab > 2*Math.PI)  // corner case that's probably not useful to handle correctly. oh well.
                     tmaxab = tminab + 2*Math.PI;
-
 
                 double mmaxab = Math.max(mmax[ida], mmax[idb]);
                 double mminab = Math.min(mmin[ida], mmin[idb]);

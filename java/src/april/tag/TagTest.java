@@ -76,7 +76,7 @@ public class TagTest implements ParameterListener
         pg = new ParameterGUI();
         pg.addDoubleSlider("segsigma", "smoothing sigma (segmentation)", 0, 2, detector.segSigma);
         pg.addDoubleSlider("sigma", "smoothing sigma (sampling)", 0, 2, detector.sigma);
-        pg.addDoubleSlider("minmag", "minimum magnitude", 0.0001, 0.1, detector.minMag);
+        pg.addDoubleSlider("minmag", "minimum magnitude", 0.0001, 0.01, detector.minMag);
         pg.addDoubleSlider("maxedgecost", "maximum edge cost (radians)", 0, Math.PI, detector.maxEdgeCost);
         pg.addDoubleSlider("magthresh", "magnitude threshold", 0, 5000, detector.magThresh);
         pg.addDoubleSlider("thetathresh", "theta threshold", 0, 5000, detector.thetaThresh);
