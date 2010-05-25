@@ -3,41 +3,42 @@ package april.util;
 import java.util.*;
 
 /** Implementation of disjoint set data structure that packs each
- * entry into a single 'long' for performance. *
+ * entry into a single array of 'int' for performance. *
  */
 public final class UnionFindSimple
 {
-    int data[]; // alternating parent ids, rank, size.
+    int data[]; // alternating arent ids, rank, size.
+
+    static final int SZ = 2;
 
     /** @param maxid The maximum node id that will be referenced. **/
     public UnionFindSimple(int maxid)
     {
-        data = new int[maxid*3];
+        data = new int[maxid*SZ];
 
         for (int i = 0; i < maxid; i++) {
             // everyone is their own cluster of size 1
-            data[3*i+0] = i;
-            data[3*i+1] = 0;
-            data[3*i+2] = 1;
+            data[SZ*i+0] = i;
+            data[SZ*i+1] = 1;
         }
     }
 
     public int getSetSize(int id)
     {
-        return data[3*getRepresentative(id)+2];
+        return data[SZ*getRepresentative(id)+1];
     }
 
     public int getRepresentative(int id)
     {
         // terminal case: a node is its own parent.
-        if (data[3*id]==id)
+        if (data[SZ*id]==id)
             return id;
 
         // otherwise, recurse...
-        int root = getRepresentative(data[3*id]);
+        int root = getRepresentative(data[SZ*id]);
 
         // short circuit the path.
-        data[3*id] = root;
+        data[SZ*id] = root;
 
         return root;
     }
@@ -51,24 +52,16 @@ public final class UnionFindSimple
         if (aroot == broot)
             return aroot;
 
-        int arank = data[3*aroot+1];
-        int brank = data[3*broot+1];
-        int asz = data[3*aroot+2];
-        int bsz = data[3*broot+2];
+        int asz = data[SZ*aroot+1];
+        int bsz = data[SZ*broot+1];
 
-        if (arank > brank) {
-            data[3*broot] = aroot;
-            data[3*aroot+2] += bsz;
+        if (asz > bsz) {
+            data[SZ*broot] = aroot;
+            data[SZ*aroot+1] += bsz;
             return aroot;
-        } else if (brank > arank) {
-            data[3*aroot] = broot;
-            data[3*broot+2] += asz;
-            return broot;
         } else {
-            // arank = brank
-            data[3*aroot] = broot;
-            data[3*broot+1]++;
-            data[3*broot+2] += asz;
+            data[SZ*aroot] = broot;
+            data[SZ*broot+1] += asz;
             return broot;
         }
     }
