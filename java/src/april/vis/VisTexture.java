@@ -84,8 +84,10 @@ public class VisTexture
                 glinternal = GL.GL_RGB8;
                 glformat = GL.GL_BGRA;
                 gltype = GL.GL_UNSIGNED_INT_8_8_8_8_REV;
+                bytes_per_pixel = 4;
                 break;
             }
+
             default: {
                 // coerce texture format to correct type.
                 im = new BufferedImage(input.getWidth(),

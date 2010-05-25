@@ -258,12 +258,12 @@ public class ImageConvert
 
     public static BufferedImage convertYUYVtoRGB(int width, int height, byte yuyv[])
     {
-        BufferedImage im = new BufferedImage(width, height, BufferedImage.TYPE_3BYTE_BGR);
+        BufferedImage im = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
 
         int sstride = width*2;
         int dstride = width*3;
 
-        byte rgb[] = ((DataBufferByte) im.getRaster().getDataBuffer()).getData();
+        int rgb[] = ((DataBufferInt) im.getRaster().getDataBuffer()).getData();
 
         for (int i = 0; i < height; i++) {
 
@@ -278,19 +278,15 @@ public class ImageConvert
                 int cg = ((v-128) * 183 + (u-128) * 88)>>8;
                 int r, g, b;
 
-                r = y1 + cr;
-                b = y1 + cb;
-                g = y1 - cg;
-                rgb[i*dstride + 6*j+0] = (byte) Math.max(0, Math.min(255,b));
-                rgb[i*dstride + 6*j+1] = (byte) Math.max(0, Math.min(255,g));
-                rgb[i*dstride + 6*j+2] = (byte) Math.max(0, Math.min(255,r));
+                r = clamp(y1 + cr);
+                b = clamp(y1 + cb);
+                g = clamp(y1 - cg);
+                rgb[i*width + 2*j+0] = (r<<16) | (g<<8) | b;
 
-                r = y2 + cr;
-                b = y2 + cb;
-                g = y2 - cg;
-                rgb[i*dstride + 6*j+3] = (byte) Math.max(0, Math.min(255,b));
-                rgb[i*dstride + 6*j+4] = (byte) Math.max(0, Math.min(255,g));
-                rgb[i*dstride + 6*j+5] = (byte) Math.max(0, Math.min(255,r));
+                r = clamp(y2 + cr);
+                b = clamp(y2 + cb);
+                g = clamp(y2 - cg);
+                rgb[i*width + 2*j+1] = (r<<16) | (g<<8) | b;
             }
         }
         return im;
@@ -376,6 +372,15 @@ public class ImageConvert
     }
 
     static final int clamp(double v)
+    {
+        if (v < 0)
+            return 0;
+        if (v > 255)
+            return 255;
+        return (int) v;
+    }
+
+    static final int clamp(int v)
     {
         if (v < 0)
             return 0;
