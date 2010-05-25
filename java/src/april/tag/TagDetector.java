@@ -112,14 +112,14 @@ public class TagDetector
      * processing. Given that these orientations are pretty noisy to
      * begin with, some quantization error is acceptable.
      **/
-    static final int WEIGHT_SCALE = 10;//10000;
+    public int WEIGHT_SCALE = 100;//10000;
 
     public TagDetector(TagFamily tagFamily)
     {
         this.tagFamily = tagFamily;
     }
 
-    static final int edgeCost(double theta0, double mag0, double theta1, double mag1, double minMag, double maxEdgeCost)
+    final int edgeCost(double theta0, double mag0, double theta1, double mag1)
     {
         if (mag0 < minMag || mag1 < minMag)
             return -1;
@@ -320,19 +320,19 @@ public class TagDetector
 
                     int edgeCost;
 
-                    edgeCost = edgeCost(theta0, mag0, fimTheta.get(x+1, y), fimMag.get(x+1,y), minMag, maxEdgeCost);
+                    edgeCost = edgeCost(theta0, mag0, fimTheta.get(x+1, y), fimMag.get(x+1,y));
                     if (edgeCost >= 0)
                         edges[nedges++] = (((long) y*width+x)<<IDA_SHIFT) + (((long) y*width+x+1)<<IDB_SHIFT) + edgeCost;
 
-                    edgeCost = edgeCost(theta0, mag0, fimTheta.get(x, y+1), fimMag.get(x,y+1), minMag, maxEdgeCost);
+                    edgeCost = edgeCost(theta0, mag0, fimTheta.get(x, y+1), fimMag.get(x,y+1));
                     if (edgeCost >= 0)
                         edges[nedges++] = ((long) (y*width+x)<<IDA_SHIFT) + (((long) (y+1)*width+x)<<IDB_SHIFT) + edgeCost;
 
-                    edgeCost = edgeCost(theta0, mag0, fimTheta.get(x+1, y+1), fimMag.get(x+1,y+1), minMag, maxEdgeCost);
+                    edgeCost = edgeCost(theta0, mag0, fimTheta.get(x+1, y+1), fimMag.get(x+1,y+1));
                     if (edgeCost >= 0)
                         edges[nedges++] = (((long) y*width+x)<<IDA_SHIFT) + (((long) (y+1)*width+x+1)<<IDB_SHIFT) + edgeCost;
 
-                    edgeCost = (x == 0) ? -1 : edgeCost(theta0, mag0, fimTheta.get(x-1, y+1), fimMag.get(x-1,y+1), minMag, maxEdgeCost);
+                    edgeCost = (x == 0) ? -1 : edgeCost(theta0, mag0, fimTheta.get(x-1, y+1), fimMag.get(x-1,y+1));
                     if (edgeCost >= 0)
                         edges[nedges++] = (((long) y*width+x)<<IDA_SHIFT) + (((long) (y+1)*width+x-1)<<IDB_SHIFT) + edgeCost;
 
