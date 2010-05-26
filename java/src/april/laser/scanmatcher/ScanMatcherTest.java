@@ -108,12 +108,30 @@ public class ScanMatcherTest implements LCMSubscriber, ParameterListener
 
             double maxRange = config.getRoot().getDouble(channel+".max_range", Double.MAX_VALUE);
 
+            double mask_out_rad[] = config.getRoot().getDoubles(channel+".mask_out_deg", null);
+            if (mask_out_rad != null) {
+                for (int i = 0; i < mask_out_rad.length; i++)
+                    mask_out_rad[i] = Math.toRadians(mask_out_rad[i]);
+            }
+
             for (int i = 0; i < ldata.nranges; i++) {
                 double theta = ldata.rad0 + ldata.radstep * i;
                 double r = ldata.ranges[i];
 
                 if (r > maxRange)
                     continue;
+
+                if (mask_out_rad != null) {
+                    boolean mask = false;
+
+                    for (int j = 0; j < mask_out_rad.length; j+=2) {
+                        if (mask_out_rad[j] <= theta && theta <= mask_out_rad[j+1])
+                            mask = true;
+                    }
+
+                    if (mask)
+                        continue;
+                }
 
                 double p[] = new double[] {
                     r * Math.cos(theta),

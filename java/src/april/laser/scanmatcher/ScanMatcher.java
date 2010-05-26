@@ -36,6 +36,8 @@ public class ScanMatcher
     double pose_dist_thresh_m = 0.4;
     double pose_theta_thresh_rad = Math.toRadians(25);
 
+    double gridmap_size = 50;
+
     int old_scan_decay = 5; // in units of gray-scale values per age of scan kept.
 
     public int decimateCounter;
@@ -66,6 +68,8 @@ public class ScanMatcher
         contourExtractor = new ContourExtractor(config.getChild("contours"));
 
         this.metersPerPixel = config.getDouble("meters_per_pixel", metersPerPixel);
+        this.gridmap_size = config.getDouble("gridmap_size", gridmap_size);
+
         this.useOdometry = config.getBoolean("use_odometry", useOdometry);
 
         this.rangeCovariance = config.getDouble("range_covariance", rangeCovariance); // used for rendering
@@ -82,7 +86,7 @@ public class ScanMatcher
 
         matcher = new MultiResolutionScanMatcher(config);
 
-        gm = GridMap.makeMeters(-25, -25, 50, 50, metersPerPixel, 0);
+        gm = GridMap.makeMeters(-25, -25, gridmap_size, gridmap_size, metersPerPixel, 0);
     }
 
     public double[] getPosition()
