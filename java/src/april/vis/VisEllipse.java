@@ -9,12 +9,8 @@ import april.jmat.*;
 import april.jmat.geom.*;
 
 /** A 2D ellipse. **/
-public class VisEllipse implements VisObject
+public class VisEllipse extends VisData
 {
-    VisDataStyle style;
-
-    ArrayList<double[]> points = new ArrayList<double[]>();
-
     double center[];
     double xx, xy, yy;
 
@@ -30,7 +26,7 @@ public class VisEllipse implements VisObject
     **/
     public VisEllipse(double center[], double xx, double xy, double yy, VisDataStyle style)
     {
-        this.style = style;
+        this.styles.add(style);
         this.center = center;
         this.xx = xx;
         this.yy = yy;
@@ -57,6 +53,8 @@ public class VisEllipse implements VisObject
 
     public void render(VisContext vc, GL gl, GLU glu)
     {
-        style.renderStyle(vc, gl, glu, points);
+        for (VisDataStyle style : styles) {
+            style.renderStyle(vc, gl, glu, this);
+        }
     }
 }

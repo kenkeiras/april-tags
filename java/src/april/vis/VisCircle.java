@@ -8,20 +8,18 @@ import java.util.*;
 import april.jmat.*;
 import april.jmat.geom.*;
 
-public class VisCircle implements VisObject
+public class VisCircle extends VisData
 {
-    VisDataStyle styles[];
     double radius;
     double theta0 = 0;
     double theta1 = 2*Math.PI;
     int npoints = 100;
 
-    ArrayList<double[]> points;
-
     public VisCircle(double radius, VisDataStyle ... styles)
     {
         this.radius = radius;
-        this.styles = styles;
+        for (VisDataStyle style : styles)
+            this.styles.add(style);
     }
 
     public void setThetaRange(double theta0, double theta1)
@@ -43,6 +41,6 @@ public class VisCircle implements VisObject
         }
 
         for (VisDataStyle style: styles)
-            style.renderStyle(vc, gl, glu, points);
+            style.renderStyle(vc, gl, glu, this);
     }
 }

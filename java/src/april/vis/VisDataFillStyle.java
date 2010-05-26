@@ -32,8 +32,10 @@ public class VisDataFillStyle implements VisDataStyle
         this.shininess = shininess;
     }
 
-    public void renderStyle(VisContext vc, GL gl, GLU glu, ArrayList<double[]> points)
+    public void renderStyle(VisContext vc, GL gl, GLU glu, VisData vdata)
     {
+        ArrayList<double[]> points = vdata.points;
+
         if (c != null)
             VisUtil.setColor(gl, c);
 

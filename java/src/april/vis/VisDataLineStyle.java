@@ -26,8 +26,10 @@ public class VisDataLineStyle implements VisDataStyle
         this(c, width, false);
     }
 
-    public void renderStyle(VisContext vc, GL gl, GLU glu, ArrayList<double[]> points)
+    public void renderStyle(VisContext vc, GL gl, GLU glu, VisData vdata)
     {
+        ArrayList<double[]> points = vdata.points;
+
         VisUtil.setColor(gl, c);
         gl.glLineWidth(width);
 
