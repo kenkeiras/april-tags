@@ -82,7 +82,7 @@ public class ScanMatcher
 
         matcher = new MultiResolutionScanMatcher(config);
 
-        gm = new GridMap(0, 0, 50, 50, metersPerPixel, 0);
+        gm = GridMap.makeMeters(-25, -25, 50, 50, metersPerPixel, 0);
     }
 
     public double[] getPosition()
@@ -234,7 +234,7 @@ public class ScanMatcher
         // scans without having to rebuild the whole damn thing
         double margin = Math.max(1, 0.1*Math.max(maxx-minx, maxy-miny));
 
-        gm = new GridMap((minx+maxx)/2, (miny+maxy)/2, (maxx-minx)+2*margin, (maxy-miny)+2*margin, metersPerPixel, 0);
+        gm = GridMap.makeMeters(minx, miny, (maxx-minx)+2*margin, (maxy-miny)+2*margin, metersPerPixel, 0);
         if (Math.sqrt(rangeCovariance) < metersPerPixel)
             System.out.println("WRN: ScanMatcher range covariance is small in comparison to raster resolution. Increase resolution.");
 
