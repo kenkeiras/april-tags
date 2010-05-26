@@ -90,7 +90,7 @@ public class LaserHarris implements ParameterListener
 		    double xsize = Math.max(maxx-minx+border, minLengthX);
 		    double ysize = Math.max(maxy-miny+border, minLengthY);
 
-		    GridMap gm = new GridMap((minx+maxx)/2, (miny+maxy)/2, xsize, ysize, metersperpixel, 0);
+		    GridMap gm = GridMap.makeMeters(minx, miny, xsize, ysize, metersperpixel, 0);
 
 		    for (int i = 0; i+1 < contour.size(); i++)
 		    {

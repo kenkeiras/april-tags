@@ -13,67 +13,85 @@ import april.image.*;
 **/
 public final class GridMap
 {
-    public double cx, cy; // center x, y
-    public double x0, y0; // minimum x, y (lower-left corner of lower-left pixel);
-    public double sizex, sizey;  // size in meters
+    public double x0, y0;        // minimum x, y (lower-left corner of lower-left pixel);
     public double metersPerPixel;
-    public double pixelsPerMeter;
 
-    public int width, height; // in pixels
-    public byte data[];
+    public int    width, height; // in pixels. Always a multiple of four.
+    public byte   data[];
 
     public byte defaultFill;
 
-    protected GridMap()
+    /**
+     * Create a new grid map. The size will be adjusted slightly so
+     * that the gridmap contains an integer number of pixels of
+     * exactly metersPerPixel dimensions. When allocating new pixels,
+     * the value in defaultFill will be used. Note that the resulting
+     * GridMap will generally be somewhat larger than the requested
+     * size in order to accommodate padding considerations.
+     *
+     * @param x0                Minimum x coordinate. (Lower-left corner of lower-left pixel)
+     * @param y0                Minimum y coordinate. (Lower-left corner of lower-left pixel)
+     * @param sizex             Requested map size in meters (x) (might be enlarged slightly)
+     * @param sizey             Requested map size in meters (y) (might be enlarged slightly)
+     * @param metersPerPixel    Exact dimension of each pixel in map
+     * @param defaultFill       Default fill value for grid
+     * @return                  GridMap class
+     **/
+    public static GridMap makeMeters(double x0, double y0, double sizex, double sizey, double metersPerPixel, int defaultFill)
     {
+        // compute pixel dimensions.
+        int width = (int) (sizex / metersPerPixel + 1);
+        int height = (int) (sizey / metersPerPixel + 1);
+
+        return makePixels(x0, y0, width, height, metersPerPixel, defaultFill, true);
     }
 
     /**
      * Create a new grid map. The size will be adjusted slightly so
      * that the gridmap contains an integer number of pixels of
-     * exactly metersPerPixel dimensions. When recentering the
-     * gridmap, the value in defaultFill will be used.
+     * exactly metersPerPixel dimensions. When allocating new pixels,
+     * the value in defaultFill will be used. Note that the resulting
+     * GridMap will generally be somewhat larger than the requested
+     * size in order to accommodate padding considerations.
      *
-     * @param cx                Center of map (x)
-     * @param cy                Center of map (y)
-     * @param sizex             Map size in meters (x)
-     * @param sizey             Map size in meters (y)
+     * @param x0                Minimum x coordinate. (Lower-left corner of lower-left pixel)
+     * @param y0                Minimum y coordinate. (Lower-left corner of lower-left pixel)
+     * @param width             Dimensions of gridmap in pixels.
+     * @param height            Dimensions of gridmap in pixels
      * @param metersPerPixel    Exact dimension of each pixel in map
      * @param defaultFill       Default fill value for grid
+     * @param roundUpDimensions If true, width and height will be rounded up to multiples of 4 (strongly recommended).
      * @return                  GridMap class
      **/
-    public GridMap(double cx, double cy, double sizex, double sizey, double metersPerPixel,
-                   int defaultFill)
+    public static GridMap makePixels(double x0, double y0, int width, int height, double metersPerPixel, int defaultFill, boolean roundUpDimensions)
     {
-        this.cx = cx;
-        this.cy = cy;
-        this.sizex = sizex;
-        this.sizey = sizey;
-        this.metersPerPixel = metersPerPixel;
-        this.pixelsPerMeter = 1.0 / this.metersPerPixel;
-        this.defaultFill = (byte) defaultFill;
+        GridMap gm = new GridMap();
 
-//        assert(this.defaultFill == defaultFill);
+        gm.x0 = x0;
+        gm.y0 = y0;
+        gm.metersPerPixel = metersPerPixel;
+        gm.defaultFill = (byte) defaultFill;
 
         // compute pixel dimensions
-        this.width = (int) (sizex / metersPerPixel + 1);
-        this.height = (int) (sizey / metersPerPixel + 1);
+        gm.width = width;
+        gm.height = height;
 
-        // round up to multiple of four (necessary for OpenGL happiness)
-        width += 4 - (width%4);
-        height += 4 - (height%4);
+        if (roundUpDimensions) {
+            // round up to multiple of four (necessary for OpenGL happiness)
+            gm.width += 4 - (gm.width%4);
+            gm.height += 4 - (gm.height%4);
+        }
 
-        // recompute sizex/sizey
-        this.sizex = this.width * metersPerPixel;
-        this.sizey = this.height * metersPerPixel;
-
-        this.x0 = cx - sizex/2;
-        this.y0 = cy - sizey/2;
-
-        data = new byte[width*height];
+        gm.data = new byte[gm.width*gm.height];
 
         if (defaultFill != 0)
-            fill(defaultFill);
+            gm.fill(defaultFill);
+
+        return gm;
+    }
+
+    protected GridMap()
+    {
     }
 
     public void clear()
@@ -107,14 +125,9 @@ public final class GridMap
     public GridMap copy()
     {
         GridMap gm = new GridMap();
-        gm.cx = cx;
-        gm.cy = cy;
         gm.x0 = x0;
         gm.y0 = y0;
         gm.metersPerPixel = metersPerPixel;
-        gm.pixelsPerMeter = pixelsPerMeter;
-        gm.sizex = sizex;
-        gm.sizey = sizey;
         gm.width = width;
         gm.height = height;
         gm.data = new byte[data.length];
@@ -171,13 +184,17 @@ public final class GridMap
     }
 
     /** Recenter the gridmap, translating the data as necessary so
-     * that cx0 and cy0 are the new center. The recenter operation is
+     * that cx0 and cy0 are near new center. The recenter operation is
      * skipped if the map would be translated by less than
      * maxDistance.
      **/
     public void recenter(double cx0, double cy0, double maxDistance)
     {
+        double cx = x0 + (width + .5) * metersPerPixel;
+        double cy = y0 + (height + .5) * metersPerPixel;
+
         double distanceSq = sq(cx - cx0) + sq(cy - cy0);
+        double pixelsPerMeter = 1.0 / metersPerPixel;
 
         if (distanceSq < sq(maxDistance))
             return;
@@ -371,6 +388,8 @@ public final class GridMap
 
     public void drawCircle(double cx, double cy, double r, byte fill)
     {
+        double pixelsPerMeter = 1.0 / metersPerPixel;
+
         int ix0 = (int) ((cx - r - x0) * pixelsPerMeter);
         int ix1 = (int) ((cx + r - x0) * pixelsPerMeter);
         int iy0 = (int) ((cy - r - y0) * pixelsPerMeter);
@@ -398,6 +417,7 @@ public final class GridMap
     {
         double dist = Math.sqrt(sq(xb-xa) + sq(yb-ya));
         int nsteps = (int) (dist / metersPerPixel + 1);
+        double pixelsPerMeter = 1.0 / metersPerPixel;
 
         for (int i = 0; i < nsteps; i++) {
             double alpha = ((double) i)/nsteps;
@@ -426,8 +446,8 @@ public final class GridMap
 
     public void setValue(double x, double y, byte v)
     {
-        int ix = (int) ((x - x0) * pixelsPerMeter);
-        int iy = (int) ((y - y0) * pixelsPerMeter);
+        int ix = (int) ((x - x0) / metersPerPixel);
+        int iy = (int) ((y - y0) / metersPerPixel);
 
         setValueIndexSafe(ix, iy, v);
     }
@@ -447,8 +467,8 @@ public final class GridMap
 
     public int getValue(double x, double y)
     {
-        int ix = (int) ((x - x0) * pixelsPerMeter);
-        int iy = (int) ((y - y0) * pixelsPerMeter);
+        int ix = (int) ((x - x0) / metersPerPixel);
+        int iy = (int) ((y - y0) / metersPerPixel);
 
         return getValueIndexSafe(ix, iy, defaultFill);
     }
@@ -469,16 +489,6 @@ public final class GridMap
             return def;
 
         return data[iy*width + ix]&0xff;
-    }
-
-    public int getWidth()
-    {
-        return width;
-    }
-
-    public int getHeight()
-    {
-        return height;
     }
 
     /** Does the grid cell at (ix,iy) have a neighbor whose value is
@@ -595,9 +605,7 @@ public final class GridMap
 
     public boolean isCompatible(GridMap gm)
     {
-        return !(gm.cx != cx || gm.cy != cy ||
-                 gm.x0 != x0 || gm.y0 != y0 ||
-                 gm.sizex != sizex || gm.sizey != sizey ||
+        return !(gm.x0 != x0 || gm.y0 != y0 ||
                  gm.metersPerPixel != metersPerPixel ||
                  gm.width != width || gm.height != height);
     }
@@ -740,7 +748,6 @@ public final class GridMap
     public static class LUT
     {
         public double metersPerPixel;
-        public double pixelsPerMeter;
 
         public int lut[];
     }
@@ -755,7 +762,6 @@ public final class GridMap
     {
         LUT lut = new LUT();
         lut.metersPerPixel = metersPerPixel;
-        lut.pixelsPerMeter = 1.0 / lut.metersPerPixel;
 
         assert(expDecayMSq > 0);
 
@@ -763,7 +769,7 @@ public final class GridMap
         // solve expression for distance, setting v = 1. Then round 'd' up.
         double maxDistance = cliffDistMeters + Math.sqrt(Math.log(255*scale)/expDecayMSq);
 
-        int length = (int) (maxDistance * lut.pixelsPerMeter + 1);
+        int length = (int) (maxDistance / lut.metersPerPixel + 1);
 
         lut.lut = new int[length];
         for (int i = 0; i < length; i++) {
@@ -779,7 +785,6 @@ public final class GridMap
     {
         LUT lut = new LUT();
         lut.metersPerPixel = metersPerPixel;
-        lut.pixelsPerMeter = 1.0 / lut.metersPerPixel;
 
         lut.lut = new int[256];
         for (int i = 0; i <=255; i++) {
@@ -793,7 +798,6 @@ public final class GridMap
     {
         LUT lut = new LUT();
         lut.metersPerPixel = width_meters;
-        lut.pixelsPerMeter = 1.0 / lut.metersPerPixel;
 
         lut.lut = new int[1];
         lut.lut[0] = v;
@@ -818,6 +822,8 @@ public final class GridMap
                               double theta,
                               LUT lut)
     {
+        double pixelsPerMeter = 1.0 / metersPerPixel;
+
         double ux = Math.cos(theta), uy = Math.sin(theta);
 
         double lutRange = metersPerPixel * lut.lut.length;
@@ -835,6 +841,8 @@ public final class GridMap
         // Each pixel will be evaluated based on the distance to the
         // center of that pixel.
         double y = y0 + (iy0+.5)*metersPerPixel;
+
+        double lutPixelsPerMeter = 1.0 / lut.metersPerPixel;
 
         for (int iy = iy0; iy <= iy1; iy++) {
 
@@ -857,7 +865,7 @@ public final class GridMap
 
                 double dist = Math.sqrt(c1*c1 + c2*c2);
 
-                int lutIdx = (int) (dist * lut.pixelsPerMeter + .5);
+                int lutIdx = (int) (dist * lutPixelsPerMeter + .5);
 
                 if (lutIdx < lut.lut.length) {
                     int idx = iy*width + ix;
@@ -882,7 +890,10 @@ public final class GridMap
 
     public GridMap decimateMax(int factor)
     {
-        GridMap gm = new GridMap(cx, cy, sizex, sizey, metersPerPixel*factor, (byte) 0);
+        int newwidth = width / factor;
+        int newheight = width / factor;
+
+        GridMap gm = GridMap.makePixels(x0, y0, newwidth, newheight, metersPerPixel*factor, (byte) 0, true);
         gm.defaultFill = defaultFill;
 
         // loop over input rows
@@ -938,6 +949,7 @@ public final class GridMap
                               int thresh)
     {
         double ct = Math.cos(theta), st = Math.sin(theta);
+        double pixelsPerMeter = 1.0 / metersPerPixel;
 
         int score = 0;
 
@@ -967,6 +979,7 @@ public final class GridMap
                      double tx, double ty, double theta)
     {
         double ct = Math.cos(theta), st = Math.sin(theta);
+        double pixelsPerMeter = 1.0 / metersPerPixel;
 
         int score = 0;
 
@@ -1006,6 +1019,7 @@ public final class GridMap
         IntArray2D scores = new IntArray2D(tyDim, txDim);
 
         double ct = Math.cos(theta), st = Math.sin(theta);
+        double pixelsPerMeter = 1.0 / metersPerPixel;
 
         // Evaluate each point for a fixed rotation but variable
         // translation
@@ -1076,6 +1090,7 @@ public final class GridMap
       **/
     public byte[] getConnectedWithin(double[] xy, int maxCost)
     {
+        double pixelsPerMeter = 1.0 / metersPerPixel;
         int px = (int) Math.floor((xy[0] - x0) * pixelsPerMeter);
         int py = (int) Math.floor((xy[1] - y0) * pixelsPerMeter);
 
