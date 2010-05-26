@@ -48,7 +48,13 @@ public class ViewRobot extends VisCanvasEventAdapter implements ViewObject, LCMS
         if (true) {
             String path = config.getString("avatar.path", null);
             if (path != null) {
-
+                try {
+                    double T[][] = ConfigUtil.getRigidBodyTransform(config, "avatar");
+                    RWX rwx = new RWX(path);
+                    vavatar = new VisChain(T, rwx);
+                } catch (IOException ex) {
+                    System.out.println("Problem loading avatar model: "+ex);
+                }
             }
         }
 
