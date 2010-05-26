@@ -44,6 +44,14 @@ public class ViewRobot extends VisCanvasEventAdapter implements ViewObject, LCMS
         this.config = config;
         viewer.getVisCanvas().addEventHandler(this, 0);
         vrobot.color = Color.cyan;
+
+        if (true) {
+            String path = config.getString("avatar.path", null);
+            if (path != null) {
+
+            }
+        }
+
         lcm.subscribe("POSE", this);
     }
 

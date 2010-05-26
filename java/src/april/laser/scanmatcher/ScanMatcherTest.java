@@ -144,7 +144,7 @@ public class ScanMatcherTest implements LCMSubscriber, ParameterListener
                 return;
 
             // sensor to body
-            Matrix S2B = ConfigUtil.getMatrix(config.getRoot(), channel);
+            double S2B[][] = ConfigUtil.getRigidBodyTransformation(config.getRoot(), channel);
 
             ArrayList<double[]> bodyPoints = LinAlg.transform(S2B, points);
 
