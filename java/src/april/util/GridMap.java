@@ -1091,8 +1091,10 @@ public final class GridMap
     public byte[] getConnectedWithin(double[] xy, int maxCost)
     {
         double pixelsPerMeter = 1.0 / metersPerPixel;
-        int px = (int) Math.floor((xy[0] - x0) * pixelsPerMeter);
-        int py = (int) Math.floor((xy[1] - y0) * pixelsPerMeter);
+        int px = (int) ((xy[0] - x0) * pixelsPerMeter);
+        int py = (int) ((xy[1] - y0) * pixelsPerMeter);
+        if (px < 0 || px >= width || py < 0 || py >= height)
+            return null;
 
         UnionFindSimple uf = new UnionFindSimple(data.length);
 
