@@ -8,11 +8,8 @@ import java.util.*;
 import april.jmat.*;
 import april.jmat.geom.*;
 
-public class VisRectangle implements VisObject
+public class VisRectangle extends VisData
 {
-    VisDataStyle style;
-
-    ArrayList<double[]> points = new ArrayList<double[]>();
 
     public VisRectangle(double xy0[], double xy1[], VisDataStyle style)
     {
@@ -20,7 +17,7 @@ public class VisRectangle implements VisObject
         points.add(new double[] { xy0[0], xy1[1]});
         points.add(new double[] { xy1[0], xy1[1]});
         points.add(new double[] { xy1[0], xy0[1]});
-        this.style = style;
+        styles.add(style);
     }
 
     public VisRectangle(double sizex, double sizey, VisDataStyle style)
@@ -30,14 +27,16 @@ public class VisRectangle implements VisObject
         points.add(new double[] { sizex/2, sizey/2 });
         points.add(new double[] { -sizex/2, sizey/2 });
 
-        this.style = style;
+        styles.add(style);
     }
 
     public void render(VisContext vc, GL gl, GLU glu)
     {
-        if (style instanceof VisDataLineStyle)
-            ((VisDataLineStyle) style).loop = true;
+        for (VisDataStyle style : styles) {
+            if (style instanceof VisDataLineStyle)
+                ((VisDataLineStyle) style).loop = true;
 
-        style.renderStyle(vc, gl, glu, points);
+            style.renderStyle(vc, gl, glu, this);
+        }
     }
 }

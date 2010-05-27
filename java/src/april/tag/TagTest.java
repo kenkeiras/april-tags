@@ -81,6 +81,7 @@ public class TagTest implements ParameterListener
         pg.addDoubleSlider("magthresh", "magnitude threshold", 0, 5000, detector.magThresh);
         pg.addDoubleSlider("thetathresh", "theta threshold", 0, 5000, detector.thetaThresh);
         pg.addIntSlider("errorbits", "error recovery (bits)", 0, 5, 1);
+        pg.addIntSlider("weightscale", "Weight scale", 1, 100, detector.WEIGHT_SCALE);
 
         pg.addCheckBoxes("segDecimate", "segmentation decimate", detector.segDecimate,
                          "debug", "debug", false);
@@ -136,7 +137,6 @@ public class TagTest implements ParameterListener
             detector.debugSamples   = vw.getBuffer("samples");
             detector.debugLabels    = vw.getBuffer("labels");
 
-
             while (true) {
                 byte buf[] = is.getFrame();
                 if (buf == null)
@@ -154,6 +154,7 @@ public class TagTest implements ParameterListener
                 detector.maxEdgeCost = pg.gd("maxedgecost");
                 detector.magThresh = pg.gd("magthresh");
                 detector.thetaThresh = pg.gd("thetathresh");
+                detector.WEIGHT_SCALE = pg.gi("weightscale");
 
                 Tic tic = new Tic();
                 ArrayList<TagDetection> detections = detector.process(im, new double[] {im.getWidth()/2.0, im.getHeight()/2.0});

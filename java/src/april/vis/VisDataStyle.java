@@ -10,5 +10,5 @@ import java.util.*;
 /** Base interface of a rendering style that can be used with VisData. **/
 public interface VisDataStyle
 {
-    public void renderStyle(VisContext vc, GL gl, GLU glu, ArrayList<double[]> points);
+    public void renderStyle(VisContext vc, GL gl, GLU glu, VisData vdata);
 }

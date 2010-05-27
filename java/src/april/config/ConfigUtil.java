@@ -97,12 +97,12 @@ public class ConfigUtil
     }
 
     /** Returns 4x4 transformation matrix. **/
-    public static Matrix getMatrix(Config config, String sensorName)
+    public static double[][] getRigidBodyTransform(Config config, String sensorName)
     {
         double q[] = getQuaternion(config, sensorName);
         double pos[] = getPosition(config, sensorName);
 
-        return new Matrix(LinAlg.quatPosToMatrix(q, pos));
+        return LinAlg.quatPosToMatrix(q, pos);
     }
 
 }

@@ -14,6 +14,7 @@ import april.vis.*;
 import april.config.*;
 import april.jmat.*;
 import april.jmat.geom.*;
+import april.util.*;
 
 import lcm.lcm.*;
 import april.lcmtypes.*;
@@ -35,6 +36,7 @@ public class ViewRobot extends VisCanvasEventAdapter implements ViewObject, LCMS
     double              lastRobotPos[]  = new double[] { 0, 0, 0 };
     double              lastRobotQuat[] = new double[] { 1, 0, 0, 0 };
     ArrayList<double[]> trajectory      = new ArrayList<double[]>();
+    boolean             enableTeleport;
 
     /** If interactive, teleports are enabled. **/
     public ViewRobot(Viewer viewer, String name, Config config)
@@ -44,6 +46,32 @@ public class ViewRobot extends VisCanvasEventAdapter implements ViewObject, LCMS
         this.config = config;
         viewer.getVisCanvas().addEventHandler(this, 0);
         vrobot.color = Color.cyan;
+
+        enableTeleport = config.getBoolean("enable_teleport", false);
+
+        if (true) {
+            String path = config.getString("avatar.path", null);
+            if (path != null) {
+                try {
+                    double T[][] = ConfigUtil.getRigidBodyTransform(config, "avatar");
+                    double scale = config.getDouble("avatar.scale", 1);
+                    T = LinAlg.multiplyMany(T, LinAlg.scale(scale, scale, scale));
+                    RWX rwx = new RWX(path);
+                    vavatar = new VisChain(T, rwx);
+                } catch (IOException ex) {
+                    System.out.println("Problem loading avatar model: "+ex);
+                }
+            }
+            String cls = config.getString("avatar.visobject_class", null);
+            if (cls != null) {
+                try {
+                    vavatar = (VisObject) ReflectUtil.createObject(cls);
+                } catch (Exception ex) {
+                    System.out.println("Problem loading avatar model: "+ex);
+                }
+            }
+        }
+
         lcm.subscribe("POSE", this);
     }
 
@@ -199,6 +227,9 @@ public class ViewRobot extends VisCanvasEventAdapter implements ViewObject, LCMS
     {
         if (pose == null)
             return -1;
+        if (!enableTeleport)
+            return -1;
+
         double pos[] = ray.intersectPlaneXY();
         double dist = Math.sqrt(LinAlg.sq(pos[0] - pose.pos[0]) + LinAlg.sq(pos[1] - pose.pos[1]));
         return dist < 1 ? dist : -1;

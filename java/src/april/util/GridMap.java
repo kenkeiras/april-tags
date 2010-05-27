@@ -190,8 +190,8 @@ public final class GridMap
      **/
     public void recenter(double cx0, double cy0, double maxDistance)
     {
-        double cx = x0 + (width + .5) * metersPerPixel;
-        double cy = y0 + (height + .5) * metersPerPixel;
+        double cx = x0 + (width + .5) * metersPerPixel / 2;
+        double cy = y0 + (height + .5) * metersPerPixel / 2;
 
         double distanceSq = sq(cx - cx0) + sq(cy - cy0);
         double pixelsPerMeter = 1.0 / metersPerPixel;

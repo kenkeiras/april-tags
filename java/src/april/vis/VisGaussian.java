@@ -9,12 +9,8 @@ import april.jmat.*;
 import april.jmat.geom.*;
 
 /** 2D Gaussian ellipse. **/
-public class VisGaussian implements VisObject
+public class VisGaussian extends VisData
 {
-    VisDataStyle style;
-
-    ArrayList<double[]> points = new ArrayList<double[]>();
-
     double mx, my;
 
     double xx, xy, yy;
@@ -35,7 +31,7 @@ public class VisGaussian implements VisObject
 
     public VisGaussian(MultiGaussian mg, VisDataStyle style, double sigmas[])
     {
-        this.style = style;
+        this.styles.add(style);
         this.sigmas = sigmas;
 
         Matrix P = mg.getCovariance();
@@ -96,7 +92,10 @@ public class VisGaussian implements VisObject
             gl.glPushMatrix();
             gl.glTranslated(mx, my, 0);
             gl.glScaled(sigma, sigma, sigma);
-            style.renderStyle(vc, gl, glu, points);
+
+            for (VisDataStyle style : styles)
+                style.renderStyle(vc, gl, glu, this);
+
             gl.glPopMatrix();
         }
     }

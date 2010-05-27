@@ -1,106 +1,135 @@
 package april.util;
 
 import java.io.*;
+import java.util.*;
 
 import lcm.lcm.*;
 import april.lcmtypes.*;
+import april.jmat.*;
 
 /**
- * Subscribes to pose_t and find the pose_t whose timestamp is closest to the requested value.
+ * Subscribes to pose_t and find the pose_t whose timestamp is closest
+ * to the requested value.
  **/
 public class PoseTracker implements LCMSubscriber
 {
     String             channel;
     LCM                lcm         = LCM.getSingleton();
-    pose_t             queue[]     = new pose_t[50];
-    int                queue_inpos = 0;
+
+    LinkedList<pose_t> queue       = new LinkedList<pose_t>();
+
+    // how long back in time should we remember poses?
+    public double       time        = 10.0;
+
+    boolean            warned;
+
+    // don't use messages that are older than this... (seconds)
+    public double      maxTimeErr  = 0.1;
+
     static PoseTracker pt;
-    static PoseTracker ptTruth;
+    static final int MAX_QUEUE_SIZE = 10000;
 
     public static PoseTracker getSingleton()
     {
         if (pt == null)
-        {
-            pt = new PoseTracker("POSE");
-        }
+            pt = new PoseTracker("POSE", 5.0);
+
         return pt;
     }
 
-    public static PoseTracker getTruthSingleton()
-    {
-        if (ptTruth == null)
-        {
-            ptTruth = new PoseTracker("POSE_TRUTH");
-        }
-        return ptTruth;
-    }
-
-    public PoseTracker(String channel)
+    public PoseTracker(String channel, double time)
     {
         this.channel = channel;
+        this.time = time;
+
         lcm.subscribe(channel, this);
     }
 
     public void messageReceived(LCM lcm, String channel, LCMDataInputStream ins)
     {
-        try
-        {
-            messageReceivedEx(channel, ins);
-        } catch (IOException ex)
-        {
+        try {
+            pose_t p = new pose_t(ins);
+            queue.add(p);
+
+            // emergency shrinkage.
+            while (queue.size() > MAX_QUEUE_SIZE) {
+                queue.removeFirst();
+                if (!warned) {
+                    System.out.println("PoseTracker queue too large");
+                    warned = true;
+                }
+            }
+
+            while (true) {
+                pose_t first = queue.getFirst();
+                pose_t last = queue.getLast();
+
+                if (Math.abs(last.utime - first.utime) > time*1000000)
+                    queue.removeFirst();
+                else
+                    break;
+            }
+
+        } catch (IOException ex) {
             System.out.println("Exception: " + ex);
         }
     }
 
     public synchronized pose_t get()
     {
-        return queue[(queue_inpos - 1 + queue.length) % queue.length];
+        return queue.getLast();
     }
 
     public synchronized pose_t get(long utime)
     {
-        return get(utime, false);
-    }
+        pose_t p0 = null, p1 = null; // two poses bracketing the desired utime
 
-    public synchronized pose_t get(long utime, boolean interpolate)
-    {
-        pose_t bestpose = null;
-        long besterr = Long.MAX_VALUE;
-
-        for (int age = 0; age < queue.length; age++) {
-            int i = (queue_inpos - 1 - age + queue.length) % queue.length;
-
-            if (queue[i] == null)
-                return bestpose;
-
-            long err = Math.abs(utime - queue[i].utime);
-            // error has gone up: we're done searching.
-            if (err > besterr)
-                break;
-            bestpose = queue[i];
-            besterr = err;
+        for (pose_t p : queue) {
+            if (p.utime < utime && (p0 == null || p.utime > p0.utime))
+                p0 = p;
+            if (p.utime > utime && (p1 == null || p.utime < p1.utime))
+                p1 = p;
         }
 
-        if (!interpolate)
-            return bestpose;
+        if (p0 != null && Math.abs(utime - p0.utime) > maxTimeErr*1000000)
+            p0 = null;
 
-        pose_t intpose = bestpose.copy();
-        double dt = (utime - bestpose.utime) / 1000000.0;
-        for (int i = 0; i < 3; i++)
-            intpose.pos[i] += intpose.vel[i] * dt;
-        return intpose;
-    }
+        if (p1 != null && Math.abs(utime - p1.utime) > maxTimeErr*1000000)
+            p1 = null;
 
-    void messageReceivedEx(String channel, LCMDataInputStream ins) throws IOException
-    {
-        if (channel.equals(this.channel))
-        {
-            pose_t p = new pose_t(ins);
-            synchronized (this)
-            {
-                queue[queue_inpos] = p;
-                queue_inpos = (queue_inpos + 1) % queue.length;
-            }
+        if (p0 != null && p1 != null) {
+
+            if (p0.utime == p1.utime)
+                return p0;
+
+            // interpolate
+            double err0 = Math.abs(p0.utime - utime);
+            double err1 = Math.abs(p1.utime - utime);
+
+            double w0 = err1 / (err0 + err1);
+            double w1 = err0 / (err0 + err1);
+
+            pose_t p = new pose_t();
+            p.utime = utime;
+            p.pos = LinAlg.add(LinAlg.scale(p0.pos, w0),
+                               LinAlg.scale(p1.pos, w1));
+            p.vel = LinAlg.add(LinAlg.scale(p0.vel, w0),
+                               LinAlg.scale(p1.vel, w1));
+            p.rotation_rate = LinAlg.add(LinAlg.scale(p0.rotation_rate, w0),
+                               LinAlg.scale(p1.rotation_rate, w1));
+            p.accel = LinAlg.add(LinAlg.scale(p0.accel, w0),
+                               LinAlg.scale(p1.accel, w1));
+
+            p.orientation = LinAlg.slerp(p0.orientation, p1.orientation, w0);
+            return p;
         }
+
+        if (p0 != null)
+            return p0;
+
+        if (p1 != null)
+            return p1;
+
+        return null;
     }
 }
