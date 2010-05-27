@@ -5,11 +5,17 @@ import java.util.*;
 
 import april.image.*;
 
-/** pixel coordinates are obtained via:
-    ix = (x - x0) / metersPerPixel
-    iy = (y - y0) / metersPerPixel
-
-    access internal state with care!
+/** Pixel coordinates are obtained via: <br>
+        <code>
+        ix = (int) (x - x0) / metersPerPixel <br>
+        iy = (int) (y - y0) / metersPerPixel <br>
+        </code><br>
+        Pixel centers in meters are obtained via: <br>
+        <code>
+        px = x0 + metersPerPixel/2.0 + x*metersPerPixel <br>
+        py = y0 + metersPerPixel/2.0 + y*metersPerPixel <br>
+        </code><br>
+    Access internal state with care!
 **/
 public final class GridMap
 {
@@ -432,13 +438,17 @@ public final class GridMap
         }
     }
 
-    /** Get the minimum x and y coordinates **/
+    /** Get the lower-left corner of the grid (minimum x and y coordinates).
+      * Note: *Not* the pixel center (1/2 pixel off in meters)
+      **/
     public double[] getXY0()
     {
         return new double[] { x0, y0 };
     }
 
-    /** Get the maximum x and y coordinates **/
+    /** Get the upper-right corner of the grid (maximum x and y coordinates).
+      * Note: *Not* the pixel center (1/2 pixel off in meters)
+      **/
     public double[] getXY1()
     {
         return new double[] { x0 + width*metersPerPixel, y0 + height*metersPerPixel };
@@ -758,7 +768,7 @@ public final class GridMap
 
         v = 255*scale*exp(-max(0, dist - cliff)^2*expDecayMSq)
     **/
-    public LUT makeExponentialLUT(double scale, double cliffDistMeters, double expDecayMSq)
+    public LUT makeGaussianLUT(double scale, double cliffDistMeters, double expDecayMSq)
     {
         LUT lut = new LUT();
         lut.metersPerPixel = metersPerPixel;

@@ -200,7 +200,7 @@ public class ScanMatcher
 
         gm.subtract(old_scan_decay);
 
-        GridMap.LUT lut = gm.makeExponentialLUT(1.0, 0, 1.0 / rangeCovariance);
+        GridMap.LUT lut = gm.makeGaussianLUT(1.0, 0, 1.0 / rangeCovariance);
 
         for (ArrayList<double[]> c : s.gcontours) {
             for (int i = 0; i+1 < c.size(); i++) {
@@ -242,7 +242,7 @@ public class ScanMatcher
         if (Math.sqrt(rangeCovariance) < metersPerPixel)
             System.out.println("WRN: ScanMatcher range covariance is small in comparison to raster resolution. Increase resolution.");
 
-        GridMap.LUT lut = gm.makeExponentialLUT(1.0, 0, 1.0 / rangeCovariance);
+        GridMap.LUT lut = gm.makeGaussianLUT(1.0, 0, 1.0 / rangeCovariance);
 
         for (int sidx = 0; sidx < scans.size(); sidx++) {
             Scan s = scans.get(sidx);
