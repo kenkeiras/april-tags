@@ -119,7 +119,7 @@ public class VisWindow implements VisObject
         gl.glScaled(1.0/(xy1[0]-xy0[0]), 1.0/(xy1[1]-xy0[1]), 0);
         gl.glTranslated(-xy0[0], -xy0[1], 0);
 
-        // TODO: (optional?) Stenciling
+        // TODO: (optional?) Stenciling/ clip planes
 
         // everything will be drawn at z=0 due to our scaling, so
         // depth doesn't make sense.

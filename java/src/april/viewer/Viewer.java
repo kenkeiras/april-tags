@@ -15,8 +15,6 @@ import java.net.*;
 import april.config.*;
 import april.util.*;
 
-import lcm.lcm.*;
-import april.lcmtypes.*;
 import april.jmat.*;
 import april.vis.*;
 
@@ -26,11 +24,9 @@ public class Viewer
     JFrame jf;
     VisWorld   vw;
     VisCanvas  vc;
-    LCM        lcm = LCM.getSingleton();
+    JPanel paramsPanel;
 
     Config     config;
-
-    PoseTracker pt = PoseTracker.getSingleton();
 
     ArrayList<ViewObject> viewObjects = new ArrayList<ViewObject>();
 
@@ -47,7 +43,6 @@ public class Viewer
      *
      * @param _config     file containing configuration information
      * @param _jf     JFrame from parent application (window)
-     */
     public Viewer(Config _config, JFrame _jf)
     {
         vw = new VisWorld();
@@ -56,13 +51,13 @@ public class Viewer
 
         initialize(_config);
     }
+    */
 
     /**
      * Creates default Viewer in new window (frame)
      *
      * @param _config     file containing configuration information
      */
-
     public Viewer(Config _config)
     {
         vw = new VisWorld();
@@ -71,7 +66,14 @@ public class Viewer
         jf = new JFrame("Viewer");
 
         jf.setLayout(new BorderLayout());
-        jf.add(vc, BorderLayout.CENTER);
+
+        paramsPanel = new JPanel();
+        paramsPanel.setLayout(new VFlowLayout());
+        JSplitPane jsp = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, vc, paramsPanel);
+        jsp.setDividerLocation(1.0);
+        jsp.setResizeWeight(1.0);
+
+        jf.add(jsp, BorderLayout.CENTER);
         jf.setSize(600,400);
         jf.setVisible(true);
         jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -114,4 +116,9 @@ public class Viewer
         return vc;
     }
 
+    public void addParamPanel(JComponent c)
+    {
+        paramsPanel.add(c);
+        paramsPanel.invalidate();
+    }
 }
