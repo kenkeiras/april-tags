@@ -33,6 +33,9 @@ public class VisDataPointStyle implements VisDataStyle
         synchronized (vdata) {
             ArrayList<double[]> points = vdata.points;
 
+            if (points.size() == 0) // JOGL will die if we pass an empty buffer.
+                return;
+
             if (c != null)
                 VisUtil.setColor(gl, c);
 
