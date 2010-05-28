@@ -84,6 +84,16 @@ public class ViewRobot extends VisCanvasEventAdapter implements ViewObject, LCMS
         }
     }
 
+    public void redraw()
+    {
+        VisWorld.Buffer vb = viewer.getVisWorld().getBuffer("Robot");
+        vb.addBuffered(new VisData(new VisDataLineStyle(Color.blue, 1), trajectory));
+        vb.addBuffered(new VisChain(pose.orientation, pose.pos, vrobot));
+        if (vavatar != null)
+            vb.addBuffered(new VisChain(pose.orientation, pose.pos, vavatar));
+        vb.switchBuffer();
+    }
+
     synchronized void messageReceivedEx(String channel, LCMDataInputStream ins) throws IOException
     {
         if (channel.equals("POSE")) {
@@ -94,12 +104,7 @@ public class ViewRobot extends VisCanvasEventAdapter implements ViewObject, LCMS
                 trajectory.add(LinAlg.copy(pose.pos));
             }
 
-            VisWorld.Buffer vb = viewer.getVisWorld().getBuffer("Robot");
-            vb.addBuffered(new VisData(new VisDataLineStyle(Color.blue, 1), trajectory));
-            vb.addBuffered(new VisChain(pose.orientation, pose.pos, vrobot));
-            if (vavatar != null)
-                vb.addBuffered(new VisChain(pose.orientation, pose.pos, vavatar));
-            vb.switchBuffer();
+            redraw();
 
             if (followMode > 0) {
                 VisViewManager viewManager = viewer.getVisCanvas().getViewManager();
@@ -283,6 +288,7 @@ public class ViewRobot extends VisCanvasEventAdapter implements ViewObject, LCMS
         if (lastCharT) {
             if (e.getKeyChar() == 'c') {
                 trajectory.clear();
+                redraw();
             }
         }
 
