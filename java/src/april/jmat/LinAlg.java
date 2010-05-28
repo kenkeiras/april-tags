@@ -2034,4 +2034,41 @@ public final class LinAlg
                               V.get(1, 2),
                               V.get(2, 2) };
     }
+
+    /** Fit y = Mx + b using weighted least-squares regression. Pass
+     * in a list of {x, y, weight} (weight can be omitted).  Returns {
+     * slope, offset, chi2
+     **/
+    public static double[] fitLine(ArrayList<double[]> xyws)
+    {
+        double AtA[][] = new double[2][2];
+        double AtB[] = new double[2];
+
+        double btb = 0;
+
+        for (double p[] : xyws) {
+
+            // weight
+            double w2 = 1;
+            if (p.length == 3)
+                w2 = p[2]*p[2];
+
+            AtA[0][0] += w2*p[0]*p[0];
+            AtA[0][1] += w2*p[0];
+            AtA[1][0] += w2*p[0];
+            AtA[1][1] += w2;
+
+            AtB[0] += w2*p[0]*p[1];
+            AtB[1] += w2*p[1];
+
+            btb += p[1]*p[1];
+        }
+
+        double AtAinv[][] = LinAlg.inverse(AtA);
+        double x[] = LinAlg.matrixAB(AtAinv, AtB);
+
+        double chi = LinAlg.dotProduct(x, LinAlg.matrixAB(AtA, x)) - 2*LinAlg.dotProduct(x, AtB) + btb;
+
+        return new double[] { x[0], x[1], chi };
+    }
 }
