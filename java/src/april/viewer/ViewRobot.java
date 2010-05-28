@@ -84,7 +84,7 @@ public class ViewRobot extends VisCanvasEventAdapter implements ViewObject, LCMS
         }
     }
 
-    void messageReceivedEx(String channel, LCMDataInputStream ins) throws IOException
+    synchronized void messageReceivedEx(String channel, LCMDataInputStream ins) throws IOException
     {
         if (channel.equals("POSE")) {
 
@@ -244,10 +244,9 @@ public class ViewRobot extends VisCanvasEventAdapter implements ViewObject, LCMS
     int       findCount;
     boolean   lastCharT = false;
 
-    public boolean keyTyped(VisCanvas vc, KeyEvent e)
+    public synchronized boolean keyTyped(VisCanvas vc, KeyEvent e)
     {
-        if (e.getKeyChar() == 'f')
-        {
+        if (e.getKeyChar() == 'f') {
             // Follow mode
             followMode = (followMode + 1) % 3;
             vc.getWorld().removeTemporary(lastFollowTemporary);
@@ -255,19 +254,19 @@ public class ViewRobot extends VisCanvasEventAdapter implements ViewObject, LCMS
             vc.getWorld().addTemporary(lastFollowTemporary, 1.0);
             return true;
         }
-        if (e.getKeyChar() == 'F' && lastRobotPos != null)
-        {
+
+        if (e.getKeyChar() == 'F' && lastRobotPos != null) {
+
             findCount++;
-            if (findCount % 2 == 1)
-            {
+
+            if (findCount % 2 == 1) {
                 // FIND.
                 VisViewManager viewManager = vc.getViewManager();
                 viewManager.viewGoal.lookAt(LinAlg.add(lastRobotPos, new double[] { 0, 0, 10 }),
                                             lastRobotPos,
                                             new double[] { 0, 1, 0 });
-            }
-            else
-            {
+            } else {
+
                 VisViewManager viewManager = vc.getViewManager();
                 double rpy[] = LinAlg.quatToRollPitchYaw(lastRobotQuat);
                 double behindDist = 5;
@@ -280,14 +279,15 @@ public class ViewRobot extends VisCanvasEventAdapter implements ViewObject, LCMS
             }
             return true;
         }
-        if (lastCharT)
-        {
-            if (e.getKeyChar() == 'c')
-            {
+
+        if (lastCharT) {
+            if (e.getKeyChar() == 'c') {
                 trajectory.clear();
             }
         }
+
         lastCharT = e.getKeyChar() == 't';
+
         return false;
     }
 
