@@ -328,7 +328,7 @@ public class LaserHarris implements ParameterListener
         double thetavar = LinAlg.sq(4*Math.sin(Math.toRadians(1))*range);
         double alpha = 1.0 / (rangevar + thetavar);
 
-        return gm.makeExponentialLUT(1.0, 0, alpha);
+        return gm.makeGaussianLUT(1.0, 0, alpha);
     }
 
     double minEig(double a, double b, double d)
