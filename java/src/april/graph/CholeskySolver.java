@@ -8,7 +8,7 @@ public class CholeskySolver implements GraphSolver
 {
     Graph g;
 
-    static boolean verbose = true;
+    public static boolean verbose = true;
 
     public Ordering ordering;
 
