@@ -117,7 +117,7 @@ public class GLineSegment2D implements Serializable
     {
         double pclosest[] = closestPoint(p);
 
-        return LinAlg.distance(p, pclosest);
+        return LinAlg.distance(p, pclosest, 2);
     }
 
     public double lengthOfProjectionOnto(GLineSegment2D seg)
