@@ -5,15 +5,17 @@ import java.util.*;
 
 import april.image.*;
 
-/** Pixel coordinates are obtained via: <br>
+/** <font color="red"> Please follow the conventions listed here!</font><br>
+
+    Pixel coordinates are obtained via this <code>meters -> pixels</code> transformation: <br>
         <code>
-        ix = (int) (x - x0) / metersPerPixel <br>
-        iy = (int) (y - y0) / metersPerPixel <br>
+        ix = (int) ((px - x0) / metersPerPixel) <br>
+        iy = (int) ((py - y0) / metersPerPixel) <br>
         </code><br>
-        Pixel centers in meters are obtained via: <br>
+    Pixel centers in meters are obtained via this <code>pixels -> meters</code> transformation: <br>
         <code>
-        px = x0 + metersPerPixel/2.0 + x*metersPerPixel <br>
-        py = y0 + metersPerPixel/2.0 + y*metersPerPixel <br>
+        px = x0 + (ix + 0.5) * metersPerPixel <br>
+        py = y0 + (iy + 0.5) * metersPerPixel <br>
         </code><br>
     Access internal state with care!
 **/
