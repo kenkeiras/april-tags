@@ -241,7 +241,7 @@ public class TagFamilyGenerator
             }
         }
 
-        System.out.printf("\n\npackage art.tag;\n\n");
+        System.out.printf("\n\npackage april.tag;\n\n");
         String cname = String.format("Tag%dh%d", nbits, minhamming);
         System.out.printf("/** Tag family with %d distinct codes.\n", codes.length);
         System.out.printf("    bits: %d,  minimum hamming: %d,  minimum complexity: %d\n\n", nbits, minhamming, mincomplexity);
