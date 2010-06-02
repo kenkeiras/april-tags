@@ -440,6 +440,46 @@ public final class GridMap
         }
     }
 
+    public void drawLineMax(double xa, double ya, double xb, double yb, byte fill)
+    {
+        double dist = Math.sqrt(sq(xb-xa) + sq(yb-ya));
+        int nsteps = (int) (dist / metersPerPixel + 1);
+        double pixelsPerMeter = 1.0 / metersPerPixel;
+
+        for (int i = 0; i < nsteps; i++) {
+            double alpha = ((double) i)/nsteps;
+            double x = xa*alpha + xb*(1-alpha);
+            double y = ya*alpha + yb*(1-alpha);
+
+            int ix = (int) ((x - x0) * pixelsPerMeter);
+            int iy = (int) ((y - y0) * pixelsPerMeter);
+
+            if (ix >= 0 && ix < width && iy >= 0 && iy < height)
+                data[iy*width + ix] = (byte) Math.max(data[iy*width+ix]&0xff, fill&0xff);
+        }
+    }
+
+    public void drawLineInterpolate(double xa, double ya, double xb, double yb, int f0, int f1)
+    {
+        double dist = Math.sqrt(sq(xb-xa) + sq(yb-ya));
+        int nsteps = (int) (dist / metersPerPixel + 1);
+        double pixelsPerMeter = 1.0 / metersPerPixel;
+
+        for (int i = 0; i < nsteps; i++) {
+            double alpha = ((double) i)/nsteps;
+            double x = xa*alpha + xb*(1-alpha);
+            double y = ya*alpha + yb*(1-alpha);
+
+            int ix = (int) ((x - x0) * pixelsPerMeter);
+            int iy = (int) ((y - y0) * pixelsPerMeter);
+
+            if (ix >= 0 && ix < width && iy >= 0 && iy < height) {
+                int f = (int) (f0*alpha + f1*(1-alpha));
+                data[iy*width + ix] = (byte) f;
+            }
+        }
+    }
+
     /** Get the lower-left corner of the grid (minimum x and y coordinates).
       * Note: *Not* the pixel center (1/2 pixel off in meters)
       **/
