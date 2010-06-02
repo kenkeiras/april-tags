@@ -458,23 +458,4 @@ public class FloatImage
 	    }
         return f;
     }
-
-    public void drawLine(double xa, double ya, double xb, double yb, float fill)
-    {
-        double dist = Math.sqrt(sq(xb-xa) + sq(yb-ya));
-        int nsteps = (int) (dist / metersPerPixel + 1);
-        double pixelsPerMeter = 1.0 / metersPerPixel;
-
-        for (int i = 0; i < nsteps; i++) {
-            double alpha = ((double) i)/nsteps;
-            double x = xa*alpha + xb*(1-alpha);
-            double y = ya*alpha + yb*(1-alpha);
-
-            int ix = (int) ((x - x0) * pixelsPerMeter);
-            int iy = (int) ((y - y0) * pixelsPerMeter);
-
-            if (ix >= 0 && ix < width && iy >= 0 && iy < height)
-                data[iy*width + ix] = fill;
-        }
-    }
 }
