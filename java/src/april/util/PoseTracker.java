@@ -109,6 +109,8 @@ public class PoseTracker implements LCMSubscriber
             double w0 = err1 / (err0 + err1);
             double w1 = err0 / (err0 + err1);
 
+            assert(!Double.isNaN(w0));
+
             pose_t p = new pose_t();
             p.utime = utime;
             p.pos = LinAlg.add(LinAlg.scale(p0.pos, w0),
@@ -116,9 +118,9 @@ public class PoseTracker implements LCMSubscriber
             p.vel = LinAlg.add(LinAlg.scale(p0.vel, w0),
                                LinAlg.scale(p1.vel, w1));
             p.rotation_rate = LinAlg.add(LinAlg.scale(p0.rotation_rate, w0),
-                               LinAlg.scale(p1.rotation_rate, w1));
+                                         LinAlg.scale(p1.rotation_rate, w1));
             p.accel = LinAlg.add(LinAlg.scale(p0.accel, w0),
-                               LinAlg.scale(p1.accel, w1));
+                                 LinAlg.scale(p1.accel, w1));
 
             p.orientation = LinAlg.slerp(p0.orientation, p1.orientation, w0);
             return p;

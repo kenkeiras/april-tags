@@ -282,7 +282,7 @@ public class SingularValueDecomposition
             while (p > 0) {
                 int k,kase;
 
-                // Here is where a test for too many iterations would go.
+                // XXX Here is where a test for too many iterations would go.
 
                 // This section of the program inspects for
                 // negligible elements in the s and e arrays.  On
