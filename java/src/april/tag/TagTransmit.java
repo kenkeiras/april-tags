@@ -28,8 +28,8 @@ public class TagTransmit implements ParameterListener
 
     ParameterGUI pg;
 
-    //    TagFamily tagFamily = new Tag16h5();
-    TagFamily tagFamily = new Tag36h11();
+    TagFamily tagFamily;
+    TagDetector detector;
 
     LCM lcm = LCM.getSingleton();
 
@@ -55,25 +55,40 @@ public class TagTransmit implements ParameterListener
 
             ImageSource is = ImageSource.make(url);
 
-            new TagTransmit(is);
+            TagFamily tf = new Tag36h11();
+            if (args.length >= 2) {
+                tf = (TagFamily) ReflectUtil.createObject(args[1]);
+            }
+
+            TagTransmit tt = new TagTransmit(is, tf);
 
         } catch (IOException ex) {
             System.out.println("Ex: "+ex);
         }
     }
 
-    public TagTransmit(ImageSource is)
+    public TagTransmit(ImageSource is, TagFamily tf)
     {
         this.is = is;
+        this.tagFamily = tf;
+
+        detector = new TagDetector(this.tagFamily);
 
         pg = new ParameterGUI();
-        pg.addDoubleSlider("segsigma", "smoothing sigma (segmentation)", 0, 2, 0.8);
-        pg.addDoubleSlider("sigma", "smoothing sigma (sampling)", 0, 2, 0.0);
-        pg.addDoubleSlider("magthresh", "magnitude threshold", 0.0001, 0.01, .005);
-        pg.addDoubleSlider("thetathresh", "theta threshold (radians)", 0, 2*Math.PI, Math.toRadians(35));
-        pg.addCheckBoxes("debug", "debug", false);
 
-        jf = new JFrame("TagTest");
+        pg.addDoubleSlider("segsigma", "smoothing sigma (segmentation)", 0, 2, detector.segSigma);
+        pg.addDoubleSlider("sigma", "smoothing sigma (sampling)", 0, 2, detector.sigma);
+        pg.addDoubleSlider("minmag", "minimum magnitude", 0.0001, 0.01, detector.minMag);                   //
+        pg.addDoubleSlider("maxedgecost", "maximum edge cost (radians)", 0, Math.PI, detector.maxEdgeCost); //
+        pg.addDoubleSlider("magthresh", "magnitude threshold", 0, 5000, detector.magThresh);
+        pg.addDoubleSlider("thetathresh", "theta threshold", 0, 5000, detector.thetaThresh);
+        pg.addIntSlider("errorbits", "error recovery (bits)", 0, 5, 1);
+        pg.addIntSlider("weightscale", "Weight scale", 1, 100, detector.WEIGHT_SCALE);                      //
+
+        pg.addCheckBoxes("segDecimate", "segmentation decimate", detector.segDecimate,
+                         "debug", "debug", false);
+
+        jf = new JFrame("TagTransmit");
         jf.setLayout(new BorderLayout());
         jf.add(vc, BorderLayout.CENTER);
         jf.add(pg, BorderLayout.SOUTH);
@@ -82,9 +97,9 @@ public class TagTransmit implements ParameterListener
         jf.setVisible(true);
 
         vc.getViewManager().viewGoal.fit2D(new double[] {0,0}, new double[] { 752, 480});
-        new RunThread().start();
-
         pg.addListener(this);
+
+        new RunThread().start();
     }
 
     public void parameterChanged(ParameterGUI pg, String name)
@@ -98,12 +113,13 @@ public class TagTransmit implements ParameterListener
             is.start();
             ImageSourceFormat fmt = is.getCurrentFormat();
 
-            TagDetector detector = new TagDetector(tagFamily);
+            detector = new TagDetector(tagFamily);
 
-            VisWorld.Buffer vbOriginal = vw.getBuffer("unprocessed image");
-            VisWorld.Buffer vbSegmentation = vw.getBuffer("segmentation");
-            VisWorld.Buffer vbInput = vw.getBuffer("input");
-            VisWorld.Buffer vbDetections = vw.getBuffer("detections");
+            VisWorld.Buffer vbOriginal      = vw.getBuffer("unprocessed image");
+            VisWorld.Buffer vbSegmentation  = vw.getBuffer("segmentation");
+            VisWorld.Buffer vbInput         = vw.getBuffer("input");
+            VisWorld.Buffer vbDetections    = vw.getBuffer("detections");
+            VisWorld.Buffer vbClock         = vw.getBuffer("clock");
 
             detector.debugSegments  = vw.getBuffer("segments");
             detector.debugQuads     = vw.getBuffer("quads");
@@ -117,11 +133,17 @@ public class TagTransmit implements ParameterListener
 
                 BufferedImage im = ImageConvert.convertToImage(fmt.format, fmt.width, fmt.height, buf);
 
+                tagFamily.setErrorRecoveryBits(pg.gi("errorbits"));
+
                 detector.debug = pg.gb("debug");
                 detector.sigma = pg.gd("sigma");
                 detector.segSigma = pg.gd("segsigma");
+                detector.segDecimate = pg.gb("segDecimate");
+                detector.minMag = pg.gd("minmag");
+                detector.maxEdgeCost = pg.gd("maxedgecost");
                 detector.magThresh = pg.gd("magthresh");
                 detector.thetaThresh = pg.gd("thetathresh");
+                detector.WEIGHT_SCALE = pg.gi("weightscale");
 
                 Tic tic = new Tic();
                 ArrayList<TagDetection> detections = detector.process(im, new double[] {im.getWidth()/2.0, im.getHeight()/2.0});
@@ -138,7 +160,11 @@ public class TagTransmit implements ParameterListener
                 vbOriginal.addBuffered(new VisDepthTest(false, new VisLighting(false, new VisImage(im))));
                 vbOriginal.switchBuffer();
 
-                System.out.printf("***************************** %8.2f ms\n", dt*1000);
+                vbClock.addBuffered(new VisText(VisText.ANCHOR.BOTTOM_RIGHT,
+                                                VisText.JUSTIFICATION.RIGHT,
+                                                String.format("<<blue>>%8.2f ms", dt*1000)));
+                vbClock.switchBuffer();
+
                 for (TagDetection d : detections) {
                     double p0[] = d.interpolate(-1,-1);
                     double p1[] = d.interpolate(1,-1);
