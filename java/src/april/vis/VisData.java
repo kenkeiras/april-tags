@@ -34,6 +34,9 @@ public class VisData implements VisObject
 
             Object o = args[i];
 
+            if (o == null)
+                continue;
+
             if (o instanceof VisDataStyle)
                 styles.add((VisDataStyle) o);
 
@@ -54,6 +57,8 @@ public class VisData implements VisObject
                 points.ensureCapacity(points.size() + al.size());
 
                 for (Object p : al) {
+                    if (p == null)
+                        continue;
                     assert (p instanceof double[]);
                     points.add((double[]) p);
                 }

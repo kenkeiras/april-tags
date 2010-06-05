@@ -779,8 +779,9 @@ public final class LinAlg
             q1 = LinAlg.scale(q1, -1);
         }
 
-        if (false && dot > 0.95) {
-            // just do a linear interpolation ... why? (SLERP should still work)
+        // if large dot product (1), slerp will scale both q0 and q1
+        // by 0, and normalization will blow up.
+        if (dot > 0.95) {
             return LinAlg.add(LinAlg.scale(q0, 1 - w),
                               LinAlg.scale(q1, w));
         }
@@ -2005,7 +2006,8 @@ public final class LinAlg
         double M[] = new double[3];
 
         for (double p[] : points) {
-            LinAlg.plusEquals(M, p);
+            for (int i = 0; i < 3 ; i++)
+                M[i] += p[i];
         }
 
         for (int i = 0; i < M.length; i++)
@@ -2028,6 +2030,10 @@ public final class LinAlg
         A[1][0] = A[0][1];
         A[2][0] = A[0][2];
         A[2][1] = A[1][2];
+
+        if (Double.isNaN(A[0][0])) {
+            return null;
+        }
 
         Matrix V = new SingularValueDecomposition(new Matrix(A)).getV();
         return new double[] { V.get(0, 2),
