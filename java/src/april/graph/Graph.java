@@ -159,9 +159,26 @@ public class Graph
         ins.close();
     }
 
+    // Returns a deep copy of this graph with the exception of a
+    // node's attributes.
     public Graph copy()
     {
-        Graph g = new Graph();
+        return copy(null);
+    }
+
+    // Copies the contents of this graph into graph g if g is null, a
+    // new graph is created, otherwise, all containers in g are
+    // emptied forcibly
+    public Graph copy(Graph g)
+    {
+        if (g == null)
+            g = new Graph();
+        else {
+            g.nodes.clear();
+            g.edges.clear();
+            g.stateIndices.clear();
+        }
+
         for (GEdge edge : edges)
             g.edges.add(edge.copy());
         for (GNode node: nodes)
@@ -170,6 +187,21 @@ public class Graph
             g.stateIndices.add(index);
 
         return g;
+    }
+
+    // Copies the entire node state from graph g into this one
+    // Use this method when copying the graph to perform thread safe optimization
+    // NOTE: it must be ensured externally that the ith node in each graph
+    // is of identical type (e.g. GXYTNode)
+    public void setNodeState(Graph g)
+    {
+        assert(nodes.size() >= g.nodes.size());
+
+        for (int i = 0; i < g.nodes.size(); i++) {
+            GNode src  = g.nodes.get(i);
+            GNode dest = nodes.get(i);
+            System.arraycopy(src.state, 0, dest.state, 0, src.state.length);
+        }
     }
 
     public ErrorStats getErrorStats()
