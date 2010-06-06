@@ -182,7 +182,7 @@ static int set_named_format(image_source_t *isrc, const char *desired_format)
     assert(isrc->impl_type == IMPL_TYPE);
     impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
 
-    char *format_name = desired_format;
+    const char *format_name = desired_format;
     int colonpos = strpos(desired_format, ":");
     int xpos = strpos(desired_format, "x");
     int width = -1;
@@ -194,9 +194,10 @@ static int set_named_format(image_source_t *isrc, const char *desired_format)
 
         width = atoi(swidth);
         height = atoi(sheight);
-    }
 
-    printf("Desired format is '%s', width %d, height %d\n", format_name, width, height);
+        free(swidth);
+        free(sheight);
+    }
 
     int nformats = num_formats(isrc);
     int fidx = -1;
@@ -215,7 +216,7 @@ static int set_named_format(image_source_t *isrc, const char *desired_format)
 
     // if no matching format found...
     if (fidx < 0 || fidx >= impl->nformats) {
-        printf("Matching format not found. Valid formats are:\n");
+        printf("Matching format '%s' not found. Valid formats are:\n", desired_format);
         for (int i=0; i < nformats; i++)
         {
             image_source_format_t *fmt = get_format(isrc, i);
