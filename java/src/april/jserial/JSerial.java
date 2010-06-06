@@ -128,6 +128,12 @@ public class JSerial
         return sb.toString();
     }
 
+    public int write(int v)
+    {
+        byte b[] = new byte[] {(byte) v};
+        return write(b, 0, b.length);
+    }
+
     public int write(String s)
     {
         byte b[] = s.getBytes();

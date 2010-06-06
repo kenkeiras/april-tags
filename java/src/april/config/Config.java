@@ -295,7 +295,7 @@ public class Config
 
     public void setBoolean(String key, boolean v)
     {
-        assert(false);
+        keys.put(prefix+key, new String[] {""+v});
     }
 
     public void setBooleans(String key, boolean v[])

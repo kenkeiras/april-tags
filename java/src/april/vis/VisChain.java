@@ -36,6 +36,11 @@ public class VisChain implements VisObject
         int i = 0;
 
         while (i < os.length) {
+            if (os[i] == null) {
+                i++;
+                continue;
+            }
+
             if (os[i] instanceof double[]) {
 
                 double tmp[] = (double[]) os[i];

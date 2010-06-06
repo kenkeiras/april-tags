@@ -779,8 +779,9 @@ public final class LinAlg
             q1 = LinAlg.scale(q1, -1);
         }
 
-        if (false && dot > 0.95) {
-            // just do a linear interpolation ... why? (SLERP should still work)
+        // if large dot product (1), slerp will scale both q0 and q1
+        // by 0, and normalization will blow up.
+        if (dot > 0.95) {
             return LinAlg.add(LinAlg.scale(q0, 1 - w),
                               LinAlg.scale(q1, w));
         }
@@ -2021,7 +2022,8 @@ public final class LinAlg
         double M[] = new double[3];
 
         for (double p[] : points) {
-            LinAlg.plusEquals(M, p);
+            for (int i = 0; i < 3 ; i++)
+                M[i] += p[i];
         }
 
         for (int i = 0; i < M.length; i++)
@@ -2045,6 +2047,10 @@ public final class LinAlg
         A[2][0] = A[0][2];
         A[2][1] = A[1][2];
 
+        if (Double.isNaN(A[0][0])) {
+            return null;
+        }
+
         Matrix V = new SingularValueDecomposition(new Matrix(A)).getV();
         return new double[] { V.get(0, 2),
                               V.get(1, 2),
@@ -2053,38 +2059,89 @@ public final class LinAlg
 
     /** Fit y = Mx + b using weighted least-squares regression. Pass
      * in a list of {x, y, weight} (weight can be omitted).  Returns {
-     * slope, offset, chi2
+     * slope, offset, chi2.
+     *
+     * Specifically, we solve the overdetermined system Jx = b, where
+     * J = [ x1 1 ; x2 1; x3 1; ...], b = [ y1 ; y2; y3; ...], and x =
+     * [M ; b] (the slope and offset of the line).
+     *
+     * Each row of J and b is weighted by that observation's value of
+     * 'weight'. Weight corresponds to the standard deviation of the
+     * uncertainty (square root of the variance).
+     *
+     * The least-squares solution is x = inv(J'J) J'b
+     *
+     * The chi^2 error is:
+     *
+     * chi^2 = (Jx-b)'(Jx-b) = x'J'Jx - 2x'J'b + b'b
      **/
     public static double[] fitLine(ArrayList<double[]> xyws)
     {
-        double AtA[][] = new double[2][2];
-        double AtB[] = new double[2];
+        double JtJ[][] = new double[2][2];
+        double JtB[] = new double[2];
 
         double btb = 0;
 
-        for (double p[] : xyws) {
+        assert(xyws.size() >= 2);
 
+        // For numerical stability, mean-shift all the
+        // points. (Suppose p[0]s were large: we end up squaring
+        // them.)
+        double mx = 0, my = 0;
+
+        for (double p[] : xyws) {
+            mx += p[0];
+            my += p[1];
+        }
+        mx /= xyws.size();
+        my /= xyws.size();
+
+        for (double p[] : xyws) {
             // weight
             double w2 = 1;
-            if (p.length == 3)
+            if (p.length >= 3)
                 w2 = p[2]*p[2];
 
-            AtA[0][0] += w2*p[0]*p[0];
-            AtA[0][1] += w2*p[0];
-            AtA[1][0] += w2*p[0];
-            AtA[1][1] += w2;
+            double px = p[0] - mx;
+            double py = p[1] - my;
 
-            AtB[0] += w2*p[0]*p[1];
-            AtB[1] += w2*p[1];
+            JtJ[0][0] += w2*px*px;
+            JtJ[0][1] += w2*px;
+            JtJ[1][0] += w2*px;
+            JtJ[1][1] += w2;
 
-            btb += p[1]*p[1];
+            JtB[0] += w2*px*py;
+            JtB[1] += w2*py;
+
+            btb += w2*py*py;
         }
 
-        double AtAinv[][] = LinAlg.inverse(AtA);
-        double x[] = LinAlg.matrixAB(AtAinv, AtB);
+        double JtJinv[][] = LinAlg.inverse(JtJ);
+        double x[] = LinAlg.matrixAB(JtJinv, JtB);
 
-        double chi = LinAlg.dotProduct(x, LinAlg.matrixAB(AtA, x)) - 2*LinAlg.dotProduct(x, AtB) + btb;
+        double chi2 = LinAlg.dotProduct(x, LinAlg.matrixAB(JtJ, x)) - 2*LinAlg.dotProduct(x, JtB) + btb;
 
-        return new double[] { x[0], x[1], chi };
+        // fix up solution to account for mx and my. Only offset changes (slope stays the same).
+        x[1] += my - x[0]*mx;
+
+/*
+        if (false) {
+            // brute force chi2 computation. This can be more stable,
+            // but since we've introduced mx and my, we should be
+            // fine.
+            chi2 = 0;
+            for (double p[] : xyws) {
+                double ypred = p[0]*x[0] + x[1];
+                double w2 = 1;
+                if (p.length >= 3)
+                    w2 = p[2]*p[2];
+
+                chi2 += w2*w2*(ypred-p[1])*(ypred-p[1]);
+            }
+            System.out.printf("%15f \n", chi2);
+        }
+*/
+
+        return new double[] { x[0], x[1], chi2 };
     }
 }

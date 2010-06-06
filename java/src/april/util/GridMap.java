@@ -1233,4 +1233,64 @@ public final class GridMap
 
         this.data = r;
     }
+
+    /** Get pixel center from cell indices
+     *    * This reference function incurs a performance hit due to object creation
+     * @param int array with the cell indices to lookup
+     * @return double array for pixel center or null if invalid input
+     **/
+    public double[] getPixelCenter(int indices[])
+    {
+        if (indices == null || indices.length != 2)
+            return null;
+        else
+            return getPixelCenter(indices[0], indices[1]);
+    }
+
+    /** Get pixel center from cell indices
+     *    * This reference function incurs a performance hit due to object creation
+      * @param ix cell index in width dimension
+      * @param iy cell index in height dimension
+      * @return double array for pixel center or null if invalid input
+      **/
+    public double[] getPixelCenter(int ix, int iy)
+    {
+        if (ix >= 0 && ix < width && iy >= 0 && iy < height) {
+            double px = x0 + (ix + 0.5) * metersPerPixel;
+            double py = y0 + (iy + 0.5) * metersPerPixel;
+
+            return new double []{px, py};
+        } else
+            return null;
+    }
+
+    /** Get cell indices from pixel center
+     *    * This reference function incurs a performance hit due to object creation
+      * @param double array with cell center in local frame
+      * @return int array with cell indices or null if invalid input
+      **/
+    public int[] getIndices(double p[])
+    {
+        if (p == null || p.length != 2)
+            return null;
+        else
+            return getIndices(p[0], p[1]);
+    }
+
+    /** Get cell indices from pixel center
+     *    * This reference function incurs a performance hit due to object creation
+      * @param px cell center in local frame (x dimension)
+      * @param py cell center in local frame (y dimension)
+      * @return int array with cell indices or null if invalid input
+      **/
+    public int[] getIndices(double px, double py)
+    {
+        int ix = (int) ((px - x0) / metersPerPixel);
+        int iy = (int) ((py - y0) / metersPerPixel);
+
+        if (ix >= 0 && ix < width && iy >= 0 && iy < height)
+            return new int []{ix,iy};
+        else
+            return null;
+    }
 }
