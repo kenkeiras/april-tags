@@ -36,11 +36,16 @@ image_source_t *image_source_open(const char *url)
                 continue;
             }
 
+            if (!strcmp(key, "format")) {
+                isrc->set_named_format(isrc, value);
+                continue;
+            }
+
             // pass through a device-specific parameter.
             int found = 0;
-            for (int fidx = 0; fidx < isrc->num_features(isrc); fidx++) {
-                if (!strcmp(isrc->get_feature_name(isrc, fidx), key)) {
-                    isrc->set_feature_value(isrc, fidx, strtod(value, NULL));
+            for (int idx = 0; idx < isrc->num_features(isrc); idx++) {
+                if (!strcmp(isrc->get_feature_name(isrc, idx), key)) {
+                    isrc->set_feature_value(isrc, idx, strtod(value, NULL));
                     found = 1;
                     break;
                 }

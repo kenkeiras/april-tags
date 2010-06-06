@@ -53,6 +53,26 @@ struct format_priv
     int color_coding_idx;
 };
 
+static int strposat(const char *haystack, const char *needle, int haystackpos)
+{
+    int idx = haystackpos;
+    int needlelen = strlen(needle);
+
+    while (haystack[idx] != 0) {
+        if (!strncmp(&haystack[idx], needle, needlelen))
+            return idx;
+
+        idx++;
+    }
+
+    return -1; // not found.
+}
+
+static int strpos(const char *haystack, const char *needle)
+{
+    return strposat(haystack, needle, 0);
+}
+
 // convert a base-16 number in ASCII ('len' characters long) to a 64
 // bit integer. Result is written to *ov, 0 is returned if parsing is
 // successful. Otherwise -1 is returned.
@@ -153,6 +173,61 @@ static int set_format(image_source_t *isrc, int idx)
     assert(idx>=0 && idx < impl->nformats);
 
     impl->current_format_idx = idx;
+
+    return 0;
+}
+
+static int set_named_format(image_source_t *isrc, const char *desired_format)
+{
+    assert(isrc->impl_type == IMPL_TYPE);
+    impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
+
+    const char *format_name = desired_format;
+    int colonpos = strpos(desired_format, ":");
+    int xpos = strpos(desired_format, "x");
+    int width = -1;
+    int height = -1;
+    if (colonpos >= 0 && xpos > colonpos) {
+        format_name = strndup(desired_format, colonpos);
+        char *swidth = strndup(&desired_format[colonpos+1], xpos-colonpos-1);
+        char *sheight = strdup(&desired_format[xpos+1]);
+
+        width = atoi(swidth);
+        height = atoi(sheight);
+
+        free(swidth);
+        free(sheight);
+    }
+
+    int nformats = num_formats(isrc);
+    int fidx = -1;
+
+    for (int i=0; i < nformats; i++)
+    {
+        image_source_format_t *fmt = get_format(isrc, i);
+
+        if (!strcmp(fmt->format, format_name)) {
+            if (width == -1 || height == -1 || (fmt->width == width && fmt->height == height)) {
+                fidx = i;
+                break;
+            }
+        }
+    }
+
+    // if no matching format found...
+    if (fidx < 0 || fidx >= impl->nformats) {
+        printf("Matching format '%s' not found. Valid formats are:\n", desired_format);
+        for (int i=0; i < nformats; i++)
+        {
+            image_source_format_t *fmt = get_format(isrc, i);
+            printf("\t[fidx: %d] width: %d height: %d name: '%s'\n",
+                   i, fmt->width, fmt->height, fmt->format);
+        }
+        printf("\tFormat resolution not required.  Exiting.\n");
+        exit(-1);
+    }
+
+    impl->current_format_idx = fidx;
 
     return 0;
 }
@@ -686,6 +761,7 @@ image_source_t *image_source_dc1394_open(url_parser_t *urlp)
     isrc->get_format = get_format;
     isrc->get_current_format = get_current_format;
     isrc->set_format = set_format;
+    isrc->set_named_format = set_named_format;
     isrc->num_features = num_features;
     isrc->get_feature_name = get_feature_name;
     isrc->get_feature_min = get_feature_min;

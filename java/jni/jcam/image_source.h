@@ -28,6 +28,7 @@ struct image_source
     int (*num_formats)(image_source_t *isrc);
     image_source_format_t *(*get_format)(image_source_t *isrc, int idx);
     int (*set_format)(image_source_t *isrc, int idx);
+    int (*set_named_format)(image_source_t *isrc, const char *desired_format);
     int (*get_current_format)(image_source_t *isrc);
 
     int (*start)(image_source_t *isrc);

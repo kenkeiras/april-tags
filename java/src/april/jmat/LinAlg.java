@@ -1171,6 +1171,22 @@ public final class LinAlg
         return nv;
     }
 
+    public static double[] scale(double v[], double s[])
+    {
+        return scale(v, s, null);
+    }
+
+    public static double[] scale(double v[], double s[], double nv[])
+    {
+        assert(v.length == s.length);
+        if (nv==null)
+            nv = new double[v.length];
+
+        for (int i = 0; i < v.length; i++)
+            nv[i] = v[i]*s[i];
+        return nv;
+    }
+
     public static double[][] scale(double v[][], double a)
     {
         double X[][] = new double[v.length][v[0].length];
