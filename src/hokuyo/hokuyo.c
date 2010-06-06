@@ -18,7 +18,7 @@
 
 #include "liburg/urg_ctrl.h"
 
-static void 
+static void
 usage(const char *progname)
 {
     fprintf (stderr, "usage: %s [options]\n"
@@ -31,7 +31,7 @@ usage(const char *progname)
             , g_path_get_basename(progname));
 }
 /*
-static inline int64_t 
+static inline int64_t
 _timestamp_now()
 {
     struct timeval tv;
@@ -115,7 +115,7 @@ _read_serialno(urg_t *urg, int *serialno)
     return 0;
 }
 
-static gboolean 
+static gboolean
 _connect_by_id(urg_t *urg, urg_parameter_t *params, const int desired_serialno)
 {
     char **devnames = _get_acm_devnames();
@@ -133,7 +133,7 @@ _connect_by_id(urg_t *urg, urg_parameter_t *params, const int desired_serialno)
             urg_laserOff(urg);
             urg_disconnect(urg);
             continue;
-        } 
+        }
 
         if(desired_serialno == serialno) {
             printf("Found %d on %s\n", serialno, devname);
@@ -150,7 +150,7 @@ _connect_by_id(urg_t *urg, urg_parameter_t *params, const int desired_serialno)
 }
 
 static gboolean
-_connect(urg_t *urg, urg_parameter_t *params, int serialno, 
+_connect(urg_t *urg, urg_parameter_t *params, int serialno,
         const char *device, int *data_max)
 {
     if(serialno) {
@@ -158,7 +158,7 @@ _connect(urg_t *urg, urg_parameter_t *params, int serialno,
             return 0;
         }
     } else if(device) {
-        if(!_connect_by_device(urg, params, device)) 
+        if(!_connect_by_device(urg, params, device))
             return 0;
     } else {
         if(!_connect_any_device(urg, params)) {
@@ -224,7 +224,7 @@ int main(int argc, char *argv[])
 
     while ((c = getopt_long (argc, argv, optstring, long_opts, 0)) >= 0)
     {
-        switch (c) 
+        switch (c)
         {
             case 'c':
                 free(channel);
@@ -363,8 +363,10 @@ int main(int argc, char *argv[])
         if(failure_count > 0)
             failure_count--;
 
-        msg.utime = timestamp_sync(sync, hokuyo_mtime, now);
-        double timesync_error = (now - msg.utime)/1000000.0; // should always be >= 0
+        int64_t synced_now = timestamp_sync(sync, hokuyo_mtime, now);
+        msg.utime = now; // synced_now
+
+        double timesync_error = (now - synced_now)/1000000.0; // should always be >= 0
 
         msg.nranges = nranges;
         for(int i=0; i<nranges; i++) {
