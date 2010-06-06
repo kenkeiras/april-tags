@@ -32,7 +32,7 @@ public class JSerial
         setMode(mode);
 
         if (fd < 0)
-            throw new IOException("Couldn't open serial port");
+            throw new IOException("Couldn't open serial port "+url);
     }
 
     public JSerial(String url, int baudrate, String mode) throws IOException
@@ -41,7 +41,7 @@ public class JSerial
         setMode(mode);
 
         if (fd < 0)
-            throw new IOException("Couldn't open serial port");
+            throw new IOException("Couldn't open serial port "+url);
     }
 
     public JSerial(String url, int baudrate) throws IOException
@@ -49,7 +49,7 @@ public class JSerial
         fd = serial_open_jni(url, baudrate, 1);
 
         if (fd < 0)
-            throw new IOException("Couldn't open serial port");
+            throw new IOException("Couldn't open serial port "+url);
     }
 
     public int getFd()
@@ -57,11 +57,12 @@ public class JSerial
         return fd;
     }
 
+    /** Returns negative on error. **/
     public int readFully(byte buf[], int offset, int len)
     {
         int sofar = 0;
         while (sofar < len) {
-            int res = read(fd, buf, offset + sofar, len - sofar);
+            int res = readTimeout(fd, buf, offset + sofar, len - sofar, 1000);
             if (res < 0)
                 return res;
             sofar += res;
@@ -75,6 +76,7 @@ public class JSerial
         return readAvailable(fd);
     }
 
+    /** Returns 0 on timeout, negative on other errors. **/
     public int readTimeout(byte buf[], int offset, int len, int mstimeout)
     {
         return readTimeout(fd, buf, offset, len, mstimeout);
@@ -90,11 +92,18 @@ public class JSerial
         return read(fd, buf, offset, len);
     }
 
-    /** Read a single byte. **/
+    /** Read a single byte. Return negative value on error**/
     public int read()
     {
         byte b[] = new byte[1];
         int ret = readFully(b, 0, 1);
+
+        if (ret < 0)
+            return ret;
+
+        if (ret == 0)
+            return -1;
+
         return b[0]&0xff;
     }
 
