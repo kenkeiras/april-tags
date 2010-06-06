@@ -96,6 +96,13 @@ static int set_format(image_source_t *isrc, int idx)
     return 0;
 }
 
+static int set_named_format(image_source_t *isrc, const char *desired_format)
+{
+    printf("***This feature (set_named_format) is not currently supported by v4l2 cameras in jcam.  Exiting.");
+    exit(-1);
+
+    return -1;
+}
 
 static int num_features(image_source_t *isrc)
 {
@@ -356,6 +363,7 @@ image_source_t *image_source_v4l2_open(const char *path)
     isrc->get_format = get_format;
     isrc->get_current_format = get_current_format;
     isrc->set_format = set_format;
+    isrc->set_named_format = set_named_format;
     isrc->num_features = num_features;
     isrc->get_feature_name = get_feature_name;
     isrc->get_feature_min = get_feature_min;
