@@ -2059,7 +2059,7 @@ public final class LinAlg
 
     /** Fit y = Mx + b using weighted least-squares regression. Pass
      * in a list of {x, y, weight} (weight can be omitted).  Returns {
-     * slope, offset, chi2.
+     * slope, offset, chi2. }
      *
      * Specifically, we solve the overdetermined system Jx = b, where
      * J = [ x1 1 ; x2 1; x3 1; ...], b = [ y1 ; y2; y3; ...], and x =
