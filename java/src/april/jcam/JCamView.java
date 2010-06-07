@@ -269,15 +269,22 @@ public class JCamView
 
         public void actionPerformed(ActionEvent e)
         {
-            if (jcb != null)
-                isrc.setFeatureValue(idx, jcb.isSelected() ? 1 : 0);
+            if (jcb != null) {
+                int res = isrc.setFeatureValue(idx, jcb.isSelected() ? 1 : 0);
+                if (res != 0)
+                    System.out.println("Error setting feature");
+            }
             updateLabel();
         }
 
         public void stateChanged(ChangeEvent e)
         {
-            if (js != null)
-                isrc.setFeatureValue(idx, js.getValue()/scale);
+            if (js != null) {
+                int res = isrc.setFeatureValue(idx, js.getValue()/scale);
+                if (res != 0)
+                    System.out.println("Error setting feature");
+            }
+
             updateLabel();
         }
     }
