@@ -45,7 +45,14 @@ image_source_t *image_source_open(const char *url)
             int found = 0;
             for (int idx = 0; idx < isrc->num_features(isrc); idx++) {
                 if (!strcmp(isrc->get_feature_name(isrc, idx), key)) {
-                    isrc->set_feature_value(isrc, idx, strtod(value, NULL));
+                    char *endptr = NULL;
+                    double dv = strtod(value, &endptr);
+                    if (endptr != value + strlen(value)) {
+                        printf("Parameter for key '%s' is invalid. Must be a number.\n",
+                               isrc->get_feature_name(isrc, idx));
+                        goto cleanup;
+                    }
+                    int res = isrc->set_feature_value(isrc, idx, dv);
                     found = 1;
                     break;
                 }
@@ -56,6 +63,7 @@ image_source_t *image_source_open(const char *url)
         }
     }
 
+cleanup:
     url_parser_destroy(urlp);
 
     // don't know what to do!
