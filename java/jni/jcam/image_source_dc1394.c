@@ -234,7 +234,7 @@ static int set_named_format(image_source_t *isrc, const char *desired_format)
 
 static int num_features(image_source_t *isrc)
 {
-    return 12;
+    return 13;
 }
 
 static const char* get_feature_name(image_source_t *isrc, int idx)
@@ -265,8 +265,10 @@ static const char* get_feature_name(image_source_t *isrc, int idx)
         return "frame-rate-manual";
     case 11:
         return "frame-rate";
-    case 12:
+    case 13:
         return "packetsize";
+    case 12:
+        return "hdr";
     default:
         return NULL;
     }
@@ -311,8 +313,8 @@ static double get_feature_min(image_source_t *isrc, int idx)
         return 0;
     case 11: // frame-rate
         return find_feature(isrc, DC1394_FEATURE_FRAME_RATE)->abs_min;
-    case 12: // packet size
-        return 1;
+    case 12: // hdr
+        return 0;
     default:
         return 0;
     }
@@ -345,8 +347,8 @@ static double get_feature_max(image_source_t *isrc, int idx)
         return 1;
     case 11: // frame-rate
         return find_feature(isrc, DC1394_FEATURE_FRAME_RATE)->abs_max;
-    case 12: // packetsize
-        return 4192;
+    case 12: // hdr
+        return 1;
     default:
         return 0;
     }
@@ -433,14 +435,16 @@ static double get_feature_value(image_source_t *isrc, int idx)
         return v;
     }
 
-    case 12: { // packetsize
-        if (impl->packet_size != 0)
-            return impl->packet_size;
-        image_source_format_t *format = impl->formats[impl->current_format_idx];
-        struct format_priv *format_priv = format->priv;
-        uint32_t packet_size;
-        dc1394_format7_get_packet_size(impl->cam, format_priv->dc1394_mode, &packet_size);
-        return packet_size;
+    case 12: { // hdr
+        // write address of imager register to pointgrey pass-through register
+        if (dc1394_set_control_register(impl->cam, 0x1a00, 0x0f) != DC1394_SUCCESS)
+            return -1;
+
+        uint32_t value;
+        if (dc1394_get_control_register(impl->cam, 0x1a04, &value) != DC1394_SUCCESS)
+            return -1;
+
+        return (value & 0x40) ? 1 : 0;
     }
 
     default:
@@ -546,17 +550,40 @@ static int set_feature_value(image_source_t *isrc, int idx, double v)
         break;
     }
 
-    case 12: { // packetsize
-        image_source_format_t *format = impl->formats[impl->current_format_idx];
-        struct format_priv *format_priv = format->priv;
+    case 12: { // hdr
+        // write address of imager register to pointgrey pass-through register
+        if (dc1394_set_control_register(impl->cam, 0x1a00, 0x0f) != DC1394_SUCCESS)
+            return -1;
 
-        dc1394_format7_set_packet_size(impl->cam, format_priv->dc1394_mode, (int) v);
-        impl->packet_size = (int) v;
+        // enable HDR mode
+        uint32_t value;
+        if (dc1394_get_control_register(impl->cam, 0x1a04, &value) != DC1394_SUCCESS)
+            return -1;
 
-        if (impl->started) {
-            isrc->stop(isrc);
-            isrc->start(isrc);
+        if (v == 1) {
+            value |= 0x40;
+        } else {
+            value &= (~0x40);
         }
+
+        if (dc1394_set_control_register(impl->cam, 0x1a04, value) != DC1394_SUCCESS)
+            return -1;
+
+        // enable automatic knee point timing
+        if (dc1394_set_control_register(impl->cam, 0x1a00, 0x0a) != DC1394_SUCCESS)
+            return -1;
+
+        if (dc1394_get_control_register(impl->cam, 0x1a04, &value) != DC1394_SUCCESS)
+            return -1;
+
+        if (v == 1) {
+            value |= 0x100;
+        } else {
+            value &= (~0x100);
+        }
+
+        if (dc1394_set_control_register(impl->cam, 0x1a04, value) != DC1394_SUCCESS)
+            return -1;
 
         break;
     }
