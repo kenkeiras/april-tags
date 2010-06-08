@@ -210,7 +210,7 @@ void *watchdog_task(void *arg)
 {
     while (1) {
         watchdog_got_scan = 0;
-        sleep(4);
+        sleep(8);
         if (watchdog_got_scan == 0) {
             printf("Watchdog forcing exit.\n");
             exit(-1);
