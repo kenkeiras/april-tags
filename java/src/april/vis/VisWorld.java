@@ -119,9 +119,13 @@ public class VisWorld
 
     public synchronized void clear()
     {
-        temporaryObjects.clear();
-        bufferMap.clear();
-        buffers.clear();
+        synchronized(temporaryObjects) {
+            temporaryObjects.clear();
+        }
+        synchronized(buffers) {
+            bufferMap.clear();
+            buffers.clear();
+        }
         notifyListeners();
     }
 
