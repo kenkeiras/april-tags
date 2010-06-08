@@ -12,6 +12,9 @@
 #include "lcmtypes/laser_t.h"
 #include <common/timestamp.h>
 
+#include <pthread.h>
+#include <unistd.h>
+
 #define MAX_ACM_DEVS 20
 
 #define TO_DEGREES(rad) ((rad)*180/M_PI)
@@ -201,6 +204,20 @@ _connect(urg_t *urg, urg_parameter_t *params, int serialno,
     return 1;
 }
 
+volatile int watchdog_got_scan = 0;
+
+void *watchdog_task(void *arg)
+{
+    while (1) {
+        watchdog_got_scan = 0;
+        sleep(4);
+        if (watchdog_got_scan == 0) {
+            printf("Watchdog forcing exit.\n");
+            exit(-1);
+        }
+    }
+}
+
 int main(int argc, char *argv[])
 {
     setlinebuf(stdout);
@@ -258,6 +275,11 @@ int main(int argc, char *argv[])
     int data_max;
     long* data = NULL;
     urg_parameter_t urg_param;
+
+    if (1) {
+        pthread_t pt;
+        pthread_create(&pt, NULL, watchdog_task, NULL);
+    }
 
     // setup LCM
     lcm_t *lcm = lcm_create(lcm_url);
@@ -364,7 +386,7 @@ int main(int argc, char *argv[])
             failure_count--;
 
         int64_t synced_now = timestamp_sync(sync, hokuyo_mtime, now);
-        msg.utime = now; // synced_now
+        msg.utime = now; // XXX Timesync above misbehaves. Using this for now.
 
         double timesync_error = (now - synced_now)/1000000.0; // should always be >= 0
 
@@ -376,6 +398,7 @@ int main(int argc, char *argv[])
         laser_t_publish(lcm, channel, &msg);
 
         scancount_since_last_report++;
+        watchdog_got_scan = 1;
 
         if(now > next_report_utime) {
             double dt = (now - report_last_utime) * 1e-6;
