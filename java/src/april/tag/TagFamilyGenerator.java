@@ -56,7 +56,21 @@ public class TagFamilyGenerator
 
         int nbits = Integer.parseInt(args[0]);
         int minhamming = Integer.parseInt(args[1]);
-        int mincomplexity = args.length > 2 ? Integer.parseInt(args[2]) : 5;
+
+        // default complexity is a function of the nbits. Values
+        // before were tuned by hand so they were "reasonable".
+
+        // Size (bits)  |   Min complexity
+        // -------------|-----------------
+        //       9      |        3
+        //      16      |        5
+        //      25      |        8
+        //      36      |       10
+
+        // This is approximately: complexity = 0.3 * nbits.
+        int reccomplexity = Math.min(10, nbits / 3);
+
+        int mincomplexity = args.length > 2 ? Integer.parseInt(args[2]) : reccomplexity;
 
         TagFamilyGenerator tfg = new TagFamilyGenerator(nbits, minhamming, mincomplexity);
         tfg.compute();
