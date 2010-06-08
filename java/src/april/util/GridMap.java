@@ -943,7 +943,7 @@ public final class GridMap
     public GridMap decimateMax(int factor)
     {
         int newwidth = width / factor;
-        int newheight = width / factor;
+        int newheight = height / factor;
 
         GridMap gm = GridMap.makePixels(x0, y0, newwidth, newheight, metersPerPixel*factor, (byte) 0, true);
         gm.defaultFill = defaultFill;
