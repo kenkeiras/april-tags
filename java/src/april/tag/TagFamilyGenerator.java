@@ -156,22 +156,43 @@ public class TagFamilyGenerator
 
             boolean good = true;
 
-            for (int widx = 0; widx < nrotcodes; widx++) {
+            // The tag must be different from itself when rotated.
+            if (true) {
+                long rv1 = TagFamily.rotate90(v, d);
+                long rv2 = TagFamily.rotate90(rv1, d);
+                long rv3 = TagFamily.rotate90(rv2, d);
 
-                long w = rotcodes[widx];
-
-                if (!hammingDistanceAtLeast(v, w, minhamming)) {
+                if (!hammingDistanceAtLeast(v, rv1, minhamming) ||
+                    !hammingDistanceAtLeast(v, rv2, minhamming) ||
+                    !hammingDistanceAtLeast(v, rv3, minhamming) ||
+                    !hammingDistanceAtLeast(rv1, rv2, minhamming) ||
+                    !hammingDistanceAtLeast(rv1, rv3, minhamming) ||
+                    !hammingDistanceAtLeast(rv2, rv3, minhamming)) {
                     good = false;
-                    break;
                 }
             }
 
+            // tag must be different from other tags.
+            if (good) {
+                for (int widx = 0; widx < nrotcodes; widx++) {
+
+                    long w = rotcodes[widx];
+
+                    if (!hammingDistanceAtLeast(v, w, minhamming)) {
+                        good = false;
+                        break;
+                    }
+                }
+            }
+
+            // tag must be reasonably complex
             if (good) {
                 int complexity = computeComplexity(v, d);
                 if (complexity < mincomplexity)
                     good = false;
             }
 
+            // If we like the tag, add it to the db.
             if (good) {
                 codelist.add(v);
                 long rv1 = TagFamily.rotate90(v, d);
