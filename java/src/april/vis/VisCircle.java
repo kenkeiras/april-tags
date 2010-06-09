@@ -22,6 +22,7 @@ public class VisCircle extends VisData
             this.styles.add(style);
     }
 
+    /** must be called before the object is rendered. **/
     public void setThetaRange(double theta0, double theta1)
     {
         this.theta0 = theta0;
@@ -30,8 +31,7 @@ public class VisCircle extends VisData
 
     public void render(VisContext vc, GL gl, GLU glu)
     {
-        if (points == null) {
-            points = new ArrayList<double[]>();
+        if (points.size() == 0) {
 
             assert(theta0 <= theta1);
             for (double t = theta0; t <= theta1; t+= (2*Math.PI/npoints)) {
