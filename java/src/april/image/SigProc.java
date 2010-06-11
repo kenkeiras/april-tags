@@ -88,6 +88,46 @@ public class SigProc
         }
     }
 
+    public static final void convolveCenteredDisc2DMaxCont(int a[], int width, int height, double radius, double mpp, int r[])
+    {
+        int pxRadius = (int) Math.ceil(radius/mpp);
+        for (int l=-pxRadius; l <= pxRadius; l++) {
+            for (int k=-pxRadius; k <= pxRadius; k++) {
+                // is it within the radius?
+                double k_m = k*mpp;
+                double l_m = l*mpp;
+                double c00_m = Math.sqrt((k_m - mpp/2)*(k_m - mpp/2) + (l_m - mpp/2)*(l_m - mpp/2));
+                double c01_m = Math.sqrt((k_m - mpp/2)*(k_m - mpp/2) + (l_m + mpp/2)*(l_m + mpp/2));
+                double c10_m = Math.sqrt((k_m + mpp/2)*(k_m + mpp/2) + (l_m - mpp/2)*(l_m - mpp/2));
+                double c11_m = Math.sqrt((k_m + mpp/2)*(k_m + mpp/2) + (l_m + mpp/2)*(l_m + mpp/2));
+                double rad = Math.min(Math.min(c00_m, c01_m), Math.min(c10_m, c11_m));
+
+                if (rad >= radius)
+                    continue;
+
+                int ymin = Math.max(0, 0-k);
+                int ymax = Math.min(height, height - k);
+                int xmin = Math.max(0, 0-l);
+                int xmax = Math.min(width, width - l);
+
+                for (int y = ymin; y < ymax; y++) {
+                    int n = (y+k)*width + (xmin+l);
+                    int o = y*width + xmin;
+
+                    for (int x = xmin; x < xmax; x++) {
+                        r[o] = (int) Math.max(r[o], a[n++]);
+                        o++;
+                    }
+                }
+            }
+        }
+    }
+
+    // XXX float version
+    // public...
+    //
+    //
+
     public static final void convolveCenteredDisc2DMax(int a[], int width, int height, int radius, int r[])
     {
         for (int k=-radius; k <= radius; k++) {
@@ -95,7 +135,7 @@ public class SigProc
                 // is it within the radius?
                 if (k*k + l*l > radius*radius)
                     continue;
-                
+
                 int ymin = Math.max(0, 0-k);
                 int ymax = Math.min(height, height - k);
                 int xmin = Math.max(0, 0-l);
@@ -121,7 +161,7 @@ public class SigProc
                 // is it within the radius?
                 if (k*k + l*l > radius*radius)
                     continue;
-                
+
                 int ymin = Math.max(0, 0-k);
                 int ymax = Math.min(height, height - k);
                 int xmin = Math.max(0, 0-l);
