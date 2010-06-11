@@ -537,6 +537,14 @@ public final class LinAlg
         return LinAlg.pointLeftOf(p0, p1, q) && pointLeftOf(p1, p2, q) && pointLeftOf(p2, p0, q);
     }
 
+    public static float[] copyFloats(double a[])
+    {
+        float r[] = new float[a.length];
+        for (int i = 0; i < a.length; i++)
+            r[i] = (float) a[i];
+        return r;
+    }
+
     public static float[] copy(float a[])
     {
         float r[] = new float[a.length];

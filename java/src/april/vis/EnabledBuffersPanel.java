@@ -86,27 +86,28 @@ public class EnabledBuffersPanel extends JPanel implements VisViewListener, VisW
     {
         public void run()
         {
-            synchronized(EnabledBuffersPanel.this) {
-                ArrayList<String> bufferNames = new ArrayList<String>();
-                VisWorld vw = vc.getWorld();
+            ArrayList<String> bufferNames = new ArrayList<String>();
+            VisWorld vw = vc.getWorld();
 
+            synchronized(vw.buffers) {
                 for (VisWorld.Buffer vb : vw.buffers) {
                     bufferNames.add(vb.name);
                 }
-                Collections.sort(bufferNames);
-
-                checkboxPanel.removeAll();
-
-                for (String s : bufferNames) {
-                    JCheckBox jcb = new JCheckBox(s, vc.getViewManager().isBufferEnabled(s));
-                    jcb.addActionListener(new VisibleActionListener(jcb, vc, s));
-                    checkboxPanel.add(jcb);
-
-                    checkboxMap.put(s, jcb);
-                }
-
-                checkboxPanel.revalidate();
             }
+
+            Collections.sort(bufferNames);
+
+            checkboxPanel.removeAll();
+
+            for (String s : bufferNames) {
+                JCheckBox jcb = new JCheckBox(s, vc.getViewManager().isBufferEnabled(s));
+                jcb.addActionListener(new VisibleActionListener(jcb, vc, s));
+                checkboxPanel.add(jcb);
+
+                checkboxMap.put(s, jcb);
+            }
+
+            checkboxPanel.revalidate();
         }
     }
 
