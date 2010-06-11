@@ -247,6 +247,11 @@ public class VisCanvas extends JPanel implements VisWorldListener,
         this.targetFPS = fps;
     }
 
+    public double getTargetFPS()
+    {
+        return targetFPS;
+    }
+
     public void worldChanged(VisWorld w)
     {
         draw();
