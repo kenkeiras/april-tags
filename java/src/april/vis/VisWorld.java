@@ -68,26 +68,30 @@ public class VisWorld
             notifyListeners();
         }
 
-        public synchronized void addFront(VisObject vo)
-                                 {
-                                     front.add(vo);
-                                     notifyListeners();
-                                 }
+        public void addFront(VisObject vo)
+        {
+            synchronized(buffers) {
+                front.add(vo);
+                notifyListeners();
+            }
+        }
 
-        public synchronized void switchBuffer()
-                                 {
-                                     front = back;
-                                     // don't recycle: a previous front buffer
-                                     // could still have a reference somewhere.
-                                     back = new ArrayList<VisObject>();
+        public void  switchBuffer()
+        {
+            synchronized (buffers) {
+                front = back;
+                // don't recycle: a previous front buffer
+                // could still have a reference somewhere.
+                back = new ArrayList<VisObject>();
 
-                                     notifyListeners();
-                                 }
+                notifyListeners();
+            }
+        }
 
-        public synchronized ArrayList<VisObject> getFront()
-                                      {
-                                          return front;
-                                      }
+        ArrayList<VisObject> getFront()
+        {
+            return front;
+        }
 
         public int compareTo(Buffer b)
         {
@@ -170,6 +174,7 @@ public class VisWorld
                 buffers.add(b);
                 Collections.sort(buffers);
             }
+            notifyListeners();
         }
 
         return b;

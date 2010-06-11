@@ -8,17 +8,17 @@ import april.config.*;
 
 public class MultiResolutionScanMatcher
 {
-    int decimate = 10;
-    boolean debug = false;
+    public int decimate = 10;
+    public boolean debug = false;
 
-    boolean refine;
-    double refine_initial_stepsize[];
-    double refine_minimum_stepsize[];
-    double refine_shrink_ratio;
-    int    refine_max_iterations;
+    public boolean refine;
+    public double refine_initial_stepsize[];
+    public double refine_minimum_stepsize[];
+    public double refine_shrink_ratio;
+    public int    refine_max_iterations;
 
-    boolean reweight;
-    double  reweight_distance;
+    public boolean reweight;
+    public double  reweight_distance;
 
     GridMap gm;  // grid map
     GridMap dgm; // decimated grid map
@@ -268,7 +268,7 @@ public class MultiResolutionScanMatcher
         return bestidx;
     }
 
-    double[] refine(ArrayList<double[]> points, double x, double y, double t)
+    public double[] refine(ArrayList<double[]> points, double x, double y, double t)
     {
         int score = gm.score(points, x, y, t);
         double stepsize[] = LinAlg.copy(refine_initial_stepsize);

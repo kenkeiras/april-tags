@@ -45,6 +45,40 @@ public class Gridder<T>
         }
     }
 
+    public void remove(double x, double y, T o)
+    {
+        int ix = (int) ((x - x0)/metersPerCell);
+        int iy = (int) ((y - y0)/metersPerCell);
+
+        if (ix >=0 && iy >=0 && ix < width && iy < height) {
+
+            // nobody in this bucket!
+            if (cells[iy][ix] == null)
+                return;
+
+            if (cells[iy][ix].o == o) {
+                // The first one is our guy. Just skip over it.
+                cells[iy][ix] = cells[iy][ix].next;
+            } else {
+                // The first guy is okay. Crawl through the list.
+                Cell c = cells[iy][ix];
+                Cell nc = c.next;
+                c.next = null;
+
+                while (nc != null) {
+                    if (nc.o != o) {
+                        Cell tmp = nc.next;
+                        nc.next = c;
+                        cells[iy][ix] = nc;
+                        nc = tmp;
+                    } else {
+                        nc = nc.next;
+                    }
+                }
+            }
+        }
+    }
+
     class MyIterator implements Iterator<T>, Iterable<T>
     {
         int ix0, ix1, iy0, iy1;
