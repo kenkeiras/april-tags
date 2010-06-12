@@ -545,6 +545,14 @@ public final class LinAlg
         return r;
     }
 
+    public static double[] copyDoubles(float a[])
+    {
+        double r[] = new double[a.length];
+        for (int i = 0; i < a.length; i++)
+            r[i] = a[i];
+        return r;
+    }
+
     public static float[] copy(float a[])
     {
         float r[] = new float[a.length];
