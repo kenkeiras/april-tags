@@ -27,6 +27,8 @@ public class VisViewManager
 
     VisContext vc;
 
+    double follow_lastpos[], follow_lastquat[];
+
     public double zoom_dist_min = 0.1;
     public double zoom_dist_max = 2000;
 
@@ -77,8 +79,6 @@ public class VisViewManager
         return viewGoal.copy();
     }
 
-
-    double follow_lastpos[], follow_lastquat[];
     public void follow(double pos[], double quat[], boolean followYaw)
     {
         if (follow_lastpos != null) {
