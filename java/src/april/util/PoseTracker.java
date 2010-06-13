@@ -13,13 +13,13 @@ import april.jmat.*;
  **/
 public class PoseTracker implements LCMSubscriber
 {
-    String             channel;
-    LCM                lcm         = LCM.getSingleton();
+    String             channel      = "POSE";
+    LCM                lcm          = LCM.getSingleton();
 
-    LinkedList<pose_t> queue       = new LinkedList<pose_t>();
+    LinkedList<pose_t> queue        = new LinkedList<pose_t>();
 
     // how long back in time should we remember poses?
-    public double       time        = 10.0;
+    public double      time         = 10.0;
 
     boolean            warned;
 
@@ -32,7 +32,7 @@ public class PoseTracker implements LCMSubscriber
     public static PoseTracker getSingleton()
     {
         if (pt == null)
-            pt = new PoseTracker("POSE", 5.0);
+            pt = new PoseTracker(channel, time);
 
         return pt;
     }
