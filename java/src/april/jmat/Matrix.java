@@ -135,10 +135,9 @@ public class Matrix
 
     public double[][] copyArray()
     {
-        double A[][] = new double[m][n];
+        double A[][] = new double[m][];
         for (int i = 0; i < m; i++)
-            for (int j = 0; j < n; j++)
-                A[i][j] = get(i,j);
+            A[i] = rows[i].copyArray();
 
         return A;
     }

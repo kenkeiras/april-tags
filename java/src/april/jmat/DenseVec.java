@@ -25,6 +25,11 @@ public class DenseVec extends Vec
         return X;
     }
 
+    public final double[] copyArray()
+    {
+        return LinAlg.copy(v);
+    }
+
     public final Vec copy(int i0, int i1)
     {
         DenseVec X = new DenseVec(i1 - i0 + 1);

@@ -29,6 +29,8 @@ public abstract class Vec
     /** Make a copy of the vector **/
     public abstract Vec copy();
 
+    public abstract double[] copyArray();
+
     /** Resize the vector, truncating or adding zeros as appropriate. **/
     public abstract void resize(int newlength);
 
