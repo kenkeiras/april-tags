@@ -38,6 +38,11 @@ public class CSRVec extends Vec
         return X;
     }
 
+    public final double[] copyArray()
+    {
+        return getDoubles();
+    }
+
     public final double[] getDoubles()
     {
         double v[] = new double[length];

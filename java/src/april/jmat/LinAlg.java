@@ -537,6 +537,22 @@ public final class LinAlg
         return LinAlg.pointLeftOf(p0, p1, q) && pointLeftOf(p1, p2, q) && pointLeftOf(p2, p0, q);
     }
 
+    public static float[] copyFloats(double a[])
+    {
+        float r[] = new float[a.length];
+        for (int i = 0; i < a.length; i++)
+            r[i] = (float) a[i];
+        return r;
+    }
+
+    public static double[] copyDoubles(float a[])
+    {
+        double r[] = new double[a.length];
+        for (int i = 0; i < a.length; i++)
+            r[i] = a[i];
+        return r;
+    }
+
     public static float[] copy(float a[])
     {
         float r[] = new float[a.length];
@@ -1048,20 +1064,17 @@ public final class LinAlg
         return M;
     }
 
-    /** convert 4x4 matrix to XYT notation **/
-    /*
-      public static double[] matrixToXYT(Matrix M)
-      {
-      assert(M.getColumnDimension()==4 && M.getRowDimension()==4);
-      double xyt[] = new double[3];
-      xyt[0] = M.get(0,3);
-      xyt[1] = M.get(1,3);
+    /** convert 4x4 matrix to XYT notation. Obviously, lossy. **/
+    public static double[] matrixToXYT(double M[][])
+    {
+        double xyt[] = new double[3];
+        xyt[0] = M[0][3];
+        xyt[1] = M[1][3];
 
-      double rpy[] = matrixToRollPitchYaw(M);
-      xyt[2] = rpy[2];
-      return xyt;
-      }
-    */
+        double rpy[] = matrixToRollPitchYaw(M);
+        xyt[2] = rpy[2];
+        return xyt;
+    }
 
     public static double[] angleAxisToQuat(double theta, double axis[])
     {

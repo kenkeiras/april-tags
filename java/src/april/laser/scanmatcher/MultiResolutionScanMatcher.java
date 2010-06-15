@@ -8,17 +8,21 @@ import april.config.*;
 
 public class MultiResolutionScanMatcher
 {
-    int decimate = 10;
-    boolean debug = false;
+    public int decimate = 10;
+    public boolean debug = false;
 
-    boolean refine;
-    double refine_initial_stepsize[];
-    double refine_minimum_stepsize[];
-    double refine_shrink_ratio;
-    int    refine_max_iterations;
+    public boolean refine;
+    public double refine_initial_stepsize[];
+    public double refine_minimum_stepsize[];
+    public double refine_shrink_ratio;
+    public int    refine_max_iterations;
 
-    boolean reweight;
-    double  reweight_distance;
+    public boolean reweight;
+    public double  reweight_distance;
+
+    // maximum number of times to pick a low resolution cell to be
+    // researched at high resolution
+    public int    max_search_iterations;
 
     GridMap gm;  // grid map
     GridMap dgm; // decimated grid map
@@ -37,6 +41,8 @@ public class MultiResolutionScanMatcher
 
         this.reweight = config.getBoolean("reweight", true);
         this.reweight_distance = config.getDouble("reweight_distance", 0.1);
+
+        this.max_search_iterations = config.getInt("max_search_iterations", 100);
     }
 
     /** Set a new model for future scanmatching operations.
@@ -108,7 +114,7 @@ public class MultiResolutionScanMatcher
 
 
         /////////////////////////////////////////////////////////////////
-        // Step 1. Compute the covariance by fitting a guassian to the
+        // Step 1. Compute the covariance by fitting a Gauassian to the
         // low-resolution samples.
         MultiGaussianEstimator mge = new MultiGaussianEstimator(3);
 
@@ -156,12 +162,12 @@ public class MultiResolutionScanMatcher
         int bestHighResScore = -1;
         double bestHighResXYT[] = new double[3];
 
-        int maxIters = Integer.MAX_VALUE;
-
         for (int iters = 0; true; iters++) {
 
-            if (iters >= 100 && (iters & (iters - 1))==0)
-                System.out.printf("WRN: MultiResolutionScanMatcher: many iterations (%d)\n", iters);
+            if (debug) {
+                if ((iters >= 100 && (iters & (iters - 1))==0) || iters == max_search_iterations)
+                    System.out.printf("WRN: MultiResolutionScanMatcher: many iterations (%d)\n", iters);
+            }
 
             // Find the next best score that's less than maxscore
             // This implementation just researches the entire low
@@ -184,7 +190,7 @@ public class MultiResolutionScanMatcher
                 }
             }
 
-            if (iters > maxIters || bestHighResScore >= thisBestLowResScore) {
+            if (iters > max_search_iterations || bestHighResScore >= thisBestLowResScore) {
                 // we're done: we have not found another low
                 // resolution voxel that needs to be searched. Thus,
                 // we return a result now.
@@ -268,7 +274,7 @@ public class MultiResolutionScanMatcher
         return bestidx;
     }
 
-    double[] refine(ArrayList<double[]> points, double x, double y, double t)
+    public double[] refine(ArrayList<double[]> points, double x, double y, double t)
     {
         int score = gm.score(points, x, y, t);
         double stepsize[] = LinAlg.copy(refine_initial_stepsize);

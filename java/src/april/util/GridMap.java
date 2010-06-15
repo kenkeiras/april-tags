@@ -1196,6 +1196,11 @@ public final class GridMap
         // get id of union around robot
         int cid = uf.getRepresentative(py*width + px);
 
+        // only return a non-null result if cells other
+        // than the xy's are reachable
+        if (uf.getSetSize(cid) <= 1)
+            return null;
+
         byte[] res = new byte[data.length];
         for (int i=0; i < data.length; i++)
         {
