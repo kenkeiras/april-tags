@@ -436,12 +436,14 @@ static double get_feature_value(image_source_t *isrc, int idx)
     }
 
     case 12: { // hdr
-        // write address of imager register to pointgrey pass-through register
-        if (dc1394_set_control_register(impl->cam, 0x1a00, 0x0f) != DC1394_SUCCESS)
+         uint64_t offset = 0x0F00000ULL;
+
+       // write address of imager register to pointgrey pass-through register
+        if (dc1394_set_register(impl->cam, offset + 0x1a00, 0x0f) != DC1394_SUCCESS)
             return -1;
 
         uint32_t value;
-        if (dc1394_get_control_register(impl->cam, 0x1a04, &value) != DC1394_SUCCESS)
+        if (dc1394_get_register(impl->cam, offset + 0x1a04, &value) != DC1394_SUCCESS)
             return -1;
 
         return (value & 0x40) ? 1 : 0;
@@ -551,13 +553,16 @@ static int set_feature_value(image_source_t *isrc, int idx, double v)
     }
 
     case 12: { // hdr
+
+        uint64_t offset = 0x0F00000ULL;
+
         // write address of imager register to pointgrey pass-through register
-        if (dc1394_set_control_register(impl->cam, 0x1a00, 0x0f) != DC1394_SUCCESS)
+        if (dc1394_set_register(impl->cam, offset + 0x1a00, 0x0f) != DC1394_SUCCESS)
             return -1;
 
         // enable HDR mode
         uint32_t value;
-        if (dc1394_get_control_register(impl->cam, 0x1a04, &value) != DC1394_SUCCESS)
+        if (dc1394_get_register(impl->cam, offset + 0x1a04, &value) != DC1394_SUCCESS)
             return -1;
 
         if (v == 1) {
@@ -566,14 +571,14 @@ static int set_feature_value(image_source_t *isrc, int idx, double v)
             value &= (~0x40);
         }
 
-        if (dc1394_set_control_register(impl->cam, 0x1a04, value) != DC1394_SUCCESS)
+        if (dc1394_set_register(impl->cam,  offset + 0x1a04, value) != DC1394_SUCCESS)
             return -1;
 
         // enable automatic knee point timing
-        if (dc1394_set_control_register(impl->cam, 0x1a00, 0x0a) != DC1394_SUCCESS)
+        if (dc1394_set_register(impl->cam,  offset + 0x1a00, 0x0a) != DC1394_SUCCESS)
             return -1;
 
-        if (dc1394_get_control_register(impl->cam, 0x1a04, &value) != DC1394_SUCCESS)
+        if (dc1394_get_register(impl->cam,  offset + 0x1a04, &value) != DC1394_SUCCESS)
             return -1;
 
         if (v == 1) {
@@ -582,7 +587,7 @@ static int set_feature_value(image_source_t *isrc, int idx, double v)
             value &= (~0x100);
         }
 
-        if (dc1394_set_control_register(impl->cam, 0x1a04, value) != DC1394_SUCCESS)
+        if (dc1394_set_register(impl->cam,  offset + 0x1a04, value) != DC1394_SUCCESS)
             return -1;
 
         break;
