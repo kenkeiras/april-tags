@@ -995,7 +995,7 @@ public final class GridMap
         return gm;
     }
 
-    /** Count how many of te points land in a grid cell whose value is at least 'thresh' **/
+    /** Count how many of the points land in a grid cell whose value is at least 'thresh' **/
     public int scoreThreshold(ArrayList<double[]> points,
                               double tx, double ty, double theta,
                               int thresh)
@@ -1297,5 +1297,29 @@ public final class GridMap
             return new int []{ix,iy};
         else
             return null;
+    }
+
+    public void incrementSaturate(double px, double py)
+    {
+        int ix = (int) ((px - x0) / metersPerPixel);
+        int iy = (int) ((py - y0) / metersPerPixel);
+
+        if (ix >= 0 && ix < width && iy >= 0 && iy < height) {
+            int v = data[iy*width+ix]&0xff;
+            if (v < 255)
+                data[iy*width+ix] = (byte) (v+1);
+        }
+    }
+
+    /** if condition is satisfied, set vtrue. else vfalse. **/
+    public void thresholdGreaterThanOrEqual(int thresh, byte vtrue, byte vfalse)
+    {
+        for (int i = 0; i < data.length; i++) {
+            int v = data[i]&0xff;
+            if (v >= thresh)
+                data[i] = vtrue;
+            else
+                data[i] = vfalse;
+        }
     }
 }
