@@ -19,7 +19,7 @@ public class PoseTracker implements LCMSubscriber
     LinkedList<pose_t>      queue       = new LinkedList<pose_t>();
 
     // how long back in time should we remember poses?
-    public static double    time        = 10.0;
+    public                  double    time        = 10.0;
 
     boolean                 warned;
 
@@ -32,7 +32,7 @@ public class PoseTracker implements LCMSubscriber
     public static PoseTracker getSingleton()
     {
         if (pt == null)
-            pt = new PoseTracker(channel, time);
+            pt = new PoseTracker(channel, 10);
 
         return pt;
     }
@@ -77,6 +77,8 @@ public class PoseTracker implements LCMSubscriber
 
     public synchronized pose_t get()
     {
+        if (queue.size() == 0)
+            return null;
         return queue.getLast();
     }
 
