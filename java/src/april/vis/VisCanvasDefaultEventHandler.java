@@ -279,6 +279,7 @@ public class VisCanvasDefaultEventHandler extends VisCanvasEventAdapter
         boolean alt = (mods&MouseEvent.ALT_DOWN_MASK)>0;
 
         if (e.getButton() == MouseEvent.BUTTON3) {
+            vc.popupMenu.orthoItem.setState(vc.getViewManager().viewGoal.perspectiveness == 0);
             vc.popupMenu.show((Component) vc.canvas, (int) e.getPoint().getX(), (int) e.getPoint().getY());
         }
 
