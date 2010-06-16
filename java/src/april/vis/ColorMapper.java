@@ -2,8 +2,10 @@ package april.vis;
 
 import java.awt.*;
 
-/** Converts scalar values to RGB colors by interpolating from a user-provided look-up table. **/
-public class ColorMapper
+/** Converts scalar values to RGB colors by interpolating from a
+ * user-provided look-up table. Implements a colorizer by looking at
+ * only the z component. **/
+public class ColorMapper implements Colorizer
 {
     /** Minimum/maximum value for mapped range (will be drawn opaquely). **/
     double minval;
@@ -79,6 +81,11 @@ public class ColorMapper
     {
         int v = map(vin);
         return new Color((v>>16)&0xff, (v>>8)&0xff, (v>>0)&0xff);
+    }
+
+    public int colorize(double p[])
+    {
+        return map(p[2]);
     }
 
     public int map(double v)
