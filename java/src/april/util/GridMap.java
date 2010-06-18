@@ -394,6 +394,34 @@ public final class GridMap
         return im;
     }
 
+    public void drawCircleMax(double cx, double cy, double r, byte fill)
+    {
+        double pixelsPerMeter = 1.0 / metersPerPixel;
+
+        int ix0 = (int) ((cx - r - x0) * pixelsPerMeter);
+        int ix1 = (int) ((cx + r - x0) * pixelsPerMeter);
+        int iy0 = (int) ((cy - r - y0) * pixelsPerMeter);
+        int iy1 = (int) ((cy + r - y0) * pixelsPerMeter);
+
+        for (int iy = iy0; iy <= iy1; iy++) {
+            if (iy < 0 || iy >= height)
+                continue;
+
+            for (int ix = ix0; ix <= ix1; ix++) {
+                if (ix < 0 || ix >= width)
+                    continue;
+
+                double x = x0 + (ix + .5)*metersPerPixel;
+                double y = y0 + (iy + .5)*metersPerPixel;
+
+                double d2 = (x - cx)*(x-cx) + (y - cy)*(y - cy);
+                if (d2 <= (r*r))
+                    data[iy*width + ix] = (byte) Math.max(fill & 0xFF,
+                                                          data[iy*width + ix] & 0xFF);
+            }
+        }
+    }
+
     public void drawCircle(double cx, double cy, double r, byte fill)
     {
         double pixelsPerMeter = 1.0 / metersPerPixel;
