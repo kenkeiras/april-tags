@@ -46,6 +46,11 @@ public class PoseTracker implements LCMSubscriber
         lcm.subscribe(channel, this);
     }
 
+    public synchronized void clear()
+    {
+        queue.clear();
+    }
+
     public synchronized void messageReceived(LCM lcm, String channel, LCMDataInputStream ins)
     {
         try {
