@@ -553,8 +553,9 @@ public class VisCanvas extends JPanel implements VisWorldListener,
         {
             if (reshapeText != null)
                 world.removeTemporary(reshapeText);
-            reshapeText = new VisText(VisText.ANCHOR.CENTER, ""+width+" x "+height);
-            world.addTemporary(new VisContextSpecific(VisCanvas.this, reshapeText), 1.0);
+            reshapeText = new VisContextSpecific(VisCanvas.this, new VisText(VisText.ANCHOR.CENTER, ""+width+" x "+height));
+
+            world.addTemporary(reshapeText, 1.0);
 
             if (debug)
                 System.out.printf("VisCanvas.reshape (%d x %d)\n", width, height);
@@ -909,9 +910,31 @@ public class VisCanvas extends JPanel implements VisWorldListener,
     {
     }
 
+    Dimension forceDim;
+
+    /** Doesn't work, unfortunately. **/
+    public void forceSize(Dimension d)
+    {
+        forceDim = d;
+        if (d != null)
+            setSize((int) d.getWidth(), (int) d.getHeight());
+        invalidate();
+        revalidate();
+    }
+
+    public Dimension getMaximumSize()
+    {
+        return forceDim == null ? super.getMaximumSize() : forceDim;
+    }
+
+    public Dimension getPreferredSize()
+    {
+        return forceDim == null ? super.getPreferredSize() : forceDim;
+    }
+
     public Dimension getMinimumSize()
     {
-        return new Dimension(1,1);
+        return forceDim == null ? new Dimension(1,1) : forceDim;
     }
 
     // A request to generate a screenshot, it will be processed the
