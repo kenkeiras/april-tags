@@ -1,3 +1,5 @@
+package april.tag;
+
 /** Tag family with 5329 distinct codes.
     bits: 36,  minimum hamming: 9,  minimum complexity: 10
 
