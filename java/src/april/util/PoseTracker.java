@@ -19,7 +19,8 @@ public class PoseTracker implements LCMSubscriber
     LinkedList<pose_t>      queue       = new LinkedList<pose_t>();
 
     // how long back in time should we remember poses?
-    public                  double    time        = 10.0;
+
+    public double           time        = 10.0;
 
     boolean                 warned;
 
@@ -43,6 +44,11 @@ public class PoseTracker implements LCMSubscriber
         this.time = time;
 
         lcm.subscribe(channel, this);
+    }
+
+    public synchronized void clear()
+    {
+        queue.clear();
     }
 
     public synchronized void messageReceived(LCM lcm, String channel, LCMDataInputStream ins)

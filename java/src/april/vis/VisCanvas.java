@@ -345,7 +345,6 @@ public class VisCanvas extends JPanel implements VisWorldListener,
             gl.glEnable(GL.GL_COLOR_MATERIAL);
             gl.glColorMaterial(GL.GL_FRONT_AND_BACK, GL.GL_AMBIENT_AND_DIFFUSE);
             gl.glMaterialf(GL.GL_FRONT_AND_BACK, GL.GL_SHININESS, 0);
-
             gl.glMaterialfv(GL.GL_FRONT_AND_BACK, GL.GL_SPECULAR, new float[] {.1f, .1f, .1f, .1f}, 0);
 
             for (int i = 0; i < world.lights.size(); i++) {
@@ -365,7 +364,6 @@ public class VisCanvas extends JPanel implements VisWorldListener,
 
             gl.glPolygonMode(GL.GL_FRONT, GL.GL_FILL);
             gl.glPolygonMode(GL.GL_BACK, GL.GL_FILL);
-//            gl.glPolygonMode(GL.GL_BACK, GL.GL_LINE);
 
             gl.glDisable(GL.GL_LINE_STIPPLE);
 
@@ -555,8 +553,9 @@ public class VisCanvas extends JPanel implements VisWorldListener,
         {
             if (reshapeText != null)
                 world.removeTemporary(reshapeText);
-            reshapeText = new VisText(VisText.ANCHOR.CENTER, ""+width+" x "+height);
-            world.addTemporary(new VisContextSpecific(VisCanvas.this, reshapeText), 1.0);
+            reshapeText = new VisContextSpecific(VisCanvas.this, new VisText(VisText.ANCHOR.CENTER, ""+width+" x "+height));
+
+            world.addTemporary(reshapeText, 1.0);
 
             if (debug)
                 System.out.printf("VisCanvas.reshape (%d x %d)\n", width, height);
@@ -911,9 +910,31 @@ public class VisCanvas extends JPanel implements VisWorldListener,
     {
     }
 
+    Dimension forceDim;
+
+    /** Doesn't work, unfortunately. **/
+    public void forceSize(Dimension d)
+    {
+        forceDim = d;
+        if (d != null)
+            setSize((int) d.getWidth(), (int) d.getHeight());
+        invalidate();
+        revalidate();
+    }
+
+    public Dimension getMaximumSize()
+    {
+        return forceDim == null ? super.getMaximumSize() : forceDim;
+    }
+
+    public Dimension getPreferredSize()
+    {
+        return forceDim == null ? super.getPreferredSize() : forceDim;
+    }
+
     public Dimension getMinimumSize()
     {
-        return new Dimension(1,1);
+        return forceDim == null ? new Dimension(1,1) : forceDim;
     }
 
     // A request to generate a screenshot, it will be processed the
