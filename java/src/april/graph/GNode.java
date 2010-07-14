@@ -48,7 +48,15 @@ public abstract class GNode
 
     public void setAttribute(String s, Object o)
     {
-        setAttribute(s, o, null);
+        StructureCoder coder = null;
+        if (o instanceof Integer)
+            coder = new IntCoder();
+        if (o instanceof Long)
+            coder = new LongCoder();
+        if (o instanceof double[])
+            coder = new DoublesCoder();
+
+        setAttribute(s, o, coder);
     }
 
     public void setAttribute(String s, Object o, StructureCoder coder)

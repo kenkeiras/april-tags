@@ -12,6 +12,7 @@ public interface StructureWriter
     public void writeString(String s) throws IOException;
 
     public void writeInt(int v) throws IOException;
+    public void writeLong(long v) throws IOException;
 
     public void writeFloat(float v) throws IOException;
     public void writeFloats(float v[]) throws IOException;

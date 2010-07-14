@@ -51,6 +51,11 @@ public class TextStructureReader implements StructureReader
         return Integer.parseInt(ins.readLine());
     }
 
+    public long readLong() throws IOException
+    {
+        return Long.parseLong(ins.readLine());
+    }
+
     public float readFloat() throws IOException
     {
         return Float.parseFloat(ins.readLine());
@@ -113,6 +118,9 @@ public class TextStructureReader implements StructureReader
 
         int rows = Integer.parseInt(toks[1]);
         int cols = Integer.parseInt(toks[2]);
+
+        if (rows < 0)
+            return null;
 
         double v[][] = new double[rows][cols];
         for (int i = 0; i < rows; i++) {

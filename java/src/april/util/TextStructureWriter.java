@@ -63,6 +63,12 @@ public class TextStructureWriter implements StructureWriter
         outs.write(String.format("%d\n", v));
     }
 
+    public void writeLong(long v) throws IOException
+    {
+        doIndent();
+        outs.write(String.format("%d\n", v));
+    }
+
     public void writeFloat(float v) throws IOException
     {
         doIndent();
@@ -131,9 +137,12 @@ public class TextStructureWriter implements StructureWriter
     public void writeBytes(byte b[]) throws IOException
     {
         String lines[] = Base64.encode(b);
+        writeInt(lines.length);
+
         for (String line : lines) {
             doIndent();
             outs.write(line);
+            outs.write("\n");
         }
     }
 
