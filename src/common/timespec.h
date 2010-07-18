@@ -7,6 +7,8 @@
 // get the current time
 void timespec_now(struct timespec *ts);
 
+void timespec_set(struct timespec *ts, double dt);
+
 // add ms milliseconds to the timespec (ms > 0)
 void timespec_addms(struct timespec *ts, long ms);
 
