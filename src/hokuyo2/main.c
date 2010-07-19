@@ -19,6 +19,8 @@
 
 #define PI 3.14159265358979323846264338
 
+volatile int watchdog_got_scan = 0;
+
 /** Note: timing synchronization corresponds to the time at which the
  * sensor was point directly backwards. **/
 typedef struct state state_t;
@@ -117,6 +119,19 @@ void do_get_info(state_t *state)
         scip2_response_free(state->scip, response);
     }
 }
+
+void *watchdog_task(void *arg)
+{
+    while (1) {
+        watchdog_got_scan = 0;
+        sleep(2);
+        if (watchdog_got_scan == 0) {
+            printf("Watchdog forcing exit.\n");
+            exit(-1);
+        }
+    }
+}
+
 
 // decode an integer encoded in base 10
 static uint32_t ascii_decimal(const char *s, int length)
@@ -230,6 +245,7 @@ static void on_ME_99(state_t *state, varray_t *response)
     }
 
     laser_t_publish(state->lcm, getopt_get_string(state->gopt, "channel"), &msg);
+    watchdog_got_scan = 1;
 
     free(msg.ranges);
     free(msg.intensities);
@@ -276,6 +292,7 @@ static void on_MD_99(state_t *state, varray_t *response)
     }
 
     laser_t_publish(state->lcm, getopt_get_string(state->gopt, "channel"), &msg);
+    watchdog_got_scan = 1;
 
     free(msg.ranges);
     free(msg.intensities);
@@ -338,6 +355,11 @@ int main(int argc, char *argv[])
         printf("Usage: %s [options]\n\n", argv[0]);
         getopt_do_usage(state->gopt);
         return 0;
+    }
+
+    if (1) {
+        pthread_t pt;
+        pthread_create(&pt, NULL, watchdog_task, NULL);
     }
 
     state->scip = scip2_create(getopt_get_string(state->gopt, "device"));
