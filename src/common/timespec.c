@@ -15,7 +15,16 @@ void timespec_now(struct timespec *ts)
     // get the current time
     gettimeofday(&tv, NULL);
     ts->tv_sec  = tv.tv_sec;
-    ts->tv_nsec = tv.tv_usec*1000;  
+    ts->tv_nsec = tv.tv_usec*1000;
+}
+
+void timespec_set(struct timespec *ts, double dt)
+{
+    ts->tv_sec = (int) dt;
+
+    dt -= ts->tv_sec;
+
+    ts->tv_nsec = dt * 1E9L;
 }
 
 void timespec_addms(struct timespec *ts, long ms)
@@ -97,7 +106,7 @@ void timespec_subtract(struct timespec *a, struct timespec *b)
 }
 
 // convert the timespec into milliseconds (may overflow)
-int timespec_milliseconds(struct timespec *a) 
+int timespec_milliseconds(struct timespec *a)
 {
     return a->tv_sec*1000 + a->tv_nsec/1000000;
 }
