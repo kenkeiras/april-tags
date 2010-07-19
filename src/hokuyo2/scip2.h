@@ -21,11 +21,15 @@ struct scip2
     vhash_t *transactions; // (void*) xid-> scip2_transaction_t
 
     pthread_mutex_t mutex; // protects writes on fd and xid, and transactions hash table.
+
+    void (*on_99_data)(varray_t *response, void *user);
+    void *on_99_data_user;
 };
 
 scip2_t *scip2_create(const char *path);
 
-varray_t *scip2_transaction(scip2_t *scip, const char *command, int(*callback)(varray_t *response, void *user), void *user, int timeoutms);
+varray_t *scip2_transaction(scip2_t *scip, const char *command, int timeoutms);
+void scip2_set_99_data_handler(scip2_t *scip, void (*on_99_data)(varray_t *response, void *user), void *user);
 
 void scip2_response_free(scip2_t *scip, varray_t *response);
 

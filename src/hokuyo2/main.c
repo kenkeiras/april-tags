@@ -8,11 +8,19 @@
 #include <math.h>
 
 #include "scip2.h"
+#include "timesync.h"
+
 #include "common/getopt.h"
 #include "common/timestamp.h"
 #include "common/timespec.h"
 #include "common/vhash.h"
 
+#include "lcmtypes/laser_t.h"
+
+#define PI 3.14159265358979323846264338
+
+/** Note: timing synchronization corresponds to the time at which the
+ * sensor was point directly backwards. **/
 typedef struct state state_t;
 struct state
 {
@@ -20,11 +28,25 @@ struct state
     scip2_t *scip;
 
     vhash_t *properties; // responses from PP, VV, II commands
+
+    int64_t last_summary_utime;
+    uint32_t last_scan_count;
+    uint32_t scan_count;
+    uint32_t rx_bytes;
+
+    timesync_t ts;
+
+    lcm_t *lcm;
 };
 
 void do_reset(state_t *state)
 {
-    varray_t *response = scip2_transaction(state->scip, "RS", NULL, NULL, 0);
+retry: ; // extra semi-colon to deal with gcc parsing bug.
+
+    varray_t *response = scip2_transaction(state->scip, "RS", 200);
+    if (response == NULL)
+        goto retry;
+
     scip2_response_free(state->scip, response);
 }
 
@@ -32,7 +54,7 @@ void do_reset(state_t *state)
 // returns an error code (0x0e).
 void do_scip2_mode(state_t *state)
 {
-    varray_t *response = scip2_transaction(state->scip, "SCIP2.0", NULL, NULL, 0);
+    varray_t *response = scip2_transaction(state->scip, "SCIP2.0", 0);
     scip2_response_free(state->scip, response);
 }
 
@@ -78,33 +100,219 @@ void decode_properties(state_t *state, varray_t *response)
 void do_get_info(state_t *state)
 {
     if (1) {
-        varray_t *response = scip2_transaction(state->scip, "VV", NULL, NULL, 0);
+        varray_t *response = scip2_transaction(state->scip, "VV", 0);
         decode_properties(state, response);
         scip2_response_free(state->scip, response);
     }
 
     if (1) {
-        varray_t *response = scip2_transaction(state->scip, "PP", NULL, NULL, 0);
+        varray_t *response = scip2_transaction(state->scip, "PP", 0);
         decode_properties(state, response);
         scip2_response_free(state->scip, response);
     }
 
     if (1) {
-        varray_t *response = scip2_transaction(state->scip, "II", NULL, NULL, 0);
+        varray_t *response = scip2_transaction(state->scip, "II", 0);
         decode_properties(state, response);
         scip2_response_free(state->scip, response);
     }
 }
 
-static int on_md_data(varray_t *response, void *_a)
+// decode an integer encoded in base 10
+static uint32_t ascii_decimal(const char *s, int length)
+{
+    uint32_t acc = 0;
+    for (int i = 0; i < length; i++) {
+        acc *= 10;
+        acc += s[i] - '0';
+    }
+
+    return acc;
+}
+
+static uint32_t max(uint32_t a, uint32_t b)
+{
+    if (a > b)
+        return a;
+    return b;
+}
+
+// decode a urg-formatted number, where each character encodes six
+// bytes and has 0x30 added. (multi-byte quantities are big endian).
+static uint32_t sixbit_decode(const char *s, int length)
+{
+    uint32_t acc = 0;
+    for (int i = 0; i < length; i++) {
+        acc <<= 6;
+        uint32_t v = (s[i]-0x30)&0x3f;
+        acc += v;
+    }
+
+    return acc;
+}
+
+typedef struct
+{
+    varray_t *response;
+    int line;
+    int pos;
+} scip_stream_t;
+
+static void scip_stream_init(scip_stream_t *ss, varray_t *response, int firstline)
+{
+    ss->response = response;
+    ss->line = firstline;
+    ss->pos = 0;
+}
+
+static char scip_stream_next(scip_stream_t *ss)
+{
+    if (ss->pos == 64) {
+        ss->line++;
+        ss->pos = 0;
+    }
+
+    char *line = varray_get(ss->response, ss->line);
+    return line[ss->pos++];
+}
+
+static uint32_t scip_stream_get_int(scip_stream_t *ss, int length)
+{
+    char buf[length];
+    for (int i = 0; i < length; i++) {
+        buf[i] = scip_stream_next(ss);
+    }
+
+    return sixbit_decode(buf, length);
+}
+
+// Data with intensity (see UTM-30LX_Specification)
+static void on_ME_99(state_t *state, varray_t *response)
+{
+    char *line0 = varray_get(response, 0);
+    char *line2 = varray_get(response, 2);
+
+    uint32_t step0 = ascii_decimal(&line0[2], 4);
+    uint32_t step1 = ascii_decimal(&line0[6], 4);
+    uint32_t cluster = ascii_decimal(&line0[10], 2);
+
+    uint32_t timestamp = sixbit_decode(&line2[0], 4);
+
+    int64_t host_utime = timestamp_now();
+    timesync_update(&state->ts, host_utime, timestamp);
+
+    int nranges = (step1 - step0 + 1) / max(1, cluster);
+
+    laser_t msg;
+    bzero(&msg, sizeof(laser_t));
+    msg.utime = timesync_get_host_utime(&state->ts, timestamp);
+    msg.nranges = nranges;
+    msg.ranges = (float*) calloc(nranges, sizeof(float));
+    msg.nintensities = nranges;
+    msg.intensities = (float*) calloc(nranges, sizeof(float));
+
+    // resolution of the sensor
+    double radres = (360.0 / atoi(vhash_get(state->properties, "ARES"))) * PI / 180.0;
+    msg.radstep = radres * max(1, cluster);
+    msg.rad0 = (step0 - (float) atoi(vhash_get(state->properties, "AFRT"))) * radres;
+
+    scip_stream_t ss;
+    scip_stream_init(&ss, response, 3);
+
+    for (int i = 0; i < nranges; i++) {
+        int range_code = scip_stream_get_int(&ss, 3);
+        if (range_code < 20)
+            msg.ranges[i] =  -range_code; // error code.
+        else
+            msg.ranges[i] = range_code * 0.001; // convert from mm to meters.
+
+        msg.intensities[i] = scip_stream_get_int(&ss, 3) / 4000.0;
+    }
+
+    laser_t_publish(state->lcm, getopt_get_string(state->gopt, "channel"), &msg);
+
+    free(msg.ranges);
+    free(msg.intensities);
+}
+
+// Data with range (see SCIP 2.0 specification)
+static void on_MD_99(state_t *state, varray_t *response)
+{
+    char *line0 = varray_get(response, 0);
+    char *line2 = varray_get(response, 2);
+
+    uint32_t step0 = ascii_decimal(&line0[2], 4);
+    uint32_t step1 = ascii_decimal(&line0[6], 4);
+    uint32_t cluster = ascii_decimal(&line0[10], 2);
+
+    uint32_t timestamp = sixbit_decode(&line2[0], 4);
+    int64_t host_utime = timestamp_now();
+    timesync_update(&state->ts, host_utime, timestamp);
+
+    int nranges = (step1 - step0 + 1) / max(1, cluster);
+
+    laser_t msg;
+    bzero(&msg, sizeof(laser_t));
+    msg.utime = timesync_get_host_utime(&state->ts, timestamp);
+    msg.nranges = nranges;
+    msg.ranges = (float*) calloc(nranges, sizeof(float));
+    msg.nintensities = nranges;
+    msg.intensities = (float*) calloc(nranges, sizeof(float));
+
+    // resolution of the sensor
+    double radres = (360.0 / atoi(vhash_get(state->properties, "ARES"))) * PI / 180.0;
+    msg.radstep = radres * max(1, cluster);
+    msg.rad0 = (step0 - (float) atoi(vhash_get(state->properties, "AFRT"))) * radres;
+
+    scip_stream_t ss;
+    scip_stream_init(&ss, response, 3);
+
+    for (int i = 0; i < nranges; i++) {
+        int range_code = scip_stream_get_int(&ss, 3);
+        if (range_code < 20)
+            msg.ranges[i] = -range_code; // error code.
+        else
+            msg.ranges[i] = range_code * 0.001; // convert from mm to meters.
+    }
+
+    laser_t_publish(state->lcm, getopt_get_string(state->gopt, "channel"), &msg);
+
+    free(msg.ranges);
+    free(msg.intensities);
+}
+
+static void on_99_data(varray_t *response, void *_a)
 {
     state_t *state = (state_t*) _a;
 
-    printf("Got one!\n");
+    /////////////////////////////////////////////////////////////////
+    // Pass the data to the correct handler
+    char *line0 = varray_get(response, 0);
+    if (!strncmp(line0, "ME", 2))
+        on_ME_99(state, response);
+    if (!strncmp(line0, "MD", 2))
+        on_MD_99(state, response);
 
-    scip2_response_free(state->scip, response);
+    /////////////////////////////////////////////////////////////////
+    // Produce summary information
+    for (int i = 0; i < varray_size(response); i++)
+        state->rx_bytes += strlen(varray_get(response, i));
 
-    return 0;
+    state->scan_count++;
+    int64_t utime = timestamp_now();
+    double dt = (utime - state->last_summary_utime) / 1000000.0;
+    if (dt > 1.0) {
+        printf("[hokuyo] scan rate: %.2f Hz    %7.2f kB/s    sync error: %5.3f s    resyncs: %d     devtime: %06x\n",
+               (state->scan_count - state->last_scan_count) / dt,
+               (state->rx_bytes / dt) / 1024.0,
+               state->ts.last_sync_error,
+               state->ts.resync_count,
+               (int) state->ts.last_device_ticks_wrapping);
+
+        state->last_summary_utime = utime;
+        state->last_scan_count = state->scan_count;
+        state->rx_bytes = 0;
+    }
 }
 
 int main(int argc, char *argv[])
@@ -139,6 +347,9 @@ int main(int argc, char *argv[])
     }
 
     state->scip->debug = getopt_get_bool(state->gopt, "scip-debug");
+
+    // Hokuyo has a 1ms resolution clock with 24 bits. It has a low drift rate.
+    timesync_init(&state->ts, 1000, 1L<<24, 0.001, 0.5);
 
     state->properties = vhash_create(vhash_str_hash, vhash_str_equals);
     vhash_t *propdesc = vhash_create(vhash_str_hash, vhash_str_equals);
@@ -178,6 +389,8 @@ int main(int argc, char *argv[])
         }
     }
 
+    state->lcm = lcm_create(NULL);
+
     if (getopt_get_bool(state->gopt, "time-test")) {
         // This is a crude test for measuring the accuracy of the
         // hokuyo's clock. Note that it does NOT handle the 24bit
@@ -204,15 +417,27 @@ int main(int argc, char *argv[])
         }
     }
 
+    scip2_set_99_data_handler(state->scip, on_99_data, state);
+
     char cmd[1024];
-    sprintf(cmd, "MD%04d%04d%02d%1d%2d",
+    sprintf(cmd, "MD%04d%04d%02d%1d%02d",
             atoi(vhash_get(state->properties, "AMIN")),
             atoi(vhash_get(state->properties, "AMAX")),
             0, // cluster count
             0, // scan interval
-            10); // scan count
+            0); // scan count (0 = infinity)
 
-    varray_t *response = scip2_transaction(state->scip, cmd, on_md_data, state, 0);
+    sprintf(cmd, "ME%04d%04d%02d%1d%02d",
+            atoi(vhash_get(state->properties, "AMIN")),
+            atoi(vhash_get(state->properties, "AMAX")),
+            2, // cluster count
+            0, // scan interval
+            0); // scan count (0 = infinity)
+
+    // trigger our data.
+    varray_t *response = scip2_transaction(state->scip, cmd, 0);
+    scip2_response_free(state->scip, response);
+
     while (1) {
         sleep(1);
     }

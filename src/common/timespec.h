@@ -7,6 +7,9 @@
 // get the current time
 void timespec_now(struct timespec *ts);
 
+// be aware! When used with some wait functions, the timeout is
+// specified in *absolute* time, i.e., what time will the system clock
+// read, not the actual timeout time.
 void timespec_set(struct timespec *ts, double dt);
 
 // add ms milliseconds to the timespec (ms > 0)

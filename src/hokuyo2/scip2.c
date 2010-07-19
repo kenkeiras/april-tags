@@ -34,21 +34,63 @@ struct scip2_transaction
     // used to wake up the right caller when their response arrives.
     pthread_mutex_t mutex;
     pthread_cond_t cond;
-
-    // used for callbacks
-    int (*callback)(varray_t *response, void *user);
-    void *user;
-
 };
 
 static void handle_response(scip2_t *scip, varray_t *response)
 {
-    pthread_mutex_lock(&scip->mutex);
-
-    if (varray_size(response) == 0)
+    if (varray_size(response) < 2)
         goto error;
 
     char *line0 = varray_get(response, 0);
+    char *line1 = varray_get(response, 1);
+
+    int buggy_checksum = !strncmp(line0, "PP", 2) || !strncmp(line0, "II", 2) || !strncmp(line0, "VV", 2);
+
+    // check the checksums (on every line except the first line, which
+    // doesn't have one.)
+    for (int i = 1; i+1 < varray_size(response); i++) {
+        char *line = varray_get(response, i);
+
+        int len = strlen(line);
+        int chklen = len - 2; // skip newline and sent checksum byte
+
+        // For commands like 'PP', the semicolon does not appear to be
+        // included in the checksum. This is a bug in the
+        // documentation?
+        if (buggy_checksum && line[chklen-1] == ';')
+            chklen--;
+
+        uint8_t chk = 0;
+        for (int j = 0; j < chklen; j++)
+            chk += line[j];
+
+        int sent_chk = line[len-2];
+
+        chk = (chk&0x3f) + 0x30;
+
+        if (chk != sent_chk) {
+            printf("scip: bad checksum %c != %c on line %d\n", chk, sent_chk, i);
+            scip2_response_free(scip, response);
+            return;
+        }
+    }
+
+    // Handle data with a status code of '99'. This status code is
+    // used for laser data, and isn't the reply to any of our
+    // commands.
+    if (scip->on_99_data != NULL && varray_size(response) > 1) {
+        if (!strncmp(line1, "99", 2))
+            scip->on_99_data(response, scip->on_99_data_user);
+
+        scip2_response_free(scip, response);
+        return;
+    }
+
+    // This is a response to one of our commands. Look up the
+    // transaction by pulling out the transaction ID and handing off
+    // the response.
+    pthread_mutex_lock(&scip->mutex);
+
     char *xids = index(line0, ';');
     if (xids == NULL) {
         printf("scip handle-response: no transaction id %s\n", line0);
@@ -62,45 +104,10 @@ static void handle_response(scip2_t *scip, varray_t *response)
         goto error;
     }
 
-    // check the checksums (on every line except the first line, which
-    // doesn't have one.)
-    for (int i = 1; i+1 < varray_size(response); i++) {
-        char *line = varray_get(response, i);
-
-        int len = strlen(line);
-        int chklen = len - 2; // skip newline and sent checksum byte
-
-        // For commands like 'PP', the semicolon does not appear to be
-        // included in the checksum. This is a bug in the
-        // documentation?
-        if (line[chklen-1] == ';')
-            chklen--;
-
-        uint8_t chk = 0;
-        for (int j = 0; j < chklen; j++)
-            chk += line[j];
-
-        int sent_chk = line[len-2];
-
-        chk = (chk&0x3f) + 0x30;
-
-        if (chk != sent_chk) {
-            trans->status = STATUS_CHECKSUM_ERR;
-            scip2_response_free(scip, response);
-            response = NULL;
-            printf("bad checksum %c != %c\n", chk, sent_chk);
-            goto error;
-        }
-    }
-
     pthread_mutex_unlock(&scip->mutex);
 
     // Let the creator of the transaction know that their result is ready.
     pthread_mutex_lock(&trans->mutex);
-
-    if (trans->callback != NULL)
-        trans->callback(response, trans->user);
-
     trans->response = response;
     trans->status = STATUS_DONE;
     pthread_cond_broadcast(&trans->cond);
@@ -109,7 +116,6 @@ static void handle_response(scip2_t *scip, varray_t *response)
     return;
 
 error:
-    printf("scip handle_response error\n");
     pthread_mutex_unlock(&scip->mutex);
 
     // nobody else is going to use this response!
@@ -181,7 +187,7 @@ void scip2_response_free(scip2_t *scip, varray_t *response)
 //                  should deallocate with
 //                  scip2_response_free. Returns NULL on timeout.
 //
-varray_t *scip2_transaction(scip2_t *scip, const char *command, int(*callback)(varray_t *response, void *user), void *user, int timeoutms)
+varray_t *scip2_transaction(scip2_t *scip, const char *command, int timeoutms)
 {
     scip2_transaction_t *trans = (scip2_transaction_t*) calloc(1, sizeof(scip2_transaction_t));
     pthread_mutex_init(&trans->mutex, NULL);
@@ -194,9 +200,6 @@ varray_t *scip2_transaction(scip2_t *scip, const char *command, int(*callback)(v
 
     trans->xid = scip->xid;
     scip->xid++;
-
-    trans->user = user;
-    trans->callback = callback;
 
     ////////////////////////////////////////////////
     // write the request, appending the transaction id.
@@ -218,7 +221,8 @@ varray_t *scip2_transaction(scip2_t *scip, const char *command, int(*callback)(v
     if (trans->status == STATUS_WAITING) {
         if (timeoutms > 0) {
             struct timespec ts;
-            timespec_set(&ts, timeoutms / 1000.0);
+            timespec_now(&ts);
+            timespec_addms(&ts, timeoutms);
             pthread_cond_timedwait(&trans->cond, &trans->mutex, &ts);
         } else {
             pthread_cond_wait(&trans->cond, &trans->mutex);
@@ -229,31 +233,24 @@ varray_t *scip2_transaction(scip2_t *scip, const char *command, int(*callback)(v
     varray_t *response = trans->response;
 
     ////////////////////////////////////////////////
-    // free the transaction unless A) This command succeeded AND B) a
-    // callback has been registered.
-    if (callback == NULL || response == NULL) {
-        pthread_mutex_lock(&scip->mutex);
+    // free the transaction
+    pthread_mutex_lock(&scip->mutex);
 
-        vhash_remove(scip->transactions, (void*) trans->xid);
+    vhash_remove(scip->transactions, (void*) trans->xid);
 
-        pthread_cond_destroy(&trans->cond);
-        pthread_mutex_destroy(&trans->mutex);
-        free(trans);
+    pthread_cond_destroy(&trans->cond);
+    pthread_mutex_destroy(&trans->mutex);
+    free(trans);
 
-        pthread_mutex_unlock(&scip->mutex);
-    }
+    pthread_mutex_unlock(&scip->mutex);
 
     return response;
 }
 
-static int sync_callback(varray_t *response, void *user)
+void scip2_set_99_data_handler(scip2_t *scip, void (*on_99_data)(varray_t *response, void *user), void *user)
 {
-    return 0;
-}
-
-varray_t *scip2_transaction_sync(scip2_t *scip, const char *command, int timeoutms)
-{
-    scip2_transaction(scip, command, sync_callback, NULL, timeoutms);
+    scip->on_99_data = on_99_data;
+    scip->on_99_data_user = user;
 }
 
 scip2_t *scip2_create(const char *path)

@@ -24,7 +24,7 @@ void timespec_set(struct timespec *ts, double dt)
 
     dt -= ts->tv_sec;
 
-    ts->tv_nsec = dt * 1000000000;
+    ts->tv_nsec = dt * 1E9L;
 }
 
 void timespec_addms(struct timespec *ts, long ms)
