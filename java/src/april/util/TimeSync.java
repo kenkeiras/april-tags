@@ -155,6 +155,7 @@ public class TimeSync
         long pi_ticks = device_ticks;
 
         double dp = (pi_ticks - this.p_ticks) / (1.0E6 / this.device_ticks_per_second);
-        return ((long) dp) + this.q_ticks + ((long) Math.abs(this.rate_error * dp));
+        long dp_ticks = (long) (dp * 1.0E6);
+        return (dp_ticks + this.q_ticks + ((long) Math.abs(this.rate_error * dp_ticks)));
     }
 }
