@@ -11,7 +11,6 @@ typedef struct scip2 scip2_t;
 struct scip2
 {
     int fd;
-    FILE *f;
 
     int debug;
 

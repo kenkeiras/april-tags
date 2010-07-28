@@ -16,6 +16,7 @@
 #include "common/vhash.h"
 #include "common/ioutils.h"
 #include "common/timespec.h"
+#include "common/serial.h"
 
 #define MAX_LINE_LENGTH 128
 
@@ -122,6 +123,33 @@ error:
     scip2_response_free(scip, response);
 }
 
+static int read_line(int fd, void *buf_in, int maxlen)
+{
+    int len = 0;
+    char *buf = (char*) buf_in;
+
+    while (len < maxlen) {
+      char c;
+      int thislen = read_timeout(fd, &c, 1, 1000);
+      if (thislen == 0) {
+	// timeout. No big deal, we just keep waiting.
+	continue;
+      }
+
+      if (thislen < 0) {
+	perror("read");
+	return -1;
+      }
+
+      buf[len++] = c;
+      if (c=='\r' || c=='\n')
+	break;
+    }
+
+    buf[len] = '\0';
+    return len;
+}
+
 static void *reader_thread(void *_a)
 {
     scip2_t *scip = (scip2_t*) _a;
@@ -133,8 +161,11 @@ static void *reader_thread(void *_a)
 
         while (1) {
             char *line = malloc(MAX_LINE_LENGTH);
-            if (fgets(line, MAX_LINE_LENGTH, scip->f) == NULL)
+	    int res = read_line(scip->fd, line, MAX_LINE_LENGTH);
+
+	    if (res < 0) {
                 exit(1);
+            }
 
             if (scip->debug)
                 printf("READ : %s", line);
@@ -265,9 +296,10 @@ scip2_t *scip2_create(const char *path)
     srandom(time(NULL));
     scip->xid = random();
 
-    scip->f = fdopen(scip->fd, "r");
+    /*    scip->f = fdopen(scip->fd, "r");
     if (scip->f == NULL)
         return NULL;
+    */
 
     pthread_mutex_init(&scip->mutex, NULL);
     pthread_create(&scip->reader_thread, NULL, reader_thread, scip);

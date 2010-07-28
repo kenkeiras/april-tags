@@ -362,11 +362,13 @@ int main(int argc, char *argv[])
         pthread_create(&pt, NULL, watchdog_task, NULL);
     }
 
+    printf("Opening device '%s'\n", getopt_get_string(state->gopt, "device"));
     state->scip = scip2_create(getopt_get_string(state->gopt, "device"));
     if (state->scip == NULL) {
         perror(getopt_get_string(state->gopt, "device"));
         return 1;
     }
+    printf("Device opened successfully\n");
 
     state->scip->debug = getopt_get_bool(state->gopt, "scip-debug");
 
