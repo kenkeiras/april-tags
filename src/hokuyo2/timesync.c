@@ -109,7 +109,9 @@ int64_t timesync_get_host_utime(timesync_t *ts, int64_t device_ticks_wrapping)
 
     int64_t pi_ticks = device_ticks;
 
-    double dp = (pi_ticks - ts->p_ticks) / (1.0E6 / ts->device_ticks_per_second);
-    int64_t dp_ticks = (int64_t) (dp * 1.0E6);
-    return (dp_ticks + ts->q_ticks + ((int64_t) fabs(ts->rate_error * dp_ticks)));
+    // dp: time in seconds
+    double dp = (pi_ticks - ts->p_ticks) / ts->device_ticks_per_second;
+
+    // return units in usecs.
+    return ((int64_t) (dp*1.0E6)) + ts->q_ticks + ((int64_t) 1.0E6*fabs(ts->rate_error * dp));
 }
