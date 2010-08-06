@@ -224,6 +224,12 @@ extern int urg_dataMax(urg_t *urg);
   \retval >=0 １スキャンの計測時間 [msec]
   \retval <0 エラー
 
+
+  \Brief 100 returns the motor speed is measured in scan time measurement time of 1% return when given one scan .
+  \Param [in, out] urg URG control structures
+  \retval  >=0 scan measurement time 1 0 [msec]
+  \retval < 0 error
+
   \see urg_setMotorSpeed()
 
   \see md_scan.c
@@ -239,6 +245,13 @@ extern int urg_scanMsec(urg_t *urg);
   \retval >=0 測定可能な最大距離 [mm]
   \retval <0 エラー
 
+  \see expand_2d.c
+
+  en:
+  \brief The maximum distance measurable
+  \param [in, out] urg URG control structures
+  \retval> = maximum distance measurable 0 [mm]
+  \retval < error 0
   \see expand_2d.c
 
 使用例
@@ -303,6 +316,15 @@ extern int urg_setSkipLines(urg_t *urg, int lines);
   \retval <0 エラー
 
   \attention MD/MS コマンドでのデータ取得に対してのみ有効
+
+en:
+
+ \Brief get one data set after the decimation of the number of scans , scan the specified number of times absent from the data acquisition .
+ \Param [in, out] urg URG control structure
+ \param [in] frames frames decimation
+ \retval normal 0
+ \retval < error 0 \ attention MD / MS data acquisition command only works for
+
 */
 extern int urg_setSkipFrames(urg_t *urg, int frames);
 
@@ -318,6 +340,14 @@ extern int urg_setSkipFrames(urg_t *urg, int frames);
 
   \attention MD/MS コマンドでのデータ取得に対してのみ有効
   \attention 100 回以上のデータ取得を行うときは、#UrgInfinityTimes を指定すること
+
+  \Brief Set the number of continuous data acquisition
+  \param [in, out] urg URG control structure
+  \param [in] times the number of acquisition data
+  \retval normal 0
+  \retval < error 0
+  \attention MD / MS data acquisition command Only for
+  \attention when data retrieval is over 100 , # UrgInfinityTimes to specify
 
   使用例
   \code
@@ -444,6 +474,13 @@ extern int urg_receivePartialData(urg_t *urg, long data[], int data_max,
   \retval タイムスタンプ [msec]
 
   \see md_scan.c
+
+
+en:
+ \Brief Get the timestamp
+ \param [in, out] urg URG control structures
+ \retval timestamp [msec]
+ \see md_scan.c
 
 使用例
 \code
