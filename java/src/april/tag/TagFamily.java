@@ -12,7 +12,7 @@ public class TagFamily
     /** How many pixels wide is the outer-most white border? This is
      * only used when rendering a tag, not for decoding a tag (since
      * we look for the white/black edge). **/
-    public int whiteBorder = 2;
+    public int whiteBorder = 1;
 
     /** How many pixels wide is the inner black border? **/
     public int blackBorder = 1;
@@ -302,6 +302,9 @@ public class TagFamily
                    "  1 -1 scale                                   \n" +
                    "  -.5 -.5 translate                            \n" +
                    "  "+sz+" "+sz+" 1 [ "+sz+" 0 0 "+sz+" 0 0 ] { img } image \n" +
+                   "  0 setlinewidth .5 setgray [0.002 0.01] 0 setdash \n" +
+                   "  0 0 moveto 1 0 lineto 1 1 lineto 0 1 lineto  \n" +
+                   "  closepath stroke                             \n" +
                    "  grestore                                     \n" +
                    "  gsave                                        \n" +
                    "  pagewidth 2 div 72 translate                 \n" +
