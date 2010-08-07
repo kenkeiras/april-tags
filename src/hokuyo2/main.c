@@ -272,8 +272,8 @@ static void on_MD_99(state_t *state, varray_t *response)
     msg.utime = timesync_get_host_utime(&state->ts, timestamp);
     msg.nranges = nranges;
     msg.ranges = (float*) calloc(nranges, sizeof(float));
-    msg.nintensities = nranges;
-    msg.intensities = (float*) calloc(nranges, sizeof(float));
+    msg.nintensities = 0;
+    msg.intensities = NULL;
 
     // resolution of the sensor
     double radres = (360.0 / atoi(vhash_get(state->properties, "ARES"))) * PI / 180.0;
@@ -342,6 +342,7 @@ int main(int argc, char *argv[])
     getopt_add_bool(state->gopt, 'h',"help", 0,"Show this");
 
     getopt_add_string(state->gopt, 'c', "channel", "LASER", "LC channel name");
+    getopt_add_bool(state->gopt, 'i', "intensities", 0, "Use intensities (reduces angular resolution by half)");
 
     getopt_add_spacer(state->gopt, "");
     getopt_add_string(state->gopt,'d',  "device",          "/dev/ttyACM0",  "Device to connect to");
@@ -451,13 +452,14 @@ int main(int argc, char *argv[])
             0, // scan interval
             0); // scan count (0 = infinity)
 
-    if (0)
+    if (getopt_get_bool(state->gopt, "intensities")) {
         sprintf(cmd, "ME%04d%04d%02d%1d%02d",
                 atoi(vhash_get(state->properties, "AMIN")),
                 atoi(vhash_get(state->properties, "AMAX")),
-                2, // cluster count
+                2, // cluster count: reduce resolution by a factor of two so we still get full-rate data.
                 0, // scan interval
                 0); // scan count (0 = infinity)
+    }
 
     // trigger our data.
     varray_t *response = scip2_transaction(state->scip, cmd, 0);
