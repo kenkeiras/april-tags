@@ -451,12 +451,13 @@ int main(int argc, char *argv[])
             0, // scan interval
             0); // scan count (0 = infinity)
 
-    sprintf(cmd, "ME%04d%04d%02d%1d%02d",
-            atoi(vhash_get(state->properties, "AMIN")),
-            atoi(vhash_get(state->properties, "AMAX")),
-            2, // cluster count
-            0, // scan interval
-            0); // scan count (0 = infinity)
+    if (0)
+        sprintf(cmd, "ME%04d%04d%02d%1d%02d",
+                atoi(vhash_get(state->properties, "AMIN")),
+                atoi(vhash_get(state->properties, "AMAX")),
+                2, // cluster count
+                0, // scan interval
+                0); // scan count (0 = infinity)
 
     // trigger our data.
     varray_t *response = scip2_transaction(state->scip, cmd, 0);
