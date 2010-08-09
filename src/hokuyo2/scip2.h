@@ -7,6 +7,8 @@
 #include "common/varray.h"
 #include "common/vhash.h"
 
+#define RXBUF_SIZE 4096
+
 typedef struct scip2 scip2_t;
 struct scip2
 {
@@ -23,6 +25,10 @@ struct scip2
 
     void (*on_99_data)(varray_t *response, void *user);
     void *on_99_data_user;
+
+  char rxbuf[RXBUF_SIZE];
+  int rxbuf_pos, rxbuf_avail;
+
 };
 
 scip2_t *scip2_create(const char *path);
