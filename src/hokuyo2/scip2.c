@@ -35,6 +35,7 @@ struct scip2_transaction
     // used to wake up the right caller when their response arrives.
     pthread_mutex_t mutex;
     pthread_cond_t cond;
+
 };
 
 static void handle_response(scip2_t *scip, varray_t *response)
@@ -123,23 +124,33 @@ error:
     scip2_response_free(scip, response);
 }
 
-static int read_line(int fd, void *buf_in, int maxlen)
+static int scip2_read_line(scip2_t *scip, void *buf_in, int maxlen)
 {
     int len = 0;
     char *buf = (char*) buf_in;
 
     while (len < maxlen) {
-      char c;
-      int thislen = read_timeout(fd, &c, 1, 1000);
-      if (thislen == 0) {
-	// timeout. No big deal, we just keep waiting.
-	continue;
+
+      // refill buffer if necessary
+      if (scip->rxbuf_pos == scip->rxbuf_avail) {
+	// loop on error
+	while (1) {
+	  scip->rxbuf_avail = read(scip->fd, scip->rxbuf, RXBUF_SIZE);
+	  scip->rxbuf_pos = 0;
+
+	  if (scip->rxbuf_avail < 1) {
+	    sleep(1);
+	    scip->rxbuf_avail = 0;
+	    // try again
+	    continue;
+	  } 
+
+	  break;
+	}
       }
 
-      if (thislen < 0) {
-	perror("read");
-	return -1;
-      }
+      // grab the character
+      char c = scip->rxbuf[scip->rxbuf_pos++];
 
       buf[len++] = c;
       if (c=='\r' || c=='\n')
@@ -147,7 +158,7 @@ static int read_line(int fd, void *buf_in, int maxlen)
     }
 
     buf[len] = '\0';
-    return len;
+    return len;  
 }
 
 static void *reader_thread(void *_a)
@@ -161,7 +172,7 @@ static void *reader_thread(void *_a)
 
         while (1) {
             char *line = malloc(MAX_LINE_LENGTH);
-	    int res = read_line(scip->fd, line, MAX_LINE_LENGTH);
+	    int res = scip2_read_line(scip, line, MAX_LINE_LENGTH);
 
 	    if (res < 0) {
                 exit(1);
@@ -288,10 +299,11 @@ scip2_t *scip2_create(const char *path)
 {
     scip2_t *scip = (scip2_t*) calloc(1, sizeof(scip2_t));
 
-    scip->fd = open(path, O_RDWR | O_NOCTTY, 0);
+    //    scip->fd = open(path, O_RDWR | O_NOCTTY | O_NONBLOCK, 0);
+    scip->fd = serial_open(path, 115200, 1);
     if (scip->fd < 0)
         return NULL;
-
+    
     scip->transactions = vhash_create(vhash_uint32_hash, vhash_uint32_equals);
     srandom(time(NULL));
     scip->xid = random();
