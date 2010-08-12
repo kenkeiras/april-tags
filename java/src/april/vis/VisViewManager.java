@@ -29,7 +29,7 @@ public class VisViewManager
 
     double follow_lastpos[], follow_lastquat[];
 
-    public double zoom_dist_min = 0.1;
+    public double zoom_dist_min = 0.05;
     public double zoom_dist_max = 2000;
 
     public VisViewManager(VisContext vc)

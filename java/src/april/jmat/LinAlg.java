@@ -553,6 +553,15 @@ public final class LinAlg
         return r;
     }
 
+    public static double[] copyDoubles(int a[])
+    {
+        double r[] = new double[a.length];
+        for (int i = 0; i < a.length; i++)
+            r[i] = a[i];
+        return r;
+    }
+
+
     public static float[] copy(float a[])
     {
         float r[] = new float[a.length];
@@ -846,6 +855,35 @@ public final class LinAlg
                               2*((t7-t3)*v[0]  + (t2+t9)*v[1]  + (t5+t8)*v[2]) + v[2] };
     }
 
+    /** Given two unit vectors 'a' and 'b', what is the
+     * minimum-rotation quaternion that projects 'a' onto 'b'?
+     *
+     **/
+    public static double[] quatCompute(double a[], double b[])
+    {
+        a = LinAlg.normalize(a);
+        b = LinAlg.normalize(b);
+
+        // rotate around the axis perpendicular to both of the vectors.
+        double cross[] = LinAlg.crossProduct(a, b);
+
+        // the sine of the angle between them is the magnitude of the
+        // cross product. But there are two angles that have that
+        // sine.  Just try both and return the better one.
+        double theta = Math.asin(LinAlg.magnitude(cross));
+
+        double q0[] = LinAlg.angleAxisToQuat(theta, cross);
+        double q1[] = LinAlg.angleAxisToQuat(Math.PI - theta, cross);
+
+        double b0[] = LinAlg.quatRotate(q0, a);
+        double b1[] = LinAlg.quatRotate(q1, a);
+
+        if (LinAlg.distance(b0, b) < LinAlg.distance(b1, b))
+            return q0;
+
+        return q1;
+    }
+
     public static double[] matrixToXyzrpy(double M[][])
     {
         double tx = M[0][3];
@@ -1076,6 +1114,11 @@ public final class LinAlg
         return xyt;
     }
 
+    public static double[] angleAxisToQuat(double angleAxis[])
+    {
+        return angleAxisToQuat(angleAxis[0], new double[] { angleAxis[1], angleAxis[2], angleAxis[3] });
+    }
+
     public static double[] angleAxisToQuat(double theta, double axis[])
     {
         axis = LinAlg.normalize(axis);
@@ -1092,13 +1135,19 @@ public final class LinAlg
     /** return vector: [rad, x, y, z] **/
     public static double[] quatToAngleAxis(double q[])
     {
+        q = LinAlg.normalize(q);
+
         double aa[] = new double[4];
-        aa[0] = Math.acos(q[0]);
-        double s = Math.sin(1 - q[0]*q[0]);
+        aa[0] = MathUtil.mod2pi(2*Math.acos(q[0]));
+        double s = Math.sin(aa[0] / 2); //Math.sqrt(1 - q[0]*q[0]);
         if (s != 0) {
             aa[1] = q[1] / s;
             aa[2] = q[2] / s;
             aa[3] = q[3] / s;
+        } else {
+            aa[1] = 1;
+            aa[2] = 0;
+            aa[3] = 0;
         }
         return aa;
     }

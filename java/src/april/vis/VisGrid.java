@@ -149,7 +149,7 @@ public class VisGrid implements VisObject
             else
                 VisUtil.setColor(gl, gridColor);
 
-            double big = 100000;
+            double big = Math.max(1000, eye_dist * 200);
 
             for (int i=0; i<num_lines; i++) {
                 gl.glVertex3d(grid_ox + (-num_lines/2 + i) * meters_per_grid,
