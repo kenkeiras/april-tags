@@ -24,7 +24,7 @@ public class VisView
 
     public double perspective_fovy_degrees = 50;
     public double zclip_near = 0.01;
-    public double zclip_far = 10000;
+    public double zclip_far = 5000;
 
     static GLU glu = new GLU();
 
