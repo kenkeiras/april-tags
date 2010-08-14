@@ -65,7 +65,7 @@ public class TimeSync
 
     /** Every host/device pair should be passed to this function, and must
      * occur prior to calling _get_host_utime **/
-    public void update(long host_utime, long device_ticks_wrapping)
+    synchronized public void update(long host_utime, long device_ticks_wrapping)
     {
         assert(device_ticks_wrapping >= 0);
 
@@ -120,7 +120,7 @@ public class TimeSync
     /** For the given device_time, estimate the corresponding host
      * utime. In the case that device_ticks wraps, the most recent
      * possible instance of the device_time is used. **/
-    public long getHostUtime(long device_ticks_wrapping)
+    synchronized public long getHostUtime(long device_ticks_wrapping)
     {
         // timesync_update must called first.
         assert (this.p_ticks != -1);
