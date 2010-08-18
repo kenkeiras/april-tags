@@ -14,8 +14,12 @@ public class PointArrayCoder implements StructureCoder
         assert (o instanceof ArrayList);
         ArrayList<double[]> points = (ArrayList<double[]>) o;
 
-        double ppoints[][] = points.toArray(new double[0][0]);
-        outs.writeMatrix(ppoints);
+        if (points.size() == 0) {
+            outs.writeMatrix(null);
+        } else {
+            double ppoints[][] = points.toArray(new double[0][0]);
+            outs.writeMatrix(ppoints);
+        }
     }
 
     public Object read(StructureReader ins) throws IOException
@@ -23,8 +27,11 @@ public class PointArrayCoder implements StructureCoder
         ArrayList<double[]> points = new ArrayList<double[]>();
 
         double ppoints[][] = ins.readMatrix();
-        for (double point[] : ppoints)
-            points.add(point);
+
+        if (ppoints != null) {
+            for (double point[] : ppoints)
+                points.add(point);
+        }
 
         return points;
     }

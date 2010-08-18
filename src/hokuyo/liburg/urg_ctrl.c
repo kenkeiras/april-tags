@@ -31,7 +31,9 @@ enum {
 };
 
 
-/* 接続処理 */
+/* 接続処理
+ en: connection handling
+*/
 static int urg_firstConnection(urg_t *urg, long baudrate)
 {
   long try_baudrates[] = { 115200, 19200, 38400 };
@@ -41,7 +43,8 @@ static int urg_firstConnection(urg_t *urg, long baudrate)
   int ret;
   int i;
 
-  /* 接続したいボーレートを配列の先頭と入れ換える */
+  /* 接続したいボーレートを配列の先頭と入れ換える
+   en: beginning of the array and replace the baud rate you want to connect */
   for (i = 1; i < try_size; ++i) {
     if (baudrate == try_baudrates[i]) {
       long swap_tmp = try_baudrates[i];
@@ -51,10 +54,12 @@ static int urg_firstConnection(urg_t *urg, long baudrate)
     }
   }
 
-  /* 指定のボーレートで接続し、応答が返されるかどうか試す */
+  /* 指定のボーレートで接続し、応答が返されるかどうか試す
+   en: Connect at the specified baud rate, test whether the response is received*/
   for (i = 0; i < try_size; ++i) {
 
-    /* ホスト側のボーレートを変更 */
+    /* ホスト側のボーレートを変更
+     en: Change baud rate */
     ret = serial_setBaudrate(&urg->serial_, try_baudrates[i]);
     if (ret < 0) {
       return ret;
@@ -62,7 +67,9 @@ static int urg_firstConnection(urg_t *urg, long baudrate)
 
     serial_clear(&urg->serial_);
 
-    /* QT の発行 */
+    /* QT の発行
+     en: QT publish
+    */
     ret = scip_qt(&urg->serial_, &reply, ScipWaitReply);
     if (ret == UrgSerialRecvFail) {
       /* 応答が返されない場合、ボーレートが違うとみなす */
@@ -72,36 +79,56 @@ static int urg_firstConnection(urg_t *urg, long baudrate)
     if ((ret == UrgMismatchResponse) && (reply != -0xE)) {
       /* MD/MS コマンドの応答を受け取ったときの処理 */
       /* 受信内容を全て読み飛ばしてから、次の処理を行う */
-      /* (reply == -0xE) のときは、SCIP1.1 応答で 'E' の場合 */
+      /* (reply == -0xE) のときは、SCIP1.1 応答で 'E' の場合
+
+       en:
+       * MD / MS process when it receives a command response
+       * skip all the contents from the receiver to do the following:
+       (reply ==-0xE) is when , SCIP1.1 response 'E' if
+      */
       serial_clear(&urg->serial_);
       serial_skip(&urg->serial_, ScipTimeout, EachTimeout);
       reply = 0x00;
     }
 
-    /* 応答が返されれば、既に SCIP2.0 モードであり "SCIP2.0" の発行は不要 */
+    /* 応答が返されれば、既に SCIP2.0 モードであり "SCIP2.0" の発行は不要
+
+       en: If the response is returned , which already SCIP2.0 mode
+       "SCIP2.0" without the issuance of
+    */
     if (reply != 0x00) {
       if ((ret = scip_scip20(&urg->serial_)) < 0) {
-        /* 応答がなければ、違うボーレートに接続したものとみなす */
+        /* 応答がなければ、違うボーレートに接続したものとみなす
+
+         en: If no response is deemed to have connected to a different baud rate
+        */
         continue;
       }
       if (ret == 12) {
-        /* SCIP1.1 プロトコル */
+        /* SCIP1.1 プロトコル
+         en: SCIP1.1 Protocol*/
         return UrgScip10;
       }
     }
 
-    /* ボーレートを変更する必要がなければ、戻る */
+    /* ボーレートを変更する必要がなければ、戻る
+     en: If there is no need to change the baud rate back
+    */
     if (baudrate == try_baudrates[i]) {
       return 0;
     }
 
-    /* URG 側を指定されたボーレートに変更する */
+    /* URG 側を指定されたボーレートに変更する
+       en: URG to change the baud rate specified
+    */
     pre_ticks = getTicks();
     if (scip_ss(&urg->serial_, baudrate) < 0) {
       return UrgSsFail;
 
     } else {
-      /* シリアル通信の場合、ボーレート変更後、１周分だけ待つ必要がある */
+      /* シリアル通信の場合、ボーレート変更後、１周分だけ待つ必要がある
+       en: For serial communications , after changing the baud rate ,
+       have to wait only one around */
       int reply_msec = getTicks() - pre_ticks;
       delay((reply_msec * 4 / 3) + 10);
 
@@ -121,20 +148,25 @@ static void urg_t_initialize(urg_t *urg)
 }
 
 
-/* シリアルデバイスを開き、URG との初期化を行う */
+/* シリアルデバイスを開き、URG との初期化を行う
+ EN:  Open a serial device , URG and initialization */
 int urg_connect(urg_t *urg, const char *device, long baudrate)
 {
   int ret;
   urg_t_initialize(urg);
 
-  /* シリアル接続を開く */
+  /* シリアル接続を開く
+   en: Open serial connection
+  */
   ret = serial_connect(&urg->serial_, device, baudrate);
   if (ret != 0) {
     urg->errno_ = UrgSerialConnectionFail;
     return ret;
   }
 
-  /* URG への接続処理 */
+  /* URG への接続処理
+     en:process of connecting to
+  */
   ret = urg_firstConnection(urg, baudrate);
   if (ret < 0) {
     urg->errno_ = ret;
@@ -142,7 +174,8 @@ int urg_connect(urg_t *urg, const char *device, long baudrate)
     return ret;
   }
 
-  /* パラメータ情報の更新、および初期化 */
+  /* パラメータ情報の更新、および初期化
+   en: Updating parameter information , and initialize */
   ret = scip_pp(&urg->serial_, &urg->parameters_);
   if (ret < 0) {
     urg->errno_ = ret;
@@ -190,7 +223,9 @@ int urg_versionLines(urg_t *urg, char* lines[], int lines_max)
 }
 
 
-/* PP コマンドを送信し、応答を解析して格納してから返す */
+/* PP コマンドを送信し、応答を解析して格納してから返す
+ PP sends a command to return to store and analyze the response
+*/
 int urg_parameters(urg_t *urg, urg_parameter_t* parameters)
 {
   int ret = 0;
@@ -242,7 +277,9 @@ long urg_minDistance(urg_t *urg)
 
 int urg_setSkipLines(urg_t *urg, int lines)
 {
-  /* 間引きライン数を登録 */
+  /* 間引きライン数を登録
+   en: register the number of thinning lines
+  */
   if (lines == 0) {
     lines = 1;
   }
@@ -256,7 +293,9 @@ int urg_setSkipLines(urg_t *urg, int lines)
 
 int urg_setSkipFrames(urg_t *urg, int frames)
 {
-  /* 間引きフレーム数を登録 */
+  /* 間引きフレーム数を登録  */
+    /* number of frames decimated Register */
+
   urg->skip_frames_ = frames;
 
   return 0;
@@ -265,7 +304,8 @@ int urg_setSkipFrames(urg_t *urg, int frames)
 
 int urg_setCaptureTimes(urg_t *urg, int times)
 {
-  /* MD/MS のデータ取得回数を登録 */
+    /* MD/MS のデータ取得回数を登録 */
+    /* MD / MS data acquisition registration number */
   if ((times < 0) || (times >= 100)) {
     urg->capture_times_ = 0;
   } else {
@@ -279,7 +319,8 @@ int urg_setCaptureTimes(urg_t *urg, int times)
 int urg_remainCaptureTimes(urg_t *urg)
 {
   if (urg->capture_times_ == 0) {
-    /* 無限回のデータ取得 */
+    /* 無限回のデータ取得
+     EN: infinite time data acquisition */
     return 100;
 
   } else {
@@ -484,8 +525,8 @@ static int internal_receiveData(urg_t *urg, long data[], int data_max,
     False = 0,
     True = 1,
 
-    MD_MS_Length = 15,          /* MD, MS コマンドの長さ */
-    GD_GS_Length = 12,          /* GD, GS コマンドの長さ */
+    MD_MS_Length = 15,          /* MD, MS コマンドの長さ (en: MD, MS command length) */
+    GD_GS_Length = 12,          /* GD, GS コマンドの長さ (en: GD, GS command length*/
   };
 
   int lines = 0;
@@ -503,7 +544,9 @@ static int internal_receiveData(urg_t *urg, long data[], int data_max,
   int current_capture_times = -1;
   int current_data_bytes = 3;
 
-  /* タイムスタンプを初期化 */
+  /* タイムスタンプを初期化
+   en: Initialization time stamp
+  */
   urg->last_timestamp_ = UrgInvalidTimestamp;
 
   urg->errno_ = UrgNoResponse;
@@ -513,7 +556,8 @@ static int internal_receiveData(urg_t *urg, long data[], int data_max,
     //fprintf(stderr, "%d: %s\n", lines, buffer);
     if (n <= 0) {
       if (is_header) {
-        /* !!! 制御構造を見直す */
+        /* !!! 制御構造を見直す
+         en: control overhaul */
         is_header = False;
         lines = 0;
         continue;
@@ -676,7 +720,9 @@ int urg_receivePartialData(urg_t *urg, long data[], int data_max,
 
 long urg_recentTimestamp(urg_t *urg)
 {
-  /* 直前のデータのタイムスタンプを返す */
+  /* 直前のデータのタイムスタンプを返す
+   (english) Return the timestamp of the last data
+  */
   return urg->last_timestamp_;
 }
 
@@ -745,7 +791,9 @@ int urg_laserOff(urg_t *urg)
 
 int urg_enableTimestampMode(urg_t *urg)
 {
-  /* TM0 の送信 */
+  /* TM0 の送信
+     en: send TM0
+  */
   int expected_ret[] = { 0, 2, -1 };
   int send_n = scip_send(&urg->serial_, "TM0\r");
   if (send_n != 4) {
@@ -758,7 +806,9 @@ int urg_enableTimestampMode(urg_t *urg)
 
 int urg_disableTimestampMode(urg_t *urg)
 {
-  /* TM2 の送信 */
+  /* TM2 の送信
+   en: send TM2
+  */
   int expected_ret[] = { 0, 3, -1 };
   int send_n = scip_send(&urg->serial_, "TM2\r");
   if (send_n != 4) {
@@ -769,6 +819,7 @@ int urg_disableTimestampMode(urg_t *urg)
 }
 
 
+/** synchronously queries the URG for its timestamp. **/
 long urg_currentTimestamp(urg_t *urg)
 {
   char buffer[ScipLineWidth];
@@ -776,7 +827,9 @@ long urg_currentTimestamp(urg_t *urg)
   int ret = 0;
   int n;
 
-  /* TM1 の送信 */
+  /* TM1 の送信
+   en: send TM1
+  */
   int expected_ret[] = { 0, -1 };
   int send_n = scip_send(&urg->serial_, "TM1\r");
   if (send_n != 4) {
@@ -788,13 +841,16 @@ long urg_currentTimestamp(urg_t *urg)
     return ret;
   }
 
-  /* タイムスタンプをデコードして返す */
+  /* タイムスタンプをデコードして返す
+   en: decode time stamp and return */
   n = serial_getLine(&urg->serial_, buffer, ScipLineWidth, ScipTimeout);
   if (n == 5) {
     timestamp = decode(buffer, 4);
   }
 
-  /* 最後の応答を読み捨て */
+  /* 最後の応答を読み捨て
+     Last response読Mi捨Te
+  */
   n = serial_recv(&urg->serial_, buffer, 1, ScipTimeout);
   if (! serial_isLF(buffer[0])) {
     serial_ungetc(&urg->serial_, buffer[0]);

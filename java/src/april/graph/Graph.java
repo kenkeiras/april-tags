@@ -9,7 +9,9 @@ import april.jmat.geom.*;
 
 import april.util.*;
 
-/** A a collection of GNodes and GEdges. **/
+/** A a collection of GNodes and GEdges. It is generally safe to add
+ * nodes and edges, but it is not safe to remove them due to cached
+ * state in stateIndices and nodeIndices. **/
 public class Graph
 {
     /** the set of all constraints. **/
@@ -21,9 +23,13 @@ public class Graph
     /** Each node may have a different number of degrees of
         freedom. The stateIndices array allows us to rapidly lookup
         the state vector index corresponding to a particular
-        node. (These are computed on-demand by getStateIndex().
+        node. (These are computed on-demand by getStateIndex().)
     **/
     ArrayList<Integer> stateIndices = new ArrayList<Integer>();
+
+    /** What is the index in g.nodes for a given GNode? This is
+     * updated on demand by indexOf. **/
+    HashMap<GNode, Integer> nodeIndices = new HashMap<GNode, Integer>();
 
     /** Chi^2 error and other error statistics. **/
     public static class ErrorStats
@@ -55,6 +61,109 @@ public class Graph
         }
 
         return (int) stateIndices.get(nodeIndex);
+    }
+
+    public int indexOf(GNode gn)
+    {
+        for (int i = nodeIndices.size(); i < nodes.size(); i++)
+            nodeIndices.put(nodes.get(i), i);
+
+        Integer i = nodeIndices.get(gn);
+        if (i == null)
+            return -1;
+        return i;
+    }
+
+    /** Edges are copied since their .a and .b will be remapped. Nodes
+     * are not copied. Nodes that are the same object (same pointer)
+     * will be merged into the same node. **/
+    public void merge(Graph g)
+    {
+        // indices in g.nodes map to indices in this.nodes
+        HashMap<Integer, Integer> indexMap = new HashMap<Integer, Integer>();
+
+        for (int gidx = 0; gidx < g.nodes.size(); gidx++) {
+            GNode gn = g.nodes.get(gidx);
+
+            // is this node already in this graph?
+            int idx = indexOf(gn);
+
+            if (idx >= 0) {
+                // yep. record the mapping; we're done.
+                indexMap.put(gidx, idx);
+            } else {
+                // nope, add this node.
+                indexMap.put(gidx, nodes.size());
+                nodes.add(gn);
+            }
+        }
+
+        for (int eidx = 0; eidx < g.edges.size(); eidx++) {
+            GEdge ge = g.edges.get(eidx).copy();
+            ge.a = indexMap.get(ge.a);
+            ge.b = indexMap.get(ge.b);
+            edges.add(ge);
+        }
+    }
+
+    /** performs copies of the edges, in order to account for the new
+     * indices for the nodes. The nodes themselves are not copied. **/
+    public ArrayList<Graph> getConnectedComponents()
+    {
+        UnionFindSimple uf = new UnionFindSimple(nodes.size());
+
+        for (GEdge ge : edges) {
+            uf.connectNodes(ge.a, ge.b);
+        }
+
+        // for each representative ID (which yields a graph), we
+        // maintain a mapping from original node indices to the
+        // indices in this graph.
+        HashMap<Integer, HashMap<Integer, Integer>> mappings = new HashMap<Integer, HashMap<Integer, Integer>>();
+
+        // map representative IDs to graphs.
+        HashMap<Integer, Graph> graphs = new HashMap<Integer, Graph>();
+
+        // copy each node into the appropriate component, remembering
+        // its new index.
+        for (int gidx = 0; gidx < nodes.size(); gidx++) {
+            int rep = uf.getRepresentative(gidx);
+
+            HashMap<Integer, Integer> indicesMap = mappings.get(rep);
+            if (indicesMap == null) {
+                indicesMap = new HashMap<Integer, Integer>();
+                mappings.put(rep, indicesMap);
+            }
+
+            Graph g = graphs.get(rep);
+            if (g == null) {
+                g = new Graph();
+                graphs.put(rep, g);
+            }
+
+            indicesMap.put(gidx, g.nodes.size());
+            g.nodes.add(nodes.get(gidx));
+        }
+
+        // now, handle edges
+        for (int eidx = 0; eidx < edges.size(); eidx++) {
+            GEdge ge = edges.get(eidx);
+            int rep = uf.getRepresentative(ge.a);
+            assert(uf.getRepresentative(ge.a) == uf.getRepresentative(ge.b));
+
+            HashMap<Integer, Integer> indicesMap = mappings.get(rep);
+            ge = ge.copy();
+            ge.a = indicesMap.get(ge.a);
+            ge.b = indicesMap.get(ge.b);
+            graphs.get(rep).edges.add(ge);
+        }
+
+        // make the list.
+        ArrayList<Graph> list = new ArrayList<Graph>();
+        for (Graph g : graphs.values())
+            list.add(g);
+
+        return list;
     }
 
     public void write(String path) throws IOException

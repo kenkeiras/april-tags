@@ -34,6 +34,14 @@ public class ColorUtil
         return new Color(255- c.getRed(), 255-c.getGreen(), 255-c.getBlue());
     }
 
+    public static Color fromAARRGGBB(int aarrggbb)
+    {
+        return new Color((aarrggbb >> 16) & 0xff,
+                         (aarrggbb >> 8) & 0xff,
+                         (aarrggbb >> 0) & 0xff,
+                         (aarrggbb >> 24) & 0xff);
+    }
+
     // make the color closer to 128,128,128.
     // if frac=0, no change. if frac=1, returns 128,128,128.
     public static Color towardsGray(Color c, double frac)
