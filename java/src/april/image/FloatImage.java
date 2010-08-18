@@ -458,4 +458,68 @@ public class FloatImage
 	    }
         return f;
     }
+
+    public ArrayList<float[]> localMaxima()
+    {
+        ArrayList<float[]> maxima = new ArrayList<float[]>();
+
+        for (int y = 1; y + 1 < height; y++) {
+            for (int x = 1; x + 1 < width; x++) {
+                float c = d[y * width + x];
+
+                if (d[(y - 1) * width + x - 1] >= c)
+                    continue;
+                if (d[(y - 1) * width + x + 0] >= c)
+                    continue;
+                if (d[(y - 1) * width + x + 1] >= c)
+                    continue;
+                if (d[(y + 0) * width + x - 1] >= c)
+                    continue;
+                if (d[(y + 0) * width + x + 1] >= c)
+                    continue;
+                if (d[(y + 1) * width + x - 1] >= c)
+                    continue;
+                if (d[(y + 1) * width + x + 0] >= c)
+                    continue;
+                if (d[(y + 1) * width + x + 1] >= c)
+                    continue;
+
+                maxima.add(new float[] { x, y, c });
+            }
+        }
+        return maxima;
+    }
+
+    /** Returns x, y, magnitude. **/
+    public ArrayList<float[]> localMinima()
+    {
+        ArrayList<float[]> maxima = new ArrayList<float[]>();
+        for (int y = 1; y + 1 < height; y++) {
+            for (int x = 1; x + 1 < width; x++) {
+                float c = d[y * width + x];
+
+                if (d[(y - 1) * width + x - 1] <= c)
+                    continue;
+                if (d[(y - 1) * width + x + 0] <= c)
+                    continue;
+                if (d[(y - 1) * width + x + 1] <= c)
+                    continue;
+                if (d[(y + 0) * width + x - 1] <= c)
+                    continue;
+                if (d[(y + 0) * width + x + 1] <= c)
+                    continue;
+                if (d[(y + 1) * width + x - 1] <= c)
+                    continue;
+                if (d[(y + 1) * width + x + 0] <= c)
+                    continue;
+                if (d[(y + 1) * width + x + 1] <= c)
+                    continue;
+
+                maxima.add(new float[] { x, y, c });
+            }
+        }
+        return maxima;
+    }
+
+
 }
