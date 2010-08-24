@@ -29,19 +29,25 @@ public class VisLineSegment implements VisObject
      */
     public VisLineSegment(double[] begin, double end[], Color color)
     {
+        this(begin, end, color, 1);
+    }
+
+    public VisLineSegment(double[] begin, double end[], Color color, float lineWidth)
+    {
         this.begin = begin;
         this.end = end;
         this.color = color;
+        this.lineWidth = lineWidth;
     }
 
-    public VisLineSegment(double x1, double y1, double z1, double x2, double y2, double z2, Color color)
+    public VisLineSegment(double x1, double y1, double z1, double x2, double y2, double z2,
+                          Color color)
     {
-        begin = new double[] { x1, y1, z1 };
-        end = new double[] { x2, y2, z2 };
-        this.color = color;
+        this(x1, y1, z1, x2, y2, z2, color, 1);
     }
 
-    public VisLineSegment(double x1, double y1, double z1, double x2, double y2, double z2, Color color, float lineWidth)
+    public VisLineSegment(double x1, double y1, double z1, double x2, double y2, double z2,
+                          Color color, float lineWidth)
     {
         begin = new double[] {x1,y1,z1};
         end = new double[] {x2,y2,z2};

@@ -41,6 +41,8 @@ public class VisOffscreenCanvas implements VisContext
 
     public boolean debug = false;
 
+    int zdepth = 16;
+
     static
     {
         JoglLoader.initialize();
@@ -59,7 +61,7 @@ public class VisOffscreenCanvas implements VisContext
         this.vw = vw;
         this.viewManager = new VisViewManager(this);
 
-        pbuffer = GLDrawableFactory.getFactory().createGLPbuffer(makeCapabilities(16, true, true, aaLevel),
+        pbuffer = GLDrawableFactory.getFactory().createGLPbuffer(makeCapabilities(zdepth, true, true, aaLevel),
                                                                  null,
                                                                  width, height,
                                                                  null);
@@ -82,7 +84,7 @@ public class VisOffscreenCanvas implements VisContext
 
         destroy();
 
-        pbuffer = GLDrawableFactory.getFactory().createGLPbuffer(makeCapabilities(24, true, true, aaLevel),
+        pbuffer = GLDrawableFactory.getFactory().createGLPbuffer(makeCapabilities(zdepth, true, true, aaLevel),
                                                                  null,
                                                                  width, height,
                                                                  null);
@@ -340,7 +342,7 @@ public class VisOffscreenCanvas implements VisContext
     public static void main(String args[])
     {
         VisWorld vw = new VisWorld();
-        VisOffscreenCanvas vc = new VisOffscreenCanvas(300, 200, vw);
+        VisOffscreenCanvas vc = new VisOffscreenCanvas(100, 300, vw);
 
         vc.getViewManager().viewGoal.lookAt(new double[] {0, 0, 4},
                                             new double[] {0, 0, 0},
@@ -360,8 +362,8 @@ public class VisOffscreenCanvas implements VisContext
 
         System.out.printf("%15f \n", pz);
 
-        JImage jim = new JImage(rd.depth.makeImage());
-//        JImage jim = new JImage(vc.getImage());
+//        JImage jim = new JImage(rd.depth.makeImage());
+        JImage jim = new JImage(vc.getImage());
         jf.add(jim, BorderLayout.CENTER);
         jf.setSize(600,400);
         jf.setVisible(true);
