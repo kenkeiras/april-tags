@@ -13,7 +13,6 @@
 #include "common/timestamp.h"
 
 #include "gps.h"
-#include "gps_display.h"
 #include "common/getopt.h"
 #include "lcmtypes/nmea_t.h"
 #include "lcm/lcm.h"
@@ -26,7 +25,6 @@ struct gpsd
 {
     getopt_t *gopt;
     gps_t *g;
-    gps_display_t *gd;
     FILE *logf;
     lcm_t *lcm;
 };
@@ -34,18 +32,16 @@ struct gpsd
 int main(int argc, char *argv[])
 {
     gpsd_t *gpsd = (gpsd_t*) calloc(1, sizeof(gpsd_t));
-    
+
     gpsd->gopt = getopt_create();
-    //getopt_add_string(gpsd->gopt, 'd', "device", "/dev/gps", 
-    getopt_add_string(gpsd->gopt, 'd', "device", "/dev/ttyUSB0", 
+    //getopt_add_string(gpsd->gopt, 'd', "device", "/dev/gps",
+    getopt_add_string(gpsd->gopt, 'd', "device", "/dev/ttyUSB0",
             "GPS serial device");
     getopt_add_int(gpsd->gopt,    'b', "baud", "19200", "Serial baud rate");
     //getopt_add_int(gpsd->gopt,    'b', "baud", "38400", "Serial baud rate");
     getopt_add_int(gpsd->gopt,    'p', "port", "7337", "TCP port");
-    getopt_add_bool(gpsd->gopt,   'a', "allowremote", 0, 
+    getopt_add_bool(gpsd->gopt,   'a', "allowremote", 0,
             "Allow remote connections");
-    getopt_add_bool(gpsd->gopt,    0,  "display", 1, 
-            "Enable curses display");
     getopt_add_string(gpsd->gopt, 'l', "log", "", "Log file");
 
     if (!getopt_parse(gpsd->gopt, argc, argv, 1)) {
@@ -61,7 +57,7 @@ int main(int argc, char *argv[])
     lc_params_t lcp;
     lc_params_init_defaults(&lcp);
     lcp.transmit_only = 1;
-    
+
     int res = lc_init(gpsd->lcm, &lcp);
     if (res < 0) {
         printf("Error!\n");
@@ -93,7 +89,7 @@ int main(int argc, char *argv[])
     // 0 = no velocity filter
     // 0.5 = dead reckoning time-out
     gps_command(gpsd->g, "$PGRMC,,,,,,,,,A,,,0,,,0.5*");
-    
+
     // the above has a typo? This might actually turn off the velocity
     // filter
     // gps_command(gpsd->g, "$PGRMC,,,,,,,,,A,,0,,,0.5*");
@@ -115,7 +111,7 @@ int main(int argc, char *argv[])
     {
         // turn off everything
         gps_command(gpsd->g, "$PGRMO,,2*");
-        
+
         // enable what we want...
         gps_command(gpsd->g, "$PGRMO,GPRMC,1*");
         gps_command(gpsd->g, "$PGRMO,PGRME,1*");
@@ -123,21 +119,13 @@ int main(int argc, char *argv[])
         gps_command(gpsd->g, "$PGRMO,GPGSA,1*");
     }
 
-
-    int disp = getopt_get_bool(gpsd->gopt, "display");
-
-    if (disp)
-        gpsd->gd = gps_display_create();
-
     gps_set_readline_callback(gpsd->g, callback, gpsd);
-
-    gps_display_start(gpsd->gd);
 
     while (1)
         sleep(1);
 
     gps_destroy(gpsd->g);
-    
+
     fclose(gpsd->logf);
     free(gpsd);
 }
@@ -145,9 +133,6 @@ int main(int argc, char *argv[])
 void callback(void *_context, int64_t ts, const char *buf)
 {
     gpsd_t *gpsd = (gpsd_t*) _context;
-
-    if (gpsd->gd != NULL)
-        gps_display_process_nmea(gpsd->gd, buf);
 
     nmea_t nm;
     nm.utime = ts;
