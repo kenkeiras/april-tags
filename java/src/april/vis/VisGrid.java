@@ -65,7 +65,7 @@ public class VisGrid implements VisObject
         return v;
     }
 
-    VisText gridText;
+    VisObject gridText;
     double  lastSpacing = -1;
     public void render(VisContext vc, GL gl, GLU glu)
     {
@@ -91,8 +91,8 @@ public class VisGrid implements VisObject
                 if (meters_per_grid < 1)
                     label = String.format("Grid: %.1f m", meters_per_grid);
 
-                gridText = new VisText(VisText.ANCHOR.CENTER, label);
-                world.addTemporary(new VisContextSpecific(vc, gridText), 1.0);
+                gridText = new VisContextSpecific(vc, new VisText(VisText.ANCHOR.CENTER, label));
+                world.addTemporary(gridText, 1.0);
                 lastSpacing = meters_per_grid;
             }
         }
