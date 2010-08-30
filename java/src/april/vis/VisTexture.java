@@ -53,6 +53,11 @@ public class VisTexture
 
     public VisTexture(BufferedImage input)
     {
+        this(input, false);
+    }
+
+    public VisTexture(BufferedImage input, boolean alphaMask)
+    {
         switch (input.getType())
         {
             case BufferedImage.TYPE_INT_ARGB: {
@@ -65,8 +70,13 @@ public class VisTexture
             }
             case BufferedImage.TYPE_BYTE_GRAY: {
                 im = input;
-                glinternal = GL.GL_LUMINANCE8;
-                glformat = GL.GL_LUMINANCE;
+                if (alphaMask) {
+                    glinternal = GL.GL_ALPHA8;
+                    glformat = GL.GL_ALPHA;
+                } else {
+                    glinternal = GL.GL_LUMINANCE8;
+                    glformat = GL.GL_LUMINANCE;
+                }
                 gltype = GL.GL_UNSIGNED_BYTE;
                 bytes_per_pixel = 1;
                 break;
