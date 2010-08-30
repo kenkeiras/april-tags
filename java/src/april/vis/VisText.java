@@ -72,7 +72,7 @@ public class VisText implements VisObject
      * used unless overridden on a per-line basis.
      **/
     public enum JUSTIFICATION { LEFT, CENTER, RIGHT };
-    JUSTIFICATION defaultJustification = JUSTIFICATION.RIGHT;
+    JUSTIFICATION defaultJustification = JUSTIFICATION.CENTER;
 
     /** A line of text is composed of multiple styled fragments, each
      * drawn contiguously (horizontally). The line additionally has an
