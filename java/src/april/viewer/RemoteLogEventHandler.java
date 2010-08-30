@@ -72,6 +72,12 @@ public class RemoteLogEventHandler extends VisCanvasEventAdapter implements View
             case ']':
                 udpSendString("127.0.0.1", 53261, "FORWARD5");
                 break;
+            case '{':
+                udpSendString("127.0.0.1", 53261, "BACK60");
+                break;
+            case '}':
+                udpSendString("127.0.0.1", 53261, "FORWARD60");
+                break;
             default:
                 return false;
         }
