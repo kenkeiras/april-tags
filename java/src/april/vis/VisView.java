@@ -141,7 +141,7 @@ public class VisView
 
     void adjustForInterfaceMode(double interfaceMode)
     {
-        if (interfaceMode == 2.0) {
+        if (interfaceMode <= 2.0) {
             eye[0] = lookAt[0];
             eye[1] = lookAt[1];
             eye[2] = Math.abs(eye[2]);
@@ -151,6 +151,9 @@ public class VisView
             else
                 up = LinAlg.normalize(up);
             lookAt[2] = 0;
+
+            if (interfaceMode < 2)
+                up = new double[] {0, 1, 0};
 
         } else if (interfaceMode == 2.5) {
 

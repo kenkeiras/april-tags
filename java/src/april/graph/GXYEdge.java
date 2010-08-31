@@ -29,8 +29,7 @@ public class GXYEdge extends GEdge
     public GXYEdge copy()
     {
         GXYEdge e = new GXYEdge();
-        e.a = a;
-        e.b = b;
+        e.nodes = LinAlg.copy(nodes);
         e.z = LinAlg.copy(z);
         if (truth != null)
             e.truth = LinAlg.copy(truth);
@@ -48,6 +47,8 @@ public class GXYEdge extends GEdge
 
     public double getChi2(Graph g)
     {
+        int a = nodes[0], b = nodes[1];
+
         GNode gna = g.nodes.get(a);
         GNode gnb = g.nodes.get(b);
 
@@ -81,8 +82,8 @@ public class GXYEdge extends GEdge
     public void write(StructureWriter outs) throws IOException
     {
         outs.writeComment("a, b");
-        outs.writeInt(a);
-        outs.writeInt(b);
+        outs.writeInt(nodes[0]);
+        outs.writeInt(nodes[1]);
 
         outs.writeComment("XY");
         outs.writeDoubles(z);
@@ -94,8 +95,10 @@ public class GXYEdge extends GEdge
 
     public void read(StructureReader ins) throws IOException
     {
-        a = ins.readInt();
-        b = ins.readInt();
+        nodes = new int[2];
+        nodes[0] = ins.readInt();
+        nodes[1] = ins.readInt();
+
         z = ins.readDoubles();
         truth = ins.readDoubles();
         P = ins.readMatrix();
@@ -105,12 +108,12 @@ public class GXYEdge extends GEdge
     {
         if (lin == null) {
             lin = new Linearization();
-            lin.Ja = new double[2][3];
-            lin.Jb = new double[2][3];
+            lin.J.add(new double[2][3]);
+            lin.J.add(new double[2][3]);
         }
 
-        GNode gna = g.nodes.get(a);
-        GNode gnb = g.nodes.get(b);
+        GNode gna = g.nodes.get(nodes[0]);
+        GNode gnb = g.nodes.get(nodes[1]);
 
         double xa = gna.state[0], ya = gna.state[1], ta = 0;
         double xb = gnb.state[0], yb = gnb.state[1], tb = 0;
@@ -120,18 +123,24 @@ public class GXYEdge extends GEdge
             ta = gna.state[2];
 
         // Jacobian of the constraint WRT state a
-        lin.Ja[0][0] = -ca;
-        lin.Ja[0][1] = -sa;
-        lin.Ja[0][2] = -sa*(xb-xa)+ca*(yb-ya);
-        lin.Ja[1][0] = sa;
-        lin.Ja[1][1] = -ca;
-        lin.Ja[1][2] = -ca*(xb-xa)-sa*(yb-ya);
+        if (true) {
+            double J[][] = lin.J.get(0);
+            J[0][0] = -ca;
+            J[0][1] = -sa;
+            J[0][2] = -sa*(xb-xa)+ca*(yb-ya);
+            J[1][0] = sa;
+            J[1][1] = -ca;
+            J[1][2] = -ca*(xb-xa)-sa*(yb-ya);
+        }
 
         // Jacobian of the constraint WRT state b
-        lin.Jb[0][0] = ca;
-        lin.Jb[0][1] = sa;
-        lin.Jb[1][0] = -sa;
-        lin.Jb[1][1] = ca;
+        if (true) {
+            double J[][] = lin.J.get(1);
+            J[0][0] = ca;
+            J[0][1] = sa;
+            J[1][0] = -sa;
+            J[1][1] = ca;
+        }
 
         // compute the residual
         lin.R = LinAlg.resize(LinAlg.xytInvMul31(new double[] {xa, ya, ta},

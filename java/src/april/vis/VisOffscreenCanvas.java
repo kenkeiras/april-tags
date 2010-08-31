@@ -208,16 +208,16 @@ public class VisOffscreenCanvas implements VisContext
             vw.render(VisOffscreenCanvas.this, gl, glu);
 
             BufferedImage im = new BufferedImage(width, height,
-                                                 BufferedImage.TYPE_3BYTE_BGR);
+                                                 BufferedImage.TYPE_INT_RGB);
 
-            byte imdata[] = ((DataBufferByte) im.getRaster().getDataBuffer()).getData();
+            int imdata[] = ((DataBufferInt) im.getRaster().getDataBuffer()).getData();
 
             // read the BGR values into the image buffer
             gl.glPixelStorei(GL.GL_PACK_ALIGNMENT, 1);
-            gl.glReadPixels(0, 0, width, height, GL.GL_BGR,
-                            GL.GL_UNSIGNED_BYTE, ByteBuffer.wrap(imdata));
+            gl.glReadPixels(0, 0, width, height, GL.GL_BGRA,
+                            GL.GL_UNSIGNED_INT_8_8_8_8_REV, IntBuffer.wrap(imdata));
 
-            VisUtil.flipImage(width*3, height, imdata);
+            VisUtil.flipImage(width, height, imdata);
 
             synchronized (requests) {
                 FloatImage depth = null;

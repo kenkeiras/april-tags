@@ -713,6 +713,15 @@ public class VisCanvas extends JPanel implements VisWorldListener,
         pickingHandler = null;
     }
 
+    public void releasePick(VisCanvasEventHandler eh)
+    {
+        if (pickingHandler == eh) {
+            pickingHandler.pickNotify(false);
+
+            pickingHandler = null;
+        }
+    }
+
     public void keyPressed(KeyEvent e)
     {
         if (pickingHandler != null) {

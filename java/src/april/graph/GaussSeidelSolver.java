@@ -9,6 +9,8 @@ public class GaussSeidelSolver implements GraphSolver
 {
     Graph g;
     int preprocessedEdges;
+
+    // for each node, a list of the edges that are attached to it
     ArrayList<ArrayList<Integer>> nodeEdges = new ArrayList<ArrayList<Integer>>();
     ArrayList<Linearization> linearizations = new ArrayList<Linearization>();
 
@@ -32,8 +34,9 @@ public class GaussSeidelSolver implements GraphSolver
 
         while (preprocessedEdges < g.edges.size()) {
             GEdge ge = g.edges.get(preprocessedEdges);
-            nodeEdges.get(ge.a).add(preprocessedEdges);
-            nodeEdges.get(ge.b).add(preprocessedEdges);
+
+            for (int i = 0; i < ge.nodes.length; i++)
+                nodeEdges.get(ge.nodes[i]).add(preprocessedEdges);
 
             linearizations.add(g.edges.get(preprocessedEdges).linearize(g, null));
 
@@ -70,27 +73,24 @@ public class GaussSeidelSolver implements GraphSolver
 
             Linearization lin = ge.linearize(g, linearizations.get(edgeidx));
 
-            if (ge.a == i) {
-                double thisJTW[][] = cache.get(lin.Ja[0].length, lin.W[0].length);
-                LinAlg.matrixAtB(lin.Ja, lin.W, thisJTW);
+            for (int n = 0; n < ge.nodes.length; n++) {
+                if (ge.nodes[n] == i) {
 
-                LinAlg.matrixAB(thisJTW, lin.Ja, thisJTWJ);
-                LinAlg.plusEquals(JTWJ, thisJTWJ);
+                    double J[][] = lin.J.get(n);
 
-                LinAlg.matrixAB(thisJTW, lin.R, thisJTWR);
-                LinAlg.plusEquals(JTWR, thisJTWR);
-                cache.put(thisJTW);
-            } else {
-                // ge.b == i
-                double thisJTW[][] = cache.get(lin.Jb[0].length, lin.W[0].length);
-                LinAlg.matrixAtB(lin.Jb, lin.W, thisJTW);
+                    double thisJTW[][] = cache.get(J[0].length, lin.W[0].length);
+                    LinAlg.matrixAtB(J, lin.W, thisJTW);
 
-                LinAlg.matrixAB(thisJTW, lin.Jb, thisJTWJ);
-                LinAlg.plusEquals(JTWJ, thisJTWJ);
+                    LinAlg.matrixAB(thisJTW, J, thisJTWJ);
+                    LinAlg.plusEquals(JTWJ, thisJTWJ);
 
-                LinAlg.matrixAB(thisJTW, lin.R, thisJTWR);
-                LinAlg.plusEquals(JTWR, thisJTWR);
-                cache.put(thisJTW);
+                    LinAlg.matrixAB(thisJTW, lin.R, thisJTWR);
+                    LinAlg.plusEquals(JTWR, thisJTWR);
+                    cache.put(thisJTW);
+
+                    // assume nodes only appear once in each GEdge.nodes
+                    break;
+                }
             }
         }
 

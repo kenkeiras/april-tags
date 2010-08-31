@@ -98,6 +98,63 @@ public final class GridMap
         return gm;
     }
 
+    // Return a gridmap that contains all of the non-zero pixels, but
+    // is (potentially) smaller than the original
+    public GridMap crop(boolean roundUpDimensions)
+    {
+        int xmin = Integer.MAX_VALUE, xmax = -1;
+        int ymin = Integer.MAX_VALUE, ymax = -1;
+
+        // find bounding box. (This is a bit inefficient... perhaps it
+        // would be faster if we worked in from the edges.)
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                if (data[y*width+x] != 0) {
+                    xmin = Math.min(xmin, x);
+                    xmax = Math.max(xmax, x);
+                    ymin = Math.min(ymin, y);
+                    ymax = Math.max(ymax, y);
+                }
+            }
+        }
+
+        GridMap gm = new GridMap();
+
+        if (xmax < 0) {
+            // special case: there were no zero pixels.
+            xmin = 0;
+            xmax = 0;
+            ymin = 0;
+            ymax = 0;
+        }
+
+        gm.x0 = x0 + xmin * metersPerPixel;
+        gm.y0 = y0 + ymin * metersPerPixel;
+        gm.width = xmax - xmin + 1;
+        gm.height = ymax - ymin + 1;
+        gm.metersPerPixel = metersPerPixel;
+        gm.defaultFill = (byte) defaultFill;
+
+        if (roundUpDimensions) {
+            // round up to multiple of four (necessary for OpenGL happiness)
+            gm.width += 4 - (gm.width%4);
+            gm.height += 4 - (gm.height%4);
+        }
+
+        gm.data = new byte[gm.width*gm.height];
+
+        for (int y = 0; y < gm.height; y++) {
+            for (int x = 0; x < gm.width; x++) {
+                if (y+ymin < height && x + xmin < width)
+                    gm.data[y*gm.width+x] = data[(y+ymin)*width + (x+xmin)];
+                else
+                    gm.data[y*gm.width+x] = defaultFill;
+            }
+        }
+
+        return gm;
+    }
+
     protected GridMap()
     {
     }

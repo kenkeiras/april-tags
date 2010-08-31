@@ -378,6 +378,14 @@ public class VisCanvasDefaultEventHandler extends VisCanvasEventAdapter
             double pixelsToRadians = 1.0/200;
 
             double interfaceMode = vc.getViewManager().getInterfaceMode();
+
+            if (interfaceMode < 2) {
+                only_roll = false;
+                only_pitch = false;
+                only_yaw = false;
+                any_rotate = false;
+            }
+
             if (interfaceMode == 2.0)
                 only_roll = true;
 
@@ -409,7 +417,7 @@ public class VisCanvasDefaultEventHandler extends VisCanvasEventAdapter
                     if (!Double.isNaN(theta))
                         qcum = LinAlg.quatMultiply(qcum, LinAlg.angleAxisToQuat(-theta, left));
                 }
-            } else {
+            } else if (any_rotate) {
                 // unconstrained rotation
                 qcum = LinAlg.quatMultiply(qcum, LinAlg.angleAxisToQuat(-dx*pixelsToRadians, view.up));
 

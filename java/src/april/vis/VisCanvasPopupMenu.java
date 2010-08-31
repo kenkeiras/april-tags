@@ -29,8 +29,8 @@ class VisCanvasPopupMenu extends JPopupMenu
     JCheckBoxMenuItem orthoItem;
     JCheckBoxMenuItem movieItem = new JCheckBoxMenuItem("Record Movie", false);
 
-    String interfaceModes[] = { "2D", "2.5D", "3D"};
-    int interfaceModeDefaultIndex = 1;
+    String interfaceModes[] = { "1.9D", "2D", "2.5D", "3D"};
+    int interfaceModeDefaultIndex = 2;
     JRadioButtonMenuItem interfaceModeItems[];
     JMenu interfaceModeMenu;
     ButtonGroup interfaceModeGroup = new ButtonGroup();

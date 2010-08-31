@@ -26,7 +26,7 @@ public class VisImage implements VisObject
 
     static boolean sizeWarning = false;
 
-    int texids[];
+    public Color modulateColor = Color.white;
 
     /** Create a new buffered image in pixel coordinates. **/
     public VisImage(BufferedImage im)
@@ -55,13 +55,28 @@ public class VisImage implements VisObject
         this.flipy = flipy;
     }
 
+    public VisImage copy()
+    {
+        VisImage im = new VisImage(texture, new double[] {x0, y0}, new double[] {x1, y1}, z, flipy);
+        im.modulateColor = modulateColor;
+
+        return im;
+    }
+
+    public VisTexture getTexture()
+    {
+        return texture;
+    }
+
     public void render(VisContext vc, GL gl, GLU glu)
     {
         // save original matrices
         VisUtil.pushGLWholeState(gl);
 
         double width = texture.getWidth(), height = texture.getHeight();
-        VisUtil.setColor(gl, Color.white); // must set a non-transparent vertex color.
+
+        // must set a non-transparent vertex color; this color modulates the texture
+        VisUtil.setColor(gl, modulateColor);
 
         texture.bindTexture(gl);
 

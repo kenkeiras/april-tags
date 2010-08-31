@@ -5,28 +5,20 @@ LDFLAGS = $(LDFLAGS_DGC) $(LDFLAGS_COMMON) $(LDFLAGS_STD) $(LDFLAGS_GLIB) $(LDFL
 
 # BELOW FROM gps, above from sick
 
-LDFLAGS += -lcurses -lpthread -lm
+LDFLAGS += -lpthread -lm
 #LDFLAGS +=   `pkg-config --libs glib-2.0 gthread-2.0`
 
-
 gpsd:=$(BIN_PATH)/gpsd
-#gps_lcm_listen:=gps_lcm_listen
-gps_lcm_listen:=$(BIN_PATH)/gps_lcm_listen
 
-gpsd_obj:=gps.o main.o gps_display.o
-gps_lcm_listen_obj:=gps_lcm_listen.o gps_display.o
+gpsd_obj:=gps.o main.o 
 
 .PHONY: all test clean tidy
 
-all: $(gpsd) $(gps_lcm_listen)
+all: $(gpsd)
 
 $(gpsd): $(gpsd_obj)
 	@echo "    [$@]"
 	$(CC) -o $@ $(gpsd_obj) $(LDFLAGS)
-
-$(gps_lcm_listen): $(gps_lcm_listen_obj)
-	@echo "    [$@]"
-	$(CC) -o $@ $(gps_lcm_listen_obj) $(LDFLAGS)
 
 %.o: %.c
 	@echo "    [$@]"

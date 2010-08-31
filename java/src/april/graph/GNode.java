@@ -8,6 +8,8 @@ import april.jmat.*;
 import april.jmat.geom.*;
 import april.util.*;
 
+import lcm.lcm.*;
+
 /** A location in the world whose position is related via GraphConstraints. **/
 public abstract class GNode
 {
@@ -55,7 +57,8 @@ public abstract class GNode
             coder = new LongCoder();
         if (o instanceof double[])
             coder = new DoublesCoder();
-
+        if (o instanceof LCMEncodable)
+            coder = new LCMCoder();
         setAttribute(s, o, coder);
     }
 

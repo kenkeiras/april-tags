@@ -100,8 +100,9 @@ public class Graph
 
         for (int eidx = 0; eidx < g.edges.size(); eidx++) {
             GEdge ge = g.edges.get(eidx).copy();
-            ge.a = indexMap.get(ge.a);
-            ge.b = indexMap.get(ge.b);
+
+            for (int i = 0; i < ge.nodes.length; i++)
+                ge.nodes[i] = indexMap.get(ge.nodes[i]);
             edges.add(ge);
         }
     }
@@ -113,7 +114,9 @@ public class Graph
         UnionFindSimple uf = new UnionFindSimple(nodes.size());
 
         for (GEdge ge : edges) {
-            uf.connectNodes(ge.a, ge.b);
+            for (int i = 0; i < ge.nodes.length; i++)
+                for (int j = i+1; j < ge.nodes.length; j++)
+                    uf.connectNodes(ge.nodes[i], ge.nodes[j]);
         }
 
         // for each representative ID (which yields a graph), we
@@ -148,13 +151,18 @@ public class Graph
         // now, handle edges
         for (int eidx = 0; eidx < edges.size(); eidx++) {
             GEdge ge = edges.get(eidx);
-            int rep = uf.getRepresentative(ge.a);
-            assert(uf.getRepresentative(ge.a) == uf.getRepresentative(ge.b));
+            int rep = uf.getRepresentative(ge.nodes[0]);
+
+            // check: all nodes connected via this edge must be in the same component.
+            for (int i = 1; i < ge.nodes.length; i++)
+                assert(rep == uf.getRepresentative(ge.nodes[i]));
 
             HashMap<Integer, Integer> indicesMap = mappings.get(rep);
             ge = ge.copy();
-            ge.a = indicesMap.get(ge.a);
-            ge.b = indicesMap.get(ge.b);
+
+            for (int i = 0; i < ge.nodes.length; i++)
+                ge.nodes[i] = indicesMap.get(ge.nodes[i]);
+
             graphs.get(rep).edges.add(ge);
         }
 
