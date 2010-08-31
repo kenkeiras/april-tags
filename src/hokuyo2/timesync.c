@@ -16,7 +16,7 @@ void timesync_init(timesync_t *ts, double device_ticks_per_second, int64_t devic
     ts->p_ticks = -1; // negative means "no data"
     ts->device_ticks_per_second = device_ticks_per_second;
     ts->device_ticks_wrap = device_ticks_wrap;
-    ts->rate_error = ts->rate_error;
+    ts->rate_error = rate_error;
     ts->reset_time = reset_time;
 }
 
