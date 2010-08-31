@@ -25,10 +25,9 @@ public class CholeskySolver implements GraphSolver
         Matrix A = new Matrix(g.nodes.size(), g.nodes.size(), Matrix.SPARSE);
 
         for (GEdge ge : g.edges) {
-            A.set(ge.a, ge.a, 1);
-            A.set(ge.a, ge.b, 1);
-            A.set(ge.b, ge.a, 1);
-            A.set(ge.b, ge.b, 1);
+            for (int i = 0; i < ge.nodes.length; i++)
+                for (int j = 0; j < ge.nodes.length; j++)
+                    A.set(ge.nodes[i], ge.nodes[j], 1);
         }
 
         return A;
@@ -48,35 +47,29 @@ public class CholeskySolver implements GraphSolver
         Matrix B = new Matrix(n, 1);
 
         // Computing A directly, rather than computing J'J, is hugely
-        // faster.
+        // faster. Each edge connects ge.nodes nodes, which will
+        // create ge.nodes.length^2 contributions to A.
         for (GEdge ge : g.edges) {
-            int aidx = g.getStateIndex(ge.a);
-            int bidx = g.getStateIndex(ge.b);
 
             Linearization lin = ge.linearize(g, null);
 
-            // Ja'WJa    Ja'WJb
-            // Jb'WJa    Jb'WJb
+            for (int i = 0; i < ge.nodes.length; i++) {
 
-            double JatW[][] = LinAlg.matrixAtB(lin.Ja, lin.W);
-            double JbtW[][] = LinAlg.matrixAtB(lin.Jb, lin.W);
+                int aidx = g.getStateIndex(ge.nodes[i]);
+                double JatW[][] = LinAlg.matrixAtB(lin.J.get(i), lin.W);
 
-            double JatWJa[][] = LinAlg.matrixAB(JatW, lin.Ja);
-            double JatWJb[][] = LinAlg.matrixAB(JatW, lin.Jb);
-            double JbtWJa[][] = LinAlg.matrixAB(JbtW, lin.Ja);
-            double JbtWJb[][] = LinAlg.matrixAB(JbtW, lin.Jb);
+                for (int j = 0; j < ge.nodes.length; j++) {
 
-            A.plusEquals(aidx, aidx, JatWJa);
-            A.plusEquals(aidx, bidx, JatWJb);
-            A.plusEquals(bidx, aidx, JbtWJa);
-            A.plusEquals(bidx, bidx, JbtWJb);
+                    int bidx = g.getStateIndex(ge.nodes[j]);
 
-            // Ja'Wr      Jb'Wr
-            double JatWr[] = LinAlg.matrixAB(JatW, lin.R);
-            double JbtWr[] = LinAlg.matrixAB(JbtW, lin.R);
+                    double JatWJb[][] = LinAlg.matrixAB(JatW, lin.J.get(j));
 
-            B.plusEqualsColumnVector(aidx, 0, JatWr);
-            B.plusEqualsColumnVector(bidx, 0, JbtWr);
+                    A.plusEquals(aidx, bidx, JatWJb);
+                }
+
+                double JatWr[] = LinAlg.matrixAB(JatW, lin.R);
+                B.plusEqualsColumnVector(aidx, 0, JatWr);
+            }
         }
 
         if (verbose)

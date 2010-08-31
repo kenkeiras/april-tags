@@ -172,8 +172,9 @@ public class ScanMatcher
             GXYTEdge ge = new GXYTEdge();
             ge.z = LinAlg.xytInvMul31(lastxyt, xyt);
             ge.P = LinAlg.diag(new double[] { 0.1, 0.1, 0.01});
-            ge.a = g.nodes.size()-2;
-            ge.b = g.nodes.size()-1;
+            ge.nodes = new int[2];
+            ge.nodes[0] = g.nodes.size()-2;
+            ge.nodes[1] = g.nodes.size()-1;
 
             g.edges.add(ge);
 

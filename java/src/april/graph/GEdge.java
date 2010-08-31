@@ -6,8 +6,11 @@ import java.io.*;
 /** Abstract information relating the position of two GraphNodes. **/
 public abstract class GEdge
 {
-    /** Which GraphNodes are related via this edge? **/
-    public int a, b;
+    /** Which GraphNodes are related via this edge? For a typical
+     * edge, this will be [a, b], though edges can (in fact) relate an
+     * arbitrary number of nodes.
+     **/
+    public int nodes[];
 
     /** What is the Chi^2 error of this edge, given the graph? **/
     public abstract double getChi2(Graph g);

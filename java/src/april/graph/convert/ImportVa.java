@@ -27,8 +27,9 @@ public class ImportVa
                     g.nodes.add(n);
                 } else if (toks[0].equals("EDGE2")) {
                     GXYTEdge e = new GXYTEdge();
-                    e.a = Integer.parseInt(toks[1]);
-                    e.b = Integer.parseInt(toks[2]);
+                    e.nodes = new int[2];
+                    e.nodes[0] = Integer.parseInt(toks[1]);
+                    e.nodes[1] = Integer.parseInt(toks[2]);
                     e.z = new double[] { Double.parseDouble(toks[3]),
                                          Double.parseDouble(toks[4]),
                                          Double.parseDouble(toks[5]) };

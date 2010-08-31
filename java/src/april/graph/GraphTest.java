@@ -142,9 +142,13 @@ public class GraphTest implements ParameterListener
 
         for (GEdge ge : g.edges) {
 
-            GNode gna = g.nodes.get(ge.a);
-            GNode gnb = g.nodes.get(ge.b);
-            vb.addBuffered(new VisData(new VisDataLineStyle(Color.green, 1), gna.toXyzRpy(gna.state), gnb.toXyzRpy(gnb.state)));
+            VisData vd = new VisData(new VisDataLineStyle(Color.green, 1));
+            for (int i = 0; i < ge.nodes.length; i++) {
+                GNode gn = g.nodes.get(ge.nodes[i]);
+                vd.add(gn.toXyzRpy(gn.state));
+            }
+
+            vb.addBuffered(vd);
         }
 
         for (GNode gn : g.nodes) {
