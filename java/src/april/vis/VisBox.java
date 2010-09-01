@@ -8,9 +8,10 @@ import javax.media.opengl.glu.*;
 import april.jmat.geom.*;
 
 import java.util.*;
+import java.io.*;
 
 /** A simple 3D box. **/
-public class VisBox implements VisObject
+public class VisBox implements VisObject, VisSerializable
 {
     double cx, cy, cz;
     double sizex, sizey, sizez;
@@ -42,6 +43,36 @@ public class VisBox implements VisObject
         this.sizez = sizez;
         this.fillcolor = fillcolor;
         this.linecolor = linecolor;
+    }
+
+    public void serialize(DataOutput out) throws IOException
+    {
+        out.writeDouble(cx);
+        out.writeDouble(cy);
+        out.writeDouble(cz);
+
+        out.writeDouble(sizex);
+        out.writeDouble(sizey);
+        out.writeDouble(sizez);
+
+        int fill = 0;
+        if (fillcolor != null)
+            fill = fillcolor.getRGB();
+
+        int line = 0;
+        if (linecolor != null)
+            line = linecolor.getRGB();
+
+        out.writeBoolean(fillcolor != null);
+        out.writeInt(fill); // recreate with new Color(int, true);
+
+        out.writeBoolean(linecolor != null);
+        out.writeInt(line); // recreate with new Color(int, true);
+    }
+
+    public void unserialize(DataInput in)
+    {
+        assert(false);
     }
 
     public void render(VisContext vc, GL gl, GLU glu)

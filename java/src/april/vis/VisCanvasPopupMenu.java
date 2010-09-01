@@ -105,6 +105,13 @@ class VisCanvasPopupMenu extends JPopupMenu
         });
         add(jmi);
 
+        jmi=new JMenuItem("SnapShot");
+        jmi.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                snapShot();
+            }
+        });
+        add(jmi);
 
         movieItem.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
@@ -332,6 +339,24 @@ class VisCanvasPopupMenu extends JPopupMenu
         String path = "p"+s+".png";
 
         vc.writeScreenShot(new File(path), "png");
+    }
+
+    public void snapShot()
+    {
+        Calendar c = new GregorianCalendar();
+
+        String s = String.format("%4d%02d%02d_%02d%02d%02d_%03d", c.get(Calendar.YEAR),
+                                 c.get(Calendar.MONTH)+1,
+                                 c.get(Calendar.DAY_OF_MONTH),
+                                 c.get(Calendar.HOUR_OF_DAY),
+                                 c.get(Calendar.MINUTE),
+                                 c.get(Calendar.SECOND),
+                                 c.get(Calendar.MILLISECOND)
+            );
+
+        String path = "snp"+s+".vis";
+
+        VisSerialize.writeToFile(vc, path);
     }
 
     public void toggleBackgroundColor()
