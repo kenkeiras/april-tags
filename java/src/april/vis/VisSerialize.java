@@ -1,8 +1,6 @@
 package april.vis;
 
 import java.io.*;
-import javax.swing.*;
-import java.awt.*;
 import java.util.*;
 import java.lang.reflect.*;
 
@@ -32,7 +30,6 @@ import april.util.*;
  */
 
 /**
- * How-to load your .vis snapshot:  java april.vis.VisSerialize <path-to-snapshot>
  * How-to save your .vis snapshot:  call VisSerialzie.serialzie(VC) (API) or use VisCanvasPopopMenu (GUI)
  */
 public class VisSerialize
@@ -192,16 +189,5 @@ public class VisSerialize
             vb.switchBuffer();
         }
         return vc;
-    }
-
-    public static void main(String args[])
-    {
-        VisCanvas vc = readVCFromFile(args[0]);
-
-        JFrame jf = new JFrame("VisSnapshot: "+args[0]);
-        jf.add(vc);
-        jf.setSize(640,480);
-        jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        jf.setVisible(true);
     }
 }
