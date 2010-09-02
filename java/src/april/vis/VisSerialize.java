@@ -12,62 +12,7 @@ import april.util.*;
 
 public class VisSerialize
 {
-    static boolean debug =false;
-
-    // Eventually, it'd be nice to also save the camera information
-
-    public static void writeVCToFile(VisCanvas vc, String filename)
-    {
-        try  {
-            LCMDataOutputStream out = serialize(vc);
-            FileOutputStream fout = new FileOutputStream(filename);
-            fout.write(out.getBuffer(), 0, out.size());
-            fout.close();
-        } catch(IOException e) {
-            System.out.println("WRN: Failed to write vc to"+filename+" ex: "+e); e.printStackTrace();
-        }
-        System.out.println("Wrote canvas to "+filename);
-    }
-
-    public static LCMDataOutputStream serialize(VisCanvas vc) throws IOException
-    {
-
-        // Step 1: Get all the objects out
-        HashMap<String, ArrayList<VisObject>> fronts = new HashMap<String, ArrayList<VisObject>>();
-        // 1a) Copy out all the "front" parts of each Buffer (don't 'lock' vis this whole time)
-        synchronized(vc.world.buffers) {
-            for(String key : vc.world.bufferMap.keySet()) {
-                VisWorld.Buffer buf  = vc.world.bufferMap.get(key);
-                fronts.put(key, buf.getFront());
-            }
-        }
-
-
-        LCMDataOutputStream gout = new LCMDataOutputStream(); //global out
-
-        // Step 0 : Copy the camera
-        serialize(vc.viewManager.viewGoal,gout);
-
-        // 1b) Serialize each buffer
-        for (String key : fronts.keySet()) {
-            if (debug) System.out.println("DBG: Processing buffer "+key);
-
-            gout.writeStringZ(key);
-            // Get only the objects for this buffer
-            LCMDataOutputStream bout = new LCMDataOutputStream(); //buffer out
-            for (VisObject obj : fronts.get(key)) {
-                if (!(obj instanceof VisSerializable)) {
-                    if (debug) System.out.println("DBG: Skipping "+obj.getClass().getName());
-                    continue;
-                }
-                serialize((VisSerializable)obj, bout);
-            }
-            gout.writeInt(bout.size());
-            gout.write(bout.getBuffer(),0,bout.size());
-        }
-
-        return gout;
-    }
+    static boolean debug = false;
 
     public static void serialize(VisSerializable o, LCMDataOutputStream out) throws IOException
     {
@@ -111,6 +56,63 @@ public class VisSerialize
         return obj;
     }
 
+    // The rest of this file pertains to writing the VisCanvas to a file
+    public static void writeVCToFile(VisCanvas vc, String filename)
+    {
+        try  {
+            LCMDataOutputStream out = serializeVC(vc);
+            FileOutputStream fout = new FileOutputStream(filename);
+            fout.write(out.getBuffer(), 0, out.size());
+            fout.close();
+        } catch(IOException e) {
+            System.out.println("WRN: Failed to write vc to"+filename+" ex: "+e); e.printStackTrace();
+        }
+        System.out.println("Wrote canvas to "+filename);
+    }
+
+    public static LCMDataOutputStream serializeVC(VisCanvas vc) throws IOException
+    {
+
+        // Step 1: Get all the objects out
+        HashMap<String, ArrayList<VisObject>> fronts = new HashMap<String, ArrayList<VisObject>>();
+        // 1a) Copy out all the "front" parts of each Buffer (don't 'lock' vis this whole time)
+        synchronized(vc.world.buffers) {
+            for(String key : vc.world.bufferMap.keySet()) {
+                VisWorld.Buffer buf  = vc.world.bufferMap.get(key);
+                fronts.put(key, buf.getFront());
+            }
+        }
+
+        LCMDataOutputStream gout = new LCMDataOutputStream(); //global out
+
+        // Step 0 : Copy the camera
+        serialize(vc.viewManager.viewGoal,gout);
+
+        // 1b) Serialize each buffer
+        for (String key : fronts.keySet()) {
+            if (debug) System.out.println("DBG: Processing buffer "+key);
+
+            gout.writeStringZ(key);
+            Boolean enabled = vc.viewManager.enabledBuffers.get(key);
+            gout.writeBoolean(enabled == null || enabled);
+            gout.writeInt(vc.world.bufferMap.get(key).drawOrder);
+
+            // Get only the objects for this buffer
+            LCMDataOutputStream bout = new LCMDataOutputStream(); //buffer out
+            for (VisObject obj : fronts.get(key)) {
+                if (!(obj instanceof VisSerializable)) {
+                    if (debug) System.out.println("DBG: Skipping "+obj.getClass().getName());
+                    continue;
+                }
+                serialize((VisSerializable)obj, bout);
+            }
+            gout.writeInt(bout.size());
+            gout.write(bout.getBuffer(),0,bout.size());
+        }
+
+        return gout;
+    }
+
     public static VisCanvas readVCFromFile(String filename)
     {
         try  {
@@ -143,7 +145,11 @@ public class VisSerialize
         // Read each buffer individually
         while(global_in.available() > 0) {
             String buf_name = global_in.readStringZ();
+            boolean enabled = global_in.readBoolean();
             VisWorld.Buffer vb = vw.getBuffer(buf_name);
+            vc.viewManager.enabledBuffers.put(buf_name, enabled);
+            vb.setDrawOrder(global_in.readInt());
+
             int len = global_in.readInt();
             if (debug) System.out.println("DBG: Reading buffer "+buf_name + " len ="+len);
             byte buf[] = new byte[len];

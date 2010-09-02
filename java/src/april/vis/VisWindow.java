@@ -11,11 +11,14 @@ import java.util.*;
 import april.jmat.*;
 import april.jmat.geom.*;
 
+import java.io.*;
+import lcm.lcm.*;
+
 /** Performs a change of coordinates allowing rendering relative to
  * the corners of the screen. XXX should VisText be reimplemented in
  * terms of this?
  **/
-public class VisWindow implements VisObject
+public class VisWindow implements VisObject, VisSerializable
 {
     public enum ALIGN { TOP_LEFT, TOP, TOP_RIGHT, LEFT, CENTER, RIGHT, BOTTOM_LEFT, BOTTOM, BOTTOM_RIGHT, COORDINATES };
 
@@ -135,5 +138,57 @@ public class VisWindow implements VisObject
         }
 
         VisUtil.popGLWholeState(gl);
+    }
+
+    public VisWindow()
+    {
+    }
+
+    public void serialize(LCMDataOutputStream out) throws IOException
+    {
+        out.writeInt(align.ordinal());
+        out.writeDouble(xy0[0]);
+        out.writeDouble(xy0[1]);
+
+        out.writeDouble(xy1[0]);
+        out.writeDouble(xy1[1]);
+
+        out.writeDouble(winwidth);
+        out.writeDouble(winheight);
+
+        int count = 0;
+        for(VisObject o : objects)
+            if (o instanceof VisSerializable)
+                count++;
+        out.writeInt(count);
+        for (VisObject o : objects)
+            if (o instanceof VisSerializable)
+                VisSerialize.serialize((VisSerializable) o, out);
+            else
+                System.out.println("WRN:    "+o.getClass().getName()+" is not serializable!");
+    }
+
+    public void unserialize(LCMDataInputStream in) throws IOException
+    {
+        align = getAlign(in.readInt());
+        xy0 = new double[]{in.readDouble(), in.readDouble()};
+        xy1 = new double[]{in.readDouble(), in.readDouble()};
+
+        winwidth = in.readDouble();
+        winheight = in.readDouble();
+
+        int nobjs = in.readInt();
+        for (int  i= 0; i < nobjs; i++)
+            objects.add((VisObject)VisSerialize.unserialize(in));
+    }
+
+    // Converting to enums from ints
+    ALIGN getAlign(int v)
+    {
+        for (ALIGN a : ALIGN.values())
+            if (a.ordinal() == v)
+                return a;
+        assert(false);
+        return ALIGN.CENTER;
     }
 }
