@@ -18,6 +18,10 @@ import com.sun.opengl.util.*;
 import april.jmat.geom.*;
 import april.jmat.*;
 
+import java.io.*;
+import lcm.lcm.*;
+
+
 /** VisObject representing text. Each block of text can consist of
  * multiple lines, and each line can have multiple styles
  * associated. Changes in style are indicated by double angle
@@ -30,7 +34,7 @@ import april.jmat.*;
  * specification (in pixels) for the following segment of text.  See
  * VisTextTest for an example.
  **/
-public class VisText implements VisObject
+public class VisText implements VisObject, VisSerializable
 {
     double pos[];
 
@@ -628,5 +632,83 @@ public class VisText implements VisObject
         gl.glMatrixMode(gl.GL_MODELVIEW);
 
         VisUtil.popGLWholeState(gl);
+    }
+
+    public VisText()
+    {}
+
+    public void serialize(LCMDataOutputStream out) throws IOException
+    {
+        out.writeBoolean(pos != null);
+        if (pos != null) {
+            out.writeInt(pos.length);
+            for (double d : pos)
+                out.writeDouble(d);
+        }
+        out.writeInt(anchor.ordinal());
+
+        // Now write each line:
+        out.writeInt(lines.size());
+        for (Line line : lines) {
+            out.writeInt(line.fragments.size());
+            for (StyledFragment frag : line.fragments) {
+                out.writeInt(frag.font);
+                out.writeBoolean(frag.c != null);
+                if (frag.c != null)
+                    out.writeInt(frag.c.getRGB());
+                out.writeStringZ(frag.s);
+                out.writeInt(frag.width);
+            }
+            out.writeInt(line.justification.ordinal());
+            out.writeInt(line.leading);
+        }
+    }
+
+    public void unserialize(LCMDataInputStream in) throws IOException
+    {
+        if (in.readBoolean()) {
+            pos = new double[in.readInt()];
+            for (int i =0; i < pos.length; i++)
+                pos[i] = in.readDouble();
+        }
+        anchor = getAnchor(in.readInt());
+
+        //Now read each line:
+        int nlines = in.readInt();
+        for(int i =0; i < nlines; i++) {
+            Line line = new Line();
+            int nfrags = in.readInt();
+            for (int j =0; j <nfrags; j++) {
+                StyledFragment styled = new StyledFragment();
+                styled.font = in.readInt();
+                if (in.readBoolean())
+                    styled.c = new Color(in.readInt(), true);
+                styled.s = in.readStringZ();
+                styled.width = in.readInt();
+                line.fragments.add(styled);
+            }
+            line.justification = getJustification(in.readInt());
+            line.leading = in.readInt();
+            lines.add(line);
+        }
+    }
+
+    // Converting to enums from ints
+    ANCHOR getAnchor(int v)
+    {
+        for (ANCHOR a : ANCHOR.values())
+            if (a.ordinal() == v)
+                return a;
+        assert(false);
+        return ANCHOR.CENTER;
+    }
+
+    JUSTIFICATION getJustification(int v)
+    {
+        for (JUSTIFICATION j : JUSTIFICATION.values())
+            if (j.ordinal() == v)
+                return j;
+        assert(false);
+        return JUSTIFICATION.CENTER;
     }
 }
