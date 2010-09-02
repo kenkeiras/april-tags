@@ -20,7 +20,7 @@ import april.util.*;
  *             VisSerializable unserialize(LCMDataInputStream)
  *        to make your life easier.
  *     b) Refer to LCMDataInput/OutputStream for how to serialize primitive types
- *     c) If you have children that are VisObjets, but not serializable, you should
+ *     c) If you have children that are VisObjects, but not serializable, you should
  *        not serialize them! (or modify those classes..)
  *  4. For reference, consult a simple example (e.g VisBox), a medium example
  *    (VisChain, VisData), or a 'hard' example (VisTexture)
@@ -30,7 +30,7 @@ import april.util.*;
  */
 
 /**
- * How-to save your .vis snapshot:  call VisSerialzie.serialzie(VC) (API) or use VisCanvasPopopMenu (GUI)
+ * How-to save your .vis snapshot:  call VisSerialzie.serialize(VC) (API) or use VisCanvasPopopMenu (GUI)
  */
 public class VisSerialize
 {
@@ -43,7 +43,7 @@ public class VisSerialize
         // Write the name of the class e.g. april.vis.VisBox
         out.writeStringZ(o.getClass().getName());
 
-        // Encode this object in it's own data stream
+        // Encode this object in its own data stream
         LCMDataOutputStream  dout = new LCMDataOutputStream();
         o.serialize(dout);
 
