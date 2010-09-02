@@ -12,6 +12,8 @@ import april.util.*;
 
 public class VisSerialize
 {
+    static boolean debug =false;
+
     // Eventually, it'd be nice to also save the camera information
 
     public static void writeVCToFile(VisCanvas vc, String filename)
@@ -48,14 +50,14 @@ public class VisSerialize
 
         // 1b) Serialize each buffer
         for (String key : fronts.keySet()) {
-            System.out.println("DBG: Processing buffer "+key);
+            if (debug) System.out.println("DBG: Processing buffer "+key);
 
             gout.writeStringZ(key);
             // Get only the objects for this buffer
             LCMDataOutputStream bout = new LCMDataOutputStream(); //buffer out
             for (VisObject obj : fronts.get(key)) {
                 if (!(obj instanceof VisSerializable)) {
-                    System.out.println("DBG: Skipping "+obj.getClass().getName());
+                    if (debug) System.out.println("DBG: Skipping "+obj.getClass().getName());
                     continue;
                 }
                 serialize((VisSerializable)obj, bout);
@@ -69,7 +71,7 @@ public class VisSerialize
 
     public static void serialize(VisSerializable o, LCMDataOutputStream out) throws IOException
     {
-        System.out.println("DBG:  "+o.getClass().getName());
+        if (debug) System.out.println("DBG:  "+o.getClass().getName());
 
         // Write the name of the class e.g. april.vis.VisBox
         out.writeStringZ(o.getClass().getName());
@@ -87,7 +89,7 @@ public class VisSerialize
     {
         // Grab class name
         String obj_name = in.readStringZ();
-        System.out.println("DBG: Loading "+obj_name);
+        if (debug) System.out.println("DBG: Loading "+obj_name);
 
         // Grab obj. data
         int olen = in.readInt();
@@ -143,14 +145,14 @@ public class VisSerialize
             String buf_name = global_in.readStringZ();
             VisWorld.Buffer vb = vw.getBuffer(buf_name);
             int len = global_in.readInt();
-            System.out.println("DBG: Reading buffer "+buf_name + " len ="+len);
+            if (debug) System.out.println("DBG: Reading buffer "+buf_name + " len ="+len);
             byte buf[] = new byte[len];
             global_in.readFully(buf);
             LCMDataInputStream buffer_in = new LCMDataInputStream(buf);
             while (buffer_in.available() > 0) {
                 VisSerializable obj = unserialize(buffer_in);
                 if (obj == null) {
-                    System.out.println("Can't continue reading buffer "+buf_name+"!");
+                    System.out.println("WRN: Can't continue reading buffer "+buf_name+"!");
                     break;
                 }
                 // Add to world

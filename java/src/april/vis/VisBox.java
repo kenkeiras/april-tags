@@ -70,8 +70,6 @@ public class VisBox implements VisObject, VisSerializable
         if (linecolor != null)
             line = linecolor.getRGB();
 
-        System.out.printf("Fill color is 0x%x\n",fill);
-
         out.writeBoolean(fillcolor != null);
         out.writeInt(fill); // recreate with new Color(int, true);
 
@@ -91,7 +89,6 @@ public class VisBox implements VisObject, VisSerializable
 
         boolean fill_valid = in.readBoolean();
         int fill = in.readInt();
-        System.out.printf("Fill color is 0x%x\n",fill);
 
         boolean line_valid = in.readBoolean();
         int line = in.readInt();
@@ -99,8 +96,6 @@ public class VisBox implements VisObject, VisSerializable
 
         if (fill_valid)
             fillcolor = new Color(fill,true);
-
-        System.out.printf("Fillcolor is 0x%x\n",fillcolor.getRGB());
 
         if (line_valid)
             linecolor = new Color(line,true);
