@@ -130,6 +130,8 @@ public class VisChain implements VisObject, VisSerializable
             } else if (o instanceof VisSerializable) {
                 out.writeStringZ("VisSerializable");
                 VisSerialize.serialize((VisSerializable)o, out);
+            } else {
+                System.out.println(o.getClass().getName()+" is not serializable. Log will not look right");
             }
 
         }

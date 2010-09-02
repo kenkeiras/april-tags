@@ -30,11 +30,7 @@ public class VisSerialize
     public static LCMDataOutputStream serialize(VisCanvas vc) throws IOException
     {
 
-        // Step 0 : Copy the camera
-        // XXX
-
         // Step 1: Get all the objects out
-        LCMDataOutputStream out = new LCMDataOutputStream();
         HashMap<String, ArrayList<VisObject>> fronts = new HashMap<String, ArrayList<VisObject>>();
         // 1a) Copy out all the "front" parts of each Buffer (don't 'lock' vis this whole time)
         synchronized(vc.world.buffers) {
@@ -44,8 +40,13 @@ public class VisSerialize
             }
         }
 
-        // 1b) Serialize each buffer
+
         LCMDataOutputStream gout = new LCMDataOutputStream(); //global out
+
+        // Step 0 : Copy the camera
+        serialize(vc.viewManager.viewGoal,gout);
+
+        // 1b) Serialize each buffer
         for (String key : fronts.keySet()) {
             System.out.println("DBG: Processing buffer "+key);
 
@@ -134,6 +135,9 @@ public class VisSerialize
     public static VisCanvas unserializeVC(LCMDataInputStream global_in) throws IOException
     {
         VisWorld vw = new VisWorld();
+        VisCanvas vc = new VisCanvas(vw);
+        vc.viewManager.viewGoal = (VisView)unserialize(global_in);
+
         // Read each buffer individually
         while(global_in.available() > 0) {
             String buf_name = global_in.readStringZ();
@@ -154,8 +158,7 @@ public class VisSerialize
             }
             vb.switchBuffer();
         }
-
-        return new VisCanvas(vw);
+        return vc;
     }
 
     public static void main(String args[])
