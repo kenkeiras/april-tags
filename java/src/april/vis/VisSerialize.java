@@ -82,6 +82,32 @@ public class VisSerialize
         out.write(dout.getBuffer(),0,dout.size());
     }
 
+    public static VisSerializable unserialize(LCMDataInputStream in) throws IOException
+    {
+        // Grab class name
+        String obj_name = in.readStringZ();
+        System.out.println("DBG: Loading "+obj_name);
+
+        // Grab obj. data
+        int olen = in.readInt();
+        byte obj_buf[] = new byte[olen];
+        in.readFully(obj_buf);
+        LCMDataInputStream obj_in = new LCMDataInputStream(obj_buf);
+
+        // Instantiate
+        VisSerializable obj = (VisSerializable)ReflectUtil.createObject(obj_name);
+        if (obj == null) {
+            System.out.println("WRN Failed to read class "+obj_name+"!");
+            return null;
+        }
+
+        // Unserialize
+        obj.unserialize(obj_in);
+        assert(obj_in.available() == 0);
+
+        return obj;
+    }
+
     public static VisCanvas readVCFromFile(String filename)
     {
         try  {
@@ -98,14 +124,14 @@ public class VisSerialize
 
             LCMDataInputStream in = new LCMDataInputStream(buffer);
 
-            return unserialize(in);
+            return unserializeVC(in);
         } catch(IOException e) {
             System.out.println("WRN: Failed to read vc from"+filename+" ex: "+e); e.printStackTrace();
         }
         return null;
     }
 
-    public static VisCanvas unserialize(LCMDataInputStream global_in) throws IOException
+    public static VisCanvas unserializeVC(LCMDataInputStream global_in) throws IOException
     {
         VisWorld vw = new VisWorld();
         // Read each buffer individually
@@ -118,26 +144,13 @@ public class VisSerialize
             global_in.readFully(buf);
             LCMDataInputStream buffer_in = new LCMDataInputStream(buf);
             while (buffer_in.available() > 0) {
-                // Grab class name
-                String obj_name = buffer_in.readStringZ();
-                System.out.println("DBG: Loading "+obj_name);
-                int olen = buffer_in.readInt();
-                // Grab obj. data
-                byte obj_buf[] = new byte[olen];
-                buffer_in.readFully(obj_buf);
-                LCMDataInputStream obj_in = new LCMDataInputStream(obj_buf);
-
-                // Instantiate
-                VisObject obj = (VisObject)ReflectUtil.createObject(obj_name);
+                VisSerializable obj = unserialize(buffer_in);
                 if (obj == null) {
-                    System.out.println("WRN Failed to read class "+obj_name+"!");
                     System.out.println("Can't continue reading buffer "+buf_name+"!");
                     break;
                 }
-                // Unserialize
-                ((VisSerializable)obj).unserialize(obj_in);
                 // Add to world
-                vb.addBuffered(obj);
+                vb.addBuffered((VisObject)obj);
             }
             vb.switchBuffer();
         }

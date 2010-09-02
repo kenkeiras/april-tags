@@ -7,6 +7,9 @@ import javax.media.opengl.*;
 import javax.media.opengl.glu.*;
 import java.awt.*;
 import java.util.*;
+import java.io.*;
+
+import lcm.lcm.*;
 
 /** Perform a series of cumulative Matrix transformations and object
  * draws. You can pass these in any order, in any combination.
@@ -14,9 +17,15 @@ import java.util.*;
  * You can pass in Matrix, double[][], or double quat[] + double pos[] for a transformation.
  * You can pass in a VisObject to render something.
  **/
-public class VisChain implements VisObject
+public class VisChain implements VisObject, VisSerializable
 {
+
     ArrayList<Object> operations = new ArrayList<Object>();
+
+
+    public VisChain()
+    {
+    }
 
     public VisChain(Object ... os)
     {
@@ -102,4 +111,56 @@ public class VisChain implements VisObject
             }
         }
     }
+
+    public void serialize(LCMDataOutputStream out) throws IOException
+    {
+        for (Object o : operations) {
+            if (o instanceof Matrix) {
+                out.writeStringZ("Matrix");
+                double mat[][] = ((Matrix)o).copyArray();
+                out.writeInt(mat.length);
+                out.writeInt(mat.length > 0 ? mat[0].length : 0);
+                if (mat.length == 0)
+                    continue;
+                for (int i =0; i < mat.length; i++) {
+                    for (int j = 0; j < mat[0].length; j++) {
+                        out.writeDouble(mat[i][j]);
+                    }
+                }
+            } else if (o instanceof VisSerializable) {
+                out.writeStringZ("VisSerializable");
+                VisSerialize.serialize((VisSerializable)o, out);
+            }
+
+        }
+
+    }
+
+    public void unserialize(LCMDataInputStream in) throws IOException
+    {
+        while (in.available() != 0) {
+            String type = in.readStringZ();
+            if (type.equals("Matrix")) {
+                int rows = in.readInt();
+                int cols = in.readInt();
+                double mat[][] = new double[rows][cols];
+                for (int r = 0; r < rows; r++) {
+                    for (int c = 0; c < cols; c++) {
+                        mat[r][c] = in.readDouble();
+                    }
+                }
+                operations.add(new Matrix(mat));
+
+            } else if (type.equals("VisSerializable")) {
+
+                VisSerializable obj =  VisSerialize.unserialize(in);
+                if (obj != null)
+                    operations.add((VisObject)obj);
+            } else {
+                assert(false);
+            }
+        }
+
+    }
+
 }
