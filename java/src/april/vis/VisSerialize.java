@@ -10,6 +10,31 @@ import lcm.lcm.*;
 
 import april.util.*;
 
+/**
+ * How-to make your VisObject also be VisSerializable.
+ *  1. Implement the VisSerializable Interface
+ *  2. Implement an public, no-args constructor
+ *  3. Fill in the serialize, and unserialize methods in aforementioned interface
+ *    a) If you have children that are VisObjects and VisSerializable,
+ *       you can use the methods in this class:
+ *             void serialize(VisSerializable, LCMDataOutputStream)
+ *                             -- and --
+ *             VisSerializable unserialize(LCMDataInputStream)
+ *        to make your life easier.
+ *     b) Refer to LCMDataInput/OutputStream for how to serialize primitive types
+ *     c) If you have children that are VisObjets, but not serializable, you should
+ *        not serialize them! (or modify those classes..)
+ *  4. For reference, consult a simple example (e.g VisBox), a medium example
+ *    (VisChain, VisData), or a 'hard' example (VisTexture)
+ *
+ *  NOTE: please be aware of the distinction between VisSerializable and
+ *        VisSerialize if you get compilation errors
+ */
+
+/**
+ * How-to load your .vis snapshot:  java april.vis.VisSerialize <path-to-snapshot>
+ * How-to save your .vis snapshot:  call VisSerialzie.serialzie(VC) (API) or use VisCanvasPopopMenu (GUI)
+ */
 public class VisSerialize
 {
     static boolean debug = false;

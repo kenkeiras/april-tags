@@ -4,7 +4,7 @@ import java.io.*;
 
 import lcm.lcm.*;
 
-//XXX not usable yet
+// Please see VisSerialize for documentation
 public interface VisSerializable
 {
     // NOTE: You must ALSO specify a default constructor, e.g. MyVisObject(), if you extend this class
