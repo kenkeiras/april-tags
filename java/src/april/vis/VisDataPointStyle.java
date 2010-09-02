@@ -90,6 +90,10 @@ public class VisDataPointStyle implements VisDataStyle, VisSerializable
         out.writeInt(color);
 
         out.writeBoolean(colorizer != null && colorizer instanceof VisSerializable);
+
+        if (c == null &&  ! (colorizer instanceof VisSerializable))
+            System.out.println("WRN: Your colorizer "+colorizer.getClass().getName()+
+                               " is not serializable, this log will not display correctly.");
         if (colorizer != null && colorizer instanceof VisSerializable)
             VisSerialize.serialize((VisSerializable)colorizer, out);
 
@@ -105,8 +109,5 @@ public class VisDataPointStyle implements VisDataStyle, VisSerializable
 
         if (in.readBoolean())
             colorizer = (Colorizer)VisSerialize.unserialize(in);
-
-        // make sure that we can actually display the points
-        assert(colorizer != null || c != null);
     }
 }

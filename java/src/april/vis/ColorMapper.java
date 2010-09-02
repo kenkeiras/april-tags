@@ -1,11 +1,12 @@
 package april.vis;
 
 import java.awt.*;
-
+import lcm.lcm.*;
+import java.io.*;
 /** Converts scalar values to RGB colors by interpolating from a
  * user-provided look-up table. Implements a colorizer by looking at
  * only the z component. **/
-public class ColorMapper implements Colorizer
+public class ColorMapper implements Colorizer, VisSerializable
 {
     /** Minimum/maximum value for mapped range (will be drawn opaquely). **/
     double minval;
@@ -123,4 +124,36 @@ public class ColorMapper implements Colorizer
         // force opacity
         return c | 0xff000000;
     }
+
+    // Serialization
+    public ColorMapper()
+    {
+    }
+
+    public void serialize(LCMDataOutputStream out) throws IOException
+    {
+        out.writeDouble(minval);
+        out.writeDouble(maxval);
+        out.writeDouble(opaqueMin);
+        out.writeDouble(opaqueMax);
+
+        out.writeInt(colors.length);
+        for (int c : colors)
+            out.writeInt(c);
+
+    }
+
+    public void unserialize(LCMDataInputStream in) throws IOException
+    {
+        minval = in.readDouble();
+        maxval = in.readDouble();
+        opaqueMin = in.readDouble();
+        opaqueMax = in.readDouble();
+
+
+        colors = new int[in.readInt()];
+        for( int i =0; i < colors.length; i++)
+            colors[i] = in.readInt();
+    }
+
 }
