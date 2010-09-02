@@ -9,8 +9,11 @@ import com.sun.opengl.util.*;
 
 import april.jmat.geom.*;
 
+import lcm.lcm.*;
+import java.io.*;
+
 /** Render VisData as individual points. **/
-public class VisDataPointStyle implements VisDataStyle
+public class VisDataPointStyle implements VisDataStyle, VisSerializable
 {
     Colorizer colorizer;
     Color c;
@@ -69,5 +72,41 @@ public class VisDataPointStyle implements VisDataStyle
 
             gl.glEnable(GL.GL_LIGHTING);
         }
+    }
+
+    public VisDataPointStyle()
+    {
+    }
+
+    public void serialize(LCMDataOutputStream out) throws IOException
+    {
+        out.writeFloat(size);
+
+        int color = 0;
+        if (c != null)
+            color = c.getRGB();
+
+        out.writeBoolean(c != null);
+        out.writeInt(color);
+
+        out.writeBoolean(colorizer != null && colorizer instanceof VisSerializable);
+        if (colorizer != null && colorizer instanceof VisSerializable)
+            VisSerialize.serialize((VisSerializable)colorizer, out);
+
+    }
+
+    public void unserialize(LCMDataInputStream in) throws IOException
+    {
+        size = in.readFloat();
+        if (in.readBoolean())
+            c = new Color(in.readInt(), true);
+        else
+            in.readInt(); //burn the 0
+
+        if (in.readBoolean())
+            colorizer = (Colorizer)VisSerialize.unserialize(in);
+
+        // make sure that we can actually display the points
+        assert(colorizer != null || c != null);
     }
 }
