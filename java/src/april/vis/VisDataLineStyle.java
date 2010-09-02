@@ -7,8 +7,11 @@ import javax.media.opengl.glu.*;
 
 import april.jmat.geom.*;
 
+import lcm.lcm.*;
+import java.io.*;
+
 /** Render VisData as a connected line. **/
-public class VisDataLineStyle implements VisDataStyle
+public class VisDataLineStyle implements VisDataStyle, VisSerializable
 {
     Color c;
     float width;
@@ -45,5 +48,23 @@ public class VisDataLineStyle implements VisDataStyle
 
         gl.glEnd();
         gl.glEnable(GL.GL_LIGHTING);
+    }
+
+    public VisDataLineStyle()
+    {
+    }
+
+    public void serialize(LCMDataOutputStream out) throws IOException
+    {
+        out.writeInt(c.getRGB());
+        out.writeFloat(width);
+        out.writeBoolean(loop);
+    }
+
+    public void unserialize(LCMDataInputStream in) throws IOException
+    {
+        c = new Color(in.readInt(), true);
+        width = in.readFloat();
+        loop = in.readBoolean();
     }
 }

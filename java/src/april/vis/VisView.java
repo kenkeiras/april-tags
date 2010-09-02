@@ -9,10 +9,13 @@ import java.util.*;
 
 import april.jmat.geom.*;
 
+import java.io.*;
+import lcm.lcm.*;
+
 /** Represents the view into a VisWorld, such as camera position. This
  * view should be considered immutable.
  **/
-public class VisView
+public class VisView implements VisSerializable
 {
     public double lookAt[] = new double[] {0, 0, 0};
     public double eye[] = new double[] {0, 0, 10};
@@ -193,5 +196,45 @@ public class VisView
     public void rotate(double angle, double axis[])
     {
         rotate(LinAlg.angleAxisToQuat(angle, axis));
+    }
+
+    public void serialize(LCMDataOutputStream out) throws IOException
+    {
+        out.writeDouble(lookAt[0]);
+        out.writeDouble(lookAt[1]);
+        out.writeDouble(lookAt[2]);
+
+        out.writeDouble(eye[0]);
+        out.writeDouble(eye[1]);
+        out.writeDouble(eye[2]);
+
+        out.writeDouble(up[0]);
+        out.writeDouble(up[1]);
+        out.writeDouble(up[2]);
+
+        out.writeDouble(perspectiveness);
+
+        out.writeInt(viewport[0]);
+        out.writeInt(viewport[1]);
+        out.writeInt(viewport[2]);
+
+        out.writeDouble(perspective_fovy_degrees);
+        out.writeDouble(zclip_near);
+        out.writeDouble(zclip_far);
+    }
+
+    public void unserialize(LCMDataInputStream in) throws IOException
+    {
+        lookAt = new double[]{in.readDouble(),in.readDouble(),in.readDouble()};
+        eye = new double[]{in.readDouble(),in.readDouble(),in.readDouble()};
+        up = new double[]{in.readDouble(),in.readDouble(),in.readDouble()};
+
+        perspectiveness = in.readDouble();
+
+        viewport = new int[]{in.readInt(),in.readInt(),in.readInt()};
+
+        perspective_fovy_degrees = in.readDouble();
+        zclip_near = in.readDouble();
+        zclip_far = in.readDouble();
     }
 }

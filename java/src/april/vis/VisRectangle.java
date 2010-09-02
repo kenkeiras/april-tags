@@ -10,7 +10,7 @@ import april.jmat.geom.*;
 
 public class VisRectangle extends VisData
 {
-
+    public VisRectangle() {}
     public VisRectangle(double xy0[], double xy1[], VisDataStyle style)
     {
         points.add(new double[] { xy0[0], xy0[1]});

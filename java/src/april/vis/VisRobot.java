@@ -6,9 +6,12 @@ import java.awt.*;
 import april.jmat.geom.*;
 
 import java.util.*;
+import java.io.*;
+
+import lcm.lcm.*;
 
 /** VisObject representing a robot. **/
-public class VisRobot implements VisObject
+public class VisRobot implements VisObject, VisSerializable
 {
     public Color color = new Color(40, 40, 100);
     public Color outlineColor = new Color(40, 40, 255);
@@ -71,5 +74,19 @@ public class VisRobot implements VisObject
         gl.glVertex2d(length/2, 0);
         gl.glVertex2d(-length/2, -width/2);
         gl.glEnd();
+    }
+
+    public void serialize(LCMDataOutputStream out) throws IOException
+    {
+        out.writeInt(color.getRGB());
+        out.writeInt(outlineColor.getRGB());
+        out.writeInt(selectedState);
+    }
+
+    public void unserialize(LCMDataInputStream in) throws IOException
+    {
+        color = new Color(in.readInt(), true);
+        outlineColor = new Color(in.readInt(), true);
+        selectedState = in.readInt();
     }
 }
