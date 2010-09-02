@@ -2,7 +2,7 @@ package april.util;
 
 import java.util.*;
 
-/** Max heap **/
+/** Max heap that holds integers. **/
 public class IntMaxHeap
 {
     int objs[];
@@ -25,24 +25,25 @@ public class IntMaxHeap
     public void add(int o, double score)
     {
         // grow?
-        if (heapsize == objs.length)
-        {
+        if (heapsize == objs.length) {
             int objs2[] = new int[objs.length * 2];
             double scores2[] = new double[objs.length * 2];
-            for (int i = 0; i < objs.length; i++)
-            {
+
+            for (int i = 0; i < objs.length; i++) {
                 objs2[i] = objs[i];
                 scores2[i] = scores[i];
             }
+
             objs = objs2;
             scores = scores2;
         }
+
         objs[heapsize] = o;
         scores[heapsize] = score;
         int node = heapsize;
         heapsize++;
-        do
-        {
+
+        do {
             node = (node - 1) / 2;
             fixup(node);
         } while (node != 0);
@@ -53,7 +54,7 @@ public class IntMaxHeap
         return heapsize;
     }
 
-    /** Remove and return the element with maximum score in O(log n) time. 
+    /** Remove and return the element with maximum score in O(log n) time.
      * Return Integer.MIN_VALUE if no elements
      **/
     public int removeMax()
@@ -118,12 +119,13 @@ public class IntMaxHeap
     {
         int left = parent * 2 + 1;
         int right = left + 1;
+
         // leaf node. exit.
         if (left >= heapsize)
             return;
+
         // only left node is valid
-        if (right >= heapsize)
-        {
+        if (right >= heapsize) {
             // do we need to swap the parent and the leaf?
             // we don't need to call fixupHeap recursively since the
             // left node must be a leaf.
@@ -134,19 +136,20 @@ public class IntMaxHeap
             }
             return;
         }
+
         // general node case: both right and left are valid nodes.
         // if parent is the maximum, we're done.
         if (scores[parent] > scores[left] && scores[parent] > scores[right])
             return;
+
         // parent is less than either the left, right, or both
         // children
-        if (scores[left] > scores[right])
-        {
+        if (scores[left] > scores[right]) {
             swapNodes(left, parent);
             fixup(left);
-        }
-        else
-        {
+
+        } else {
+
             swapNodes(right, parent);
             fixup(right);
         }
@@ -161,27 +164,25 @@ public class IntMaxHeap
         Random r = new Random(0);
         int maxsz = 0;
         int zcnt = 0;
-        for (int iter = 0; iter < 1000000; iter++)
-        {
+
+        for (int iter = 0; iter < 1000000; iter++) {
+
             double p = r.nextDouble();
-            if (p < .5 && sz < cap)
-            {
+            if (p < .5 && sz < cap) {
                 // System.out.print("+");
                 // add a value?
                 int v = r.nextInt(1 << 16);
                 vals[sz] = v;
                 heap.add(Integer.MIN_VALUE, v);
                 sz++;
-            }
-            else if (sz > 0)
-            {
+
+            } else if (sz > 0) {
+
                 // System.out.print("-");
                 // remove a value
                 int maxv = -1, maxi = -1;
-                for (int i = 0; i < sz; i++)
-                {
-                    if (vals[i] > maxv)
-                    {
+                for (int i = 0; i < sz; i++) {
+                    if (vals[i] > maxv) {
                         maxv = vals[i];
                         maxi = i;
                     }
@@ -191,11 +192,10 @@ public class IntMaxHeap
                 if (hv != maxv)
                     System.out.println("error");
                 sz--;
-            }
-            else
-            {
+            } else {
                 // System.out.print("?");
             }
+
             if (sz > maxsz)
                 maxsz = sz;
             // count how many times we've returned to zero.
