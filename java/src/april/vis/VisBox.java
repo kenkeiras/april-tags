@@ -10,6 +10,8 @@ import april.jmat.geom.*;
 import java.util.*;
 import java.io.*;
 
+import lcm.lcm.*;
+
 /** A simple 3D box. **/
 public class VisBox implements VisObject, VisSerializable
 {
@@ -17,6 +19,11 @@ public class VisBox implements VisObject, VisSerializable
     double sizex, sizey, sizez;
     Color  fillcolor;
     Color  linecolor;
+
+    public VisBox()
+    {
+         // For Serializable
+    }
 
     public VisBox(double sizex, double sizey, double sizez, Color fillcolor)
     {
@@ -45,7 +52,7 @@ public class VisBox implements VisObject, VisSerializable
         this.linecolor = linecolor;
     }
 
-    public void serialize(DataOutput out) throws IOException
+    public void serialize(LCMDataOutputStream out) throws IOException
     {
         out.writeDouble(cx);
         out.writeDouble(cy);
@@ -70,9 +77,28 @@ public class VisBox implements VisObject, VisSerializable
         out.writeInt(line); // recreate with new Color(int, true);
     }
 
-    public void unserialize(DataInput in)
+    public void unserialize(LCMDataInputStream in) throws IOException
     {
-        assert(false);
+        cx = in.readDouble();
+        cy = in.readDouble();
+        cz = in.readDouble();
+
+        sizex = in.readDouble();
+        sizey = in.readDouble();
+        sizez = in.readDouble();
+
+        boolean fill_valid = in.readBoolean();
+        int fill = in.readInt();
+
+        boolean line_valid = in.readBoolean();
+        int line = in.readInt();
+
+
+        if (fill_valid)
+            fillcolor = new Color(fill,true);
+
+        if (line_valid)
+            linecolor = new Color(line,true);
     }
 
     public void render(VisContext vc, GL gl, GLU glu)

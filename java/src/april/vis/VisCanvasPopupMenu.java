@@ -356,7 +356,7 @@ class VisCanvasPopupMenu extends JPopupMenu
 
         String path = "snp"+s+".vis";
 
-        VisSerialize.writeToFile(vc, path);
+        VisSerialize.writeVCToFile(vc, path);
     }
 
     public void toggleBackgroundColor()

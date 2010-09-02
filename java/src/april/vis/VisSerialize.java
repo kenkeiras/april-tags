@@ -8,11 +8,13 @@ import java.lang.reflect.*;
 
 import lcm.lcm.*;
 
+import april.util.*;
+
 public class VisSerialize
 {
     // Eventually, it'd be nice to also save the camera information
 
-    public static void writeToFile(VisCanvas vc, String filename)
+    public static void writeVCToFile(VisCanvas vc, String filename)
     {
         try  {
             LCMDataOutputStream out = serialize(vc);
@@ -47,7 +49,7 @@ public class VisSerialize
         for (String key : fronts.keySet()) {
             System.out.println("DBG: Processing buffer "+key);
 
-            gout.writeChars(key);
+            gout.writeStringZ(key);
             // Get only the objects for this buffer
             LCMDataOutputStream bout = new LCMDataOutputStream(); //buffer out
             for (VisObject obj : fronts.get(key)) {
@@ -64,12 +66,12 @@ public class VisSerialize
         return gout;
     }
 
-    public static void serialize(VisSerializable o, DataOutput out) throws IOException
+    public static void serialize(VisSerializable o, LCMDataOutputStream out) throws IOException
     {
         System.out.println("DBG:  "+o.getClass().getName());
 
         // Write the name of the class e.g. april.vis.VisBox
-        out.writeChars(o.getClass().getName());
+        out.writeStringZ(o.getClass().getName());
 
         // Encode this object in it's own data stream
         LCMDataOutputStream  dout = new LCMDataOutputStream();
@@ -80,15 +82,72 @@ public class VisSerialize
         out.write(dout.getBuffer(),0,dout.size());
     }
 
-    public static VisWorld readSnapshot(String input_file)
+    public static VisCanvas readVCFromFile(String filename)
     {
+        try  {
+            File f = new File(filename);
+
+            byte buffer[] = new byte[(int)f.length()];
+            FileInputStream fin = new FileInputStream(filename);
+            int len = fin.read(buffer);
+            if (len != buffer.length) {
+                System.out.println("WRN: Failed to read file fully "+filename);
+                return null;
+            }
+            fin.close();
+
+            LCMDataInputStream in = new LCMDataInputStream(buffer);
+
+            return unserialize(in);
+        } catch(IOException e) {
+            System.out.println("WRN: Failed to read vc from"+filename+" ex: "+e); e.printStackTrace();
+        }
         return null;
+    }
+
+    public static VisCanvas unserialize(LCMDataInputStream global_in) throws IOException
+    {
+        VisWorld vw = new VisWorld();
+        // Read each buffer individually
+        while(global_in.available() > 0) {
+            String buf_name = global_in.readStringZ();
+            VisWorld.Buffer vb = vw.getBuffer(buf_name);
+            int len = global_in.readInt();
+            System.out.println("DBG: Reading buffer "+buf_name + " len ="+len);
+            byte buf[] = new byte[len];
+            global_in.readFully(buf);
+            LCMDataInputStream buffer_in = new LCMDataInputStream(buf);
+            while (buffer_in.available() > 0) {
+                // Grab class name
+                String obj_name = buffer_in.readStringZ();
+                System.out.println("DBG: Loading "+obj_name);
+                int olen = buffer_in.readInt();
+                // Grab obj. data
+                byte obj_buf[] = new byte[olen];
+                buffer_in.readFully(obj_buf);
+                LCMDataInputStream obj_in = new LCMDataInputStream(obj_buf);
+
+                // Instantiate
+                VisObject obj = (VisObject)ReflectUtil.createObject(obj_name);
+                if (obj == null) {
+                    System.out.println("WRN Failed to read class "+obj_name+"!");
+                    System.out.println("Can't continue reading buffer "+buf_name+"!");
+                    break;
+                }
+                // Unserialize
+                ((VisSerializable)obj).unserialize(obj_in);
+                // Add to world
+                vb.addBuffered(obj);
+            }
+            vb.switchBuffer();
+        }
+
+        return new VisCanvas(vw);
     }
 
     public static void main(String args[])
     {
-        VisWorld vw = readSnapshot(args[0]);
-        VisCanvas vc = new VisCanvas(vw);
+        VisCanvas vc = readVCFromFile(args[0]);
 
         JFrame jf = new JFrame("VisSnapshot: "+args[0]);
         jf.add(vc);
