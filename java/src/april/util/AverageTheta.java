@@ -104,6 +104,13 @@ import april.jmat.*;
  * brute          O(2PI*N / eps)   O(N)           worst-case error is eps/2
  * exact          O(N log N)       O(N)
  * chord          O(N)             O(1)           minimizes squared chord length, not squared arc length.
+ *
+ * Real-world performance: the exact method is typically faster than
+ * the chord method, presumably because of the high cost of computing
+ * trigonometric functions used in the Chord method. This advantage
+ * decreases with larger number of points (due to the super-linear
+ * cost of sorting), but even at 50000 points, the optimal method is
+ * (a bit) faster than the chord method.
  **/
 public class AverageTheta
 {
@@ -167,7 +174,7 @@ public class AverageTheta
         return MathUtil.mod2pi(bestTheta);
     }
 
-    /** For a given theta, compute the MSE **/
+    /** For a given theta, compute the MSE. A simple O(N) method used for testing. **/
     public static double computeMSE(List<Double> thetas, double theta)
     {
         double sqerr = 0;
@@ -202,14 +209,23 @@ public class AverageTheta
     {
         ArrayList<Double> thetas = new ArrayList<Double>();
         Random rand = new Random();
-        double worstError = 0;
-        double worstRatio = 0;
+        double chordWorstRatio = 0;
 
-        for (int trial = 0; trial < 2000; trial++) {
+        double dumbTime = 0, chordTime = 0, optimalTime = 0;
+
+        int ntrials = 5000;
+        double stddev = 2.0;
+        int npoints = 50000;
+
+        boolean verbose = false;
+
+        for (int trial = 0; trial < ntrials; trial++) {
+
+            if (trial % 10 == 0)
+                System.out.printf("%8.0f %%\r", 100.0*trial / ntrials);
+
             thetas.clear();
             double offset = MathUtil.mod2pi(2 * Math.PI * rand.nextDouble());
-
-            double stddev = 2.0;
 
             // add contaminated samples
             for (int i = 0; i < 100; i++) {
@@ -217,28 +233,40 @@ public class AverageTheta
             }
 
             // add uniform noise everywhere
-            for (int i = 0; i < 100; i++) {
+            for (int i = 0; i < npoints; i++) {
                 thetas.add(2 * Math.PI * rand.nextDouble());
             }
 
+            Tic tic = new Tic();
             double dumb = averageThetaBruteForce(thetas, Math.toRadians(0.1));
+            dumbTime += tic.toctic();
+
             double chord = averageThetaChord(thetas);
+            chordTime += tic.toctic();
+
             double optimal = averageThetaOptimal(thetas);
+            optimalTime += tic.toctic();
 
             double dumbError = computeMSE(thetas, dumb);
             double chordError = computeMSE(thetas, chord);
             double optimalError = computeMSE(thetas, optimal);
 
-            System.out.printf("Trial %d, Nominal offset: %15f:\n", trial, offset);
-            System.out.printf("  Optimal    : %15f  (mse %15.10f)\n", optimal, optimalError);
-            System.out.printf("  Brute force: %15f  (mse %15.10f)\n", dumb, dumbError);
-            System.out.printf("  Chord      : %15f  (mse %15.10f)\n", chord, chordError);
+            if (verbose) {
+                System.out.printf("Trial %d, Nominal offset: %15f:\n", trial, offset);
+                System.out.printf("  Optimal    : %15f  (mse %15.10f)\n", optimal, optimalError);
+                System.out.printf("  Brute force: %15f  (mse %15.10f)\n", dumb, dumbError);
+                System.out.printf("  Chord      : %15f  (mse %15.10f)\n", chord, chordError);
+            }
 
             assert(optimalError < dumbError && optimalError < chordError);
-
-            worstRatio = Math.max(worstRatio, chordError / optimalError);
+            chordWorstRatio = Math.max(chordWorstRatio, chordError / optimalError);
         }
 
-        System.out.println("worst error (ratio):   " + worstRatio);
+        System.out.printf("chord: worst error (ratio): %15f\n", chordWorstRatio);
+
+
+        System.out.printf(" Optimal %15f ms/iter\n", 1000.0*optimalTime / ntrials);
+        System.out.printf(" Brute   %15f ms/iter\n", 1000.0*dumbTime / ntrials);
+        System.out.printf(" Chord   %15f ms/iter\n", 1000.0*chordTime / ntrials);
     }
 }
