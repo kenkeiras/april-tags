@@ -28,10 +28,10 @@ public class DijkstraProjection
 
     // For each node in the graph, all of the rigid body constraints
     // that lead away from it.
-    ArrayList<ArrayList<GXYTEdge>> nodeConstraints;
+    ArrayList<ArrayList<GXYTEdge>> nodeEdges;
 
     // we won't follow these edges.
-    HashSet<GEdge> forbiddenConstraints;
+    HashSet<GEdge> forbiddenEdges;
 
     // We'll stop when we've found paths to all of these nodes. (if
     // null, all nodes are processed.)
@@ -46,25 +46,25 @@ public class DijkstraProjection
 
     /** neededNodes will be modified! **/
     public DijkstraProjection(Graph g, int refpose,
-                              HashSet<GEdge> forbiddenConstraints,
+                              HashSet<GEdge> forbiddenEdges,
                               HashSet<Integer> neededNodes)
     {
         this.refpose = refpose;
-        this.forbiddenConstraints = forbiddenConstraints;
+        this.forbiddenEdges = forbiddenEdges;
         this.neededNodes = neededNodes;
 
         ///////////////////////////////////////////////////////////
         // Build a table of constraints for each node.
         // We'll use this for the breadth-first search
-        nodeConstraints = new ArrayList<ArrayList<GXYTEdge>>();
-        while (nodeConstraints.size() < g.nodes.size())
-            nodeConstraints.add(new ArrayList<GXYTEdge>());
+        nodeEdges = new ArrayList<ArrayList<GXYTEdge>>();
+        while (nodeEdges.size() < g.nodes.size())
+            nodeEdges.add(new ArrayList<GXYTEdge>());
 
-        for (GEdge _gc : g.edges) {
-            if (_gc instanceof GXYTEdge) {
-                GXYTEdge gc = (GXYTEdge) _gc;
-                nodeConstraints.get(gc.nodes[0]).add(gc);
-                nodeConstraints.get(gc.nodes[1]).add(gc);
+        for (GEdge _ge : g.edges) {
+            if (_ge instanceof GXYTEdge) {
+                GXYTEdge ge = (GXYTEdge) _ge;
+                nodeEdges.get(ge.nodes[0]).add(ge);
+                nodeEdges.get(ge.nodes[1]).add(ge);
             }
         }
 
@@ -78,12 +78,13 @@ public class DijkstraProjection
 
         ///////////////////////////////////////////////////////////
         // Initialize the search by expanding the first node
-        GXYTEdge initialConstraint = new GXYTEdge();
-        initialConstraint.z = new double[3];
-        initialConstraint.truth = new double[3];
-        initialConstraint.P = new double[3][3];
+        GXYTEdge initialEdge = new GXYTEdge();
+        initialEdge.z = new double[3];
+        initialEdge.truth = new double[3];
+        initialEdge.P = new double[3][3];
+        initialEdge.nodes = new int[] { refpose, refpose };
 
-        projection.set(refpose, initialConstraint);
+        projection.set(refpose, initialEdge);
         if (neededNodes != null)
             neededNodes.remove(refpose);
 
@@ -92,58 +93,51 @@ public class DijkstraProjection
         ///////////////////////////////////////////////////////////
         // keep searching.
         while (heap.size() > 0) {
-            GXYTEdge gc = heap.removeMax();
+            GXYTEdge ge = heap.removeMax();
 
             // every constraint must be with respect to the reference pose...
-            assert(gc.nodes[0] == refpose);
+            assert(ge.nodes[0] == refpose);
 
             // already have a (better) projection for this node?
             // if so, skip this one.
-            if (projection.get(gc.nodes[1])!=null)
+            if (projection.get(ge.nodes[1]) != null)
                 continue;
 
             // this constraint is a keeper, let's expand from here.
-            projection.set(gc.nodes[1], gc);
+            projection.set(ge.nodes[1], ge);
 
             if (neededNodes != null) {
-                neededNodes.remove(gc.nodes[1]);
+                neededNodes.remove(ge.nodes[1]);
                 if (neededNodes.size() == 0)
                     return;
             }
 
-            expand(gc.nodes[1]);
+            expand(ge.nodes[1]);
         }
 
         // clean up to help the garbage collector
         heap = null;
-        nodeConstraints = null;
+        nodeEdges = null;
     }
 
     void expand(int pose)
     {
-        ArrayList<GXYTEdge> gcs = nodeConstraints.get(pose);
-
         GXYTEdge current = projection.get(pose);
 
-        for (GXYTEdge gc : gcs) {
+        for (GXYTEdge ge : nodeEdges.get(pose)) {
 
-            if (forbiddenConstraints!=null && forbiddenConstraints.contains(gc))
+            if (forbiddenEdges!=null && forbiddenEdges.contains(ge))
                 continue;
 
-            GXYTEdge followgc = null;
+            // invert the edge if it's not going from 'pose' to some other node
+            if (ge.nodes[1] == pose)
+                ge = ge.invert();
 
-            if (gc.nodes[0] == pose) {
-                followgc = gc;
-            } else {
-                assert(gc.nodes[1] == pose);
-                followgc = gc.invert();
-            }
-
-            // don't need this edge, skip it.
-            if (projection.get(followgc.nodes[1])!=null)
+            // don't need this edge if we've already been there, skip it.
+            if (projection.get(ge.nodes[1])!=null)
                 continue;
 
-            GXYTEdge newEdge = current.compose(followgc);
+            GXYTEdge newEdge = current.compose(ge);
             heap.add(newEdge, 1.0/(1.0 + LinAlg.det(newEdge.P)));
         }
     }
