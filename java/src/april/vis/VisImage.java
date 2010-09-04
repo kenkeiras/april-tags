@@ -73,18 +73,12 @@ public class VisImage implements VisObject, VisSerializable
 
     public void render(VisContext vc, GL gl, GLU glu)
     {
-        // save original matrices
-        VisUtil.pushGLWholeState(gl);
-
         double width = texture.getWidth(), height = texture.getHeight();
 
         // must set a non-transparent vertex color; this color modulates the texture
         VisUtil.setColor(gl, modulateColor);
 
         texture.bindTexture(gl);
-
-        //	gl.glEnable(gl.GL_BLEND);
-        //	gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA);
 
         gl.glBegin(gl.GL_QUADS);
         gl.glTexCoord2d(0, flipy ? height : 0);
@@ -98,8 +92,6 @@ public class VisImage implements VisObject, VisSerializable
         gl.glEnd();
 
         texture.unbindTexture(gl);
-
-        VisUtil.popGLWholeState(gl);
     }
 
     public VisImage()

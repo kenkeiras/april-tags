@@ -22,7 +22,7 @@ class VisCanvasPopupMenu extends JPopupMenu
     JCheckBoxMenuItem fpsItem = new JCheckBoxMenuItem("Show FPS", false);
 
     double fpsRates[] = new double[] {1, 2, 5, 15, 20, 30, 60};
-    int fpsRateDefaultIndex = 4;
+    int fpsRateDefaultIndex = 6;
     ButtonGroup fpsGroup = new ButtonGroup();
     JMenu  fpsMenu;
     JRadioButtonMenuItem fpsItems[];

@@ -104,18 +104,12 @@ public class VisGrid implements VisObject, VisSerializable
         double grid_oz = 0; // vc.view.lookAt[2];
         int num_lines = 500;
 
-        VisUtil.pushGLWholeState(gl);
-
         if (drawGround) {
             if (autoColor)
                 VisUtil.setColor(gl, ColorUtil.towardsGray(vc.getBackground(), .25));
             else
                 VisUtil.setColor(gl, groundColor);
 
-            //	    gl.glEnable(gl.GL_BLEND);
-            //	    gl.glBlendFunc(gl.GL_SRC_ALPHA, gl.GL_ONE_MINUS_SRC_ALPHA);
-
-            //	    gl.glDisable(gl.GL_DEPTH_TEST);
             gl.glNormal3d(0, 0, 1);
             gl.glBegin(gl.GL_TRIANGLES);
             gl.glVertex3d(grid_ox + (-num_lines/2)*meters_per_grid,
@@ -143,7 +137,6 @@ public class VisGrid implements VisObject, VisSerializable
             grid_oz += .001;
 
             gl.glLineWidth (1);
-            //	    gl.glEnable(gl.GL_DEPTH_TEST);
             gl.glBegin(gl.GL_LINES);
 
             if (autoColor)
@@ -165,11 +158,7 @@ public class VisGrid implements VisObject, VisSerializable
                               grid_oy + (-num_lines/2 + i) * meters_per_grid, grid_oz);
             }
             gl.glEnd ();
-            //	    gl.glDisable(gl.GL_DEPTH_TEST);
-            //	    gl.glDisable(gl.GL_BLEND);
         }
-
-        VisUtil.popGLWholeState(gl);
     }
 
     public void serialize(LCMDataOutputStream out) throws IOException

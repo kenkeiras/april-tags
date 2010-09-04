@@ -44,8 +44,6 @@ public class VisCanvas extends JPanel implements VisWorldListener,
 
     VisCanvasPopupMenu popupMenu;
 
-    double targetFPS = 15;
-
     java.util.Timer timer = new java.util.Timer();
 
     // used to determine whether we need to redraw the status line
@@ -59,6 +57,8 @@ public class VisCanvas extends JPanel implements VisWorldListener,
 
     long last_draw_mtime;
     boolean redrawPending = false;
+
+    double targetFPS = 100; // will be overwritten by popup menu
 
     ArrayList<ImageCaptureObject> imageCaptureObjects = new ArrayList<ImageCaptureObject>();
 
@@ -677,18 +677,20 @@ public class VisCanvas extends JPanel implements VisWorldListener,
 
     public void addEventHandler(VisCanvasEventHandler eh, int priority)
     {
-        eventHandlers.add(eh);
-        eventHandlerPriorities.put(eh, priority);
+        synchronized(eventHandlers) {
+            eventHandlers.add(eh);
+            eventHandlerPriorities.put(eh, priority);
 
-        Collections.sort(eventHandlers, new Comparator<VisCanvasEventHandler>() {
-                public int compare(VisCanvasEventHandler a, VisCanvasEventHandler b) {
-                    return eventHandlerPriorities.get(b) - eventHandlerPriorities.get(a);
-                }
+            Collections.sort(eventHandlers, new Comparator<VisCanvasEventHandler>() {
+                    public int compare(VisCanvasEventHandler a, VisCanvasEventHandler b) {
+                        return eventHandlerPriorities.get(b) - eventHandlerPriorities.get(a);
+                    }
 
-                public boolean equals(Object obj) {
-                    return false;
-                }
-            });
+                    public boolean equals(Object obj) {
+                        return false;
+                    }
+                });
+        }
     }
 
     public boolean isPicking(VisCanvasEventHandler eh)
@@ -730,10 +732,12 @@ public class VisCanvas extends JPanel implements VisWorldListener,
                 return;
         }
 
-        for (VisCanvasEventHandler eh : eventHandlers) {
-            boolean consumed = eh.keyPressed(this, e);
-            if (consumed)
-                return;
+        synchronized(eventHandlers) {
+            for (VisCanvasEventHandler eh : eventHandlers) {
+                boolean consumed = eh.keyPressed(this, e);
+                if (consumed)
+                    return;
+            }
         }
     }
 
@@ -745,10 +749,12 @@ public class VisCanvas extends JPanel implements VisWorldListener,
                 return;
         }
 
-        for (VisCanvasEventHandler eh : eventHandlers) {
-            boolean consumed = eh.keyReleased(this, e);
-            if (consumed)
-                return;
+        synchronized(eventHandlers) {
+            for (VisCanvasEventHandler eh : eventHandlers) {
+                boolean consumed = eh.keyReleased(this, e);
+                if (consumed)
+                    return;
+            }
         }
     }
 
@@ -760,10 +766,12 @@ public class VisCanvas extends JPanel implements VisWorldListener,
                 return;
         }
 
-        for (VisCanvasEventHandler eh : eventHandlers) {
-            boolean consumed = eh.keyTyped(this, e);
-            if (consumed)
-                return;
+        synchronized(eventHandlers) {
+            for (VisCanvasEventHandler eh : eventHandlers) {
+                boolean consumed = eh.keyTyped(this, e);
+                if (consumed)
+                    return;
+            }
         }
     }
 
@@ -780,10 +788,12 @@ public class VisCanvas extends JPanel implements VisWorldListener,
                 return;
         }
 
-        for (VisCanvasEventHandler eh : eventHandlers) {
-            boolean consumed = eh.mouseWheelMoved(this, ray, e);
-            if (consumed)
-                return;
+        synchronized(eventHandlers) {
+            for (VisCanvasEventHandler eh : eventHandlers) {
+                boolean consumed = eh.mouseWheelMoved(this, ray, e);
+                if (consumed)
+                    return;
+            }
         }
     }
 
@@ -800,10 +810,12 @@ public class VisCanvas extends JPanel implements VisWorldListener,
                 return;
         }
 
-        for (VisCanvasEventHandler eh : eventHandlers) {
-            boolean consumed = eh.mouseDragged(this, ray, e);
-            if (consumed)
-                return;
+        synchronized(eventHandlers) {
+            for (VisCanvasEventHandler eh : eventHandlers) {
+                boolean consumed = eh.mouseDragged(this, ray, e);
+                if (consumed)
+                    return;
+            }
         }
     }
 
@@ -822,10 +834,12 @@ public class VisCanvas extends JPanel implements VisWorldListener,
                 return;
         }
 
-        for (VisCanvasEventHandler eh : eventHandlers) {
-            boolean consumed = eh.mouseMoved(this, ray, e);
-            if (consumed)
-                return;
+        synchronized(eventHandlers) {
+            for (VisCanvasEventHandler eh : eventHandlers) {
+                boolean consumed = eh.mouseMoved(this, ray, e);
+                if (consumed)
+                    return;
+            }
         }
     }
 
@@ -841,17 +855,18 @@ public class VisCanvas extends JPanel implements VisWorldListener,
             double bestDistance = Double.MAX_VALUE;
             VisCanvasEventHandler bestHandler = null;
 
-            for (VisCanvasEventHandler eh : eventHandlers) {
-                double dist = eh.pickQuery(this, ray);
-                if (dist < 0)
-                    continue;
+            synchronized(eventHandlers) {
+                for (VisCanvasEventHandler eh : eventHandlers) {
+                    double dist = eh.pickQuery(this, ray);
+                    if (dist < 0)
+                        continue;
 
-                if (dist < bestDistance) {
-                    bestDistance = dist;
-                    bestHandler = eh;
+                    if (dist < bestDistance) {
+                        bestDistance = dist;
+                        bestHandler = eh;
+                    }
                 }
             }
-
             pickingHandler = bestHandler;
             for (VisCanvasEventHandler eh : eventHandlers)
                 eh.pickNotify(eh == pickingHandler);
@@ -863,10 +878,12 @@ public class VisCanvas extends JPanel implements VisWorldListener,
                 return;
         }
 
-        for (VisCanvasEventHandler eh : eventHandlers) {
-            boolean consumed = eh.mousePressed(this, ray, e);
-            if (consumed)
-                return;
+        synchronized(eventHandlers) {
+            for (VisCanvasEventHandler eh : eventHandlers) {
+                boolean consumed = eh.mousePressed(this, ray, e);
+                if (consumed)
+                    return;
+            }
         }
     }
 
@@ -883,10 +900,12 @@ public class VisCanvas extends JPanel implements VisWorldListener,
                 return;
         }
 
-        for (VisCanvasEventHandler eh : eventHandlers) {
-            boolean consumed = eh.mouseReleased(this, ray, e);
-            if (consumed)
-                return;
+        synchronized(eventHandlers) {
+            for (VisCanvasEventHandler eh : eventHandlers) {
+                boolean consumed = eh.mouseReleased(this, ray, e);
+                if (consumed)
+                    return;
+            }
         }
     }
 
@@ -903,10 +922,12 @@ public class VisCanvas extends JPanel implements VisWorldListener,
                 return;
         }
 
-        for (VisCanvasEventHandler eh : eventHandlers) {
-            boolean consumed = eh.mouseClicked(this, ray, e);
-            if (consumed)
-                return;
+        synchronized(eventHandlers) {
+            for (VisCanvasEventHandler eh : eventHandlers) {
+                boolean consumed = eh.mouseClicked(this, ray, e);
+                if (consumed)
+                    return;
+            }
         }
     }
 

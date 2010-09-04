@@ -162,7 +162,7 @@ public class VisTexture implements VisSerializable
         this.mipmap = mipmap;
 
         if (mipmap && (!isPowerOfTwo(im.getWidth()) || !isPowerOfTwo(im.getHeight()))) {
-            System.out.println("VisTexture: attempt to enable mipmapping on non power of two texture");
+            System.out.println("VisTexture: attempt to enable mipmapping on non power of two texture. Won't mipmap.");
             mipmap = false;
         }
     }
@@ -237,6 +237,7 @@ public class VisTexture implements VisSerializable
     public void unbindTexture(GL gl)
     {
         gl.glBindTexture(textureTarget, 0);
+        gl.glDisable(textureTarget);
 
         if (locked)
             return;

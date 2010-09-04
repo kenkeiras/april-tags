@@ -36,7 +36,6 @@ public class VisDataLineStyle implements VisDataStyle, VisSerializable
         VisUtil.setColor(gl, c);
         gl.glLineWidth(width);
 
-        gl.glDisable(GL.GL_LIGHTING);
         gl.glBegin( loop ? gl.GL_LINE_LOOP : gl.GL_LINE_STRIP );
 
         for (double p[] : points) {
@@ -47,7 +46,6 @@ public class VisDataLineStyle implements VisDataStyle, VisSerializable
         }
 
         gl.glEnd();
-        gl.glEnable(GL.GL_LIGHTING);
     }
 
     public VisDataLineStyle()

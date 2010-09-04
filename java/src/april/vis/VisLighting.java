@@ -23,6 +23,8 @@ public class VisLighting implements VisObject, VisSerializable
 
     public void render(VisContext vc, GL gl, GLU glu)
     {
+        gl.glPushAttrib(gl.GL_ENABLE_BIT);
+
         if (enable)
             gl.glEnable(GL.GL_LIGHTING);
         else
@@ -31,8 +33,7 @@ public class VisLighting implements VisObject, VisSerializable
         for (VisObject vo : os)
             vo.render(vc, gl, glu);
 
-        /// XXX bug: should restore previous state.
-        gl.glEnable(GL.GL_LIGHTING);
+        gl.glPopAttrib();
     }
 
     public VisLighting()

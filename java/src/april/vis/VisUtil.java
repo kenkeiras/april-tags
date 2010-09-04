@@ -69,11 +69,11 @@ public final class VisUtil
 
     public static void popGLWholeState(GL gl)
     {
-        gl.glMatrixMode(gl.GL_MODELVIEW);
-        gl.glPopMatrix();
         gl.glMatrixMode(gl.GL_PROJECTION);
         gl.glPopMatrix();
         gl.glMatrixMode(gl.GL_MODELVIEW);
+        gl.glPopMatrix();
+
         gl.glPopAttrib();
     }
 
