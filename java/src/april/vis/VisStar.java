@@ -6,9 +6,11 @@ import java.awt.*;
 import april.jmat.geom.*;
 
 import java.util.*;
+import java.io.*;
 
+import lcm.lcm.*;
 /** VisObject that draws a star. **/
-public class VisStar implements VisObject
+public class VisStar implements VisObject, VisSerializable
 {
     //    Color  c = new Color(220, 220, 0);
     Color c;
@@ -64,4 +66,35 @@ public class VisStar implements VisObject
         }
         gl.glEnd();
     }
+
+    public void serialize(LCMDataOutputStream out) throws IOException
+    {
+        out.writeInt(c.getRGB());
+        out.writeInt(outlineColor.getRGB());
+        out.writeInt(selectedState);
+
+        out.writeInt(vertices.length);
+        for(double point[] : vertices) {
+            out.writeDouble(point[0]);
+            out.writeDouble(point[1]);
+        }
+        out.writeDouble(size);
+        out.writeDouble(ratio);
+    }
+
+    public void unserialize(LCMDataInputStream in) throws IOException
+    {
+        c = new Color(in.readInt(), true);
+        outlineColor = new Color(in.readInt(), true);
+        selectedState = in.readInt();
+
+        vertices = new double[in.readInt()][2];
+        for(double point[] : vertices) {
+            point[0] = in.readDouble();
+            point[1] = in.readDouble();
+        }
+        size = in.readDouble();
+        ratio = in.readDouble();
+    }
+
 }

@@ -8,6 +8,9 @@ import java.util.*;
 import april.jmat.*;
 import april.jmat.geom.*;
 
+import lcm.lcm.*;
+import java.io.*;
+
 public class VisCircle extends VisData
 {
     double radius;
@@ -43,4 +46,30 @@ public class VisCircle extends VisData
         for (VisDataStyle style: styles)
             style.renderStyle(vc, gl, glu, this);
     }
+
+    // Serialization
+    public VisCircle()
+    {
+    }
+
+    public void serialize(LCMDataOutputStream out) throws IOException
+    {
+        out.writeDouble(radius);
+        out.writeDouble(theta0);
+        out.writeDouble(theta1);
+        out.writeInt(npoints);
+        super.serialize(out);
+    }
+
+    public void unserialize(LCMDataInputStream in) throws IOException
+    {
+        radius = in.readDouble();
+        theta0 = in.readDouble();
+        theta1 = in.readDouble();
+        npoints = in.readInt();
+        super.unserialize(in);
+    }
+
+
+
 }

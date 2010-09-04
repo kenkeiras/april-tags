@@ -2,42 +2,46 @@ package april.util;
 
 import java.util.*;
 
-/** Max heap that holds integers. **/
-public class IntMaxHeap
+/** Max heap **/
+public class MaxHeap<T>
 {
-    int objs[];
+    Object objs[];
     double scores[];
     int    heapsize;
 
-    public IntMaxHeap()
+    public MaxHeap()
     {
         this(10);
     }
 
-    public IntMaxHeap(int initialsize)
+    public MaxHeap(int initialsize)
     {
-        objs = new int[initialsize];
+        objs = new Object[initialsize];
         scores = new double[initialsize];
         heapsize = 0;
     }
 
+    public static class Pair<T>
+    {
+        public T o;
+        public double score;
+    }
+
     /** Add a node to the heap, in O(log n) time. **/
-    public void add(int o, double score)
+    public void add(T o, double score)
     {
         // grow?
         if (heapsize == objs.length) {
-            int objs2[] = new int[objs.length * 2];
+            Object objs2[] = new Object[objs.length * 2];
             double scores2[] = new double[objs.length * 2];
 
             for (int i = 0; i < objs.length; i++) {
                 objs2[i] = objs[i];
                 scores2[i] = scores[i];
             }
-
             objs = objs2;
             scores = scores2;
         }
-
         objs[heapsize] = o;
         scores[heapsize] = score;
         int node = heapsize;
@@ -54,60 +58,58 @@ public class IntMaxHeap
         return heapsize;
     }
 
-    /** Remove and return the element with maximum score in O(log n) time.
-     * Return Integer.MIN_VALUE if no elements
-     **/
-    public int removeMax()
-    {
-        if (heapsize == 0)
-            return Integer.MIN_VALUE;
-        int m = objs[0];
-        objs[0] = objs[heapsize - 1];
-        scores[0] = scores[heapsize - 1];
-        objs[heapsize - 1] = Integer.MIN_VALUE;
-        heapsize--;
-        fixup(0);
-        return (int) m;
-    }
-
-    public int peekMax()
-    {
-        if (heapsize == 0)
-            return Integer.MIN_VALUE;
-        return (int) objs[0];
-    }
-
-    public IntHeapPair peekMaxPair()
+    /** Remove and return the element with maximum score in O(log n) time. **/
+    public T removeMax()
     {
         if (heapsize == 0)
             return null;
-        IntHeapPair p = new IntHeapPair();
-        p.o = (int) objs[0];
+        Object m = objs[0];
+        objs[0] = objs[heapsize - 1];
+        scores[0] = scores[heapsize - 1];
+        objs[heapsize - 1] = null;
+        heapsize--;
+        fixup(0);
+        return (T) m;
+    }
+
+    public T peekMax()
+    {
+        if (heapsize == 0)
+            return null;
+        return (T) objs[0];
+    }
+
+    public Pair<T> peekMaxPair()
+    {
+        if (heapsize == 0)
+            return null;
+        Pair<T> p = new Pair<T>();
+        p.o = (T) objs[0];
         p.score = scores[0];
         return p;
     }
 
     /** same as removeMax, but returns the object and its score **/
-    public IntHeapPair removeMaxPair()
+    public Pair<T> removeMaxPair()
     {
         if (heapsize == 0)
             return null;
-        int m = objs[0];
+        Object m = objs[0];
         double s = scores[0];
         objs[0] = objs[heapsize - 1];
         scores[0] = scores[heapsize - 1];
-        objs[heapsize - 1] = Integer.MIN_VALUE;
+        objs[heapsize - 1] = null;
         heapsize--;
         fixup(0);
-        IntHeapPair p = new IntHeapPair();
-        p.o = (int) m;
+        Pair<T> p = new Pair<T>();
+        p.o = (T) m;
         p.score = s;
         return p;
     }
 
     final void swapNodes(int a, int b)
     {
-        int t = objs[a];
+        Object t = objs[a];
         objs[a] = objs[b];
         objs[b] = t;
         double s = scores[a];
@@ -129,8 +131,7 @@ public class IntMaxHeap
             // do we need to swap the parent and the leaf?
             // we don't need to call fixupHeap recursively since the
             // left node must be a leaf.
-            if (scores[left] > scores[parent])
-            {
+            if (scores[left] > scores[parent]) {
                 swapNodes(left, parent);
                 return;
             }
@@ -147,9 +148,7 @@ public class IntMaxHeap
         if (scores[left] > scores[right]) {
             swapNodes(left, parent);
             fixup(left);
-
         } else {
-
             swapNodes(right, parent);
             fixup(right);
         }
@@ -160,7 +159,7 @@ public class IntMaxHeap
         int cap = 1000;
         int sz = 0;
         int vals[] = new int[cap];
-        IntMaxHeap heap = new IntMaxHeap();
+        MaxHeap heap = new MaxHeap();
         Random r = new Random(0);
         int maxsz = 0;
         int zcnt = 0;
@@ -173,20 +172,20 @@ public class IntMaxHeap
                 // add a value?
                 int v = r.nextInt(1 << 16);
                 vals[sz] = v;
-                heap.add(Integer.MIN_VALUE, v);
+                heap.add(null, v);
                 sz++;
-
             } else if (sz > 0) {
-
                 // System.out.print("-");
                 // remove a value
                 int maxv = -1, maxi = -1;
+
                 for (int i = 0; i < sz; i++) {
                     if (vals[i] > maxv) {
                         maxv = vals[i];
                         maxi = i;
                     }
                 }
+
                 vals[maxi] = vals[sz - 1];
                 int hv = (int) heap.removeMaxPair().score;
                 if (hv != maxv)
@@ -198,6 +197,7 @@ public class IntMaxHeap
 
             if (sz > maxsz)
                 maxsz = sz;
+
             // count how many times we've returned to zero.
             if (maxsz > 0 && sz == 0)
                 zcnt++;

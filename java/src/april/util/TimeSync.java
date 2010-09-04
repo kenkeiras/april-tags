@@ -1,5 +1,7 @@
 package april.util;
 
+import java.util.*;
+
 public class TimeSync
 {
     // last known time on the device. This is used to detect
@@ -159,5 +161,30 @@ public class TimeSync
 
         // return units in usecs.
         return ((long) (dp*1.0E6)) + q_ticks + ((long) (1.0E6*Math.abs(rate_error * dp)));
+    }
+
+    public static void main(String args[])
+    {
+        Random r = new Random();
+
+        if (true) {
+
+            TimeSync ts = new TimeSync(1000000, 0, 0.001, 5);
+
+            double rate = 1.0005;
+            rate = 0.9995;
+
+            rate = 1;
+
+            for (int i = 0; i < 1000; i++) {
+                long trueTime = i * 1000000;
+                long sensorTime = (long) (trueTime * rate);
+                long hostTime = trueTime + r.nextInt(50000);
+
+                ts.update(hostTime, sensorTime);
+                double estHostTime = ts.getHostUtime(sensorTime);
+                System.out.printf("%5d %15f\n", i, estHostTime -trueTime); // should always be positive
+            }
+        }
     }
 }

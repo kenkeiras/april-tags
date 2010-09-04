@@ -16,6 +16,7 @@
 #include "common/vhash.h"
 
 #include "lcmtypes/laser_t.h"
+#include "lcmtypes/sync_debug_t.h"
 
 #define PI 3.14159265358979323846264338
 
@@ -293,6 +294,15 @@ static void on_MD_99(state_t *state, varray_t *response)
 
     laser_t_publish(state->lcm, getopt_get_string(state->gopt, "channel"), &msg);
     watchdog_got_scan = 1;
+
+    if (1) {
+        sync_debug_t sd;
+        sd.rx_utime = host_utime;
+        sd.sensor_time = timestamp;
+        sd.estimated_utime = msg.utime;
+
+        sync_debug_t_publish(state->lcm, "SYNC_DEBUG", &sd);
+    }
 
     free(msg.ranges);
     free(msg.intensities);

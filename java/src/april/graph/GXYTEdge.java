@@ -55,6 +55,37 @@ public class GXYTEdge extends GEdge
         return ge;
     }
 
+    public GXYTEdge compose(GXYTEdge ge)
+    {
+        if (ge == null)
+            return this;
+
+        GXYTEdge newge = new GXYTEdge();
+        double xa = z[0], ya = z[1], ta = z[2];
+        double xb = ge.z[0], yb = ge.z[1], tb = ge.z[2];
+
+        double sa = Math.sin(ta), ca = Math.cos(ta);
+
+        double JA[][] = new double[][] { { 1, 0, -sa*xb - ca*yb },
+                                         { 0, 1, ca*xb - sa*yb },
+                                         { 0, 0, 1 } };
+        double JB[][] = new double[][] { { ca, -sa, 0 },
+                                         { sa, ca, 0 },
+                                         { 0,  0,  1 } };
+
+        newge.P = LinAlg.add(LinAlg.matrixABCt(JA, P, JA),
+                             LinAlg.matrixABCt(JB, ge.P, JB));
+
+        newge.z = LinAlg.xytMultiply(z, ge.z);
+
+        if (truth != null && ge.truth != null)
+            newge.truth = LinAlg.xytMultiply(truth, ge.truth);
+
+        newge.nodes = new int[] { nodes[0], ge.nodes[1] };
+
+        return newge;
+    }
+
     public double[][] getW()
     {
         if (W == null)

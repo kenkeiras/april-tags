@@ -18,11 +18,13 @@ import com.sun.opengl.util.*;
 import april.jmat.geom.*;
 import april.jmat.*;
 
+import lcm.lcm.*;
+
 /** Implements a background grid. You shouldn't need to instantiate
  * this yourself, as VisCanvas provides controls for enabling and
  * disabling a grid.
  **/
-public class VisGrid implements VisObject
+public class VisGrid implements VisObject, VisSerializable
 {
     // default spacing for grid. If zero, we'll auto adjust.
     double spacing;
@@ -169,4 +171,27 @@ public class VisGrid implements VisObject
 
         VisUtil.popGLWholeState(gl);
     }
+
+    public void serialize(LCMDataOutputStream out) throws IOException
+    {
+        out.writeDouble(spacing);
+        out.writeBoolean(drawGrid);
+        out.writeBoolean(drawGround);
+        out.writeInt(groundColor.getRGB());
+        out.writeInt(gridColor.getRGB());
+        out.writeBoolean(autoColor);
+        out.writeBoolean(textHints);
+    }
+
+    public void unserialize(LCMDataInputStream in) throws IOException
+    {
+        spacing = in.readDouble();
+        drawGrid = in.readBoolean();
+        drawGround = in.readBoolean();
+        groundColor  = new Color(in.readInt(), true);
+        gridColor = new Color(in.readInt(), true);
+        autoColor = in.readBoolean();
+        textHints = in.readBoolean();
+    }
+
 }

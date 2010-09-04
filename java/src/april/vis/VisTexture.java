@@ -11,12 +11,17 @@ import java.util.*;
 
 import april.jmat.geom.*;
 
+import java.io.*;
+import lcm.lcm.*;
+
 /** Represents a texture that can be painted by e.g. VisImage. This
  * texture may not work properly from multiple GL contexts.
  **/
-public class VisTexture
+public class VisTexture implements VisSerializable
 {
     BufferedImage im;
+    boolean alphaMask;
+
     boolean locked;
     int texids[];
     boolean mipmap;
@@ -58,6 +63,13 @@ public class VisTexture
 
     public VisTexture(BufferedImage input, boolean alphaMask)
     {
+        init(input, alphaMask);
+    }
+
+    private void init(BufferedImage input, boolean alphaMask)
+    {
+        this.alphaMask = alphaMask;
+
         switch (input.getType())
         {
             case BufferedImage.TYPE_INT_ARGB: {
@@ -294,4 +306,32 @@ public class VisTexture
         assert(false);
         return null;
     }
+
+    public VisTexture()
+    {
+    }
+
+    public void serialize(LCMDataOutputStream out) throws IOException
+    {
+        ByteArrayOutputStream img_out = new ByteArrayOutputStream();
+        javax.imageio.ImageIO.write(im, "png", img_out);
+
+        out.writeInt(img_out.size());
+        out.write(img_out.toByteArray());
+        out.writeBoolean(alphaMask);
+
+        // Skip the rest of the fields, and recall the init() method on unserialization
+        // This is because when loaded from PNG, the exact image format may change
+
+    }
+
+    public void unserialize(LCMDataInputStream in) throws IOException
+    {
+        byte buf[] = new byte[in.readInt()];
+        in.readFully(buf);
+        ByteArrayInputStream img_in = new ByteArrayInputStream(buf);
+        BufferedImage img = javax.imageio.ImageIO.read(img_in);
+        init(img, in.readBoolean());
+    }
+
 }

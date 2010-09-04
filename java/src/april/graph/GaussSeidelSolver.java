@@ -43,11 +43,29 @@ public class GaussSeidelSolver implements GraphSolver
             preprocessedEdges++;
         }
 
-        Tic tic = new Tic();
-
         for (int i = 0; i < g.nodes.size(); i++) {
             relaxNode(i);
         }
+    }
+
+    public void iterate(int node)
+    {
+        while (nodeEdges.size() < g.nodes.size()) {
+            nodeEdges.add(new ArrayList<Integer>());
+        }
+
+        while (preprocessedEdges < g.edges.size()) {
+            GEdge ge = g.edges.get(preprocessedEdges);
+
+            for (int i = 0; i < ge.nodes.length; i++)
+                nodeEdges.get(ge.nodes[i]).add(preprocessedEdges);
+
+            linearizations.add(g.edges.get(preprocessedEdges).linearize(g, null));
+
+            preprocessedEdges++;
+        }
+
+        relaxNode(node);
     }
 
     void relaxNode(int i)

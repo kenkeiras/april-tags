@@ -11,9 +11,12 @@ import java.util.*;
 import april.jmat.*;
 import april.jmat.geom.*;
 
+import lcm.lcm.*;
+import java.io.*;
+
 /** Draw cylinders, cones, and related types. This class needs to be
  * significantly optimized and improved. **/
-public class VisCylinder implements VisObject
+public class VisCylinder implements VisObject, VisSerializable
 {
     Color c;
     double r0, r1, h0, h1; // r0 = radius at base, r1 = radius at apex. h0 = height (z) at base, h1 = height at apex.
@@ -92,6 +95,33 @@ public class VisCylinder implements VisObject
         }
 
         VisUtil.popGLState(gl);
+    }
+
+    // Serialization
+    public VisCylinder()
+    {
+    }
+
+    public void serialize(LCMDataOutputStream out) throws IOException
+    {
+        out.writeInt(c.getRGB());
+        out.writeDouble(r0);
+        out.writeDouble(r1);
+        out.writeDouble(h0);
+        out.writeDouble(h1);
+        out.writeBoolean(drawTop);
+        out.writeBoolean(drawBottom);
+    }
+
+    public void unserialize(LCMDataInputStream in) throws IOException
+    {
+        c = new Color(in.readInt(), true);
+        r0 = in.readDouble();
+        r1 = in.readDouble();
+        h0 = in.readDouble();
+        h1 = in.readDouble();
+        drawTop = in.readBoolean();
+        drawBottom =in.readBoolean();
     }
 
     public static void main(String args[])

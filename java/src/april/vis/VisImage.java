@@ -10,13 +10,16 @@ import java.util.*;
 
 import april.jmat.geom.*;
 
+import lcm.lcm.*;
+import java.io.*;
+
 /** If you'd like to overlay an image (in the corner of the screen,
  * for example), put the VisImage in a VisWindow; note that images
  * will be lit by default (which can result in odd appearance) which
  * can be disabled by using VisLighting.
  *
  **/
-public class VisImage implements VisObject
+public class VisImage implements VisObject, VisSerializable
 {
     VisTexture texture;
 
@@ -98,4 +101,33 @@ public class VisImage implements VisObject
 
         VisUtil.popGLWholeState(gl);
     }
+
+    public VisImage()
+    {
+    }
+
+    public void serialize(LCMDataOutputStream out) throws IOException
+    {
+        VisSerialize.serialize(texture, out);
+        out.writeDouble(x0);
+        out.writeDouble(y0);
+        out.writeDouble(x1);
+        out.writeDouble(y1);
+        out.writeDouble(z);
+        out.writeDouble(scale);
+        out.writeBoolean(flipy);
+    }
+
+    public void unserialize(LCMDataInputStream in) throws IOException
+    {
+        texture = (VisTexture)VisSerialize.unserialize(in);
+        x0 = in.readDouble();
+        y0 = in.readDouble();
+        x1 = in.readDouble();
+        y1 = in.readDouble();
+        z = in.readDouble();
+        scale = in.readDouble();
+        flipy = in.readBoolean();
+    }
+
 }

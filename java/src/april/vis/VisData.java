@@ -8,9 +8,12 @@ import april.jmat.geom.*;
 
 import java.util.*;
 import java.nio.*;
+import java.io.*;
+
+import lcm.lcm.*;
 
 /** Workhorse of 2D and 3D data viewing. **/
-public class VisData implements VisObject
+public class VisData implements VisObject, VisSerializable
 {
     ArrayList<double[]> points = new ArrayList<double[]>();
     ArrayList<VisDataStyle> styles = new ArrayList<VisDataStyle>();
@@ -91,5 +94,55 @@ public class VisData implements VisObject
 
         vertexbuf.rewind();
         return vertexbuf;
+    }
+
+    // Serialization
+    public VisData()
+    {
+    }
+
+    public void serialize(LCMDataOutputStream out) throws IOException
+    {
+        // 1) write points (We only support homogeneous point clouds (no mixing 2D and 3D)
+        out.writeInt(points.size());
+        int dim = points.size() > 0 ? points.get(0).length : 0;
+        out.writeInt(dim);
+
+        for (double[] point : points) {
+            assert(point.length == dim);
+            for (int i = 0; i < dim; i++)
+                out.writeDouble(point[i]);
+        }
+
+        // 2) Recursively write Data Styles
+        out.writeInt(styles.size());
+        for (VisDataStyle style : styles)
+            if (style instanceof VisSerializable)
+                VisSerialize.serialize((VisSerializable)style, out);
+            else
+                System.out.println("ERR:    "+style.getClass().getName()+" is not Serializable. This snapshot will be unreadable!");
+    }
+
+    public void unserialize(LCMDataInputStream in) throws IOException
+    {
+        // 1) read points
+        int npoints = in.readInt();
+        int dim = in.readInt();
+
+        for (int j =0; j < npoints; j++) {
+            double point[] = new double[dim];
+            for (int i =0; i < dim; i++) {
+                point[i] = in.readDouble();
+            }
+            points.add(point);
+        }
+
+        // 2) read styles
+        int nstyles = in.readInt();
+        for (int i = 0; i < nstyles; i++) {
+            VisSerializable obj = VisSerialize.unserialize(in);
+            if (obj != null)
+                styles.add((VisDataStyle) obj);
+        }
     }
 }
