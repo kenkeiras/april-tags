@@ -147,12 +147,25 @@ public class VisTexture implements VisSerializable
 
     /** Once a texture has been copied into GL memory, prevent it from
      * being deleted. This is useful if the texture is frequently
-     * redrawn.  NB: It is not currently possible to unlock the
-     * texture.
+     * redrawn.  It is up to the user to unlock the texture; else, a
+     * memory leak (in graphics card memory) occurs.
      **/
     public void lock()
     {
         locked = true;
+    }
+
+    /** When unlocked, the texture will continue to work properly, but
+     * will be re-uploaded to the graphics card every time it is
+     * displayed. **/
+    public void unlock()
+    {
+        if (!locked)
+            return;
+
+        locked = false;
+        gl.glDeleteTextures(1, texids, 0);
+        texids = null;
     }
 
     /** Must be called before the texture is rendered, specifically,
