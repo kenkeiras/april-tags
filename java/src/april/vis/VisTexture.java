@@ -24,6 +24,8 @@ public class VisTexture implements VisSerializable
 
     boolean locked;
     int texids[];
+    GL texidsGL;
+
     boolean mipmap;
     boolean magFilterEnable;
 
@@ -164,8 +166,9 @@ public class VisTexture implements VisSerializable
             return;
 
         locked = false;
-        gl.glDeleteTextures(1, texids, 0);
+        texidsGL.glDeleteTextures(1, texids, 0);
         texids = null;
+        texidsGL = null;
     }
 
     /** Must be called before the texture is rendered, specifically,
@@ -195,6 +198,7 @@ public class VisTexture implements VisSerializable
         }
 
         texids = new int[1];
+        texidsGL = gl;
 
         int width = im.getWidth(), height = im.getHeight();
         if (Math.max(width, height) > 4096 && !sizeWarning) {
