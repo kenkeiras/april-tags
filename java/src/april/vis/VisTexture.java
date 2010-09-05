@@ -331,11 +331,24 @@ public class VisTexture implements VisSerializable
 
     public void serialize(LCMDataOutputStream out) throws IOException
     {
-        ByteArrayOutputStream img_out = new ByteArrayOutputStream();
-        javax.imageio.ImageIO.write(im, "png", img_out);
+        out.writeInt(im.getWidth());
+        out.writeInt(im.getHeight());
+        out.writeInt(im.getType());
 
-        out.writeInt(img_out.size());
-        out.write(img_out.toByteArray());
+        DataBuffer db = im.getRaster().getDataBuffer();
+        int dataType = db.getDataType();
+
+        if (dataType == DataBuffer.TYPE_BYTE) {
+            byte d[] = ((DataBufferByte) (im.getRaster().getDataBuffer())).getData();
+            out.write(d);
+        } else if (dataType == DataBuffer.TYPE_INT) {
+            int d[] = ((DataBufferInt) (im.getRaster().getDataBuffer())).getData();
+            for (int i = 0; i < d.length; i++)
+                out.writeInt(d[i]);
+        } else {
+            assert(false);
+        }
+
         out.writeBoolean(alphaMask);
 
         // Skip the rest of the fields, and recall the init() method on unserialization
@@ -345,11 +358,28 @@ public class VisTexture implements VisSerializable
 
     public void unserialize(LCMDataInputStream in) throws IOException
     {
-        byte buf[] = new byte[in.readInt()];
-        in.readFully(buf);
-        ByteArrayInputStream img_in = new ByteArrayInputStream(buf);
-        BufferedImage img = javax.imageio.ImageIO.read(img_in);
-        init(img, in.readBoolean());
+        int width = in.readInt();
+        int height = in.readInt();
+        int type = in.readInt();
+
+        BufferedImage im = new BufferedImage(width, height, type);
+        DataBuffer db = im.getRaster().getDataBuffer();
+        int dataType = db.getDataType();
+
+        if (dataType == DataBuffer.TYPE_BYTE) {
+            byte d[] = ((DataBufferByte) (im.getRaster().getDataBuffer())).getData();
+            in.readFully(d);
+        } else if (dataType == DataBuffer.TYPE_INT) {
+            int d[] = ((DataBufferInt) (im.getRaster().getDataBuffer())).getData();
+            for (int i = 0; i < d.length; i++)
+                d[i] = in.readInt();
+        } else {
+            assert(false);
+        }
+
+        boolean alphaMask = in.readBoolean();
+
+        init(im, alphaMask);
 
         // the only supported application of loading snapshots is for
         // reviewing scenes after-the-fact.  might as well lock the
