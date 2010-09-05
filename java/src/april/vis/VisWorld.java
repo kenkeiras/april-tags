@@ -215,8 +215,6 @@ public class VisWorld
 
     private void renderPreserveState(VisContext vc, GL gl, GLU glu, VisObject vo)
     {
-        VisUtil.pushGLState(gl);
-
         vo.render(vc, gl, glu);
 
         if (debug) {
@@ -225,8 +223,6 @@ public class VisWorld
                 System.out.println("GL Error while rendering "+vo+": "+glu.gluErrorString(err));
             }
         }
-
-        VisUtil.popGLState(gl);
     }
 
     // called by VisCanvas (only)

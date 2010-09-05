@@ -48,6 +48,18 @@ public final class VisUtil
         gl.glMultMatrixd(m.getColumnPackedCopy(), 0);
     }
 
+    public static void multiplyMatrix(GL gl, double m[][])
+    {
+        assert(m.length == 4 && m[0].length == 4);
+
+        double c[] = new double[16];
+        for (int i = 0; i < 4; i++)
+            for (int j = 0; j < 4; j++)
+                c[i*4+j] = m[j][i];
+
+        gl.glMultMatrixd(c, 0);
+    }
+
     public static void pushGLState(GL gl)
     {
         // Horrendous performance penalty here!
