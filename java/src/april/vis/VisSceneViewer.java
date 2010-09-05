@@ -10,7 +10,7 @@ public class VisSceneViewer
     {
         VisCanvas vc = VisSerialize.readVCFromFile(args[0]);
 
-        JFrame jf = new JFrame("VisSnapshot: "+args[0]);
+        JFrame jf = new JFrame("Vis Scene "+args[0]);
         jf.add(vc);
         jf.setSize(640,480);
         jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
