@@ -22,6 +22,8 @@ public class JoglTest
     JFrame          frame;
     GLAutoDrawable  panel;
 
+    ParameterGUI pg = new ParameterGUI();
+
     public static final long serialVersionUID=1001;
 
     static
@@ -38,6 +40,9 @@ public class JoglTest
     {
         frame = new JFrame("Jogl Test");
         frame.setLayout(new BorderLayout());
+
+        pg.addIntSlider("npoints", "Number of points", 1000, 100000, 10000);
+        pg.addIntSlider("batch", "Batch size", 1, 1000, 1);
 
         GLCapabilities caps = new GLCapabilities();
         caps.setHardwareAccelerated(true);
@@ -60,6 +65,7 @@ public class JoglTest
         panel.addGLEventListener(new MyGLEventListener());
 
         frame.add((Component) panel, BorderLayout.CENTER);
+        frame.add(pg, BorderLayout.SOUTH);
 
         frame.setBackground(Color.blue);
         frame.setSize(600,400);
@@ -69,17 +75,9 @@ public class JoglTest
 
         while (true)
         {
-            try {
-                System.in.read();
-            } catch (IOException ex) {
-            }
-
-            npoints += 1000;
             panel.repaint();
         }
     }
-
-    int npoints = 1000;
 
     class MyGLEventListener implements GLEventListener
     {
@@ -90,7 +88,7 @@ public class JoglTest
 
         public void display(GLAutoDrawable drawable)
         {
-            System.out.println("display");
+            Tic tic = new Tic();
 
             GL gl = drawable.getGL();
             GLU glu = new GLU();
@@ -148,17 +146,30 @@ public class JoglTest
 
             Random r = new Random(0);
 
-            System.out.println("npoints: "+npoints);
+            int npoints = pg.gi("npoints");
+            int batch = pg.gi("batch");
+            System.out.print("npoints: "+npoints+" batch: "+batch+" ");
 
-            for (int j = 0 ; j < npoints/180; j++)
-            {
+            while (npoints > 0) {
+                int thisn = npoints;
+                if (thisn > batch)
+                    thisn = batch;
+
+        gl.glPushMatrix();
+
                 gl.glBegin(gl.GL_POINTS);
 
-                for (int i = 0; i < 180; i++)
+                for (int i = 0; i < thisn; i++)
                     gl.glVertex3f(r.nextFloat()-.5f, r.nextFloat()-.5f, r.nextFloat());
 
                 gl.glEnd();
+
+                gl.glPopMatrix();
+
+                npoints -= thisn;
             }
+
+            System.out.printf("%15f ms\n", tic.toc()*1000);
         }
 
         public synchronized void reshape(GLAutoDrawable drawable, int i, int x, int width, int height)
