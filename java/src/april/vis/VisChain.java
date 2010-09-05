@@ -62,21 +62,21 @@ public class VisChain implements VisObject, VisSerializable
                     double p[] = (double[]) os[i+1];
 
                     double T[][] = LinAlg.quatPosToMatrix(q, p);
-                    operations.add(new Matrix(T));
+                    operations.add(T);
                     i+=2;
                 }
                 continue;
             }
 
             if (os[i] instanceof double[][]) {
-                operations.add(new Matrix((double[][]) os[i]));
+                operations.add(os[i]);
                 i++;
                 continue;
             }
 
             if (os[i] instanceof Matrix) {
                 Matrix T = (Matrix) os[i];
-                operations.add(T);
+                operations.add(T.copyArray());
                 i++;
                 continue;
             }
@@ -96,20 +96,28 @@ public class VisChain implements VisObject, VisSerializable
 
     public void render(VisContext vc, GL gl, GLU glu)
     {
+        boolean pushed = false;
+
         for (Object o : operations) {
 
-            if (o instanceof Matrix) {
-                VisUtil.multiplyMatrix(gl, (Matrix) o);
+            if (o instanceof double[][]) {
+                if (!pushed) {
+                    VisUtil.pushGLState(gl);
+                    pushed = true;
+                }
+
+                VisUtil.multiplyMatrix(gl, (double[][]) o);
                 continue;
             }
 
             if (o instanceof VisObject) {
-                VisUtil.pushGLState(gl);
                 VisObject vo = (VisObject) o;
                 vo.render(vc, gl, glu);
-                VisUtil.popGLState(gl);
             }
         }
+
+        if (pushed)
+            VisUtil.popGLState(gl);
     }
 
     public void serialize(LCMDataOutputStream out) throws IOException
@@ -133,9 +141,7 @@ public class VisChain implements VisObject, VisSerializable
             } else {
                 System.out.println(o.getClass().getName()+" is not serializable. Log will not look right");
             }
-
         }
-
     }
 
     public void unserialize(LCMDataInputStream in) throws IOException
