@@ -2,11 +2,14 @@ package april.vis;
 
 import javax.media.opengl.*;
 import javax.media.opengl.glu.*;
-import java.awt.*;
+import com.sun.opengl.util.*;
+
 import april.jmat.geom.*;
 
+import java.awt.*;
 import java.util.*;
 import java.io.*;
+import java.nio.*;
 
 import lcm.lcm.*;
 

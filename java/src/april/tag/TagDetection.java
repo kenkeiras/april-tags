@@ -55,4 +55,10 @@ public class TagDetection
         return new double[] { (homography[0][0]*x + homography[0][1]*y + homography[0][2])/z + hxy[0],
                               (homography[1][0]*x + homography[1][1]*y + homography[1][2])/z + hxy[1]};
     }
+
+    public String toString()
+    {
+        return String.format("[TagDetection code 0x%010x   id=%-5d   errors=%d   position =  (%8.2f,%8.2f) @ %3d deg]",
+                             code, id, hammingDistance, cxy[0], cxy[1], rotation*90);
+    }
 }

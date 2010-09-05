@@ -43,10 +43,6 @@ public class VisSurf implements VisObject
 
     public void render(VisContext vc, GL gl, GLU glu)
     {
-        VisUtil.pushGLWholeState(gl);
-
-        //	gl.glEnable(GL.GL_DEPTH_TEST);
-
         if (true) {
             gl.glBegin(GL.GL_LINES);
 
@@ -99,9 +95,6 @@ public class VisSurf implements VisObject
             }
             gl.glEnd();
         }
-
-
-        VisUtil.popGLWholeState(gl);
     }
 }
 

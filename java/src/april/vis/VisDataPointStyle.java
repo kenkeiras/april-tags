@@ -43,10 +43,8 @@ public class VisDataPointStyle implements VisDataStyle, VisSerializable
                 VisUtil.setColor(gl, c);
 
             gl.glPointSize(size);
-            gl.glDisable(GL.GL_LIGHTING);
 
             DoubleBuffer vertexbuf = vdata.getVertexBuffer();
-            vertexbuf.rewind();
 
             IntBuffer colorbuf = null;
 
@@ -63,14 +61,12 @@ public class VisDataPointStyle implements VisDataStyle, VisSerializable
                 gl.glColorPointer(4, GL.GL_UNSIGNED_BYTE, 0, colorbuf);
             }
 
-            gl.glVertexPointer(3, GL.GL_DOUBLE, 0, vertexbuf);
+            gl.glVertexPointer(3, GL.GL_DOUBLE, 0, vertexbuf.rewind());
             gl.glDrawArrays(GL.GL_POINTS, 0, points.size());
             gl.glDisableClientState(GL.GL_VERTEX_ARRAY);
 
             if (colorbuf != null)
                 gl.glDisableClientState(GL.GL_COLOR_ARRAY);
-
-            gl.glEnable(GL.GL_LIGHTING);
         }
     }
 

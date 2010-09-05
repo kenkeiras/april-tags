@@ -23,6 +23,8 @@ public class VisDepthTest implements VisObject, VisSerializable
 
     public void render(VisContext vc, GL gl, GLU glu)
     {
+        gl.glPushAttrib(gl.GL_ENABLE_BIT);
+
         if (enable)
             gl.glEnable(GL.GL_DEPTH_TEST);
         else
@@ -31,7 +33,7 @@ public class VisDepthTest implements VisObject, VisSerializable
         for (VisObject vo : os)
             vo.render(vc, gl, glu);
 
-        gl.glEnable(GL.GL_DEPTH_TEST);
+        gl.glPopAttrib();
     }
 
     public VisDepthTest()

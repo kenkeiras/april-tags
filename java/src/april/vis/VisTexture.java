@@ -24,6 +24,8 @@ public class VisTexture implements VisSerializable
 
     boolean locked;
     int texids[];
+    GL texidsGL;
+
     boolean mipmap;
     boolean magFilterEnable;
 
@@ -147,12 +149,26 @@ public class VisTexture implements VisSerializable
 
     /** Once a texture has been copied into GL memory, prevent it from
      * being deleted. This is useful if the texture is frequently
-     * redrawn.  NB: It is not currently possible to unlock the
-     * texture.
+     * redrawn.  It is up to the user to unlock the texture; else, a
+     * memory leak (in graphics card memory) occurs.
      **/
     public void lock()
     {
         locked = true;
+    }
+
+    /** When unlocked, the texture will continue to work properly, but
+     * will be re-uploaded to the graphics card every time it is
+     * displayed. **/
+    public void unlock()
+    {
+        if (!locked)
+            return;
+
+        locked = false;
+        texidsGL.glDeleteTextures(1, texids, 0);
+        texids = null;
+        texidsGL = null;
     }
 
     /** Must be called before the texture is rendered, specifically,
@@ -162,7 +178,7 @@ public class VisTexture implements VisSerializable
         this.mipmap = mipmap;
 
         if (mipmap && (!isPowerOfTwo(im.getWidth()) || !isPowerOfTwo(im.getHeight()))) {
-            System.out.println("VisTexture: attempt to enable mipmapping on non power of two texture");
+            System.out.println("VisTexture: attempt to enable mipmapping on non power of two texture. Won't mipmap.");
             mipmap = false;
         }
     }
@@ -182,6 +198,7 @@ public class VisTexture implements VisSerializable
         }
 
         texids = new int[1];
+        texidsGL = gl;
 
         int width = im.getWidth(), height = im.getHeight();
         if (Math.max(width, height) > 4096 && !sizeWarning) {
@@ -237,6 +254,7 @@ public class VisTexture implements VisSerializable
     public void unbindTexture(GL gl)
     {
         gl.glBindTexture(textureTarget, 0);
+        gl.glDisable(textureTarget);
 
         if (locked)
             return;
