@@ -350,6 +350,11 @@ public class VisTexture implements VisSerializable
         ByteArrayInputStream img_in = new ByteArrayInputStream(buf);
         BufferedImage img = javax.imageio.ImageIO.read(img_in);
         init(img, in.readBoolean());
+
+        // the only supported application of loading snapshots is for
+        // reviewing scenes after-the-fact.  might as well lock the
+        // texture down for performance.
+        lock();
     }
 
 }

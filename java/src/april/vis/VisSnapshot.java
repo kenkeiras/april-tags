@@ -17,5 +17,4 @@ public class VisSnapshot
         jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         jf.setVisible(true);
     }
-
 }
