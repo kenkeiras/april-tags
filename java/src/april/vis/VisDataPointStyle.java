@@ -45,7 +45,6 @@ public class VisDataPointStyle implements VisDataStyle, VisSerializable
             gl.glPointSize(size);
 
             DoubleBuffer vertexbuf = vdata.getVertexBuffer();
-            vertexbuf.rewind();
 
             IntBuffer colorbuf = null;
 
