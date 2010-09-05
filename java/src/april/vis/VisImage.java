@@ -108,6 +108,7 @@ public class VisImage implements VisObject, VisSerializable
         out.writeDouble(z);
         out.writeDouble(scale);
         out.writeBoolean(flipy);
+        out.writeInt(modulateColor.getRGB());
     }
 
     public void unserialize(LCMDataInputStream in) throws IOException
@@ -120,6 +121,7 @@ public class VisImage implements VisObject, VisSerializable
         z = in.readDouble();
         scale = in.readDouble();
         flipy = in.readBoolean();
+        modulateColor = new Color(in.readInt(), true);
     }
 
 }

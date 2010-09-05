@@ -123,9 +123,9 @@ public class VisChain implements VisObject, VisSerializable
     public void serialize(LCMDataOutputStream out) throws IOException
     {
         for (Object o : operations) {
-            if (o instanceof Matrix) {
-                out.writeStringZ("Matrix");
-                double mat[][] = ((Matrix)o).copyArray();
+            if (o instanceof double[][]) {
+                out.writeStringZ("double[][]");
+                double mat[][] = (double[][]) o;
                 out.writeInt(mat.length);
                 out.writeInt(mat.length > 0 ? mat[0].length : 0);
                 if (mat.length == 0)
@@ -148,7 +148,7 @@ public class VisChain implements VisObject, VisSerializable
     {
         while (in.available() != 0) {
             String type = in.readStringZ();
-            if (type.equals("Matrix")) {
+            if (type.equals("double[][]")) {
                 int rows = in.readInt();
                 int cols = in.readInt();
                 double mat[][] = new double[rows][cols];
@@ -157,7 +157,7 @@ public class VisChain implements VisObject, VisSerializable
                         mat[r][c] = in.readDouble();
                     }
                 }
-                operations.add(new Matrix(mat));
+                operations.add(mat);
 
             } else if (type.equals("VisSerializable")) {
 
