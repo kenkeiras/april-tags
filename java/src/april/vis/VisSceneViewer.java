@@ -3,10 +3,9 @@ package april.vis;
 import javax.swing.*;
 import java.awt.*;
 
-// Usage:  java april.vis.VisSnapshot <path-to-snapshot>
-public class VisSnapshot
+// Usage:  java april.vis.VisSceneViewer <path-to-snapshot>
+public class VisSceneViewer
 {
-
     public static void main(String args[])
     {
         VisCanvas vc = VisSerialize.readVCFromFile(args[0]);

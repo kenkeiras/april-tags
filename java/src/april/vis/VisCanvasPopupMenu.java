@@ -97,18 +97,18 @@ class VisCanvasPopupMenu extends JPopupMenu
         ///////////// recording
         addSeparator();
 
-        jmi=new JMenuItem("ScreenShot");
+        jmi=new JMenuItem("Save image (.png)");
         jmi.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                screenShot();
+                saveImage();
             }
         });
         add(jmi);
 
-        jmi=new JMenuItem("SnapShot");
+        jmi=new JMenuItem("Save scene (.vsc)");
         jmi.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                snapShot();
+                saveScene();
             }
         });
         add(jmi);
@@ -323,7 +323,7 @@ class VisCanvasPopupMenu extends JPopupMenu
     }
 
     // all we can do is enqueue the request for the next draw.
-    public void screenShot()
+    public void saveImage()
     {
         Calendar c = new GregorianCalendar();
 
@@ -341,7 +341,7 @@ class VisCanvasPopupMenu extends JPopupMenu
         vc.writeScreenShot(new File(path), "png");
     }
 
-    public void snapShot()
+    public void saveScene()
     {
         Calendar c = new GregorianCalendar();
 
@@ -354,7 +354,7 @@ class VisCanvasPopupMenu extends JPopupMenu
                                  c.get(Calendar.MILLISECOND)
             );
 
-        String path = "snp"+s+".vis";
+        String path = "s"+s+".vsc";
 
         VisSerialize.writeVCToFile(vc, path);
     }

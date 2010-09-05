@@ -2,6 +2,7 @@ package april.vis;
 
 import java.io.*;
 import java.util.*;
+import java.util.zip.*;
 import java.lang.reflect.*;
 
 import lcm.lcm.*;
@@ -35,6 +36,7 @@ import april.util.*;
 public class VisSerialize
 {
     static boolean debug = false;
+    static final int DEFAULT_BUFFER_SIZE = 32768;
 
     public static void serialize(VisSerializable o, LCMDataOutputStream out) throws IOException
     {
@@ -84,7 +86,8 @@ public class VisSerialize
         try  {
             LCMDataOutputStream out = serializeVC(vc);
             FileOutputStream fout = new FileOutputStream(filename);
-            fout.write(out.getBuffer(), 0, out.size());
+            byte data[] = compress(out.getBuffer(), 0, out.size());
+            fout.write(data);
             fout.close();
         } catch(IOException e) {
             System.out.println("WRN: Failed to write vc to"+filename+" ex: "+e); e.printStackTrace();
@@ -94,7 +97,6 @@ public class VisSerialize
 
     public static LCMDataOutputStream serializeVC(VisCanvas vc) throws IOException
     {
-
         // Step 1: Get all the objects out
         HashMap<String, ArrayList<VisObject>> fronts = new HashMap<String, ArrayList<VisObject>>();
         // 1a) Copy out all the "front" parts of each Buffer (don't 'lock' vis this whole time)
@@ -149,6 +151,8 @@ public class VisSerialize
             }
             fin.close();
 
+            buffer = uncompress(buffer, null);
+
             LCMDataInputStream in = new LCMDataInputStream(buffer);
 
             return unserializeVC(in);
@@ -189,5 +193,75 @@ public class VisSerialize
             vb.switchBuffer();
         }
         return vc;
+    }
+
+    // Compress an entire byte array
+    public static byte[] compress(byte decompressed[]) throws IOException
+    {
+        return compress(decompressed, 0, decompressed.length);
+    }
+
+    // Compress a section of a byte array
+    public static byte[] compress(byte decompressed[], int start, int len) throws IOException
+    {
+        ByteArrayOutputStream bout = new ByteArrayOutputStream();
+        GZIPOutputStream zout = new GZIPOutputStream(bout);
+
+        zout.write(decompressed, start , len);
+        zout.finish();
+        byte compressed[] = bout.toByteArray();
+        zout.close();
+
+        return compressed;
+    }
+
+    // Decompress from a byte array where the expected output size is
+    // known. If the initial size of 'output' is not sufficient, a
+    // larger array will be created, and returned. Pass 'output' as
+    // null to have the default buffer size used
+    public static byte[] uncompress(byte compressed[], byte output[]) throws IOException
+    {
+        ByteArrayInputStream bin = new ByteArrayInputStream(compressed);
+        GZIPInputStream zin = new GZIPInputStream(bin);
+
+        if (output == null)
+            output = new byte[DEFAULT_BUFFER_SIZE];
+
+        int total = 0; // cumulative count
+        int n = 0; // count from single read
+        while ((n = zin.read(output, total, output.length - total) ) != -1)
+        {
+            total += n;
+
+            // Read forward a small bit to see if we actually need to
+            // expand array If user passes in exactly sized array,
+            // this may not be necessary
+            byte small[] = new byte[1];
+            int smallread = zin.read(small, 0, small.length);
+
+            if (total == output.length && smallread != -1) {
+                // We've got to allocate more
+                byte tmp[] = output;
+                output = new byte[total * 2];
+                System.arraycopy(tmp, 0, output, 0, total);
+
+            }
+
+            if (smallread != -1) {
+                // write in the test read
+                output[total] = small[0];
+                total++;
+            }
+        }
+
+        // If we read exactly the right amount, then we can return now
+        if (total  == output.length)
+            return output;
+
+        // If we didn't exactly fill the buffer, then we need to crop the array
+        byte cropped[] = new byte[total];
+        System.arraycopy(output, 0, cropped, 0, total);
+
+        return cropped;
     }
 }
