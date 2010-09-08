@@ -474,7 +474,10 @@ int main(int argc, char *argv[])
             }
 
             if (channelmap[i] == ';' || channelmap[i+1] == 0) {
-                channelmap[i] = 0; // zero terminate the LCM channel name
+
+                if (channel[i] == ';')
+                    channelmap[i] = 0; // zero terminate the LCM channel name
+
                 if (pair_channel == NULL || strlen(pair_channel)==0) {
                     printf("No channel specified for serial number %s\n", pair_serial);
                 } else {
