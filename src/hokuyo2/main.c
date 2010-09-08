@@ -39,6 +39,7 @@ struct state
 
     timesync_t ts;
 
+    char *channel;
     lcm_t *lcm;
 };
 
@@ -245,7 +246,7 @@ static void on_ME_99(state_t *state, varray_t *response)
         msg.intensities[i] = scip_stream_get_int(&ss, 3) / 4000.0;
     }
 
-    laser_t_publish(state->lcm, getopt_get_string(state->gopt, "channel"), &msg);
+    laser_t_publish(state->lcm, state->channel, &msg);
     watchdog_got_scan = 1;
 
     free(msg.ranges);
@@ -292,7 +293,7 @@ static void on_MD_99(state_t *state, varray_t *response)
             msg.ranges[i] = range_code * 0.001; // convert from mm to meters.
     }
 
-    laser_t_publish(state->lcm, getopt_get_string(state->gopt, "channel"), &msg);
+    laser_t_publish(state->lcm, state->channel, &msg);
     watchdog_got_scan = 1;
 
     if (1) {
@@ -351,7 +352,8 @@ int main(int argc, char *argv[])
 
     getopt_add_bool(state->gopt, 'h',"help", 0,"Show this");
 
-    getopt_add_string(state->gopt, 'c', "channel", "LASER", "LC channel name");
+    getopt_add_string(state->gopt, 'c', "channel", "LASER", "LC channel name (used if channel-map is empty)");
+    getopt_add_string(state->gopt, '\0', "channel-map", "", "serial1=channel1;serial2=channel2;...");
     getopt_add_bool(state->gopt, 'i', "intensities", 0, "Use intensities (reduces angular resolution by half)");
 
     getopt_add_spacer(state->gopt, "");
@@ -449,6 +451,42 @@ int main(int argc, char *argv[])
             printf("delta: %15f, delta rate: %15f, s: %15s\n", (delta - delta0), (delta - delta0) / (t - t0), (char*) vhash_get(state->properties, "TIME"));
 
             usleep(100000);
+        }
+    }
+
+    // pick our LCM channel
+    state->channel = getopt_get_string(state->gopt, "channel");
+    char *channelmap = getopt_get_string(state->gopt, "channel-map");
+
+    // parse a semi-colon delimited list of serial=channel pairs
+    // e.g., 00904100=HOKUYO_FRONT;0091533=HOKUYO_BACK
+    if (channelmap[0] != 0) {
+        char *pair_serial = channelmap;
+        char *pair_channel = NULL;
+
+        char *dev_serial = vhash_get(state->properties, "SERI");
+
+        for (int i = 0; channelmap[i] != 0; i++) {
+            if (channelmap[i] == '=') {
+                channelmap[i] = 0; // terminate the serial number
+                pair_channel = &channelmap[i+1];
+                continue;
+            }
+
+            if (channelmap[i] == ';' || channelmap[i+1] == 0) {
+                channelmap[i] = 0; // zero terminate the LCM channel name
+                if (pair_channel == NULL || strlen(pair_channel)==0) {
+                    printf("No channel specified for serial number %s\n", pair_serial);
+                } else {
+                    printf("%s.%s.\n", pair_serial, pair_channel);
+                    if (!strcmp(pair_serial, dev_serial))
+                        state->channel = strdup(pair_channel);
+                }
+
+                // get ready for the next pair
+                pair_serial = &channelmap[i+1];
+                pair_channel = NULL;
+            }
         }
     }
 
