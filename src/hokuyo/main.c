@@ -296,7 +296,7 @@ static void on_MD_99(state_t *state, varray_t *response)
     laser_t_publish(state->lcm, state->channel, &msg);
     watchdog_got_scan = 1;
 
-    if (1) {
+    if (0) {
         sync_debug_t sd;
         sd.rx_utime = host_utime;
         sd.sensor_time = timestamp;
@@ -487,6 +487,8 @@ int main(int argc, char *argv[])
 
         char *dev_serial = vhash_get(state->properties, "SERI");
 
+        int matched = 0;
+
         for (int i = 0; channelmap[i] != 0; i++) {
             if (channelmap[i] == '=') {
                 channelmap[i] = 0; // terminate the serial number
@@ -502,9 +504,11 @@ int main(int argc, char *argv[])
                 if (pair_channel == NULL || strlen(pair_channel)==0) {
                     printf("No channel specified for serial number %s\n", pair_serial);
                 } else {
-                    printf("%s.%s.\n", pair_serial, pair_channel);
-                    if (!strcmp(pair_serial, dev_serial))
+                    if (!strcmp(pair_serial, dev_serial)) {
+                        printf("Matched serial %s, using channel %s\n", pair_serial, pair_channel);
                         state->channel = strdup(pair_channel);
+                        matched = 1;
+                    }
                 }
 
                 // get ready for the next pair
@@ -512,6 +516,9 @@ int main(int argc, char *argv[])
                 pair_channel = NULL;
             }
         }
+
+        if (!matched)
+            printf("No matching serial number found: using channel %s\n", state->channel);
     }
 
     scip2_set_99_data_handler(state->scip, on_99_data, state);
