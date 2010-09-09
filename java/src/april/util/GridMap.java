@@ -98,6 +98,27 @@ public final class GridMap
         return gm;
     }
 
+    public static GridMap makePixels(double x0, double y0, int width, int height, double metersPerPixel, int defaultFill, byte d[])
+    {
+        GridMap gm = new GridMap();
+
+        gm.x0 = x0;
+        gm.y0 = y0;
+        gm.metersPerPixel = metersPerPixel;
+        gm.defaultFill = (byte) defaultFill;
+
+        // compute pixel dimensions
+        gm.width = width;
+        gm.height = height;
+
+        gm.data = d;
+
+        if (defaultFill != 0)
+            gm.fill(defaultFill);
+
+        return gm;
+    }
+
     // Return a gridmap that contains all of the non-zero pixels, but
     // is (potentially) smaller than the original
     public GridMap crop(boolean roundUpDimensions)
