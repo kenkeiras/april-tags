@@ -103,6 +103,8 @@ public class VisBox implements VisObject, VisSerializable
 
     public void render(VisContext vc, GL gl, GLU glu)
     {
+        gl.glPushMatrix();
+
         gl.glTranslated(cx, cy, cz);
         gl.glScaled(sizex, sizey, sizez);
 
@@ -115,5 +117,7 @@ public class VisBox implements VisObject, VisSerializable
             VisUtil.setColor(gl, linecolor);
             GLUtil.cubeLines(gl);
         }
+
+        gl.glPopMatrix();
     }
 }

@@ -850,7 +850,7 @@ public class VisCanvas extends JPanel implements VisWorldListener,
 
         GRay3D ray = lastView.computeRay(e.getX(), e.getY());
 
-        if (pickingHandler == null) {
+        if (pickingHandler == null && e.getButton() == 1) {
 
             double bestDistance = Double.MAX_VALUE;
             VisCanvasEventHandler bestHandler = null;
