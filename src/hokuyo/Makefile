@@ -6,7 +6,7 @@ LDFLAGS = $(LDFLAGS_DGC) $(LDFLAGS_COMMON) $(LDFLAGS_STD) $(LDFLAGS_GLIB) $(LDFL
 
 HOKUYO_OBJS = scip2.o timesync.o main.o
 
-HOKUYO=$(BIN_PATH)/hokuyo2
+HOKUYO=$(BIN_PATH)/hokuyo
 
 all: $(HOKUYO)
 
