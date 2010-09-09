@@ -330,7 +330,7 @@ static void on_99_data(varray_t *response, void *_a)
     int64_t utime = timestamp_now();
     double dt = (utime - state->last_summary_utime) / 1000000.0;
     if (dt > 1.0) {
-        printf("[hokuyo] scan rate: %.2f Hz    %7.2f kB/s    sync error: %5.3f s    resyncs: %d     devtime: %06x\n",
+        printf("[hokuyo] rate: %.2f Hz  %7.2f kB/s  sync error: %5.3f s  resyncs: %d   devtime: %06x\n",
                (state->scan_count - state->last_scan_count) / dt,
                (state->rx_bytes / dt) / 1024.0,
                state->ts.last_sync_error,
@@ -358,7 +358,7 @@ int main(int argc, char *argv[])
 
     getopt_add_spacer(state->gopt, "");
     getopt_add_string(state->gopt,'d',  "device",          "/dev/ttyACM0",  "Device to connect to");
-
+    getopt_add_bool(state->gopt, '\0', "no-version-check", 0, "Disable firmware version check");
     getopt_add_bool(state->gopt, '\0',"scip-debug", 0,"Show SCIP communications");
     getopt_add_bool(state->gopt, '\0',"time-test", 0, "Measure clock drift");
 
@@ -454,6 +454,27 @@ int main(int argc, char *argv[])
         }
     }
 
+    if (!getopt_get_bool(state->gopt, "no-version-check")) {
+        // expect a version of the form "1.18.01(09/Jul./2010)"
+        int v[3] = { 0, 0, 0};
+        int verspos = 0;
+        char *vers = vhash_get(state->properties, "FIRM");
+        for (int i = 0; verspos < 3 && i < strlen(vers); i++) {
+            char c = vers[i];
+            if (c >= '0' && c <= '9') {
+                v[verspos] *= 10;
+                v[verspos] += (c - '0');
+                continue;
+            }
+            verspos++;
+        }
+
+        if (v[0] <= 1 && v[1] <= 18 && v[2] < 1) {
+            printf("Firmware version too old. Need 1.18.1 or newer.\n");
+            exit(1);
+        }
+    }
+
     // pick our LCM channel
     state->channel = getopt_get_string(state->gopt, "channel");
     char *channelmap = getopt_get_string(state->gopt, "channel-map");
@@ -475,7 +496,7 @@ int main(int argc, char *argv[])
 
             if (channelmap[i] == ';' || channelmap[i+1] == 0) {
 
-                if (channel[i] == ';')
+                if (channelmap[i] == ';')
                     channelmap[i] = 0; // zero terminate the LCM channel name
 
                 if (pair_channel == NULL || strlen(pair_channel)==0) {
