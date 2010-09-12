@@ -9,7 +9,7 @@ import java.util.*;
 import java.io.*;
 
 import lcm.lcm.*;
-/** VisObject that draws a star. **/
+/** VisObject that draws a star, inscribed in a 1.0 meter circle.**/
 public class VisStar implements VisObject, VisSerializable
 {
     //    Color  c = new Color(220, 220, 0);
@@ -19,7 +19,7 @@ public class VisStar implements VisObject, VisSerializable
     int  selectedState; // 0 = none, 1 = hover, 2 = select
 
     double vertices[][];
-    double size = 0.8;
+    double size = 1.0;
     double ratio = 0.4;
 
     public VisStar()

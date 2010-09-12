@@ -98,11 +98,11 @@ public class VisCanvasDefaultEventHandler extends VisCanvasEventAdapter
     public boolean keyPressed(VisCanvas vc, KeyEvent e)
     {
         int code = e.getKeyCode();
-        double dx=0, dy=0, dz=0;
-        double m=0.1;
-        int mods=e.getModifiersEx();
-        boolean shift = (mods&MouseEvent.SHIFT_DOWN_MASK)>0;
-        boolean ctrl = (mods&MouseEvent.CTRL_DOWN_MASK)>0;
+        double dx = 0, dy = 0, dz = 0;
+        double m = 0.1;
+        int mods = e.getModifiersEx();
+        boolean shift = (mods&MouseEvent.SHIFT_DOWN_MASK) > 0;
+        boolean ctrl = (mods&MouseEvent.CTRL_DOWN_MASK) > 0;
         boolean alt = shift & ctrl;
 
         if (alt) {
