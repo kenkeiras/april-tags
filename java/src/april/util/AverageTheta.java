@@ -114,6 +114,18 @@ import april.jmat.*;
  **/
 public class AverageTheta
 {
+    public static double averageThetaChord(double thetas[])
+    {
+        double M = 0, N = 0;
+        for (double t : thetas) {
+            double x0 = Math.cos(t);
+            double y0 = Math.sin(t);
+            M += y0;
+            N += x0;
+        }
+        return Math.atan2(M, N);
+    }
+
     public static double averageThetaChord(List<Double> thetas)
     {
         double M = 0, N = 0;
@@ -126,12 +138,60 @@ public class AverageTheta
         return Math.atan2(M, N);
     }
 
-    public static double averageThetaOptimal(List<Double> thetas)
+
+    public static double averageThetaArc(List<Double> thetas)
     {
         double x[] = new double[thetas.size()];
         int xpos = 0;
         for (double d : thetas)
             x[xpos++] = MathUtil.mod2pi(d); // map to [-PI, PI]
+
+        Arrays.sort(x); // ascending numerical order.
+
+        // compute first and second moments without adding 2PI
+        double A1 = 0, A2 = 0;
+
+        for (int i = 0; i < x.length; i++) {
+            A1 += x[i];
+            A2 += x[i]*x[i];
+        }
+
+        // now, go back through again, converting elements one-by-one
+        // into their +2PI versions, recomputing the error and picking
+        // the best one.
+
+        // initialize with case where all points are the non-2PI
+        // version.
+        double bestError = Double.MAX_VALUE;
+        double bestTheta = -1;
+
+        // note: i=-1 iteration tests case where none are flipped.
+        for (int i = -1; i < x.length; i++) {
+
+            if (i >= 0) {
+                // flip the i'th component into the +2PI version
+                A1 += 2*Math.PI;
+                // A2 += (x[i] + 2*Math.PI)^2 - x[i]*x[i]
+                A2 += 4*Math.PI*x[i] + 4*Math.PI*Math.PI;
+            }
+
+            double theta = A1 / x.length;
+            double error = A2 - 2*A1*theta + x.length*theta*theta;
+
+            if (error < bestError) {
+                bestError = error;
+                bestTheta = theta;
+            }
+        }
+
+        return MathUtil.mod2pi(bestTheta);
+    }
+
+    /** thetas will be modified (sorted) **/
+    public static double averageThetaArc(double x[])
+    {
+        for (int i = 0; i < x.length; i++)
+            x[i] = MathUtil.mod2pi(x[i]); // map to [-PI, PI]
 
         Arrays.sort(x); // ascending numerical order.
 
@@ -185,6 +245,17 @@ public class AverageTheta
         return sqerr / thetas.size();
     }
 
+    /** For a given theta, compute the MSE. A simple O(N) method used for testing. **/
+    public static double computeMSE(double thetas[], double theta)
+    {
+        double sqerr = 0;
+        for (double t : thetas) {
+            double err = MathUtil.mod2pi(t - theta);
+            sqerr += err * err;
+        }
+        return sqerr / thetas.length;
+    }
+
     /**
      * Trying every theta (with a step size of dtheta), find the theta that results in the smallest MSE.
      **/
@@ -207,66 +278,73 @@ public class AverageTheta
     /** Test harness... **/
     public static void main(String args[])
     {
-        ArrayList<Double> thetas = new ArrayList<Double>();
         Random rand = new Random();
-        double chordWorstRatio = 0;
 
-        double dumbTime = 0, chordTime = 0, optimalTime = 0;
+        double dumbTime = 0, chordTime = 0, arcTime = 0;
 
-        int ntrials = 5000;
-        double stddev = 2.0;
-        int npoints = 50000;
+        int ntrials = 500000;
+        int npoints = 50;
 
         boolean verbose = false;
 
-        for (int trial = 0; trial < ntrials; trial++) {
+        double thetas[] = new double[npoints];
 
-            if (trial % 10 == 0)
-                System.out.printf("%8.0f %%\r", 100.0*trial / ntrials);
+        for (double stddev = 0.05; stddev <= Math.PI; stddev += .05) {
 
-            thetas.clear();
-            double offset = MathUtil.mod2pi(2 * Math.PI * rand.nextDouble());
+            double arcErrorSum = 0;
+            double chordErrorSum = 0;
 
-            // add contaminated samples
-            for (int i = 0; i < 100; i++) {
-                thetas.add(offset + stddev * (rand.nextGaussian()));
+            for (int trial = 0; trial < ntrials; trial++) {
+
+//            if (trial % 10 == 0)
+//                System.out.printf("%8.0f %%\r", 100.0*trial / ntrials);
+
+                double offset = MathUtil.mod2pi(2 * Math.PI * rand.nextDouble());
+
+                // add contaminated samples
+                for (int i = 0; i < thetas.length; i++) {
+                    thetas[i] = offset + stddev * rand.nextGaussian();
+                }
+
+                Tic tic = new Tic();
+                double dumb = 0;
+                dumbTime += tic.toctic();
+
+                double chord = averageThetaChord(thetas);
+                chordTime += tic.toctic();
+
+                double arc = averageThetaArc(thetas);
+                arcTime += tic.toctic();
+
+                arcErrorSum += LinAlg.sq(MathUtil.mod2pi(arc - offset));
+                chordErrorSum += LinAlg.sq(MathUtil.mod2pi(chord - offset));
+
+                double dumbError = computeMSE(thetas, dumb);
+                double chordError = computeMSE(thetas, chord);
+                double arcError = computeMSE(thetas, arc);
+
+                if (verbose) {
+                    System.out.printf("Trial %d, Nominal offset: %15f:\n", trial, offset);
+                    System.out.printf("  Arc        : %15f  (mse %15.10f)\n", arc, arcError);
+                    System.out.printf("  Brute force: %15f  (mse %15.10f)\n", dumb, dumbError);
+                    System.out.printf("  Chord      : %15f  (mse %15.10f)\n", chord, chordError);
+                }
+
             }
 
-            // add uniform noise everywhere
-            for (int i = 0; i < npoints; i++) {
-                thetas.add(2 * Math.PI * rand.nextDouble());
-            }
-
-            Tic tic = new Tic();
-            double dumb = averageThetaBruteForce(thetas, Math.toRadians(0.1));
-            dumbTime += tic.toctic();
-
-            double chord = averageThetaChord(thetas);
-            chordTime += tic.toctic();
-
-            double optimal = averageThetaOptimal(thetas);
-            optimalTime += tic.toctic();
-
-            double dumbError = computeMSE(thetas, dumb);
-            double chordError = computeMSE(thetas, chord);
-            double optimalError = computeMSE(thetas, optimal);
-
-            if (verbose) {
-                System.out.printf("Trial %d, Nominal offset: %15f:\n", trial, offset);
-                System.out.printf("  Optimal    : %15f  (mse %15.10f)\n", optimal, optimalError);
-                System.out.printf("  Brute force: %15f  (mse %15.10f)\n", dumb, dumbError);
-                System.out.printf("  Chord      : %15f  (mse %15.10f)\n", chord, chordError);
-            }
-
-            assert(optimalError < dumbError && optimalError < chordError);
-            chordWorstRatio = Math.max(chordWorstRatio, chordError / optimalError);
+            System.out.printf("%15f %15.10f %15.10f\n",
+                              stddev,
+                              Math.sqrt(arcErrorSum / ntrials),
+                              Math.sqrt(chordErrorSum / ntrials));
         }
-
+/*
         System.out.printf("chord: worst error (ratio): %15f\n", chordWorstRatio);
 
+        System.out.printf(" Arc %15f  Chord %15f\n", arcErrorSum / ntrials, chordErrorSum / ntrials);
 
-        System.out.printf(" Optimal %15f ms/iter\n", 1000.0*optimalTime / ntrials);
+        System.out.printf(" Arc %15f ms/iter\n", 1000.0*arcTime / ntrials);
         System.out.printf(" Brute   %15f ms/iter\n", 1000.0*dumbTime / ntrials);
         System.out.printf(" Chord   %15f ms/iter\n", 1000.0*chordTime / ntrials);
+*/
     }
 }

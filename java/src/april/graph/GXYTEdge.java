@@ -186,6 +186,7 @@ public class GXYTEdge extends GEdge
         lin.R[2] = MathUtil.mod2pi(lin.R[2]);
 
         lin.W = getW();
+
         return lin;
     }
 }
