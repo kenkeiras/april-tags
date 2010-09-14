@@ -23,10 +23,10 @@ public class DijkstraProjection
 {
     int refpose;
 
-    // The best rigid body constraint to each node in the graph from refpos
+    // The best edge to each node in the graph from refpos
     ArrayList<GXYTEdge> projection;
 
-    // For each node in the graph, all of the rigid body constraints
+    // For each node in the graph, all of the edges
     // that lead away from it.
     ArrayList<ArrayList<GXYTEdge>> nodeEdges;
 
@@ -54,7 +54,7 @@ public class DijkstraProjection
         this.neededNodes = neededNodes;
 
         ///////////////////////////////////////////////////////////
-        // Build a table of constraints for each node.
+        // Build a table of edges for each node.
         // We'll use this for the breadth-first search
         nodeEdges = new ArrayList<ArrayList<GXYTEdge>>();
         while (nodeEdges.size() < g.nodes.size())
@@ -95,7 +95,7 @@ public class DijkstraProjection
         while (heap.size() > 0) {
             GXYTEdge ge = heap.removeMax();
 
-            // every constraint must be with respect to the reference pose...
+            // every edge must be with respect to the reference pose...
             assert(ge.nodes[0] == refpose);
 
             // already have a (better) projection for this node?
@@ -103,7 +103,7 @@ public class DijkstraProjection
             if (projection.get(ge.nodes[1]) != null)
                 continue;
 
-            // this constraint is a keeper, let's expand from here.
+            // this edge is a keeper, let's expand from here.
             projection.set(ge.nodes[1], ge);
 
             if (neededNodes != null) {
@@ -142,7 +142,7 @@ public class DijkstraProjection
         }
     }
 
-    public GXYTEdge getConstraint(int node)
+    public GXYTEdge getEdge(int node)
     {
         return projection.get(node);
     }

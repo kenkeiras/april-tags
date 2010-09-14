@@ -229,13 +229,13 @@ public class VisCanvasDefaultEventHandler extends VisCanvasEventAdapter
             case KeyEvent.VK_PAGE_DOWN:
                 zoom( shift ? ZOOM_FAST : ZOOM_SLOW);
                 consumed = true;
-                vc.draw();
+                vc.drawNow();
                 break;
 
             case KeyEvent.VK_PAGE_UP:
                 zoom( shift ? 1.0/ZOOM_FAST : 1.0/ZOOM_SLOW);
                 consumed = true;
-                vc.draw();
+                vc.drawNow();
                 break;
 
             case KeyEvent.VK_F1:
@@ -561,7 +561,7 @@ public class VisCanvasDefaultEventHandler extends VisCanvasEventAdapter
         // the signs are tricky and confusing.
         windowSpacePanTo(view, mp, e.getX(), e.getY(), false);
 
-        vc.draw();
+        vc.drawNow();
 
         return true;
     }
