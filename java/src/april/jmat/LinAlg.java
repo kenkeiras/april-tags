@@ -1138,6 +1138,8 @@ public final class LinAlg
         q = LinAlg.normalize(q);
 
         double aa[] = new double[4];
+
+        // be polite: return an angle from [-pi, pi]
         aa[0] = MathUtil.mod2pi(2*Math.acos(q[0]));
         double s = Math.sin(aa[0] / 2); //Math.sqrt(1 - q[0]*q[0]);
         if (s != 0) {
@@ -1915,6 +1917,9 @@ public final class LinAlg
           }
           }
         */
+        LinAlg.print(rollPitchYawToQuat(new double[] {1+0, 0, 0}));
+        LinAlg.print(rollPitchYawToQuat(new double[] {1+2*Math.PI, 0, 0}));
+
 
         for (int i = 0; i < 100; i++) {
             double q[] = angleAxisToQuat(r.nextDouble()*2*Math.PI,
@@ -2205,5 +2210,56 @@ public final class LinAlg
 */
 
         return new double[] { x[0], x[1], chi2 };
+    }
+
+
+    /** Given a line going through xyz with direction dir, where does
+     * it intersect the plane with normal 'normal' and that goes
+     * through point 'p'?
+     *
+     * dir and normal should be unit vectors. All are 3x1
+     *
+     * Returns the distance from xyz (in direction 'dir') where the
+     * collision occurs. Returns positive or negative result,
+     * depending on which way the plane is. Returns MAX_VALUE if the
+     * denominator is exactly zero.
+     **/
+    public static double rayCollisionPlane(double xyz[], double dir[], double normal[], double p[])
+    {
+        // see e.g.: http://local.wasp.uwa.edu.au/~pbourke/geometry/planeline/
+        double tmp[] = LinAlg.subtract(p, xyz);
+        double numer = LinAlg.dotProduct(normal, tmp);
+        double denom = LinAlg.dotProduct(normal, dir);
+
+        if (denom == 0)
+            return Double.MAX_VALUE;
+
+        return numer / denom;
+    }
+
+    /** compute the distance from xyz (in the direction dir) until it
+     * collides with an axis-aligned box with dimensions sxyz,
+     * centered at the origin. **/
+    public static double rayCollisionBox(double xyz[], double dir[], double sxyz[])
+    {
+        double u0 = -Double.MAX_VALUE;
+        double u1 = Double.MAX_VALUE;
+
+        // for what values of dist would the x coordinate be in range?
+        for (int i = 0; i < 3; i++) {
+            double a = (sxyz[i]/2 - xyz[i]) / dir[i];
+            double b = (-sxyz[i]/2 - xyz[i]) / dir[i];
+
+            u0 = Math.max(u0, Math.min(a, b));
+            u1 = Math.min(u1, Math.max(a, b));
+        }
+
+        if (u1 < u0)
+            return -1; // no intersection
+
+        if (u0 < 0) // intersection is in the opposite direction
+            return -1;
+
+        return u0;
     }
 }
