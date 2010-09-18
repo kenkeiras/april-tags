@@ -11,13 +11,13 @@ public class ExpiringMessageCache<T>
         this.maxAge = maxAge;
     }
 
-    public void put(T t, long utime)
+    public synchronized void put(T t, long utime)
     {
         this.t = t;
         this.utime = utime;
     }
 
-    public T get()
+    public synchronized T get()
     {
         if (t == null)
             return null;
