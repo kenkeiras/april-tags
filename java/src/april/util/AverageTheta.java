@@ -276,7 +276,7 @@ public class AverageTheta
     }
 
     /** Test harness... **/
-    public static void main(String args[])
+    public static void main2(String args[])
     {
         Random rand = new Random();
 
@@ -347,4 +347,50 @@ public class AverageTheta
         System.out.printf(" Chord   %15f ms/iter\n", 1000.0*chordTime / ntrials);
 */
     }
+
+    public static void main(String args[])
+    {
+        Random rand = new Random();
+
+        double dumbTime = 0, chordTime = 0, arcTime = 0;
+
+        int ntrials = 5000;
+
+        boolean verbose = false;
+
+        double stddev = 0.5;
+
+        for (int npoints = 10; npoints < 1000000; npoints *= 2) {
+            double thetas[] = new double[npoints];
+
+            double arcErrorSum = 0;
+            double chordErrorSum = 0;
+
+            for (int trial = 0; trial < ntrials; trial++) {
+
+//            if (trial % 10 == 0)
+//                System.out.printf("%8.0f %%\r", 100.0*trial / ntrials);
+
+                double offset = MathUtil.mod2pi(2 * Math.PI * rand.nextDouble());
+
+                // add contaminated samples
+                for (int i = 0; i < thetas.length; i++) {
+                    thetas[i] = offset + stddev * rand.nextGaussian();
+                }
+
+                Tic tic = new Tic();
+
+                double chord = averageThetaChord(thetas);
+                chordTime += tic.toctic();
+
+                double arc = averageThetaArc(thetas);
+                arcTime += tic.toctic();
+
+                arcErrorSum += LinAlg.sq(MathUtil.mod2pi(arc - offset));
+                chordErrorSum += LinAlg.sq(MathUtil.mod2pi(chord - offset));
+            }
+            System.out.printf("%10d %15f %15f\n", npoints, 1000.0*arcTime/ ntrials, 1000.0*chordTime/ ntrials);
+        }
+    }
+
 }
