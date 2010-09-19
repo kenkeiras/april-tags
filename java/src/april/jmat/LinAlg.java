@@ -2249,7 +2249,7 @@ public final class LinAlg
         for (int i = 0; i < 3; i++) {
             if (dir[i] == 0) {
                 if (Math.abs(xyz[i]) > sxyz[i]/2)
-                    return -1;
+                    return Double.MAX_VALUE;
                 continue;
             }
 

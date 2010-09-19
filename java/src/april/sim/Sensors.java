@@ -51,7 +51,7 @@ public class Sensors
     {
         double ranges[] = new double[nranges];
 
-        double eye[] = new double[] { T[0][2], T[1][2], T[2][2] };
+        double eye[] = new double[] { T[0][3], T[1][3], T[2][3] };
         double R[][] = LinAlg.copy(T);
         R[0][3] = 0;
         R[1][3] = 0;

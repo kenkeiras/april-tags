@@ -8,8 +8,8 @@ import java.io.*;
 public interface SimObject
 {
     /** If starting at a vector xyz and traveling in unit direction
-     * dir, when will the first collision occur? Return less than zero
-     * if there is no collision.
+     * dir, when will the first collision occur? Return MAX_VALUE if
+     * no collision.
      **/
     public double collisionRay(double p[], double dir[]);
 

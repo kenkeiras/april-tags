@@ -30,7 +30,7 @@ public class SimSphere implements SimObject
 
     public double collisionRay(double p[], double dir[])
     {
-        // direction from p to center of circle
+        // unit vector from p to center of circle
         double e[] = LinAlg.normalize(LinAlg.subtract(xyz, p));
 
         // cosine of theta between dir and vector that would lead to
@@ -49,7 +49,7 @@ public class SimSphere implements SimObject
 
         // no collision
         if (B*B - 4*A*C < 0)
-            return -1;
+            return Double.MAX_VALUE;
 
         return (-B - Math.sqrt(B*B - 4 * A * C)) / (2*A);
     }
@@ -83,9 +83,9 @@ public class SimSphere implements SimObject
     public static void main(String args[])
     {
         SimSphere so = new SimSphere();
-        so.xyz = new double[] { 0, 0, 0 };
+        so.xyz = new double[] { 5, 5, 0 };
         so.r = 1;
 
-        System.out.println(so.collisionRay(new double[] { -2, 0, 0 }, LinAlg.normalize(new double[] { 2, 1, 0})));
+        System.out.println(so.collisionRay(new double[] { 2, 0, 0 }, LinAlg.normalize(new double[] { 1, 1, 0})));
     }
 }
