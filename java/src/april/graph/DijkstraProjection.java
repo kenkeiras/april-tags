@@ -60,21 +60,35 @@ public class DijkstraProjection
         while (nodeEdges.size() < g.nodes.size())
             nodeEdges.add(new ArrayList<GXYTEdge>());
 
+        // we handle GXYTPosEdges by introducing an additional
+        // GXYTNode which connects those edges. We add this node to
+        // the end of the graph.
+        int posidx = g.nodes.size(); // index of our "extra" node.
+        nodeEdges.add(new ArrayList<GXYTEdge>());
+
         for (GEdge _ge : g.edges) {
             if (_ge instanceof GXYTEdge) {
                 GXYTEdge ge = (GXYTEdge) _ge;
                 nodeEdges.get(ge.nodes[0]).add(ge);
                 nodeEdges.get(ge.nodes[1]).add(ge);
+            } else if (_ge instanceof GXYTPosEdge) {
+                GXYTPosEdge gpe = (GXYTPosEdge) _ge;
+                GXYTEdge ge = new GXYTEdge();
+                ge.nodes = new int[] { posidx, gpe.nodes[0] }; // XXX backwards???
+                ge.z = gpe.z;
+                ge.P = gpe.P;
+                nodeEdges.get(gpe.nodes[0]).add(ge);
+                nodeEdges.get(posidx).add(ge);
             }
         }
 
         ///////////////////////////////////////////////////////////
         // allocate the projection datastructure
         projection = new ArrayList<GXYTEdge>();
-        while (projection.size() < g.nodes.size())
+        while (projection.size() < nodeEdges.size())
             projection.add(null);
 
-        heap = new MaxHeap<GXYTEdge>(g.nodes.size());
+        heap = new MaxHeap<GXYTEdge>(nodeEdges.size());
 
         ///////////////////////////////////////////////////////////
         // Initialize the search by expanding the first node
