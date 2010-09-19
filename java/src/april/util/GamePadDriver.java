@@ -6,23 +6,20 @@ import april.lcmtypes.*;
 
 public class GamePadDriver
 {
-    GamePad gp;
-    LCM lcm;
-
     public static void main(String args[])
     {
-        GamePadDriver gpd = new GamePadDriver();
-        gpd.run();
-    }
+        GetOpt gopt = new GetOpt();
+        gopt.addString('c', "channel", "GAMEPAD", "LCM channel to send on");
+        gopt.addBoolean('h', "help", false, "Show this help");
 
-    public GamePadDriver()
-    {
-        gp = new GamePad(true);
-        lcm = LCM.getSingleton();
-    }
+        if (!gopt.parse(args) || gopt.getBoolean("help")) {
+            gopt.doHelp();
+            System.exit(1);
+        }
 
-    public void run()
-    {
+        GamePad gp = new GamePad(true);
+        LCM lcm = LCM.getSingleton();
+
         boolean gotPress = false;
         long oldTime = 0;
 
@@ -48,7 +45,7 @@ public class GamePadDriver
 
             msg.present = gp.isPresent();
 
-            lcm.publish("GAMEPAD", msg);
+            lcm.publish(gopt.getString("channel"), msg);
         }
     }
 }
