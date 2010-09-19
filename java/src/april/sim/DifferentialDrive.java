@@ -37,6 +37,11 @@ public class DifferentialDrive
     SimWorld sw;
     HashSet<SimObject> ignore;
 
+    Random r = new Random();
+
+    public double translation_noise = 0.1;
+    public double rotation_noise = 0.05;
+
     /** ignore: a set of objects that will not be used for collision
      * detection. Typically, this includes the robot itself. **/
     public DifferentialDrive(SimWorld sw, HashSet<SimObject> ignore, double init_xyt[])
@@ -48,6 +53,8 @@ public class DifferentialDrive
         poseTruth.orientation = LinAlg.rollPitchYawToQuat(new double[] {0, 0, init_xyt[2]});
 
         poseOdom = poseTruth.copy();
+        poseOdom.pos = new double[3];
+        poseOdom.orientation = LinAlg.rollPitchYawToQuat(new double[3]);
 
         new RunThread().start();
     }
@@ -60,41 +67,51 @@ public class DifferentialDrive
         leftMotor.update(dt);
         rightMotor.update(dt);
 
-        // temporarily make poseTruth point to center of
-        // rotation. (we'll undo this at the end)
-        double pos[] = LinAlg.add(poseTruth.pos, LinAlg.quatRotate(poseTruth.orientation, centerOfRotation));
+        // temporarily make poseTruth point to center of rotation. (we'll undo this at the end)
+        double pos_truth[] = LinAlg.add(poseTruth.pos, LinAlg.quatRotate(poseTruth.orientation, centerOfRotation));
+        double pos_odom[]  = LinAlg.add(poseOdom.pos, LinAlg.quatRotate(poseOdom.orientation, centerOfRotation));
 
         double left_rad_per_sec = leftMotor.getRadPerSec();
         double right_rad_per_sec = rightMotor.getRadPerSec();
 
-        double dleft = dt * left_rad_per_sec * wheelDiameter;
+        double dleft  = dt * left_rad_per_sec * wheelDiameter;
         double dright = dt * right_rad_per_sec * wheelDiameter;
 
-        double dl = (dleft + dright) / 2;
-        double dtheta = (dright - dleft) / baseline;
+        double dl_truth = (dleft + dright) / 2;
+        double dtheta_truth = (dright - dleft) / baseline;
 
-        double dpos[] = LinAlg.quatRotate(poseTruth.orientation, new double[] { dl, 0, 0 });
-        double dquat[] = LinAlg.rollPitchYawToQuat(new double[] {0, 0, dtheta});
+        double dl_odom = dl_truth + translation_noise*r.nextGaussian()*Math.abs(dl_truth);
+        double dtheta_odom = dtheta_truth + rotation_noise*r.nextGaussian()*Math.abs(dtheta_truth);
 
-        double newpos[] = LinAlg.add(pos, dpos);
-        double neworient[] = LinAlg.quatMultiply(poseTruth.orientation, dquat);
+        double dpos_truth[]  = LinAlg.quatRotate(poseTruth.orientation, new double[] { dl_truth, 0, 0 });
+        double dquat_truth[] = LinAlg.rollPitchYawToQuat(new double[] {0, 0, dtheta_truth});
+
+        double dpos_odom[] = LinAlg.quatRotate(poseOdom.orientation, new double[] { dl_odom, 0, 0 });
+        double dquat_odom[] = LinAlg.rollPitchYawToQuat(new double[] {0, 0, dtheta_odom});
+
+        double newpos_truth[] = LinAlg.add(pos_truth, dpos_truth);
+        double neworient_truth[] = LinAlg.quatMultiply(poseTruth.orientation, dquat_truth);
+
+        double newpos_odom[] = LinAlg.add(pos_odom, dpos_odom);
+        double neworient_odom[] = LinAlg.quatMultiply(poseOdom.orientation, dquat_odom);
 
         // go back to rear axle
-        newpos = LinAlg.add(newpos, LinAlg.quatRotate(neworient, LinAlg.scale(centerOfRotation, -1)));
+        newpos_truth = LinAlg.add(newpos_truth, LinAlg.quatRotate(neworient_truth, LinAlg.scale(centerOfRotation, -1)));
+        newpos_odom = LinAlg.add(newpos_odom, LinAlg.quatRotate(neworient_odom, LinAlg.scale(centerOfRotation, -1)));
 
         // only accept movements that don't run into things
-//        if (!world.isCollision(LinAlg.add(newpos, LinAlg.quatRotate(poseTruth.orientation, centerOfCollisionSphere)), collisionRadius)) {
-        if (sw.collisionSphere(LinAlg.add(newpos, LinAlg.quatRotate(neworient, centerOfCollisionSphere)), ignore) > collisionRadius) {
-            poseTruth.pos = newpos;
-            poseTruth.orientation = neworient;
+        if (sw.collisionSphere(LinAlg.add(newpos_truth, LinAlg.quatRotate(neworient_truth, centerOfCollisionSphere)), ignore) > collisionRadius) {
+            poseTruth.pos = newpos_truth;
+            poseTruth.orientation = neworient_truth;
 
-            // XXX: Implement some slippage.
-            poseOdom.pos = LinAlg.copy(poseTruth.pos);
-            poseOdom.orientation = LinAlg.copy(poseTruth.orientation);
+            // if the robot can't detect a collision, we would update
+            // poseOdom every time; move the next two lines outside
+            // the if statement.
+            poseOdom.pos = newpos_odom;
+            poseOdom.orientation = neworient_odom;
         }
 
         poseTruth.utime = TimeUtil.utime();
-
         poseOdom.utime = poseTruth.utime;
     }
 
