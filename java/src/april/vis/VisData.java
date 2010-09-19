@@ -40,21 +40,16 @@ public class VisData implements VisObject, VisSerializable
             if (o == null)
                 continue;
 
-            if (o instanceof VisDataStyle)
+            if (o instanceof VisDataStyle) {
                 styles.add((VisDataStyle) o);
-
-            if(o instanceof double[][]) {
+            } else if (o instanceof double[][]) {
                 double [][] l = (double[][])o;
                 for(int j = 0; j < l.length; j++){
                     points.add(l[j]);
                 }
-            }
-
-            if (o instanceof double[]) {
+            } else if (o instanceof double[]) {
                 points.add((double[]) o);
-            }
-
-            if (o instanceof ArrayList) {
+            } else if (o instanceof ArrayList) {
                 ArrayList al = (ArrayList) o;
 
                 points.ensureCapacity(points.size() + al.size());
@@ -65,6 +60,8 @@ public class VisData implements VisObject, VisSerializable
                     assert (p instanceof double[]);
                     points.add((double[]) p);
                 }
+            } else {
+                System.out.println("VisData: Unknown type "+o);
             }
         }
         vertexbuf = null;
