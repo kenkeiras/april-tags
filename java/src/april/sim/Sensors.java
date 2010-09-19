@@ -52,9 +52,13 @@ public class Sensors
         double ranges[] = new double[nranges];
 
         double eye[] = new double[] { T[0][2], T[1][2], T[2][2] };
+        double R[][] = LinAlg.copy(T);
+        R[0][3] = 0;
+        R[1][3] = 0;
+        R[2][3] = 0;
 
         for (int i = 0; i < ranges.length; i++) {
-            double dir[] = LinAlg.transform(T, new double[] { Math.cos(rad0 + i*radstep),
+            double dir[] = LinAlg.transform(R, new double[] { Math.cos(rad0 + i*radstep),
                                                               Math.sin(rad0 + i*radstep),
                                                               0 });
             ranges[i] = w.collisionRay(eye, dir, ignore);

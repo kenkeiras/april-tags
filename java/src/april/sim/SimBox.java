@@ -9,7 +9,7 @@ import april.jmat.*;
 public class SimBox implements SimObject
 {
     public double xyz[];  // position
-    public double t;      // orientation
+    public double t;      // orientation (yaw)
     public double sxyz[]; // size
     public Color color = Color.gray;
 
@@ -48,13 +48,29 @@ public class SimBox implements SimObject
 
     public double collisionRay(double p[], double dir[])
     {
-        if (t != 0) {
-            double R[][] = LinAlg.rotateZ(-t);
-            p = LinAlg.transform(R, p);
-            dir = LinAlg.transform(R, dir);
+        // transform the query so that the box is at the origin and axis aligned.
+        if (false) {
+            double T[][] = LinAlg.matrixAB(LinAlg.rotateZ(-t),
+                                           LinAlg.translate(-xyz[0], -xyz[1], -xyz[2]));
+            p = LinAlg.transform(T, p);
+            T[0][3] = 0;
+            T[1][3] = 0;
+            T[2][3] = 0;
+
+            dir = LinAlg.transform(T, dir);
+        } else {
+
+            double s = Math.sin(-t), c = Math.cos(-t);
+            p = new double[] { c*(p[0]-xyz[0]) - s*(p[1]-xyz[1]),
+                               s*(p[0]-xyz[0]) + c*(p[1]-xyz[1]),
+                               p[2] - xyz[2] };
+
+            dir = new double[] { c*dir[0] - s*dir[1],
+                                 s*dir[0] + c*dir[1],
+                                 dir[2] };
         }
 
-        return LinAlg.rayCollisionBox(xyz, dir, sxyz);
+        return LinAlg.rayCollisionBox(p, dir, sxyz);
     }
 
     public void write(BufferedWriter outs) throws IOException
@@ -88,5 +104,14 @@ public class SimBox implements SimObject
         return new VisChain(LinAlg.translate(xyz[0], xyz[1], xyz[2]),
                             LinAlg.rotateZ(t),
                             new VisBox(sxyz[0], sxyz[1], sxyz[2], color));
+    }
+
+    public static void main(String args[])
+    {
+        SimBox sb = new SimBox(new double[] {5,5,0}, 0, new double[] { 1, 1, 1}, Color.black);
+
+        System.out.println(sb.collisionRay(new double[] {-0, 0, 0}, LinAlg.normalize(new double[] { 1, 1, 0})));
+        System.out.println(sb.collisionRay(new double[] {-0, 1.1, 0}, LinAlg.normalize(new double[] { 1, 1, 0})));
+        System.out.println(sb.collisionRay(new double[] {10, 5, 0}, LinAlg.normalize(new double[] { -1, 0, 0})));
     }
 }
