@@ -2239,26 +2239,34 @@ public final class LinAlg
 
     /** compute the distance from xyz (in the direction dir) until it
      * collides with an axis-aligned box with dimensions sxyz,
-     * centered at the origin. **/
+     * centered at the origin. MAX_VALUE is returned if there is no collision. **/
     public static double rayCollisionBox(double xyz[], double dir[], double sxyz[])
     {
         double u0 = -Double.MAX_VALUE;
         double u1 = Double.MAX_VALUE;
 
-        // for what values of dist would the x coordinate be in range?
+        // for what values of dist would each coordinate be in range?
         for (int i = 0; i < 3; i++) {
+            if (dir[i] == 0) {
+                if (Math.abs(xyz[i]) > sxyz[i]/2)
+                    return -1;
+                continue;
+            }
+
             double a = (sxyz[i]/2 - xyz[i]) / dir[i];
             double b = (-sxyz[i]/2 - xyz[i]) / dir[i];
+
+//            System.out.printf("%4d %15f %15f\n", i, a, b);
 
             u0 = Math.max(u0, Math.min(a, b));
             u1 = Math.min(u1, Math.max(a, b));
         }
 
         if (u1 < u0)
-            return -1; // no intersection
+            return Double.MAX_VALUE; // no intersection
 
         if (u0 < 0) // intersection is in the opposite direction
-            return -1;
+            return Double.MAX_VALUE;
 
         return u0;
     }
