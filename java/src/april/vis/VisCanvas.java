@@ -113,6 +113,9 @@ public class VisCanvas extends JPanel implements VisWorldListener,
         canvas.addMouseWheelListener(this);
         canvas.addKeyListener(this);
 
+        // allow us to capture tab and shift-tab events, instead of cycling through text fields.
+        ((Component) canvas).setFocusTraversalKeysEnabled(false);
+
         defaultEventHandler = new VisCanvasDefaultEventHandler(this);
         addEventHandler(defaultEventHandler, -1);
 
