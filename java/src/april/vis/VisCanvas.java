@@ -404,20 +404,22 @@ public class VisCanvas extends JPanel implements VisWorldListener,
                 double bestDistance = Double.MAX_VALUE;
                 VisCanvasEventHandler bestHandler = null;
 
-                for (VisCanvasEventHandler eh : eventHandlers) {
-                    double dist = eh.hoverQuery(VisCanvas.this, ray);
-                    if (dist < 0)
-                        continue;
+                synchronized(eventHandlers) {
+                    for (VisCanvasEventHandler eh : eventHandlers) {
+                        double dist = eh.hoverQuery(VisCanvas.this, ray);
+                        if (dist < 0)
+                            continue;
 
-                    if (dist < bestDistance) {
-                        bestDistance = dist;
-                        bestHandler = eh;
+                        if (dist < bestDistance) {
+                            bestDistance = dist;
+                            bestHandler = eh;
+                        }
                     }
-                }
 
-                hoveringHandler = bestHandler;
-                for (VisCanvasEventHandler eh : eventHandlers)
-                    eh.hoverNotify(eh == hoveringHandler);
+                    hoveringHandler = bestHandler;
+                    for (VisCanvasEventHandler eh : eventHandlers)
+                        eh.hoverNotify(eh == hoveringHandler);
+                }
             }
 
             /////// Update status text
