@@ -111,9 +111,16 @@ public class Graph
      * indices for the nodes. The nodes themselves are not copied. **/
     public ArrayList<Graph> getConnectedComponents()
     {
-        UnionFindSimple uf = new UnionFindSimple(nodes.size());
+        // create an extra node for those edges which implicitly
+        // connect to the coordinate frame (e.g. GXYTPosEdge)
+        int common_node = nodes.size();
+        UnionFindSimple uf = new UnionFindSimple(nodes.size()+1);
 
         for (GEdge ge : edges) {
+
+            if (ge.nodes.length == 1)
+                uf.connectNodes(ge.nodes[0], common_node);
+
             for (int i = 0; i < ge.nodes.length; i++)
                 for (int j = i+1; j < ge.nodes.length; j++)
                     uf.connectNodes(ge.nodes[i], ge.nodes[j]);
