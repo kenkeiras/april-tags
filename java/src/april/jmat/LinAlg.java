@@ -1085,19 +1085,19 @@ public final class LinAlg
     }
 
     /** convert x,y,theta vector to a 4x4 matrix **/
-    public static Matrix xytToMatrix(double xyt[])
+    public static double[][] xytToMatrix(double xyt[])
     {
         assert(xyt.length==3);
 
-        Matrix M = Matrix.identity(4,4);
+        double M[][] = identity(4);
         double s = Math.sin(xyt[2]), c = Math.cos(xyt[2]);
-        M.set(0,0, c);
-        M.set(0,1, -s);
-        M.set(0,3, xyt[0]);
+        M[0][0] = c;
+        M[0][1] = -s;
+        M[0][3] = xyt[0];
 
-        M.set(1,0, s);
-        M.set(1,1, c);
-        M.set(1,3, xyt[1]);
+        M[1][0] = s;
+        M[1][1] = c;
+        M[1][3] = xyt[1];
 
         return M;
     }
