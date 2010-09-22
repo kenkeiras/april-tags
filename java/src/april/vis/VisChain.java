@@ -37,7 +37,7 @@ public class VisChain implements VisObject, VisSerializable
     // consisting of several one-dimensional doubles.
     public void add(double M[][])
     {
-        operations.add(new Matrix(M));
+        operations.add(M);
     }
 
     public void add(Object ... os)
@@ -54,7 +54,7 @@ public class VisChain implements VisObject, VisSerializable
 
                 double tmp[] = (double[]) os[i];
                 if (tmp.length==6) {
-                    operations.add(new Matrix(LinAlg.xyzrpyToMatrix(tmp)));
+                    operations.add(LinAlg.xyzrpyToMatrix(tmp));
                     i++;
                 } else {
                     assert(i+1 < os.length);
