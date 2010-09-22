@@ -1,17 +1,17 @@
 package april.sim;
 
-import java.util.*;
+import java.awt.*;
 import java.io.*;
+import java.util.*;
 
-import april.util.*;
 import april.vis.*;
+import april.jmat.*;
+import april.util.*;
 
-/** File format: Each object is written as a group of lines. The first
-    line is always the class name, and the last line is always an
-    asterisk by itself. The lines between are the arguments of the
-    object. **/
 public class SimWorld
 {
+    public GPSLinearize gpslin = new GPSLinearize(new double[] { 44.22, 83.75 });
+
     public ArrayList<SimObject> objects = new ArrayList<SimObject>();
 
     public SimWorld()
@@ -20,84 +20,72 @@ public class SimWorld
 
     public SimWorld(String path) throws IOException
     {
-        BufferedReader ins = new BufferedReader(new FileReader(path));
+        StructureReader ins = new TextStructureReader(new BufferedReader(new FileReader(path)));
 
-        ArrayList<String> lines = new ArrayList<String>();
-        String line;
-        while ((line = ins.readLine()) != null) {
-            // skip empty lines
-            String tline = line.trim();
-            if (tline.startsWith("#") || tline.length()==0)
-                continue;
+        ins.blockBegin();
+        gpslin.read(ins);
+        ins.blockEnd();
 
-            if (!line.equals("*")) {
-                lines.add(line);
-                continue;
-            }
+        while (true) {
+            String cls = ins.readString();
 
-            if (lines.size() > 0) {
-                String cls = lines.get(0);
-                ByteArrayOutputStream bouts = new ByteArrayOutputStream();
-                BufferedWriter outs = new BufferedWriter(new OutputStreamWriter(bouts));
+            if (cls == null) // EOF?
+                break;
 
-                for (int i = 1; i < lines.size(); i++)
-                    outs.write(lines.get(i)+"\n");
-
-                outs.flush();
-
-                ByteArrayInputStream bins = new ByteArrayInputStream(bouts.toByteArray());
-                SimObject obj = (SimObject) ReflectUtil.createObject(cls);
-                if (obj != null) {
-                    obj.read(new BufferedReader(new InputStreamReader(bins)));
-                    objects.add(obj);
+            try {
+                SimObject so = createObject(this, cls);
+                if (so != null) {
+                    ins.blockBegin();
+                    so.read(ins);
+                    objects.add(so);
+                    ins.blockEnd();
                 }
-
-                lines.clear();
+            } catch (Exception ex) {
+                System.out.println("ex: "+ex);
             }
         }
+
+        ins.close();
     }
 
-    public double collisionSphere(double p[], HashSet<SimObject> ignore)
+    public static SimObject createObject(SimWorld sw, String cls)
     {
-        double r = Double.MAX_VALUE;
+        try {
+            Object obj = Class.forName(cls).getConstructor(SimWorld.class).newInstance(sw);
+            assert (obj instanceof SimObject);
+            SimObject so = (SimObject) obj;
+            return so;
 
-        for (int i = 0; i < objects.size(); i++) {
-            SimObject obj = objects.get(i);
-            if (ignore != null && ignore.contains(obj))
-                continue;
-
-            r = Math.min(r, obj.collisionSphere(p));
+        } catch (Exception ex) {
+            System.out.println("ex: "+ex);
         }
 
-        return r;
+        return null;
     }
 
-    public double collisionRay(double p[], double dir[], HashSet<SimObject> ignore)
+    public void write(String path) throws IOException
     {
-        double r = Double.MAX_VALUE;
-
-        for (int i = 0; i < objects.size(); i++) {
-            SimObject obj = objects.get(i);
-            if (ignore != null && ignore.contains(obj))
-                continue;
-
-            r = Math.min(r, obj.collisionRay(p, dir));
-        }
-
-        return r;
+        FileWriter outs = new FileWriter(path);
+        write(new BufferedWriter(outs));
+        outs.close();
     }
 
-    public void save(String path) throws IOException
+    public void write(BufferedWriter _outs) throws IOException
     {
-        BufferedWriter outs = new BufferedWriter(new FileWriter(path));
+        StructureWriter outs = new TextStructureWriter(_outs);
 
-        for (SimObject obj : objects) {
-            outs.write(obj.getClass().getName()+"\n");
-            obj.write(outs);
-            outs.write("*\n");
+        outs.writeComment("GPSLinearize");
+        outs.blockBegin();
+        gpslin.write(outs);
+        outs.blockEnd();
+
+        for (SimObject so : objects) {
+            outs.writeString(so.getClass().getName());
+            outs.blockBegin();
+            so.write(outs);
+            outs.blockEnd();
         }
 
-        outs.flush();
         outs.close();
     }
 }

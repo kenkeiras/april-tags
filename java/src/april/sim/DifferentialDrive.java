@@ -22,11 +22,7 @@ public class DifferentialDrive
 
     // The position of the robot's center of rotation with respect to
     // the rear axle.
-    public double centerOfRotation[] = new double[] { 0.13, 0, 0 };
-
-    // Used to implement collision detection. The robot is modeled as a sphere.
-    public double centerOfCollisionSphere[] = new double[] { 0.14, 0, .2};
-    public double collisionRadius = 0.38;
+    public double centerOfRotation[] = new double[] { 0, 0, 0 };
 
     // [left, right], where each motor is [-1,1]
     public double motorCommands[] = new double[2];
@@ -34,20 +30,19 @@ public class DifferentialDrive
     public double wheelDiameter = 0.25; // diameter of wheels (m)
     public double baseline = 0.35; // distance between left and right wheels (m)
 
-    SimWorld sw;
-    HashSet<SimObject> ignore;
-
-    Random r = new Random();
-
     public double translation_noise = 0.1;
     public double rotation_noise = 0.05;
 
+    SimWorld sw;
+    SimObject simobj; // object representing the robot
+    Random r = new Random();
+
     /** ignore: a set of objects that will not be used for collision
      * detection. Typically, this includes the robot itself. **/
-    public DifferentialDrive(SimWorld sw, HashSet<SimObject> ignore, double init_xyt[])
+    public DifferentialDrive(SimWorld sw, SimObject simobj, double init_xyt[])
     {
         this.sw = sw;
-        this.ignore = ignore;
+        this.simobj = simobj;
 
         poseTruth.pos = new double[] { init_xyt[0], init_xyt[1], 0};
         poseTruth.orientation = LinAlg.rollPitchYawToQuat(new double[] {0, 0, init_xyt[2]});
@@ -100,7 +95,21 @@ public class DifferentialDrive
         newpos_odom = LinAlg.add(newpos_odom, LinAlg.quatRotate(neworient_odom, LinAlg.scale(centerOfRotation, -1)));
 
         // only accept movements that don't run into things
-        if (sw.collisionSphere(LinAlg.add(newpos_truth, LinAlg.quatRotate(neworient_truth, centerOfCollisionSphere)), ignore) > collisionRadius) {
+        boolean okay = true;
+        synchronized(sw) {
+            for (SimObject so : sw.objects) {
+                if (so==simobj)
+                    continue;
+                if (Collisions.collision(so.getShape(), so.getPose(),
+                                         simobj.getShape(), LinAlg.quatPosToMatrix(neworient_truth, newpos_truth))) {
+                    okay = false;
+                    break;
+                }
+            }
+        }
+
+        if (okay) {
+
             poseTruth.pos = newpos_truth;
             poseTruth.orientation = neworient_truth;
 

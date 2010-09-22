@@ -25,7 +25,7 @@ public class VisConsole
     static final String INPUT_STYLE = "<<blue, mono-large>>";
     static final String OLD_INPUT_STYLE = "<<gray, mono-large>>";
     static final String OUTPUT_STYLE = "<<black, mono-large>>";
-    static final String COMPLETION_STYLE = "<<green, mono-large>>";
+    static final String COMPLETION_STYLE = "<<#000077, mono-large>>";
 
     static class Line
     {

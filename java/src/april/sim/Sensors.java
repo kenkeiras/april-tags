@@ -33,6 +33,8 @@ public class Sensors
                 voc.setSize(width, height);
             }
 
+            voc.setWorld(vw);
+
             VisView view = voc.getViewManager().viewGoal;
             view.zclip_near = 0.1;
             view.perspective_fovy_degrees = fovy_degrees;
@@ -45,9 +47,9 @@ public class Sensors
         }
     }
 
-    public static double[] laser(SimWorld w, HashSet<SimObject> ignore,
+    public static double[] laser(SimWorld sw, HashSet<SimObject> ignore,
                                  double T[][],
-                                 int nranges, double rad0, double radstep)
+                                 int nranges, double rad0, double radstep, double maxrange)
     {
         double ranges[] = new double[nranges];
 
@@ -57,11 +59,20 @@ public class Sensors
         R[1][3] = 0;
         R[2][3] = 0;
 
-        for (int i = 0; i < ranges.length; i++) {
-            double dir[] = LinAlg.transform(R, new double[] { Math.cos(rad0 + i*radstep),
-                                                              Math.sin(rad0 + i*radstep),
-                                                              0 });
-            ranges[i] = w.collisionRay(eye, dir, ignore);
+        synchronized(sw) {
+            for (int i = 0; i < ranges.length; i++) {
+                double dir[] = LinAlg.transform(R, new double[] { Math.cos(rad0 + i*radstep),
+                                                                  Math.sin(rad0 + i*radstep),
+                                                                  0 });
+
+                ranges[i] = maxrange;
+                for (SimObject so : sw.objects) {
+                    if (ignore.contains(so))
+                        continue;
+
+                    ranges[i] = Math.min(ranges[i], Collisions.collisionDistance(eye, dir, so.getShape(), so.getPose()));
+                }
+            }
         }
 
         return ranges;

@@ -19,9 +19,7 @@ import lcm.lcm.*;
  **/
 public class VisChain implements VisObject, VisSerializable
 {
-
     ArrayList<Object> operations = new ArrayList<Object>();
-
 
     public VisChain()
     {
@@ -37,7 +35,7 @@ public class VisChain implements VisObject, VisSerializable
     // consisting of several one-dimensional doubles.
     public void add(double M[][])
     {
-        operations.add(M);
+        operations.add(LinAlg.copy(M));
     }
 
     public void add(Object ... os)
@@ -69,7 +67,7 @@ public class VisChain implements VisObject, VisSerializable
             }
 
             if (os[i] instanceof double[][]) {
-                operations.add(os[i]);
+                operations.add(LinAlg.copy((double[][]) os[i]));
                 i++;
                 continue;
             }
