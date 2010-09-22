@@ -8,6 +8,9 @@ import java.io.*;
 // An object in our world model
 public interface SimObject
 {
+    // SimObjects must have a creator taking a SimWorld object.
+    // SimObject(SimWorld sw);
+
     /** Where is the object? (4x4 matrix) **/
     public double[][] getPose();
     public void setPose(double T[][]);

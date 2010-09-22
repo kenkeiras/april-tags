@@ -57,7 +57,6 @@ public class Collisions
         // project the sphere's center into the box's coordinate system.
         double T[][] = LinAlg.matrixAB(LinAlg.inverse(Ta), Tb);
 
-        LinAlg.print(sa.sxyz);
         // how far away are we?
         double ex = Math.max(0, Math.abs(T[0][3]) - sa.sxyz[0]/2);
         double ey = Math.max(0, Math.abs(T[1][3]) - sa.sxyz[1]/2);
@@ -127,7 +126,32 @@ public class Collisions
         if (B*B - 4*A*C < 0)
             return Double.MAX_VALUE;
 
-        return (-B - Math.sqrt(B*B - 4 * A * C)) / (2*A);
+        double x1 = (-B - Math.sqrt(B*B - 4 * A * C)) / (2*A);
+        if (x1 >= 0)
+            return x1;
+
+        double x2 = (-B + Math.sqrt(B*B - 4 * A * C)) / (2*A);
+        if (x2 >= 0)
+            return x2;
+
+        return Double.MAX_VALUE;
+    }
+
+    public static double collisionDistance(double pos[], double dir[], CompoundShape s, double T[][])
+    {
+        double d = Double.MAX_VALUE;
+
+        for (Object op : s.ops) {
+            if (op instanceof double[][]) {
+                T = LinAlg.matrixAB(T, (double[][]) op);
+            } else if (op instanceof Shape) {
+                d = Math.min(d, collisionDistance(pos, dir, (Shape) op, T));
+            } else {
+                System.out.println(op);
+                assert(false);
+            }
+        }
+        return d;
     }
 
     public static double collisionDistance(double pos[], double dir[], BoxShape s, double T[][])
@@ -135,7 +159,7 @@ public class Collisions
         double Tinv[][] = LinAlg.inverse(T);
 
         pos = LinAlg.transform(Tinv, pos);
-        dir = LinAlg.transformRotateOnly(Tinv, pos);
+        dir = LinAlg.transformRotateOnly(Tinv, dir);
 
         return LinAlg.rayCollisionBox(pos, dir, s.sxyz);
     }

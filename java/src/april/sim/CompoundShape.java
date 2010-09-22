@@ -32,15 +32,4 @@ public class CompoundShape implements Shape
             i++;
         }
     }
-
-/*
-    public double collisionRay(double p[], double dir[])
-    {
-    }
-
-    public boolean collision(Shape s, double T[][])
-    {
-
-    }
-*/
 }

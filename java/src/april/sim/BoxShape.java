@@ -45,8 +45,4 @@ public class BoxShape implements Shape
         return bs;
     }
 
-    public double collisionRay(double p[], double dir[])
-    {
-        return LinAlg.rayCollisionBox(p, dir, sxyz);
-    }
 }

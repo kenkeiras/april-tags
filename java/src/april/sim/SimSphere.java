@@ -7,13 +7,13 @@ import april.vis.*;
 import april.jmat.*;
 import april.util.*;
 
-public class SimBox implements SimObject
+public class SimSphere implements SimObject
 {
     double T[][];  // position
-    double sxyz[]; // size
-    Color  color = Color.gray;
+    double r = 1.0;  // radius
+    Color color = Color.gray;
 
-    public SimBox(SimWorld sw)
+    public SimSphere(SimWorld sw)
     {
     }
 
@@ -29,12 +29,12 @@ public class SimBox implements SimObject
 
     public Shape getShape()
     {
-        return new BoxShape(sxyz);
+        return new SphereShape(r);
     }
 
     public VisObject getVisObject()
     {
-        return new VisBox(sxyz[0], sxyz[1], sxyz[2], color);
+        return new VisSphere(r, color);
     }
 
     /** Restore state that was previously written **/
@@ -43,7 +43,7 @@ public class SimBox implements SimObject
         double xyzrpy[] = ins.readDoubles();
         this.T = LinAlg.xyzrpyToMatrix(xyzrpy);
 
-        this.sxyz = ins.readDoubles();
+        this.r = ins.readDouble();
 
         double c[] = ins.readDoubles();
         this.color = new Color((float) c[0], (float) c[1], (float) c[2], (float) c[3]);
@@ -54,7 +54,7 @@ public class SimBox implements SimObject
     public void write(StructureWriter outs) throws IOException
     {
         outs.writeDoubles(LinAlg.matrixToXyzrpy(T));
-        outs.writeDoubles(sxyz);
+        outs.writeDouble(r);
         float f[] = color.getRGBComponents(null);
         outs.writeDoubles(LinAlg.copyDoubles(f));
     }

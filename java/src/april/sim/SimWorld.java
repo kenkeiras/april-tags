@@ -10,6 +10,8 @@ import april.util.*;
 
 public class SimWorld
 {
+    public GPSLinearize gpslin = new GPSLinearize(new double[] { 44.22, 83.75 });
+
     public ArrayList<SimObject> objects = new ArrayList<SimObject>();
 
     public SimWorld()
@@ -20,23 +22,45 @@ public class SimWorld
     {
         StructureReader ins = new TextStructureReader(new BufferedReader(new FileReader(path)));
 
+        ins.blockBegin();
+        gpslin.read(ins);
+        ins.blockEnd();
+
         while (true) {
             String cls = ins.readString();
 
             if (cls == null) // EOF?
                 break;
 
-            Object obj = ReflectUtil.createObject(cls);
-            assert (obj instanceof SimObject);
-            SimObject so = (SimObject) obj;
-
-            ins.blockBegin();
-            so.read(ins);
-            objects.add(so);
-            ins.blockEnd();
+            try {
+                SimObject so = createObject(this, cls);
+                if (so != null) {
+                    ins.blockBegin();
+                    so.read(ins);
+                    objects.add(so);
+                    ins.blockEnd();
+                }
+            } catch (Exception ex) {
+                System.out.println("ex: "+ex);
+            }
         }
 
         ins.close();
+    }
+
+    public static SimObject createObject(SimWorld sw, String cls)
+    {
+        try {
+            Object obj = Class.forName(cls).getConstructor(SimWorld.class).newInstance(sw);
+            assert (obj instanceof SimObject);
+            SimObject so = (SimObject) obj;
+            return so;
+
+        } catch (Exception ex) {
+            System.out.println("ex: "+ex);
+        }
+
+        return null;
     }
 
     public void write(String path) throws IOException
@@ -49,6 +73,11 @@ public class SimWorld
     public void write(BufferedWriter _outs) throws IOException
     {
         StructureWriter outs = new TextStructureWriter(_outs);
+
+        outs.writeComment("GPSLinearize");
+        outs.blockBegin();
+        gpslin.write(outs);
+        outs.blockEnd();
 
         for (SimObject so : objects) {
             outs.writeString(so.getClass().getName());

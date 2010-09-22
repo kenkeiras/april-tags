@@ -14,8 +14,8 @@ public class ReflectUtil
             Object o = cls.getConstructor().newInstance();
             return o;
         } catch (Exception ex) {
-            System.out.println("ReflectUtil.createObject ex: "+ex);
-            ex.printStackTrace();
+//            System.out.println("ReflectUtil.createObject ex: "+ex);
+//            ex.printStackTrace();
             return null;
         }
     }

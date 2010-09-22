@@ -14,7 +14,12 @@ import april.jmat.*;
 import april.vis.*;
 import april.jmat.geom.*;
 
-public class WorldEditor implements ParameterListener, VisConsole.Listener
+import lcm.util.*;
+
+import javax.media.opengl.*;
+import javax.media.opengl.glu.*;
+
+public class Simulator implements VisConsole.Listener
 {
     JFrame jf;
     VisWorld vw = new VisWorld();
@@ -25,19 +30,17 @@ public class WorldEditor implements ParameterListener, VisConsole.Listener
 
     static final double MIN_SIZE = 0.25;
 
-    ParameterGUI pg = new ParameterGUI();
+    String simObjectClass = "april.sim.SimBox";
+    SimObject selectedObject = null;
+    FindSimObjects finder = new FindSimObjects();
 
-    public WorldEditor(SimWorld world)
+    public Simulator(SimWorld world)
     {
         this.world = world;
 
-        pg.addButtons("save", "save");
-        pg.addListener(this);
-
-        jf = new JFrame("WorldEditor");
+        jf = new JFrame("Simulator");
         jf.setLayout(new BorderLayout());
         jf.add(vc, BorderLayout.CENTER);
-        jf.add(pg, BorderLayout.SOUTH);
 
         jf.setSize(800,600);
         jf.setVisible(true);
@@ -45,6 +48,12 @@ public class WorldEditor implements ParameterListener, VisConsole.Listener
         vc.addEventHandler(new MyEventHandler());
 
         vw.getBuffer("grid").addFront(new VisGrid());
+
+        if (true) {
+            VisWorld.Buffer vb = vw.getBuffer("SimWorld");
+            vb.addBuffered(new VisSimWorld());
+            vb.switchBuffer();
+        }
 
         console.addListener(this);
         draw();
@@ -62,10 +71,28 @@ public class WorldEditor implements ParameterListener, VisConsole.Listener
                 path = toks[1];
             try {
                 world.write(path);
+                out.printf("Done");
             } catch (IOException ex) {
                 out.println("ex: "+ex);
             }
             return true;
+        }
+
+        if (toks[0].equals("class")) {
+            if (toks.length==2) {
+                SimObject sobj = SimWorld.createObject(world, simObjectClass);
+
+                if (sobj != null) {
+                    simObjectClass = toks[1];
+                    out.printf("Done");
+                } else {
+                    out.printf("Unknown or invalid class name: "+toks[1]+"\n");
+                }
+                return true;
+            } else {
+                out.printf("usage: class <classname>\n");
+                return true;
+            }
         }
 
         out.printf("Unknown command");
@@ -80,18 +107,9 @@ public class WorldEditor implements ParameterListener, VisConsole.Listener
         for (String s: cs)
             as.add(s);
 
+        for (String s : finder.classes)
+            as.add("class "+s);
         return as;
-    }
-
-    public void parameterChanged(ParameterGUI pg, String name)
-    {
-        if (name.equals("save")) {
-            try {
-                world.write("/tmp/world.world");
-            } catch (IOException ex) {
-                System.out.println("ex: "+ex);
-            }
-        }
     }
 
     public static void main(String args[])
@@ -106,22 +124,64 @@ public class WorldEditor implements ParameterListener, VisConsole.Listener
             }
         }
 
-        WorldEditor editor = new WorldEditor(world);
+        Simulator editor = new Simulator(world);
+    }
+
+    class VisSimWorld implements VisObject
+    {
+        public void render(VisContext vc, GL gl, GLU glu)
+        {
+            synchronized(world) {
+                for (SimObject obj : world.objects) {
+                    VisChain v = new VisChain(obj.getPose(), obj.getVisObject());
+                    v.render(vc, gl, glu);
+                }
+            }
+        }
     }
 
     void draw()
     {
-        VisWorld.Buffer vb = vw.getBuffer("rects");
-        for (SimObject obj : world.objects) {
-            vb.addBuffered(obj.getVisObject());
+        if (false) {
+            VisWorld.Buffer vb = vw.getBuffer("objects");
+
+            synchronized(world) {
+                for (SimObject obj : world.objects) {
+                    vb.addBuffered(new VisChain(obj.getPose(),
+                                                obj.getVisObject()));
+                }
+            }
+
+            vb.switchBuffer();
         }
-        vb.switchBuffer();
+
+        if (true) {
+            VisWorld.Buffer vb = vw.getBuffer("collide-info");
+
+            if (selectedObject != null) {
+                // does this object now collide with anything else?
+                boolean collide = false;
+
+                synchronized(world) {
+                    for (SimObject so : world.objects) {
+                        if (so != selectedObject && Collisions.collision(so.getShape(), so.getPose(),
+                                                                         selectedObject.getShape(), selectedObject.getPose())) {
+                            collide = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (collide)
+                    vb.addBuffered(new VisText(VisText.ANCHOR.BOTTOM_RIGHT, "<<blue>>Collision"));
+            }
+
+            vb.switchBuffer();
+        }
     }
 
     class MyEventHandler extends VisCanvasEventAdapter
     {
-        SimObject selectedObject = null;
-
         double sz = 1;
         Color color = Color.gray;
 
@@ -157,12 +217,18 @@ public class WorldEditor implements ParameterListener, VisConsole.Listener
 
             double xy[] = ray.intersectPlaneXY();
             if (ctrl) {
+                double T[][] = selectedObject.getPose();
+
                 if (selectedObject instanceof SimBox) {
                     // resize
                     SimBox sb = (SimBox) selectedObject;
-                    double T[][] = selectedObject.getPose();
                     sb.sxyz[0] = Math.max(MIN_SIZE, 2*Math.abs(xy[0] - T[0][3]));
                     sb.sxyz[1] = Math.max(MIN_SIZE, 2*Math.abs(xy[1] - T[1][3]));
+                } else if (selectedObject instanceof SimSphere) {
+                    SimSphere s = (SimSphere) selectedObject;
+
+                    s.r = Math.max(MIN_SIZE, Math.sqrt(LinAlg.sq(xy[0] - T[0][3]) +
+                                                       LinAlg.sq(xy[1] - T[1][3])));
                 }
             } else if (shift) {
                 // rotate
@@ -219,13 +285,20 @@ public class WorldEditor implements ParameterListener, VisConsole.Listener
                 if (selectedObject != null && selectedObject instanceof SimBox) {
                     ((SimBox) selectedObject).color = color;
                     draw();
+                } else if (selectedObject != null && selectedObject instanceof SimSphere) {
+                    ((SimSphere) selectedObject).color = color;
+                    draw();
                 }
+
 
                 return true;
             }
 
             if (selectedObject != null && (e.getKeyCode()==KeyEvent.VK_DELETE || e.getKeyCode()==KeyEvent.VK_BACK_SPACE)) {
-                world.objects.remove(selectedObject);
+                synchronized(world) {
+                    world.objects.remove(selectedObject);
+                }
+
                 selectedObject = null;
                 draw();
                 return true;
@@ -244,28 +317,38 @@ public class WorldEditor implements ParameterListener, VisConsole.Listener
             double xy[] = ray.intersectPlaneXY();
 
             if (ctrl) {
-                selectedObject = new SimBox();
+                // create a new object
+                selectedObject = SimWorld.createObject(world, simObjectClass);
+
                 double T[][] = LinAlg.identity(4);
                 T[0][3] = xy[0];
                 T[1][3] = xy[1];
                 T[2][3] = sz/2;
                 selectedObject.setPose(T);
 
-                ((SimBox) selectedObject).sxyz = new double[] { 1, 1, sz };
-                ((SimBox) selectedObject).color = color;
+                if (selectedObject instanceof SimBox) {
+                    ((SimBox) selectedObject).sxyz = new double[] { 1, 1, sz };
+                    ((SimBox) selectedObject).color = color;
+                }
 
-                world.objects.add(selectedObject);
+                synchronized(world) {
+                    world.objects.add(selectedObject);
+                }
 
             } else {
-                for (SimObject obj : world.objects) {
-                    if (obj instanceof SimBox) {
-                        SimBox r = (SimBox) obj;
+                // select an existing object
+                double bestd = Double.MAX_VALUE;
 
-                        if (Collisions.collision(r.getShape(), new CompoundShape(LinAlg.translate(xy[0], xy[1], 0),
-                                                                                 new SphereShape(0.1)))) {
-                            selectedObject = r;
-                            break;
-                        }
+                for (SimObject obj : world.objects) {
+
+                    double d = Collisions.collisionDistance(ray.getSource(), ray.getDir(), obj.getShape(), obj.getPose());
+
+                    boolean b = Collisions.collision(obj.getShape(), obj.getPose(),
+                                                     new SphereShape(0.1), LinAlg.translate(xy[0], xy[1], 0));
+
+                    if (d < bestd) {
+                        selectedObject = obj;
+                        bestd = d;
                     }
                 }
 
@@ -278,5 +361,27 @@ public class WorldEditor implements ParameterListener, VisConsole.Listener
             return true;
         }
     }
-}
 
+    class FindSimObjects implements lcm.util.ClassDiscoverer.ClassVisitor
+    {
+        ArrayList<String> classes = new ArrayList<String>();
+
+        public FindSimObjects()
+        {
+            ClassDiscoverer.findClasses(this);
+        }
+
+        public void classFound(String jarfile, Class cls)
+        {
+            boolean good = false;
+
+            for (Class c : cls.getInterfaces()) {
+                if (c.equals(SimObject.class))
+                    good = true;
+            }
+
+            if (good)
+                classes.add(cls.getName());
+        }
+    }
+}
