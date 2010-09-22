@@ -37,7 +37,9 @@ public class SimWorld
                 if (so != null) {
                     ins.blockBegin();
                     so.read(ins);
-                    objects.add(so);
+                    synchronized(this) {
+                        objects.add(so);
+                    }
                     ins.blockEnd();
                 }
             } catch (Exception ex) {
