@@ -1,27 +1,29 @@
 package april.sim;
 
 import april.vis.*;
+import april.util.*;
 
 import java.io.*;
 
 // An object in our world model
 public interface SimObject
 {
-    /** If starting at a vector xyz and traveling in unit direction
-     * dir, when will the first collision occur? Return MAX_VALUE if
-     * no collision.
+    /** Where is the object? (4x4 matrix) **/
+    public double[][] getPose();
+    public void setPose(double T[][]);
+
+    /** What is the shape of this object? (Relative to the origin)**/
+    public Shape getShape();
+
+    /** What does the object LOOK like? (should be drawn at the
+     * origin).
      **/
-    public double collisionRay(double p[], double dir[]);
-
-    /** What is the minimum-sized sphere that collides with the object? **/
-    public double collisionSphere(double p[]);
-
     public VisObject getVisObject();
 
     /** Restore state that was previously written **/
-    public void read(BufferedReader ins) throws IOException;
+    public void read(StructureReader ins) throws IOException;
 
     /** Write one or more lines that serialize this instance. No line
      * is allowed to consist of just an asterisk. **/
-    public void write(BufferedWriter outs) throws IOException;
+    public void write(StructureWriter outs) throws IOException;
 }
