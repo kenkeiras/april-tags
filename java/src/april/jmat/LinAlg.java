@@ -1140,12 +1140,13 @@ public final class LinAlg
         double aa[] = new double[4];
 
         // be polite: return an angle from [-pi, pi]
-        aa[0] = MathUtil.mod2pi(2*Math.acos(q[0]));
-        double s = Math.sin(aa[0] / 2); //Math.sqrt(1 - q[0]*q[0]);
-        if (s != 0) {
-            aa[1] = q[1] / s;
-            aa[2] = q[2] / s;
-            aa[3] = q[3] / s;
+        // use atan2 to be 4-quadrant safe
+        double mag = Math.sqrt(q[1]*q[1] + q[2]*q[2] + q[3]*q[3]);
+        aa[0] = MathUtil.mod2pi(2 * Math.atan2(mag, q[0]));
+        if (mag != 0) {
+            aa[1] = q[1] / mag;
+            aa[2] = q[2] / mag;
+            aa[3] = q[3] / mag;
         } else {
             aa[1] = 1;
             aa[2] = 0;

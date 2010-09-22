@@ -67,7 +67,7 @@ public class VisChain implements VisObject, VisSerializable
             }
 
             if (os[i] instanceof double[][]) {
-                operations.add(os[i]);
+                operations.add(LinAlg.copy((double[][]) os[i]));
                 i++;
                 continue;
             }
