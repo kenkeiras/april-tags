@@ -98,6 +98,22 @@ public final class GridMap
         return gm;
     }
 
+    public static GridMap makePixels(double x0, double y0, BufferedImage im, double metersPerPixel, int defaultFill)
+    {
+        int width = im.getWidth();
+        int height = im.getHeight();
+
+        byte d[] = new byte[width*height];
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int argb = im.getRGB(x, y);
+                d[y*width+x] = (byte) ((argb >> 8) & 0xff);
+            }
+        }
+
+        return makePixels(x0, y0, width, height, metersPerPixel, defaultFill, d);
+    }
+
     public static GridMap makePixels(double x0, double y0, int width, int height, double metersPerPixel, int defaultFill, byte d[])
     {
         GridMap gm = new GridMap();

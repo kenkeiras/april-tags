@@ -3,7 +3,7 @@ package april.util;
 import java.util.*;
 
 /** Max heap that holds integers. **/
-public class IntMaxHeap
+public final class IntMaxHeap
 {
     int objs[];
     double scores[];
