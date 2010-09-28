@@ -36,9 +36,12 @@ public class Collisions
 
     public static boolean collision(CompoundShape sa, double Ta[][], Shape _sb, double Tb[][])
     {
+        Ta = LinAlg.copy(Ta);
+
         for (Object op : sa.ops) {
             if (op instanceof double[][]) {
-                Ta = LinAlg.matrixAB(Ta, (double[][]) op);
+                LinAlg.timesEquals(Ta, (double[][]) op);
+                //Ta = LinAlg.matrixAB(Ta, (double[][]) op);
             } else if (op instanceof Shape) {
                 if (Collisions.collision((Shape) op, Ta, _sb, Tb))
                     return true;
@@ -141,9 +144,12 @@ public class Collisions
     {
         double d = Double.MAX_VALUE;
 
+        T = LinAlg.copy(T);
+
         for (Object op : s.ops) {
             if (op instanceof double[][]) {
-                T = LinAlg.matrixAB(T, (double[][]) op);
+//                T = LinAlg.matrixAB(T, (double[][]) op);
+                LinAlg.timesEquals(T, (double[][]) op);
             } else if (op instanceof Shape) {
                 d = Math.min(d, collisionDistance(pos, dir, (Shape) op, T));
             } else {

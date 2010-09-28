@@ -55,6 +55,8 @@ public class Simulator implements VisConsole.Listener
             vb.switchBuffer();
         }
 
+        vc.setTargetFPS(5);
+
         console.addListener(this);
         draw();
     }
@@ -80,11 +82,11 @@ public class Simulator implements VisConsole.Listener
 
         if (toks[0].equals("class")) {
             if (toks.length==2) {
-                SimObject sobj = SimWorld.createObject(world, simObjectClass);
+                SimObject sobj = SimWorld.createObject(world, toks[1]);
 
                 if (sobj != null) {
                     simObjectClass = toks[1];
-                    out.printf("Done");
+                    out.printf("Class set\n");
                 } else {
                     out.printf("Unknown or invalid class name: "+toks[1]+"\n");
                 }
@@ -260,7 +262,6 @@ public class Simulator implements VisConsole.Listener
                 if (selectedObject != null && selectedObject instanceof SimBox) {
                     SimBox sb = (SimBox) selectedObject;
                     sb.sxyz[2] = sz;
-                    sb.T[2][3] = sz / 2;
                     draw();
                 }
 

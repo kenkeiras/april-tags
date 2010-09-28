@@ -13,11 +13,6 @@ public class CompoundShape implements Shape
         add(os);
     }
 
-    public void add(double M[][])
-    {
-        ops.add(LinAlg.copy(M));
-    }
-
     public void add(Object ... os)
     {
         int i = 0;
@@ -28,8 +23,28 @@ public class CompoundShape implements Shape
                 continue;
             }
 
-            ops.add(os[i]);
+            if (os[i] instanceof double[][])
+                add((double[][]) os[i]);
+            else
+                ops.add(os[i]);
+
             i++;
         }
+    }
+
+    private void add(double M[][])
+    {
+        // if more than one rigid-body transformation in a row,
+        // pre-multiply them together.
+        if (ops.size() > 0) {
+            Object o = ops.get(ops.size()-1);
+            if (o instanceof double[][]) {
+                ops.set(ops.size()-1, LinAlg.matrixAB((double[][]) o, M));
+                System.out.println("compact");
+                return;
+            }
+        }
+
+        ops.add(M);
     }
 }

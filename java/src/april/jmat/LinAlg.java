@@ -295,6 +295,34 @@ public final class LinAlg
         return X;
     }
 
+    // optimized for 4x4 case.
+    public static void timesEquals(double a[][], double b[][])
+    {
+        assert(a[0].length==b.length);
+        assert(a.length == b[0].length);
+
+        if (a.length == 4 && a[0].length == 4) {
+            double t0, t1, t2, t3;
+
+            for (int i = 0; i < a.length; i++) {
+                t0 = a[i][0];
+                t1 = a[i][1];
+                t2 = a[i][2];
+                t3 = a[i][3];
+
+                for (int j = 0; j < 4; j++)
+                    a[i][j] = t0*b[0][j] + t1*b[1][j] + t2*b[2][j] + t3*b[3][j];
+            }
+            return;
+        }
+
+        // dumb version: multiply, then copy.
+        double x[][] = matrixAB(a, b);
+        for (int i = 0; i < x.length; i++)
+            for (int j = 0; j < x[0].length; j++)
+                a[i][j] = x[i][j];
+    }
+
     public static void plusEquals(double a[][], double b[][])
     {
         assert(a.length == b.length);
@@ -787,7 +815,6 @@ public final class LinAlg
         r[1] = -q[1]/mag;
         r[2] = -q[2]/mag;
         r[3] = -q[3]/mag;
-
         return r;
     }
 

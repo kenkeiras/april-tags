@@ -10,6 +10,11 @@ public class BoxShape implements Shape
     ArrayList<double[]> planes;
     ArrayList<double[]> vertices;
 
+    public BoxShape(double sx, double sy, double sz)
+    {
+        this(new double[] { sx, sy, sz } );
+    }
+
     public BoxShape(double sxyz[])
     {
         this.sxyz = LinAlg.copy(sxyz);
