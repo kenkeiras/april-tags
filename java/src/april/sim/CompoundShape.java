@@ -36,11 +36,10 @@ public class CompoundShape implements Shape
     {
         // if more than one rigid-body transformation in a row,
         // pre-multiply them together.
-        if (ops.size() > 0) {
+        if (false && ops.size() > 0) {
             Object o = ops.get(ops.size()-1);
             if (o instanceof double[][]) {
                 ops.set(ops.size()-1, LinAlg.matrixAB((double[][]) o, M));
-                System.out.println("compact");
                 return;
             }
         }

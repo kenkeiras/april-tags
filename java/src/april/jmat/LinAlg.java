@@ -719,6 +719,11 @@ public final class LinAlg
         return quatToMatrix(rollPitchYawToQuat(rpy));
     }
 
+    public static double[][] scale(double sxyz)
+    {
+        return scale(sxyz, sxyz, sxyz);
+    }
+
     /** Returns the 4x4 transformation matrix corresponding to scaling the dimensions **/
     public static double[][] scale(double sx, double sy, double sz)
     {

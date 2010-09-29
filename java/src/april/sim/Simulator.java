@@ -1,14 +1,14 @@
 package april.sim;
 
 import java.awt.*;
+import java.awt.image.*;
 import java.awt.event.*;
 import java.io.*;
 import java.util.*;
 import java.awt.*;
 import javax.swing.*;
 
-import april.util.*;
-
+import april.config.*;
 import april.util.*;
 import april.jmat.*;
 import april.vis.*;
@@ -27,6 +27,7 @@ public class Simulator implements VisConsole.Listener
     VisConsole console = new VisConsole(vc, vw);
 
     SimWorld world;
+    String worldFilePath = "/tmp/world.world";
 
     static final double MIN_SIZE = 0.25;
 
@@ -34,9 +35,28 @@ public class Simulator implements VisConsole.Listener
     SimObject selectedObject = null;
     FindSimObjects finder = new FindSimObjects();
 
-    public Simulator(SimWorld world)
+    GetOpt gopt;
+
+    public Simulator(GetOpt gopt)
     {
-        this.world = world;
+        this.gopt = gopt;
+
+        try {
+            Config config = new Config();
+            if (gopt.wasSpecified("config"))
+                config = new ConfigFile(gopt.getString("config"));
+
+            if (gopt.getString("world").length() > 0) {
+                worldFilePath = gopt.getString("world");
+                this.world = new SimWorld(worldFilePath, config);
+            } else {
+                this.world = new SimWorld(config);
+            }
+
+        } catch (IOException ex) {
+            System.out.println("ex: "+ex);
+            return;
+        }
 
         jf = new JFrame("Simulator");
         jf.setLayout(new BorderLayout());
@@ -55,10 +75,46 @@ public class Simulator implements VisConsole.Listener
             vb.switchBuffer();
         }
 
-        vc.setTargetFPS(5);
-
         console.addListener(this);
         draw();
+
+        if (gopt.getBoolean("start")) {
+            world.setRunning(true);
+        }
+
+        vc.setTargetFPS(gopt.getInt("fps"));
+
+        if (world.geoimage != null) {
+
+            VisWorld.Buffer vb = vw.getBuffer("geoimage");
+            vb.setDrawOrder(-100);
+            BufferedImage im = ImageUtil.convertImage(world.geoimage.getImage(), BufferedImage.TYPE_INT_ARGB);
+
+            if (true) {
+                // make image grayscale and mostly transparent
+                int d[] = ((DataBufferInt) (im.getRaster().getDataBuffer())).getData();
+                for (int i = 0; i < d.length; i++) {
+                    int rgb = d[i];
+                    int r = (rgb >> 16) & 0xff;
+                    int gr = (rgb >> 8) & 0xff;
+                    int b = (rgb >> 0) & 0xff;
+                    int m = (r + gr + b) / 3;
+                    d[i] = (m<<16) + (m<<8) + (m<<0) + (90<<24);
+                }
+            }
+
+            VisTexture tex = new VisTexture(im);
+            tex.lock();
+            tex.setMagFilter(true);
+            vb.addBuffered(new VisChain(new VisDepthTest(false,
+                                                         new VisImage(tex,
+                                                                      world.geoimage.image2xy(new double[] {0,0}),
+                                                                      world.geoimage.image2xy(new double[] {im.getWidth()-1,
+                                                                                                            im.getHeight()-1})))));
+            vb.addBuffered(new VisData(new double[3], new VisDataPointStyle(Color.gray, 3)));
+
+            vb.switchBuffer();
+        }
     }
 
     public boolean consoleCommand(VisConsole vc, PrintStream out, String command)
@@ -68,12 +124,11 @@ public class Simulator implements VisConsole.Listener
             return false;
 
         if (toks[0].equals("save")) {
-            String path = "/tmp/myworld.world";
             if (toks.length > 1)
-                path = toks[1];
+                worldFilePath = toks[1];
             try {
-                world.write(path);
-                out.printf("Done");
+                world.write(worldFilePath);
+                out.printf("Saved world to: "+worldFilePath+"\n");
             } catch (IOException ex) {
                 out.println("ex: "+ex);
             }
@@ -97,13 +152,25 @@ public class Simulator implements VisConsole.Listener
             }
         }
 
-        out.printf("Unknown command");
+        if (toks[0].equals("stop")) {
+            world.setRunning(false);
+            out.printf("Stopped\n");
+            return true;
+        }
+
+        if (toks[0].equals("start")) {
+            world.setRunning(true);
+            out.printf("Started\n");
+            return true;
+        }
+
+        out.printf("Unknown command\n");
         return false;
     }
 
     public ArrayList<String> consoleCompletions(VisConsole vc, String prefix)
     {
-        String cs[] = new String[] { "save", "load" };
+        String cs[] = new String[] { "save", "start", "stop" };
 
         ArrayList<String> as = new ArrayList<String>();
         for (String s: cs)
@@ -116,17 +183,19 @@ public class Simulator implements VisConsole.Listener
 
     public static void main(String args[])
     {
-        SimWorld world = new SimWorld();
+        GetOpt gopt = new GetOpt();
+        gopt.addBoolean('h', "help", false, "Show this help");
+        gopt.addString('w', "world", "", "World file");
+        gopt.addString('c', "config", "", "Configuration file");
+        gopt.addBoolean('\0', "start", false, "Start simulation automatically");
+        gopt.addInt('\0', "fps", 10, "Maximum frame rate");
 
-        if (args.length > 0) {
-            try {
-                world = new SimWorld(args[0]);
-            } catch (IOException ex) {
-                System.out.println("ex: "+ex);
-            }
+        if (!gopt.parse(args) || gopt.getBoolean("help") || gopt.getExtraArgs().size() > 0) {
+            gopt.doHelp();
+            return;
         }
 
-        Simulator editor = new Simulator(world);
+        Simulator editor = new Simulator(gopt);
     }
 
     class VisSimWorld implements VisObject
@@ -144,25 +213,12 @@ public class Simulator implements VisConsole.Listener
 
     void draw()
     {
-        if (false) {
-            VisWorld.Buffer vb = vw.getBuffer("objects");
-
-            synchronized(world) {
-                for (SimObject obj : world.objects) {
-                    vb.addBuffered(new VisChain(obj.getPose(),
-                                                obj.getVisObject()));
-                }
-            }
-
-            vb.switchBuffer();
-        }
-
         if (true) {
             VisWorld.Buffer vb = vw.getBuffer("collide-info");
+            boolean collide = false;
 
             if (selectedObject != null) {
                 // does this object now collide with anything else?
-                boolean collide = false;
 
                 synchronized(world) {
                     for (SimObject so : world.objects) {
@@ -173,10 +229,9 @@ public class Simulator implements VisConsole.Listener
                         }
                     }
                 }
-
-                if (collide)
-                    vb.addBuffered(new VisText(VisText.ANCHOR.BOTTOM_RIGHT, "<<blue>>Collision"));
             }
+            if (collide)
+                vb.addBuffered(new VisText(VisText.ANCHOR.BOTTOM_RIGHT, "<<blue>>Collision"));
 
             vb.switchBuffer();
         }
@@ -185,7 +240,8 @@ public class Simulator implements VisConsole.Listener
     class MyEventHandler extends VisCanvasEventAdapter
     {
         double sz = 1;
-        Color color = Color.gray;
+        Color color = new Color(50,50,50);
+        double lastxy[] = null;
 
         public MyEventHandler()
         {
@@ -198,12 +254,14 @@ public class Simulator implements VisConsole.Listener
 
         public boolean mouseReleased(VisCanvas vc, GRay3D ray, MouseEvent e)
         {
+            lastxy = null;
             if (selectedObject == null)
                 return false;
 
             selectedObject = null;
+            draw();
 
-            return false;
+            return true;
         }
 
         public boolean mouseDragged(VisCanvas vc,  GRay3D ray, MouseEvent e)
@@ -224,8 +282,36 @@ public class Simulator implements VisConsole.Listener
                 if (selectedObject instanceof SimBox) {
                     // resize
                     SimBox sb = (SimBox) selectedObject;
-                    sb.sxyz[0] = Math.max(MIN_SIZE, 2*Math.abs(xy[0] - T[0][3]));
-                    sb.sxyz[1] = Math.max(MIN_SIZE, 2*Math.abs(xy[1] - T[1][3]));
+
+                    // Generate the four corners
+                    ArrayList<double[]> corners = new ArrayList<double[]>();
+                    corners.add(new double[] { -sb.sxyz[0]/2, -sb.sxyz[1]/2 });
+                    corners.add(new double[] { -sb.sxyz[0]/2, sb.sxyz[1]/2 });
+                    corners.add(new double[] { sb.sxyz[0]/2, sb.sxyz[1]/2 });
+                    corners.add(new double[] { sb.sxyz[0]/2, -sb.sxyz[1]/2 });
+                    corners = LinAlg.transform(T, corners);
+
+                    // which corner is farthest away? (this corner will remain stationary)
+                    double furthest[] = null;
+                    for (double cxy[] : corners) {
+                        if (furthest==null || LinAlg.distance(cxy, xy) > LinAlg.distance(furthest, xy))
+                            furthest = cxy;
+                    }
+
+                    double Tinv[][] = LinAlg.inverse(T);
+                    ArrayList<double[]> newcorners = new ArrayList<double[]>();
+                    newcorners.add(furthest);
+                    newcorners.add(xy);
+                    newcorners = LinAlg.transform(Tinv, newcorners);
+                    double p0[] = newcorners.get(0);
+                    double p1[] = newcorners.get(1);
+
+                    sb.sxyz[0] = Math.abs(p1[0]-p0[0]);
+                    sb.sxyz[1] = Math.abs(p1[1]-p0[1]);
+                    sb.T[0][3] = (xy[0] + furthest[0])/2;
+                    sb.T[1][3] = (xy[1] + furthest[1])/2;
+//                    sb.sxyz[0] = Math.max(MIN_SIZE, 2*Math.abs(xy[0] - T[0][3]));
+//                    sb.sxyz[1] = Math.max(MIN_SIZE, 2*Math.abs(xy[1] - T[1][3]));
                 } else if (selectedObject instanceof SimSphere) {
                     SimSphere s = (SimSphere) selectedObject;
 
@@ -244,13 +330,13 @@ public class Simulator implements VisConsole.Listener
             } else {
                 // translate
                 double T[][] = selectedObject.getPose();
-                T[0][3] = xy[0];
-                T[1][3] = xy[1];
+                T[0][3] += xy[0] - lastxy[0];
+                T[1][3] += xy[1] - lastxy[1];
                 selectedObject.setPose(T);
             }
 
             draw();
-
+            lastxy = xy;
             return true;
         }
 
@@ -274,7 +360,7 @@ public class Simulator implements VisConsole.Listener
                     case 'r':
                         color = Color.red; break;
                     case 'g':
-                        color = Color.gray; break;
+                        color = new Color(50,50,50); break;
                     case 'b':
                         color = Color.blue; break;
                     case 'm':
@@ -296,6 +382,7 @@ public class Simulator implements VisConsole.Listener
             }
 
             if (selectedObject != null && (e.getKeyCode()==KeyEvent.VK_DELETE || e.getKeyCode()==KeyEvent.VK_BACK_SPACE)) {
+                selectedObject.setRunning(false);
                 synchronized(world) {
                     world.objects.remove(selectedObject);
                 }
@@ -358,7 +445,7 @@ public class Simulator implements VisConsole.Listener
             }
 
             draw();
-
+            lastxy = xy;
             return true;
         }
     }

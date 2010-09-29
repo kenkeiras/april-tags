@@ -33,6 +33,6 @@ public interface SimObject
     /** If the object does "fancy" stuff (spawning threads to simulate
      * a robot, for example), this method should be supported to allow
      * cleanly starting/stopping that other stuff. Objects should
-     * begin in the running state.**/
+     * begin in the NON running state. **/
     public void setRunning(boolean run);
 }
