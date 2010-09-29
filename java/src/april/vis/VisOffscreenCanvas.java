@@ -74,6 +74,11 @@ public class VisOffscreenCanvas implements VisContext
         pbuffer.destroy();
     }
 
+    public void setWorld(VisWorld vw)
+    {
+        this.vw = vw;
+    }
+
     public void setSize(int width, int height)
     {
         if (width == this.width && height == this.height)

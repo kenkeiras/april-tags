@@ -2,6 +2,8 @@ package april.util;
 
 import april.jmat.*;
 
+import java.io.*;
+
 /**
  *  This class enables conversion between latitude and longitdue and xy coordinates.
  *  The ellipsoid/sphere shape of the earth is linearized at a given lat/lon in
@@ -87,6 +89,27 @@ public class GPSLinearize
         return a*a;
     }
 
+    /** Restore state that was previously written **/
+    public void read(StructureReader ins) throws IOException
+    {
+        double ll_deg[] = ins.readDoubles();
+        double r[] = ins.readDoubles();
+
+        lat0_deg = ll_deg[0];
+        lon0_deg = ll_deg[1];
+        lat0_rad = Math.toRadians(lat0_deg);
+        lon0_rad = Math.toRadians(lon0_deg);
+        radius_ns = r[0];
+        radius_ew = r[1];
+    }
+
+    /** Write one or more lines that serialize this instance. No line
+     * is allowed to consist of just an asterisk. **/
+    public void write(StructureWriter outs) throws IOException
+    {
+        outs.writeDoubles(new double[] { lat0_deg, lon0_deg });
+        outs.writeDoubles(new double[] { radius_ns, radius_ew });
+    }
 
     public static void main(String args[])
     {

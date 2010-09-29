@@ -1140,12 +1140,13 @@ public final class LinAlg
         double aa[] = new double[4];
 
         // be polite: return an angle from [-pi, pi]
-        aa[0] = MathUtil.mod2pi(2*Math.acos(q[0]));
-        double s = Math.sin(aa[0] / 2); //Math.sqrt(1 - q[0]*q[0]);
-        if (s != 0) {
-            aa[1] = q[1] / s;
-            aa[2] = q[2] / s;
-            aa[3] = q[3] / s;
+        // use atan2 to be 4-quadrant safe
+        double mag = Math.sqrt(q[1]*q[1] + q[2]*q[2] + q[3]*q[3]);
+        aa[0] = MathUtil.mod2pi(2 * Math.atan2(mag, q[0]));
+        if (mag != 0) {
+            aa[1] = q[1] / mag;
+            aa[2] = q[2] / mag;
+            aa[3] = q[3] / mag;
         } else {
             aa[1] = 1;
             aa[2] = 0;
@@ -1458,6 +1459,15 @@ public final class LinAlg
         }
 
         return newpoints;
+    }
+
+    public final static double[] transformRotateOnly(double T[][], double p[])
+    {
+        assert(T.length == 4);
+
+        return new double[] { T[0][0]*p[0] + T[0][1]*p[1] + T[0][2]*p[2],
+                              T[1][0]*p[0] + T[1][1]*p[1] + T[1][2]*p[2],
+                              T[2][0]*p[0] + T[2][1]*p[1] + T[2][2]*p[2] };
     }
 
     public final static double[] transform(double T[][], double p[])
@@ -2212,31 +2222,6 @@ public final class LinAlg
         return new double[] { x[0], x[1], chi2 };
     }
 
-
-    /** Given a line going through xyz with direction dir, where does
-     * it intersect the plane with normal 'normal' and that goes
-     * through point 'p'?
-     *
-     * dir and normal should be unit vectors. All are 3x1
-     *
-     * Returns the distance from xyz (in direction 'dir') where the
-     * collision occurs. Returns positive or negative result,
-     * depending on which way the plane is. Returns MAX_VALUE if the
-     * denominator is exactly zero.
-     **/
-    public static double rayCollisionPlane(double xyz[], double dir[], double normal[], double p[])
-    {
-        // see e.g.: http://local.wasp.uwa.edu.au/~pbourke/geometry/planeline/
-        double tmp[] = LinAlg.subtract(p, xyz);
-        double numer = LinAlg.dotProduct(normal, tmp);
-        double denom = LinAlg.dotProduct(normal, dir);
-
-        if (denom == 0)
-            return Double.MAX_VALUE;
-
-        return numer / denom;
-    }
-
     /** compute the distance from xyz (in the direction dir) until it
      * collides with an axis-aligned box with dimensions sxyz,
      * centered at the origin. MAX_VALUE is returned if there is no collision. **/
@@ -2269,5 +2254,72 @@ public final class LinAlg
             return Double.MAX_VALUE;
 
         return u0;
+    }
+
+    /** Let nd be the coefficients of the plane equation Ax + By + Cz
+     * + D = 0. If the coordinate system is rotated by T, what is the
+     * new plane equation?  **/
+    public static double[] transformPlane(double T[][], double p[])
+    {
+        // the normal of the plane is (A,B,C). Rotate that vector.
+        // Then, add to D dotProduct(new-normal,translation)
+        double newp[] = new double[4];
+
+        for (int i = 0; i < 3; i++)
+            newp[i] = T[i][0]*p[0] + T[i][1]*p[1] + T[i][2]*p[2];
+
+        double dot = (newp[0]*T[0][3] + newp[1]*T[1][3] + newp[2]*T[2][3]);
+
+        newp[3] = p[3] - dot;
+
+        return newp;
+    }
+
+    public static ArrayList<double[]> transformPlanes(double T[][], ArrayList<double[]> planes)
+    {
+        ArrayList<double[]> newplanes = new ArrayList<double[]>();
+
+        for (double p[] : planes)
+            newplanes.add(transformPlane(T, p));
+
+        return newplanes;
+    }
+
+    /** This function implements part of a convex hull collision test:
+     * each face of the hull is described in terms of a plane equation:
+     *
+     * Ax + By + Cz + D = 0
+     *
+     * The sign of this equation must be configured so that the value
+     * of the expression is negative on the inside of the hull and
+     * positive on the other side.
+     *
+     * The planes are transformed by T prior to the test.
+     *
+     * We then test each of the points; if they are all on the
+     * positive side of the plane, we return true.
+     *
+     * This is half of a convex hull collision test: for a full test,
+     * you must try this in both directions.  **/
+    public static boolean faceBelowPoints(ArrayList<double[]> planes, ArrayList<double[]> points)
+    {
+        for (double plane[] : planes) {
+
+            boolean separates = true;
+
+            for (double p[] : points) {
+                double v = plane[0] * p[0] + plane[1] * p[1] + plane[2] * p[2] + plane[3];
+
+                if (v <= 0) {
+                    separates = false;
+                    break;
+                }
+            }
+
+            if (separates)
+                return true;
+        }
+
+        return false;
     }
 }
