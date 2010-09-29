@@ -123,4 +123,18 @@ public class SimWorld
 
         outs.close();
     }
+
+    public synchronized double collisionDistance(double pos[], double dir[], HashSet<SimObject> ignore)
+    {
+        double dist = Double.MAX_VALUE;
+
+        for (SimObject so : objects) {
+            if (ignore != null && ignore.contains(so))
+                continue;
+
+            dist = Math.min(dist, Collisions.collisionDistance(pos, dir, so.getShape(), so.getPose()));
+        }
+
+        return dist;
+    }
 }
