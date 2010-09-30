@@ -14,7 +14,7 @@ import java.io.*;
  *  @author Transcribed by jhstrom
  *
  */
-public class GPSLinearize
+public class GPSLinearization
 {
     // Data retrieved from http://en.wikipedia.org/wiki/Earth_radius on 8/22/09
     public static final double RAD_EQ_M = 6378137.0; // RADIUS_EQUATOR_METERS
@@ -30,7 +30,7 @@ public class GPSLinearize
     double lat0_rad, lon0_rad;
     double radius_ns, radius_ew;
 
-    public GPSLinearize(double origin_deg[])
+    public GPSLinearization(double origin_deg[])
     {
         lat0_deg = origin_deg[LAT];
         lon0_deg = origin_deg[LON];
@@ -115,7 +115,7 @@ public class GPSLinearize
     {
        //testing code:
         double origin [] = {42.29277,-83.71750};
-        GPSLinearize gpslin =  new GPSLinearize(origin);
+        GPSLinearization gpslin =  new GPSLinearization(origin);
         double lat_lons[][] = {{42.29138,-83.71472,0,1},
                                {42.28738,-83.71100,0,1},
                                {42.29277,-83.71750,0,1},

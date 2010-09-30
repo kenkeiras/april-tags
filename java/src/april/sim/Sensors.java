@@ -65,13 +65,7 @@ public class Sensors
                                                                   Math.sin(rad0 + i*radstep),
                                                                   0 });
 
-                ranges[i] = maxrange;
-                for (SimObject so : sw.objects) {
-                    if (ignore.contains(so))
-                        continue;
-
-                    ranges[i] = Math.min(ranges[i], Collisions.collisionDistance(eye, dir, so.getShape(), so.getPose()));
-                }
+                ranges[i] = Math.min(maxrange, sw.collisionDistance(eye, dir, ignore));
             }
         }
 

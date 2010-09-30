@@ -32,4 +32,41 @@ public class EnvUtil
         return def;
     }
 
+    // find
+    public static String expandVariables(String in)
+    {
+        StringBuffer sb = new StringBuffer();
+
+        int inpos = 0;
+        while (inpos < in.length()) {
+
+            char c = in.charAt(inpos);
+
+            if (c != '$') {
+                sb.append(c);
+                inpos++;
+                continue;
+            }
+
+            // consume $
+            inpos++;
+
+            // we've found an env. variable.
+            StringBuffer varname = new StringBuffer();
+            while (inpos < in.length() && isVariableCharacter(in.charAt(inpos))) {
+                varname.append(in.charAt(inpos));
+                inpos++;
+            }
+
+            sb.append(System.getenv(varname.toString()));
+        }
+
+        return sb.toString();
+    }
+
+    // is the character permissible in a Bash environment variable name?
+    static final boolean isVariableCharacter(char c)
+    {
+        return (Character.isLetterOrDigit(c) || c=='_');
+    }
 }

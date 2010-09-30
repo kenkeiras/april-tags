@@ -27,6 +27,13 @@ public class FloatImage
         this.d = d;
     }
 
+    public FloatImage(int width, int height, double d[])
+    {
+        this.width = width;
+        this.height = height;
+        this.d = LinAlg.copyFloats(d);
+    }
+
     /** Make FloatImage from byte array, scaling inputs to
       * range (0,1)
       **/

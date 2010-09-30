@@ -268,16 +268,19 @@ public class VisConsole
                     redraw();
                 } else if (goodCompletions.size() > 1) {
                     String commonPrefix = goodCompletions.get(0);
-
-                    StringBuffer sb = new StringBuffer();
+                    StringBuffer line = new StringBuffer();
 
                     for (String s : goodCompletions) {
                         commonPrefix = commonPrefix(commonPrefix, s);
-                        sb.append(s+"  ");
+                        line.append(s+"  ");
+                        if (line.length() > 80) {
+                            output(COMPLETION_STYLE + line.toString());
+                            line = new StringBuffer();
+                        }
                     }
 
                     command = commonPrefix;
-                    output(COMPLETION_STYLE + sb.toString());
+                    output(COMPLETION_STYLE + line.toString());
                 }
 
                 return true;

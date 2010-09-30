@@ -9,7 +9,7 @@ import april.util.*;
 
 public class SimSphere implements SimObject
 {
-    double T[][];  // position
+    double T[][] = LinAlg.identity(4);  // position
     double r = 1.0;  // radius
     Color color = Color.gray;
 
@@ -19,6 +19,7 @@ public class SimSphere implements SimObject
 
     public double[][] getPose()
     {
+        this.T[2][3] = r;
         return T;
     }
 
@@ -57,5 +58,9 @@ public class SimSphere implements SimObject
         outs.writeDouble(r);
         float f[] = color.getRGBComponents(null);
         outs.writeDoubles(LinAlg.copyDoubles(f));
+    }
+
+    public void setRunning(boolean b)
+    {
     }
 }

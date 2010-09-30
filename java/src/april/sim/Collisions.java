@@ -2,6 +2,7 @@ package april.sim;
 
 import april.jmat.*;
 
+// limitations: The transforms must be rigid-body + a uniform scaling on all three axes.
 public class Collisions
 {
     public static boolean collision(Shape _sa, Shape _sb)
@@ -36,9 +37,12 @@ public class Collisions
 
     public static boolean collision(CompoundShape sa, double Ta[][], Shape _sb, double Tb[][])
     {
+        Ta = LinAlg.copy(Ta);
+
         for (Object op : sa.ops) {
             if (op instanceof double[][]) {
-                Ta = LinAlg.matrixAB(Ta, (double[][]) op);
+                LinAlg.timesEquals(Ta, (double[][]) op);
+                //Ta = LinAlg.matrixAB(Ta, (double[][]) op);
             } else if (op instanceof Shape) {
                 if (Collisions.collision((Shape) op, Ta, _sb, Tb))
                     return true;
@@ -54,17 +58,28 @@ public class Collisions
     {
         // TODO: fast check first?
 
+        // p_g = Ta p_a
+        // p_g = Tb p_b
+        // Ta p_a = Tb p_b
+        // p_a = inv(Ta) Tb p_b
+
         // project the sphere's center into the box's coordinate system.
         double T[][] = LinAlg.matrixAB(LinAlg.inverse(Ta), Tb);
 
-        // how far away are we?
         double ex = Math.max(0, Math.abs(T[0][3]) - sa.sxyz[0]/2);
         double ey = Math.max(0, Math.abs(T[1][3]) - sa.sxyz[1]/2);
         double ez = Math.max(0, Math.abs(T[2][3]) - sa.sxyz[2]/2);
 
         double e2 = ex*ex + ey*ey + ez*ez;
 
-        return e2 < sb.r*sb.r;
+        // project sphere's radius into this box's coordinate
+        // system. (Necessary because there may be a scale
+        // transformation!)
+
+        double scale2 = LinAlg.sq(T[0][0]) + LinAlg.sq(T[1][0]) + LinAlg.sq(T[2][0]);
+        double r2 = scale2 * LinAlg.sq(sb.r);
+
+        return e2 < r2;
     }
 
     public static boolean collision(SphereShape sa, double Ta[][], SphereShape sb, double Tb[][])
@@ -73,7 +88,10 @@ public class Collisions
                              LinAlg.sq(Ta[1][3]-Tb[1][3]) +
                              LinAlg.sq(Ta[2][3]-Tb[2][3]));
 
-        return (d - sa.r - sb.r) <= 0;
+        double scalea2 = LinAlg.sq(Ta[0][0]) + LinAlg.sq(Ta[1][0]) + LinAlg.sq(Ta[2][0]);
+        double scaleb2 = LinAlg.sq(Tb[0][0]) + LinAlg.sq(Tb[1][0]) + LinAlg.sq(Tb[2][0]);
+
+        return (d - Math.sqrt(scalea2)*sa.r - Math.sqrt(scaleb2)*sb.r) <= 0;
     }
 
     public static boolean collision(BoxShape sa, double Ta[][], BoxShape sb, double Tb[][])
@@ -141,9 +159,12 @@ public class Collisions
     {
         double d = Double.MAX_VALUE;
 
+        T = LinAlg.copy(T);
+
         for (Object op : s.ops) {
             if (op instanceof double[][]) {
-                T = LinAlg.matrixAB(T, (double[][]) op);
+//                T = LinAlg.matrixAB(T, (double[][]) op);
+                LinAlg.timesEquals(T, (double[][]) op);
             } else if (op instanceof Shape) {
                 d = Math.min(d, collisionDistance(pos, dir, (Shape) op, T));
             } else {

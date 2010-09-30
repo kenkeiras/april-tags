@@ -9,8 +9,8 @@ import april.util.*;
 
 public class SimBox implements SimObject
 {
-    double T[][];  // position
-    double sxyz[]; // size
+    double T[][] = LinAlg.identity(4);  // position
+    double sxyz[] = new double[3]; // size
     Color  color = Color.gray;
 
     public SimBox(SimWorld sw)
@@ -19,6 +19,7 @@ public class SimBox implements SimObject
 
     public double[][] getPose()
     {
+        this.T[2][3] = sxyz[2] / 2;
         return T;
     }
 
@@ -57,5 +58,9 @@ public class SimBox implements SimObject
         outs.writeDoubles(sxyz);
         float f[] = color.getRGBComponents(null);
         outs.writeDoubles(LinAlg.copyDoubles(f));
+    }
+
+    public void setRunning(boolean b)
+    {
     }
 }
