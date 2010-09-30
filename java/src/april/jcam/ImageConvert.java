@@ -447,6 +447,80 @@ public class ImageConvert
         return _out;
     }
 
+    public static BufferedImage HSVtoRGB(BufferedImage _in)
+    {
+        int in[] = ((DataBufferInt) (_in.getRaster().getDataBuffer())).getData();
+
+        BufferedImage _out = new BufferedImage(_in.getWidth(), _in.getHeight(), BufferedImage.TYPE_INT_RGB);
+        int out[] = ((DataBufferInt) (_out.getRaster().getDataBuffer())).getData();
+
+        for (int i=0; i < in.length; i++)
+            out[i] = in[i];
+        HSVtoRGB(out);
+
+        return _out;
+    }
+
+    // Convert HSV to RGB without allocating a destination array
+    public static void HSVtoRGB(int im[])
+    {
+        for (int j=0; j < im.length; j++) {
+            int hsv = im[j];
+            int hi = (hsv >> 16) & 0xFF;
+            int si = (hsv >> 8) & 0xFF;
+            int vi = (hsv) & 0xFF;
+
+            double h, s, v;
+            // stretch h range to [0, 360)
+            h = hi * 360.0 / 255;
+            h = (h + 360) % 360;
+
+            // convert to range for math
+            // hue [0, 6), saturation [0, 1), value [0, 1)
+            h = h / 60;
+            s = ((double) si) / 255;
+            v = ((double) vi) / 255;
+
+            int i = (int) Math.floor(h);
+            double f = h - i;
+            if (i%2 == 0)
+                f = 1 - f;
+
+            double m = v * (1 - s);
+            double n = v * (1 - s*f);
+
+            // scale to 255
+            int vo = (int) (v * 255);
+            int no = (int) (n * 255);
+            int mo = (int) (m * 255);
+
+            // apply
+            switch (i)
+            {
+                case 0:
+                    im[j] =  0xFF000000 | vo << 16 | no << 8 | mo;
+                    break;
+                case 1:
+                    im[j] =  0xFF000000 | no << 16 | vo << 8 | mo;
+                    break;
+                case 2:
+                    im[j] =  0xFF000000 | mo << 16 | vo << 8 | no;
+                    break;
+                case 3:
+                    im[j] =  0xFF000000 | mo << 16 | no << 8 | vo;
+                    break;
+                case 4:
+                    im[j] =  0xFF000000 | no << 16 | mo << 8 | vo;
+                    break;
+                case 5:
+                    im[j] =  0xFF000000 | vo << 16 | mo << 8 | no;
+                    break;
+                default:
+                    im[j] = 0;
+                    break;
+            }
+        }
+    }
 
     public static BufferedImage RGBtoYUV(BufferedImage _in)
     {
