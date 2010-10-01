@@ -35,23 +35,43 @@ public class Collisions
         return false;
     }
 
+    static final void backup(double A[][], double b[])
+    {
+        for (int i = 0; i < 4; i++)
+            for (int j = 0; j < 4; j++)
+                b[i*4+j] = A[i][j];
+    }
+
+    static final void restore(double A[][], double b[])
+    {
+        for (int i = 0; i < 4; i++)
+            for (int j = 0; j < 4; j++)
+                A[i][j] = b[i*4+j];
+    }
+
     public static boolean collision(CompoundShape sa, double Ta[][], Shape _sb, double Tb[][])
     {
-        Ta = LinAlg.copy(Ta);
+        double tmp[] = new double[16];
+
+        backup(Ta, tmp);
+        boolean ret = false;
 
         for (Object op : sa.ops) {
             if (op instanceof double[][]) {
                 LinAlg.timesEquals(Ta, (double[][]) op);
-                //Ta = LinAlg.matrixAB(Ta, (double[][]) op);
             } else if (op instanceof Shape) {
-                if (Collisions.collision((Shape) op, Ta, _sb, Tb))
-                    return true;
+                if (Collisions.collision((Shape) op, Ta, _sb, Tb)) {
+                    ret = true;
+                    break;
+                }
             } else {
                 System.out.println(op);
                 assert(false);
             }
         }
-        return false;
+
+        restore(Ta, tmp);
+        return ret;
     }
 
     public static boolean collision(BoxShape sa, double Ta[][], SphereShape sb, double Tb[][])
@@ -158,12 +178,12 @@ public class Collisions
     public static double collisionDistance(double pos[], double dir[], CompoundShape s, double T[][])
     {
         double d = Double.MAX_VALUE;
+        double tmp[] = new double[16];
 
-        T = LinAlg.copy(T);
+        backup(T, tmp);
 
         for (Object op : s.ops) {
             if (op instanceof double[][]) {
-//                T = LinAlg.matrixAB(T, (double[][]) op);
                 LinAlg.timesEquals(T, (double[][]) op);
             } else if (op instanceof Shape) {
                 d = Math.min(d, collisionDistance(pos, dir, (Shape) op, T));
@@ -172,17 +192,28 @@ public class Collisions
                 assert(false);
             }
         }
+
+        restore(T, tmp);
         return d;
     }
 
-    public static double collisionDistance(double pos[], double dir[], BoxShape s, double T[][])
+    public static double collisionDistance(double _pos[], double _dir[], BoxShape s, double T[][])
     {
-        double Tinv[][] = LinAlg.inverse(T);
+        if (true) {
+            double pos[] = LinAlg.transformInverse(T, _pos);
+            double dir[] = LinAlg.transformInverseRotateOnly(T, _dir);
 
-        pos = LinAlg.transform(Tinv, pos);
-        dir = LinAlg.transformRotateOnly(Tinv, dir);
+            return LinAlg.rayCollisionBox(pos, dir, s.sxyz);
+        } else {
+            double Tinv[][] = LinAlg.inverse(T);
 
-        return LinAlg.rayCollisionBox(pos, dir, s.sxyz);
+            double pos[] = LinAlg.transform(Tinv, _pos);
+            double dir[] = LinAlg.transformRotateOnly(Tinv, _dir);
+
+            LinAlg.print(dir);
+
+            return LinAlg.rayCollisionBox(pos, dir, s.sxyz);
+        }
     }
 
     public static void main(String args[])

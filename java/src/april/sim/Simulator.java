@@ -427,16 +427,18 @@ public class Simulator implements VisConsole.Listener
                 // select an existing object
                 double bestd = Double.MAX_VALUE;
 
-                for (SimObject obj : world.objects) {
+                synchronized(world) {
+                    for (SimObject obj : world.objects) {
 
-                    double d = Collisions.collisionDistance(ray.getSource(), ray.getDir(), obj.getShape(), obj.getPose());
+                        double d = Collisions.collisionDistance(ray.getSource(), ray.getDir(), obj.getShape(), obj.getPose());
 
-                    boolean b = Collisions.collision(obj.getShape(), obj.getPose(),
-                                                     new SphereShape(0.1), LinAlg.translate(xy[0], xy[1], 0));
+                        boolean b = Collisions.collision(obj.getShape(), obj.getPose(),
+                                                         new SphereShape(0.1), LinAlg.translate(xy[0], xy[1], 0));
 
-                    if (d < bestd) {
-                        selectedObject = obj;
-                        bestd = d;
+                        if (d < bestd) {
+                            selectedObject = obj;
+                            bestd = d;
+                        }
                     }
                 }
 

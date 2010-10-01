@@ -1575,6 +1575,49 @@ public final class LinAlg
         return newpoints;
     }
 
+
+    // compute inv(T)*p, assuming that T is a scaled rigid-body matrix
+    public static final double[] transformInverse(double T[][], double p[])
+    {
+        double x[] = new double[3];
+
+        // scale can be set to 1 if there's no scale transformation.
+        double scale = 1.0 / Math.sqrt(LinAlg.sq(T[0][0]) + LinAlg.sq(T[1][0]) + LinAlg.sq(T[2][0]));
+
+        // undo translation
+        double px = (p[0] - T[0][3]) * scale;
+        double py = (p[1] - T[1][3]) * scale;
+        double pz = (p[2] - T[2][3]) * scale;
+
+        // undo rotation, noting that inv(R) = R'
+        x[0] = scale*(T[0][0]*px + T[1][0]*py + T[2][0]*pz);
+        x[1] = scale*(T[0][1]*px + T[1][1]*py + T[2][1]*pz);
+        x[2] = scale*(T[0][2]*px + T[1][2]*py + T[2][2]*pz);
+
+        return x;
+    }
+
+    // compute inv(T)*p, assuming that T is a scaled rigid-body matrix
+    public static final double[] transformInverseRotateOnly(double T[][], double p[])
+    {
+        double x[] = new double[3];
+
+        // scale can be set to 1 if there's no scale transformation.
+        double scale = 1.0 / Math.sqrt(LinAlg.sq(T[0][0]) + LinAlg.sq(T[1][0]) + LinAlg.sq(T[2][0]));
+
+        // undo translation
+        double px = (p[0]) * scale;
+        double py = (p[1]) * scale;
+        double pz = (p[2]) * scale;
+
+        // undo rotation, noting that inv(R) = R'
+        x[0] = scale*(T[0][0]*px + T[1][0]*py + T[2][0]*pz);
+        x[1] = scale*(T[0][1]*px + T[1][1]*py + T[2][1]*pz);
+        x[2] = scale*(T[0][2]*px + T[1][2]*py + T[2][2]*pz);
+
+        return x;
+    }
+
     public static double clamp(double v, double min, double max)
     {
         if (v < min)
@@ -2272,8 +2315,6 @@ public final class LinAlg
 
             double a = (sxyz[i]/2 - xyz[i]) / dir[i];
             double b = (-sxyz[i]/2 - xyz[i]) / dir[i];
-
-//            System.out.printf("%4d %15f %15f\n", i, a, b);
 
             u0 = Math.max(u0, Math.min(a, b));
             u1 = Math.min(u1, Math.max(a, b));
