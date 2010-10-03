@@ -88,6 +88,43 @@ public class SigProc
         }
     }
 
+    public static final void convolveCenteredDisc2DMaxContSparse(int a[], int width, int height, double radius, double mpp, int r[])
+    {
+        int pxRadius = (int) Math.ceil(radius/mpp);
+
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int v = a[y*width +x];
+                if (v == 0)
+                    continue;
+
+                for (int k=-pxRadius; k <= pxRadius; k++) {
+                    for (int l=-pxRadius; l <= pxRadius; l++) {
+                        // is it within the radius?
+                        double k_m = k*mpp;
+                        double l_m = l*mpp;
+                        double c00_m = Math.sqrt((k_m - mpp/2)*(k_m - mpp/2) + (l_m - mpp/2)*(l_m - mpp/2));
+                        double c01_m = Math.sqrt((k_m - mpp/2)*(k_m - mpp/2) + (l_m + mpp/2)*(l_m + mpp/2));
+                        double c10_m = Math.sqrt((k_m + mpp/2)*(k_m + mpp/2) + (l_m - mpp/2)*(l_m - mpp/2));
+                        double c11_m = Math.sqrt((k_m + mpp/2)*(k_m + mpp/2) + (l_m + mpp/2)*(l_m + mpp/2));
+                        double rad = Math.min(Math.min(c00_m, c01_m), Math.min(c10_m, c11_m));
+
+                        if (rad >= radius)
+                            continue;
+
+                        int yk = y+k;
+                        int xl = x+l;
+                        if (yk < 0 || yk >= height || xl < 0 || xl >= width)
+                            continue;
+
+                        int o = yk*width + xl;
+                        r[o] = (int) Math.max(r[o], v);
+                    }
+                }
+            }
+        }
+    }
+
     public static final void convolveCenteredDisc2DMaxCont(int a[], int width, int height, double radius, double mpp, int r[])
     {
         int pxRadius = (int) Math.ceil(radius/mpp);
@@ -122,11 +159,6 @@ public class SigProc
             }
         }
     }
-
-    // XXX float version
-    // public...
-    //
-    //
 
     public static final void convolveCenteredDisc2DMax(int a[], int width, int height, int radius, int r[])
     {
