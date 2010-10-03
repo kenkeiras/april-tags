@@ -135,40 +135,28 @@ public final class GridMap
         return gm;
     }
 
-    // Return a gridmap that contains all of the non-zero pixels, but
-    // is (potentially) smaller than the original
-    public GridMap crop(boolean roundUpDimensions)
+    public GridMap cropMeters(double xmin, double ymin, double width, double height, boolean roundUpDimensions)
     {
-        int xmin = Integer.MAX_VALUE, xmax = -1;
-        int ymin = Integer.MAX_VALUE, ymax = -1;
+        return cropPixels((int) ((xmin - x0) / metersPerPixel),
+                          (int) ((ymin - y0) / metersPerPixel),
+                          (int) (width / metersPerPixel),
+                          (int) (height / metersPerPixel), roundUpDimensions);
+    }
 
-        // find bounding box. (This is a bit inefficient... perhaps it
-        // would be faster if we worked in from the edges.)
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                if (data[y*width+x] != 0) {
-                    xmin = Math.min(xmin, x);
-                    xmax = Math.max(xmax, x);
-                    ymin = Math.min(ymin, y);
-                    ymax = Math.max(ymax, y);
-                }
-            }
-        }
+    protected GridMap cropPixels(int xmin, int ymin, int _width, int _height, boolean roundUpDimensions)
+    {
+        xmin = Math.max(0, xmin);
+        ymin = Math.max(0, ymin);
+
+        _width = Math.max(0, _width);
+        _height = Math.max(0, _height);
 
         GridMap gm = new GridMap();
 
-        if (xmax < 0) {
-            // special case: there were no zero pixels.
-            xmin = 0;
-            xmax = 0;
-            ymin = 0;
-            ymax = 0;
-        }
-
         gm.x0 = x0 + xmin * metersPerPixel;
         gm.y0 = y0 + ymin * metersPerPixel;
-        gm.width = xmax - xmin + 1;
-        gm.height = ymax - ymin + 1;
+        gm.width = _width;
+        gm.height = _height;
         gm.metersPerPixel = metersPerPixel;
         gm.defaultFill = (byte) defaultFill;
 
@@ -190,6 +178,29 @@ public final class GridMap
         }
 
         return gm;
+    }
+
+    // Return a gridmap that contains all of the non-zero pixels, but
+    // is (potentially) smaller than the original
+    public GridMap crop(boolean roundUpDimensions)
+    {
+        int xmin = Integer.MAX_VALUE, xmax = -1;
+        int ymin = Integer.MAX_VALUE, ymax = -1;
+
+        // find bounding box. (This is a bit inefficient... perhaps it
+        // would be faster if we worked in from the edges.)
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                if (data[y*width+x] != 0) {
+                    xmin = Math.min(xmin, x);
+                    xmax = Math.max(xmax, x);
+                    ymin = Math.min(ymin, y);
+                    ymax = Math.max(ymax, y);
+                }
+            }
+        }
+
+        return cropPixels(xmin, ymin, xmax-xmin+1, ymax-ymin+1, roundUpDimensions);
     }
 
     protected GridMap()
