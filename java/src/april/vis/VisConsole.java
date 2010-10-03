@@ -47,7 +47,7 @@ public class VisConsole
             System.out.println("ex: "+ex);
         }
 
-        vc.addEventHandler(new MyCommandPromptHandler());
+        vc.addEventHandler(new MyCommandPromptHandler(), 100000);
         new UpdateThread().start();
         new OutputThread().start();
     }
@@ -159,6 +159,15 @@ public class VisConsole
         public String getName()
         {
             return "Command Prompt";
+        }
+
+        public boolean keyTyped(VisCanvas vc, KeyEvent e)
+        {
+            // consume keyTyped events if we're in the middle of a command.
+            if (command != null)
+                return true;
+
+            return false;
         }
 
         public boolean keyPressed(VisCanvas vc, KeyEvent e)
