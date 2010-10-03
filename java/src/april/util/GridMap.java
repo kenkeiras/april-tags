@@ -200,6 +200,13 @@ public final class GridMap
             }
         }
 
+        if (xmax < xmin) {
+            xmin = 0;
+            ymin = 0;
+            xmax = 0;
+            ymax = 0;
+        }
+
         return cropPixels(xmin, ymin, xmax-xmin+1, ymax-ymin+1, roundUpDimensions);
     }
 
