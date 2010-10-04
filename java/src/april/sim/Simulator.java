@@ -44,10 +44,10 @@ public class Simulator implements VisConsole.Listener
         try {
             Config config = new Config();
             if (gopt.wasSpecified("config"))
-                config = new ConfigFile(gopt.getString("config"));
+                config = new ConfigFile(EnvUtil.expandVariables(gopt.getString("config")));
 
             if (gopt.getString("world").length() > 0) {
-                worldFilePath = gopt.getString("world");
+                worldFilePath = EnvUtil.expandVariables(gopt.getString("world"));
                 this.world = new SimWorld(worldFilePath, config);
             } else {
                 this.world = new SimWorld(config);
@@ -55,6 +55,7 @@ public class Simulator implements VisConsole.Listener
 
         } catch (IOException ex) {
             System.out.println("ex: "+ex);
+            ex.printStackTrace();
             return;
         }
 

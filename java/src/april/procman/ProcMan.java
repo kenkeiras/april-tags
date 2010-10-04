@@ -297,7 +297,7 @@ public class ProcMan// implements Runnable
             new Thread(new ProcManDaemon()).start();
         }
 
-        ProcMan pm = new ProcMan(opts.getString("config"),
+        ProcMan pm = new ProcMan(EnvUtil.expandVariables(opts.getString("config")),
                                  opts.getString("runtimes"),
                                  opts.getBoolean("gui"),
                                  opts.getBoolean("verbose"));
