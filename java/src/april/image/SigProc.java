@@ -22,7 +22,7 @@ public class SigProc
         for (int i = f.length/2; i < f.length; i++) {
             double acc = 0;
             for (int j = 0; j < f.length; j++) {
-                if ((aoff + i - j) < 0 || (aoff + i - j) >= alen)
+                if ((i - j) < 0 || (i - j) >= alen)
                     acc += a[aoff] * f[j];
                 else
                     acc += a[aoff + i - j] * f[j];
@@ -41,7 +41,7 @@ public class SigProc
         for (int i = alen; i < alen + f.length/2; i++) {
             double acc = 0;
             for (int j = 0; j < f.length; j++) {
-                if ((aoff + i - j) >= alen || (aoff + i - j) < 0)
+                if ((i - j) >= alen || (i - j) < 0)
                     acc += a[aoff + alen - 1] * f[j];
                 else
                     acc += a[aoff + i - j] * f[j];
@@ -60,7 +60,7 @@ public class SigProc
         for (int i = f.length/2; i < f.length; i++) {
             double acc = 0;
             for (int j = 0; j < f.length; j++) {
-                if ((aoff + i - j) < 0 || (aoff + i - j) >= alen)
+                if ((i - j) < 0 || (i - j) >= alen)
                     acc = Math.max(acc, a[aoff] * f[j]);
                 else
                     acc = Math.max(acc, a[aoff + i - j] * f[j]);
@@ -79,49 +79,12 @@ public class SigProc
         for (int i = alen; i < alen + f.length/2; i++) {
             double acc = 0;
             for (int j = 0; j < f.length; j++) {
-                if ((aoff + i - j) >= alen || (aoff + i - j) < 0)
+                if ((i - j) >= alen || (i - j) < 0)
                     acc = Math.max(acc, a[aoff + alen - 1] * f[j]);
                 else
                     acc = Math.max(acc, a[aoff + i - j] * f[j]);
             }
             r[roff + i - f.length/2] = (float) acc;
-        }
-    }
-
-    public static final void convolveCenteredDisc2DMaxContSparse(int a[], int width, int height, double radius, double mpp, int r[])
-    {
-        int pxRadius = (int) Math.ceil(radius/mpp);
-
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                int v = a[y*width +x];
-                if (v == 0)
-                    continue;
-
-                for (int k=-pxRadius; k <= pxRadius; k++) {
-                    for (int l=-pxRadius; l <= pxRadius; l++) {
-                        // is it within the radius?
-                        double k_m = k*mpp;
-                        double l_m = l*mpp;
-                        double c00_m = Math.sqrt((k_m - mpp/2)*(k_m - mpp/2) + (l_m - mpp/2)*(l_m - mpp/2));
-                        double c01_m = Math.sqrt((k_m - mpp/2)*(k_m - mpp/2) + (l_m + mpp/2)*(l_m + mpp/2));
-                        double c10_m = Math.sqrt((k_m + mpp/2)*(k_m + mpp/2) + (l_m - mpp/2)*(l_m - mpp/2));
-                        double c11_m = Math.sqrt((k_m + mpp/2)*(k_m + mpp/2) + (l_m + mpp/2)*(l_m + mpp/2));
-                        double rad = Math.min(Math.min(c00_m, c01_m), Math.min(c10_m, c11_m));
-
-                        if (rad >= radius)
-                            continue;
-
-                        int yk = y+k;
-                        int xl = x+l;
-                        if (yk < 0 || yk >= height || xl < 0 || xl >= width)
-                            continue;
-
-                        int o = yk*width + xl;
-                        r[o] = (int) Math.max(r[o], v);
-                    }
-                }
-            }
         }
     }
 
@@ -231,7 +194,7 @@ public class SigProc
         for (int i = f.length/2; i < f.length; i++) {
             double acc = 0;
             for (int j = 0; j < f.length; j++) {
-                if ((aoff + i - j) < 0 || (aoff + i - j) >= alen)
+                if ((i - j) < 0 || (i - j) >= alen)
                     acc = Math.max(acc, (a[aoff]&0xff) * f[j]);
                 else
                     acc = Math.max(acc, (a[aoff + i - j]&0xff) * f[j]);
@@ -250,7 +213,7 @@ public class SigProc
         for (int i = alen; i < alen + f.length/2; i++) {
             double acc = 0;
             for (int j = 0; j < f.length; j++) {
-                if ((aoff + i - j) >= alen || (aoff + i - j) < 0)
+                if ((i - j) >= alen || (i - j) < 0)
                     acc = Math.max(acc, (a[aoff + alen - 1]&0xff) * f[j]);
                 else
                     acc = Math.max(acc, (a[aoff + i - j]&0xff) * f[j]);
