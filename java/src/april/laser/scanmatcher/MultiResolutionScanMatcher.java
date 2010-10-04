@@ -61,9 +61,12 @@ public class MultiResolutionScanMatcher
 
     /** @param points New laser points projected into the robot's coordinate frame.
         @param prior The prior. The mean encodes the center of the
-        search area. If the covariance is not null, the computed
-        posterior will be a probabilistic fusion of the odometry prior
-        and the scanmatcher's result.
+        search area. NOTE ON THE COVARIANCE: The prior is weighed
+        against the correlation function and thus must be scaled
+        appropriately. The correlation function produces values
+        between [0, 255] for every point, and the covariance needs to
+        be able to 'compete' with that. A good rule of thumb is to
+        scale the covariance matrix by (1.0 / (npoints*10)) or so.
         @param xrange,yrange Search range, in meters. (The search area will have width xrange*2).
         @param thetaRange search range in radians (The search volume will have height thetaRange*2)
         @param thetaResolution Initial search step size for theta, in
@@ -79,17 +82,15 @@ public class MultiResolutionScanMatcher
     public MultiGaussian match(ArrayList<double[]> points, double priormean[], double priorvar[][],
                                double xrange, double yrange, double thetaRange, double thetaResolution)
     {
-        MultiGaussian mg = matchRaw(points, priormean, xrange, yrange, thetaRange, thetaResolution);
+        double pinv[][] = priorvar == null ? null : LinAlg.inverse(priorvar);
+        MultiGaussian mg = matchRaw(points, priormean, pinv,
+                                    xrange, yrange, thetaRange, thetaResolution);
 
         // do refinement
         if (refine) {
             double xyt0[] = mg.getMean();
-            double xyt1[] = refine(points, xyt0[0], xyt0[1], xyt0[2]);
+            double xyt1[] = refine(points, xyt0[0], xyt0[1], xyt0[2], priormean, pinv);
             mg = new MultiGaussian(mg.getCovariance(), xyt1);
-        }
-
-        // now do fusion with the prior.
-        if (priorvar != null) {
         }
 
         // we're done.
@@ -97,7 +98,7 @@ public class MultiResolutionScanMatcher
     }
 
     /** Estimate the distribution p(xyt | model, points), i.e., not paying attention to the prior. **/
-    MultiGaussian matchRaw(ArrayList<double[]> points, double priorxyt[],
+    MultiGaussian matchRaw(ArrayList<double[]> points, double priorxyt[], double pinv[][],
                            double xrange, double yrange, double thetaRange, double thetaResolution)
     {
         /////////////////////////////////////////////////////////////////
@@ -110,7 +111,8 @@ public class MultiResolutionScanMatcher
                                                  lowResXYT[0], (int) (2*xrange/dgm.metersPerPixel + 1),
                                                  lowResXYT[1], (int) (2*yrange/dgm.metersPerPixel + 1),
                                                  lowResXYT[2], thetaResolution,
-                                                 Math.max(1, (int) (2*thetaRange/thetaResolution)));
+                                                 Math.max(1, (int) (2*thetaRange/thetaResolution)),
+                                                 priorxyt, pinv);
 
 
         /////////////////////////////////////////////////////////////////
@@ -209,7 +211,8 @@ public class MultiResolutionScanMatcher
             IntArray2D highResScores = gm.scores2D(points,
                                                    xyt1[0], decimate,
                                                    xyt1[1], decimate,
-                                                   xyt1[2]);
+                                                   xyt1[2],
+                                                   priorxyt, pinv);
 
             int thisBestHighResIdx[] = bestIndices(highResScores);
             int thisBestHighResScore = highResScores.get(thisBestHighResIdx[1], thisBestHighResIdx[0]);
@@ -274,9 +277,9 @@ public class MultiResolutionScanMatcher
         return bestidx;
     }
 
-    public double[] refine(ArrayList<double[]> points, double x, double y, double t)
+    public double[] refine(ArrayList<double[]> points, double x, double y, double t, double prior[], double pinv[][])
     {
-        int score = gm.score(points, x, y, t);
+        int score = gm.score(points, x, y, t, prior, pinv);
         double stepsize[] = LinAlg.copy(refine_initial_stepsize);
 
         double newxyts[][] = new double[6][3];
@@ -314,7 +317,7 @@ public class MultiResolutionScanMatcher
             // move in the best direction. (Roughly a local gradient search.)
             boolean stepped = false;
             for (int i = 0; i < 6; i++) {
-                int newscore = gm.score(points, newxyts[i][0], newxyts[i][1], newxyts[i][2]);
+                int newscore = gm.score(points, newxyts[i][0], newxyts[i][1], newxyts[i][2], prior, pinv);
 
                 if (newscore > score) {
                     stepped = true;

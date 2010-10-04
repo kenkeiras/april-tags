@@ -3,6 +3,7 @@ package april.util;
 import java.awt.image.*;
 import java.util.*;
 
+import april.jmat.*;
 import april.image.*;
 
 /** <font color="red"> Please follow the conventions listed here!</font><br>
@@ -1168,7 +1169,7 @@ public final class GridMap
     }
 
     public int score(ArrayList<double[]> points,
-                     double tx, double ty, double theta)
+                     double tx, double ty, double theta, double prior[], double pinv[][])
     {
         double ct = Math.cos(theta), st = Math.sin(theta);
         double pixelsPerMeter = 1.0 / metersPerPixel;
@@ -1193,6 +1194,19 @@ public final class GridMap
                 score += data[iy*width + ix]&0xff;
 
         }
+
+        if (pinv != null) {
+            double ex = (tx - prior[0]), ey = (ty - prior[1]);
+            double et = MathUtil.mod2pi(theta - prior[2]);
+
+            double cost = ex*ex*pinv[0][0] + 2*ex*ey*pinv[0][1] + 2*ex*et*pinv[0][2] +
+                ey*ey*pinv[1][1] + 2*ey*et*pinv[1][2] +
+                et*et*pinv[2][2];
+
+            System.out.printf("%15d %15f\n", score, cost);
+            score -= (int) cost;
+        }
+
         return score;
     }
 
@@ -1206,7 +1220,7 @@ public final class GridMap
     public IntArray2D scores2D(ArrayList<double[]> points,
                                double tx0, int txDim,
                                double ty0, int tyDim,
-                               double theta)
+                               double theta, double prior[], double pinv[][])
     {
         IntArray2D scores = new IntArray2D(tyDim, txDim);
 
@@ -1253,6 +1267,27 @@ public final class GridMap
             }
         }
 
+        if (pinv != null) {
+
+            double et = MathUtil.mod2pi(theta - prior[2]);
+
+            double priorcost0 = et*et*pinv[2][2];
+
+            for (int sy = 0; sy < scores.dim1; sy++) {
+                double ey = ty0 + sy*metersPerPixel - prior[1];
+
+                double priorcost1 = ey*ey*pinv[1][1] + 2*ey*et*pinv[1][2] + priorcost0;
+
+                for (int sx = 0; sx < scores.dim2; sx++) {
+                    double ex = tx0 + sx*metersPerPixel - prior[0];
+
+                    double cost = ex*ex*pinv[0][0] + 2*ex*ey*pinv[0][1] + 2*ex*et*pinv[0][2] +  priorcost1;
+
+                    scores.plusEquals(sy, sx, (int) -cost);
+                }
+            }
+        }
+
         return scores;
     }
 
@@ -1262,14 +1297,15 @@ public final class GridMap
     public  IntArray2D[] scores3D(ArrayList<double[]> points,
                                   double tx0, int txDim,
                                   double ty0, int tyDim,
-                                  double theta0, double thetaStep, int thetaDim)
+                                  double theta0, double thetaStep, int thetaDim,
+                                  double prior[], double pinv[][])
     {
         IntArray2D scores[] = new IntArray2D[thetaDim];
 
         for (int i = 0; i < thetaDim; i++) {
             double theta = theta0 + i*thetaStep;
 
-            scores[i] = scores2D(points, tx0, txDim, ty0, tyDim, theta);
+            scores[i] = scores2D(points, tx0, txDim, ty0, tyDim, theta, prior, pinv);
         }
 
         return scores;
