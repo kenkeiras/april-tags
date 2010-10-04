@@ -21,7 +21,7 @@ import java.io.*;
  **/
 public class VisImage implements VisObject, VisSerializable
 {
-    VisTexture texture;
+    public VisTexture texture;
 
     double x0, y0, x1, y1, z;
     double scale = 1.0;
