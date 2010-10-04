@@ -1203,7 +1203,6 @@ public final class GridMap
                 ey*ey*pinv[1][1] + 2*ey*et*pinv[1][2] +
                 et*et*pinv[2][2];
 
-            System.out.printf("%15d %15f\n", score, cost);
             score -= (int) cost;
         }
 

@@ -55,6 +55,8 @@ public abstract class GEdge
         StructureCoder coder = null;
         if (o instanceof Integer)
             coder = new IntCoder();
+        if (o instanceof String)
+            coder = new StringCoder();
         if (o instanceof Long)
             coder = new LongCoder();
         if (o instanceof double[])
