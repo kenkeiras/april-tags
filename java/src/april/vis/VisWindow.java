@@ -24,9 +24,11 @@ public class VisWindow implements VisObject, VisSerializable
 
     public ALIGN align;                // where is the window?
     public double xy0[], xy1[];        // coordinates that will be mapped to our window (xy0: bottom left, xy1: upper right)
-    public double winwidth, winheight; // size of the window, in pixels.
+    public int winwidth, winheight; // size of the window, in pixels.
 
     ArrayList<VisObject> objects = new ArrayList<VisObject>();
+
+    public Color backgroundColor = Color.black;
 
     /** Define a new window of size (in pixels) winwidth x winheight,
         which will be aligned with respect to the viewable region of
@@ -35,7 +37,7 @@ public class VisWindow implements VisObject, VisSerializable
         represents the upper right corner. Then, all the objects will
         be drawn.
     **/
-    public VisWindow(ALIGN align, double winwidth, double winheight, double xy0[], double xy1[], VisObject ... os)
+    public VisWindow(ALIGN align, int winwidth, int winheight, double xy0[], double xy1[], VisObject ... os)
     {
         this.align = align;
         this.winwidth = winwidth;
@@ -66,7 +68,7 @@ public class VisWindow implements VisObject, VisSerializable
         gl.glGetIntegerv(gl.GL_VIEWPORT, viewport, 0);
 
         // compute the pixel coordinates of the window.
-        double px0, px1, py0, py1;
+        int px0, px1, py0, py1;
 
         switch (align)
 	    {
@@ -76,7 +78,7 @@ public class VisWindow implements VisObject, VisSerializable
                 break;
 
             default: case TOP: case CENTER:	case BOTTOM:
-                px0 = (viewport[0] + viewport[2])/2 - winwidth/2.0;
+                px0 = (viewport[0] + viewport[2])/2 - winwidth/2;
                 px1 = px0 + winwidth;
                 break;
 
@@ -96,7 +98,7 @@ public class VisWindow implements VisObject, VisSerializable
                 break;
 
             default: case LEFT: case CENTER: case RIGHT:
-                py0 = (viewport[1] + viewport[3])/2 - winheight/2.0;
+                py0 = (viewport[1] + viewport[3])/2 - winheight/2;
                 py1 = py0 + winheight;
                 break;
 
@@ -106,20 +108,41 @@ public class VisWindow implements VisObject, VisSerializable
                 break;
 	    }
 
+        gl.glEnable(GL.GL_SCISSOR_TEST);
+        gl.glViewport(px0, py0, px1-px0, py1-py0);
+        gl.glScissor(px0, py0, px1-px0, py1-py0);
+
         // setup very dumb projection in pixel coordinates
         gl.glMatrixMode(gl.GL_PROJECTION);
         gl.glLoadIdentity();
-        glu.gluOrtho2D(0,viewport[2],0,viewport[3]);
+        glu.gluOrtho2D(0, winwidth, 0, winheight);
 
         gl.glMatrixMode(gl.GL_MODELVIEW);
         gl.glLoadIdentity();
 
-        // now, adjust the transforms...
-        gl.glTranslated(px0, py0, 0);
-        gl.glScaled(px1-px0, py1-py0, 0);
+        if (true) {
+            gl.glClearColor(backgroundColor.getRed()/255f,
+                            backgroundColor.getGreen()/255f,
+                            backgroundColor.getBlue()/255f,
+                            1.0f);
+
+            gl.glClearDepth(1.0f);
+            gl.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT);
+        }
+
+        if (false) {
+            // visualize the window.
+            gl.glColor3f(1.0f, .5f, .5f);
+            gl.glBegin(GL.GL_QUADS);
+            gl.glVertex3d(0, 0, 0);
+            gl.glVertex3d(winwidth, 0, 0);
+            gl.glVertex3d(winwidth, winheight, 0);
+            gl.glVertex3d(0, winheight, 0);
+            gl.glEnd();
+        }
 
         // scale the input coordinates to [0, 1]
-        gl.glScaled(1.0/(xy1[0]-xy0[0]), 1.0/(xy1[1]-xy0[1]), 0);
+        gl.glScaled(winwidth/(xy1[0]-xy0[0]), winheight/(xy1[1]-xy0[1]), 0);
         gl.glTranslated(-xy0[0], -xy0[1], 0);
 
         // TODO: (optional?) Stenciling/ clip planes
@@ -132,11 +155,12 @@ public class VisWindow implements VisObject, VisSerializable
         for (VisObject o : objects) {
 
             VisUtil.pushGLState(gl);
-            VisObject vo = (VisObject) o;
-            vo.render(vc, gl, glu);
+            o.render(vc, gl, glu);
             VisUtil.popGLState(gl);
         }
 
+        // restore old viewport
+        gl.glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
         VisUtil.popGLWholeState(gl);
     }
 
@@ -174,8 +198,8 @@ public class VisWindow implements VisObject, VisSerializable
         xy0 = new double[]{in.readDouble(), in.readDouble()};
         xy1 = new double[]{in.readDouble(), in.readDouble()};
 
-        winwidth = in.readDouble();
-        winheight = in.readDouble();
+        winwidth = in.readInt();
+        winheight = in.readInt();
 
         int nobjs = in.readInt();
         for (int  i= 0; i < nobjs; i++)
