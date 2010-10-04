@@ -1849,6 +1849,23 @@ public final class LinAlg
         return X;
     }
 
+    public static int min(int v[])
+    {
+        return v[minIdx(v)];
+    }
+
+    public static int minIdx(int v[])
+    {
+        int idx = -1;
+
+        for (int i = 0; i < v.length; i++) {
+            if (idx < 0 || v[i] < v[idx])
+                idx = i;
+        }
+
+        return idx;
+    }
+
     public static double min(double v[])
     {
         return v[minIdx(v)];

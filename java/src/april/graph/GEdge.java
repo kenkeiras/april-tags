@@ -1,7 +1,11 @@
 package april.graph;
 
-import april.util.*;
 import java.io.*;
+import java.util.*;
+
+import lcm.lcm.*;
+
+import april.util.*;
 
 /** Abstract information relating the position of two GraphNodes. **/
 public abstract class GEdge
@@ -11,6 +15,23 @@ public abstract class GEdge
      * arbitrary number of nodes.
      **/
     public int nodes[];
+
+    public HashMap<String, Attribute> attributes;
+
+    /** Additional information associated with a GraphNode, often
+     * sensor data.
+     **/
+    public static class Attribute
+    {
+        public Object          o;
+        public StructureCoder  coder;
+
+        public Attribute(Object o, StructureCoder coder)
+        {
+            this.o = o;
+            this.coder = coder;
+        }
+    }
 
     /** What is the Chi^2 error of this edge, given the graph? **/
     public abstract double getChi2(Graph g);
@@ -28,4 +49,39 @@ public abstract class GEdge
     public abstract Linearization linearize(Graph g, Linearization lin);
 
     public abstract GEdge copy();
+
+    public void setAttribute(String s, Object o)
+    {
+        StructureCoder coder = null;
+        if (o instanceof Integer)
+            coder = new IntCoder();
+        if (o instanceof Long)
+            coder = new LongCoder();
+        if (o instanceof double[])
+            coder = new DoublesCoder();
+        if (o instanceof LCMEncodable)
+            coder = new LCMCoder();
+        setAttribute(s, o, coder);
+    }
+
+    public void setAttribute(String s, Object o, StructureCoder coder)
+    {
+        if (attributes == null)
+            attributes = new HashMap<String, Attribute>();
+        Attribute attr = new Attribute(o, coder);
+        attributes.put(s, attr);
+    }
+
+    public Object getAttribute(String s)
+    {
+        if (attributes == null)
+            return null;
+
+        Attribute attr = attributes.get(s);
+        if (attr == null)
+            return null;
+
+        return attr.o;
+    }
+
 }
