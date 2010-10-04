@@ -152,7 +152,7 @@ public class VisTexture implements VisSerializable
      * redrawn.  It is up to the user to unlock the texture; else, a
      * memory leak (in graphics card memory) occurs.
      **/
-    public void lock()
+    public synchronized void lock()
     {
         locked = true;
     }
@@ -160,13 +160,15 @@ public class VisTexture implements VisSerializable
     /** When unlocked, the texture will continue to work properly, but
      * will be re-uploaded to the graphics card every time it is
      * displayed. **/
-    public void unlock()
+    public synchronized void unlock()
     {
         if (!locked)
             return;
 
         locked = false;
-        texidsGL.glDeleteTextures(1, texids, 0);
+        if (texids != null)
+            texidsGL.glDeleteTextures(1, texids, 0);
+
         texids = null;
         texidsGL = null;
     }
@@ -188,7 +190,7 @@ public class VisTexture implements VisSerializable
         magFilterEnable = enable;
     }
 
-    public void bindTexture(GL gl)
+    public synchronized void bindTexture(GL gl)
     {
         gl.glEnable(textureTarget);
 
@@ -251,7 +253,7 @@ public class VisTexture implements VisSerializable
         gl.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 4);
     }
 
-    public void unbindTexture(GL gl)
+    public synchronized void unbindTexture(GL gl)
     {
         gl.glBindTexture(textureTarget, 0);
         gl.glDisable(textureTarget);
