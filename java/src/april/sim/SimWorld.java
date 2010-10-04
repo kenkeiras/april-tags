@@ -65,9 +65,10 @@ public class SimWorld
             gpslin = new GPSLinearization(ll);
 
         String geopath = config.getString("simulator.geoimage", null);
-        geopath = EnvUtil.expandVariables(geopath);
 
         if (geopath != null) {
+            geopath = EnvUtil.expandVariables(geopath);
+
             try {
                 geoimage = new GeoImage(geopath, null);
             } catch (IOException ex) {
