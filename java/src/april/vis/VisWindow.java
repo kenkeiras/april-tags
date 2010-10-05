@@ -175,7 +175,7 @@ public class VisWindow implements VisObject, VisSerializable
             gl.glEnd();
         }
 
-        // scale the input coordinates to [0, 1]
+        // scale the input coordinates to [0, winwidth]
         gl.glScaled(winwidth/(xy1[0]-xy0[0]), winheight/(xy1[1]-xy0[1]), 0);
         gl.glTranslated(-xy0[0], -xy0[1], 0);
 
@@ -254,10 +254,23 @@ public class VisWindow implements VisObject, VisSerializable
     {
         JFrame jf = new JFrame("test");
         VisWorld vw = new VisWorld();
-        VisCanvas vc = new VisCanvas(vc);
+        VisCanvas vc = new VisCanvas(vw);
 
         VisWorld.Buffer vb = vw.getBuffer("foo");
-//        vb.addBuffered(new VisWindow(
+
+        for (int ix = 0; ix < 6; ix++) {
+            for (int iy = 0; iy < 6; iy++) {
+
+                vb.addBuffered(new VisWindow(new double[] {ix*100, iy*100}, 100, 100, new double[] {0,0}, new double[] {100,100},
+                                             new VisBox(50, 50, 1, Color.yellow),
+                                             new VisText(VisText.ANCHOR.TOP_LEFT, "TL"),
+                                             new VisText(VisText.ANCHOR.TOP_RIGHT, "TR"),
+                                             new VisText(VisText.ANCHOR.BOTTOM_LEFT, "BL"),
+                                             new VisText(VisText.ANCHOR.BOTTOM_RIGHT, "BR"),
+                                             new VisText(VisText.ANCHOR.CENTER, "CENTER")));
+            }
+        }
+
         vb.switchBuffer();
 
         jf.setLayout(new BorderLayout());

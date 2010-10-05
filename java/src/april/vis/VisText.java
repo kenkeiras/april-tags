@@ -469,11 +469,11 @@ public class VisText implements VisObject, VisSerializable
             switch (anchor)
             {
                 case TOP_LEFT: case LEFT: case BOTTOM_LEFT:
-                    winxyz[0] = viewport[0]+SCREEN_MARGIN;
+                    winxyz[0] = SCREEN_MARGIN;
                     break;
 
                 default: case TOP: case CENTER:	case BOTTOM:
-                    winxyz[0] = (viewport[0] + viewport[2])/2;
+                    winxyz[0] = (viewport[2])/2;
                     break;
 
                 case TOP_RIGHT: case RIGHT: case BOTTOM_RIGHT:
@@ -490,11 +490,11 @@ public class VisText implements VisObject, VisSerializable
                     break;
 
                 default: case LEFT: case CENTER: case RIGHT:
-                    winxyz[1] = (viewport[1] + viewport[3])/2;
+                    winxyz[1] = (viewport[3])/2;
                     break;
 
                 case BOTTOM_LEFT: case BOTTOM: case BOTTOM_RIGHT:
-                    winxyz[1] = viewport[1]+SCREEN_MARGIN;
+                    winxyz[1] = SCREEN_MARGIN;
                     break;
             }
         }
@@ -515,6 +515,7 @@ public class VisText implements VisObject, VisSerializable
         gl.glMatrixMode(gl.GL_PROJECTION);
         gl.glLoadIdentity();
         glu.gluOrtho2D(0,viewport[2],0,viewport[3]);
+//        glu.gluOrtho2D(viewport[0],viewport[0]+viewport[2],viewport[1],viewport[1]+viewport[3]);
 
         gl.glMatrixMode(gl.GL_MODELVIEW);
         gl.glLoadIdentity();
@@ -533,7 +534,7 @@ public class VisText implements VisObject, VisSerializable
         ////////////////////////////////////////////////////
         // compute lower left coordinate of the box
         int x0 = (int) winxyz[0];
-        int y0 = (int) winxyz[0];
+        int y0 = (int) winxyz[1];
 
         switch (anchor)
 	    {
