@@ -215,4 +215,20 @@ public class VisWindow implements VisObject, VisSerializable
         assert(false);
         return ALIGN.CENTER;
     }
+
+    public static void main(String args[])
+    {
+        JFrame jf = new JFrame("test");
+        VisWorld vw = new VisWorld();
+        VisCanvas vc = new VisCanvas(vc);
+
+        VisWorld.Buffer vb = vw.getBuffer("foo");
+//        vb.addBuffered(new VisWindow(
+        vb.switchBuffer();
+
+        jf.setLayout(new BorderLayout());
+        jf.add(vc, BorderLayout.CENTER);
+        jf.setSize(600,600);
+        jf.setVisible(true);
+    }
 }
