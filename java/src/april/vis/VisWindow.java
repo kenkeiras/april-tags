@@ -23,6 +23,7 @@ public class VisWindow implements VisObject, VisSerializable
     public enum ALIGN { TOP_LEFT, TOP, TOP_RIGHT, LEFT, CENTER, RIGHT, BOTTOM_LEFT, BOTTOM, BOTTOM_RIGHT, COORDINATES };
 
     public ALIGN align;                // where is the window?
+    double coords[];                   // coords (lower left) OR align
     public double xy0[], xy1[];        // coordinates that will be mapped to our window (xy0: bottom left, xy1: upper right)
     public int winwidth, winheight; // size of the window, in pixels.
 
@@ -37,13 +38,37 @@ public class VisWindow implements VisObject, VisSerializable
         represents the upper right corner. Then, all the objects will
         be drawn.
     **/
-    public VisWindow(ALIGN align, int winwidth, int winheight, double xy0[], double xy1[], VisObject ... os)
+    public VisWindow(ALIGN align, int winwidth, int winheight, double xy0[], double xy1[],
+                     VisObject ... os)
     {
         this.align = align;
         this.winwidth = winwidth;
         this.winheight = winheight;
         this.xy0 = LinAlg.copy(xy0);
         this.xy1 = LinAlg.copy(xy1);
+        this.coords = null;
+        for (VisObject o : os)
+            add(o);
+    }
+
+    /** Define a new window of size (in pixels) winwidth x winheight,
+        which will be aligned with respect to the viewable region of
+        the screen (at screen coordinate coords). A coordinate
+        transform will be applied so that the coordinate xy0
+        represents the lower left corner, and xy1 represents the upper
+        right corner. Then, all the objects will be drawn.
+    **/
+    public VisWindow(double coords[], int winwidth, int winheight, double xy0[], double xy1[],
+                     VisObject ... os)
+    {
+        assert(coords.length == 2);
+
+        this.align = ALIGN.COORDINATES;
+        this.winwidth = winwidth;
+        this.winheight = winheight;
+        this.xy0 = LinAlg.copy(xy0);
+        this.xy1 = LinAlg.copy(xy1);
+        this.coords = coords;
 
         for (VisObject o : os)
             add(o);
@@ -71,10 +96,14 @@ public class VisWindow implements VisObject, VisSerializable
         int px0, px1, py0, py1;
 
         switch (align)
-	    {
+        {
             case TOP_LEFT: case LEFT: case BOTTOM_LEFT:
                 px0 = 0;
                 px1 = winwidth;
+                break;
+            case COORDINATES:
+                px0 = (int)Math.round(Math.max(1, Math.min(viewport[2]- 1 - winwidth, coords[0])));
+                px1 = (int)Math.round(Math.max(winwidth, Math.min(viewport[2]- 1, coords[0] + winwidth)));
                 break;
 
             default: case TOP: case CENTER:	case BOTTOM:
@@ -86,14 +115,19 @@ public class VisWindow implements VisObject, VisSerializable
                 px1 = viewport[2]-1;
                 px0 = px1 - winwidth;
                 break;
-	    }
+        }
 
         switch (align)
-	    {
+        {
             case TOP_LEFT: case TOP: case TOP_RIGHT:
                 // remember that y is inverted: y=0 is at bottom
                 // left in GL
                 py0 = viewport[3] - winheight - 1;
+                py1 = py0 + winheight;
+                break;
+
+            case COORDINATES:
+                py0 = (int)Math.round(Math.max(1, Math.min(viewport[3]- 1 - winheight, coords[1])));
                 py1 = py0 + winheight;
                 break;
 
@@ -106,7 +140,7 @@ public class VisWindow implements VisObject, VisSerializable
                 py0 = 1;
                 py1 = py0 + winheight;
                 break;
-	    }
+        }
 
         gl.glEnable(GL.GL_SCISSOR_TEST);
         gl.glViewport(px0, py0, px1-px0, py1-py0);
