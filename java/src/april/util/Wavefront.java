@@ -27,7 +27,7 @@ public class Wavefront
     ArrayList<double[]> path;
 
     // quit as soon as we've found a path--- don't compute the whole cost map.
-    boolean earlyExit = true;
+    public boolean earlyExit = true;
 
     public Wavefront(GridMap gm, ArrayList<double[]> sinks, double source[])
     {
@@ -195,6 +195,22 @@ public class Wavefront
         costs[iy * gm.width + ix] = cost;
     }
 
+    public BufferedImage makeBufferedImage()
+    {
+        double m = 0;
+        for (int i = 0; i < costs.length; i++) {
+            if (costs[i] < Double.MAX_VALUE)
+                m = Math.max(m, costs[i]);
+        }
+        for (int i = 0; i < costs.length; i++) {
+            if (costs[i] == Double.MAX_VALUE)
+                costs[i] = m;
+        }
+
+        return new FloatImage(gm.width, gm.height, costs).normalize().makeImage();
+
+    }
+
     //////////////////////////////////////////////////////////////////////////////
     // Test code below
     static class WavefrontTest extends VisCanvasEventAdapter implements ParameterListener
@@ -309,21 +325,10 @@ public class Wavefront
 
             if (true) {
                 VisWorld.Buffer vb = vw.getBuffer("wavefront");
-                double m = 0;
-                for (int i = 0; i < wf.costs.length; i++) {
-                    if (wf.costs[i] < Double.MAX_VALUE)
-                        m = Math.max(m, wf.costs[i]);
-                }
-                for (int i = 0; i < wf.costs.length; i++) {
-                    if (wf.costs[i] == Double.MAX_VALUE)
-                        wf.costs[i] = m;
-                }
-
-                vb.addBuffered(new VisImage(new VisTexture(new FloatImage(gm.width, gm.height, wf.costs).normalize().makeImage()), gm.getXY0(), gm.getXY1()));
+                vb.addBuffered(new VisImage(new VisTexture(wf.makeBufferedImage()), gm.getXY0(), gm.getXY1()));
                 vb.switchBuffer();
             }
         }
-
     }
 
     public static void main(String args[])

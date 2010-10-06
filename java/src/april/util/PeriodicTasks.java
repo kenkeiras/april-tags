@@ -111,8 +111,10 @@ public class PeriodicTasks
                     now = System.currentTimeMillis();
 
                     long delay = r.nextRunTime - now;
-                    if (delay > 0)
+                    if (delay > 0) {
                         Thread.sleep(delay);
+                        now = System.currentTimeMillis();
+                    }
 
                 } catch (InterruptedException ex) {
                     System.out.println("ex: "+ex);
@@ -129,12 +131,13 @@ public class PeriodicTasks
                 r.task.run(dt);
                 long end = System.currentTimeMillis();
 
+                r.lastRunTime = now;
+
                 if (r.fixedRate)
                     r.nextRunTime += r.period;
                 else
                     r.nextRunTime = end + r.period;
 
-                r.lastRunTime = now;
                 queue.put(r);
             }
         }
