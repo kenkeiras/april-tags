@@ -530,7 +530,7 @@ class Spy implements LCMSubscriber
             StyleConstants.setForeground(summaryStyle, Color.blue);
         }
 
-        void insertStringEx(int pos, String s, Style style)
+        synchronized void insertStringEx(int pos, String s, Style style)
         {
             try {
                 insertString(getLength(), s, style);
