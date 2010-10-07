@@ -36,6 +36,59 @@ public class Wavefront
         this.source = source;
     }
 
+    public void addSink(double xy[])
+    {
+        sinks.add(xy);
+    }
+
+    public double[] findClosestAccessiblePoint(double xy[])
+    {
+        UnionFindSimple ufs = new UnionFindSimple(gm.data.length);
+
+        for (int iy = 1; iy + 1 < gm.height; iy++) {
+            for (int ix = 1; ix + 1 < gm.width; ix++) {
+
+                for (int dy = -1; dy <= 1; dy++) {
+                    int y = iy+dy;
+
+                    for (int dx = -1; dx <= 1; dx++) {
+                        int x = ix+dx;
+
+                        int v = gm.data[y*gm.width + x] & 0xff;
+                        if (v != 255)
+                            ufs.connectNodes(iy*gm.width + ix, x*gm.width + y);
+                    }
+                }
+            }
+        }
+
+        int gx = (int) ((xy[0] - gm.x0) / gm.metersPerPixel);
+        int gy = (int) ((xy[1] - gm.y0) / gm.metersPerPixel);
+        int rep = ufs.getRepresentative(gy*gm.width + gx);
+
+        double bestdist = Double.MAX_VALUE;
+        int besty = -1, bestx = -1;
+
+        for (int iy = 0; iy < gm.height; iy++) {
+            for (int ix = 0; ix < gm.width; ix++) {
+                if (ufs.getRepresentative(iy*gm.width + ix) == rep) {
+                    double dist = (iy-gy)*(iy-gy) + (ix-gx)*(ix-gx);
+                    if (dist < bestdist) {
+                        besty = iy;
+                        bestx = ix;
+                        bestdist = dist;
+                    }
+                }
+            }
+        }
+
+        if (bestdist == Double.MAX_VALUE)
+            return null;
+
+        return new double[] { gm.x0 + bestx*gm.metersPerPixel,
+                              gm.y0 + besty*gm.metersPerPixel };
+    }
+
     public ArrayList<double[]> compute()
     {
         costs = new double[gm.data.length];

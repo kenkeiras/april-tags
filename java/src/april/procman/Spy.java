@@ -513,6 +513,8 @@ class Spy implements LCMSubscriber
     {
         Style defaultStyle, errorStyle, summaryStyle;
 
+        static final int MAX_LENGTH = 128*1024;
+
         ProcGUIDocument()
         {
             defaultStyle = getStyle(StyleContext.DEFAULT_STYLE);
@@ -533,6 +535,10 @@ class Spy implements LCMSubscriber
         synchronized void insertStringEx(int pos, String s, Style style)
         {
             try {
+                if (getLength() > MAX_LENGTH) {
+                    remove(0, MAX_LENGTH / 10);
+                }
+
                 insertString(getLength(), s, style);
             } catch (Exception ex) {
                 System.out.print("caught: ");
