@@ -534,6 +534,8 @@ class Spy implements LCMSubscriber
 
         synchronized void insertStringEx(int pos, String s, Style style)
         {
+            writeLock();
+
             try {
                 if (getLength() > MAX_LENGTH) {
                     remove(0, MAX_LENGTH / 10);
@@ -544,6 +546,8 @@ class Spy implements LCMSubscriber
                 System.out.print("caught: ");
                 ex.printStackTrace();
             }
+
+            writeUnlock();
         }
 
         void appendDefault(String s)

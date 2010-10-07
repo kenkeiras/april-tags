@@ -1667,6 +1667,15 @@ public final class LinAlg
         return v;
     }
 
+    public static int clamp(int v, int min, int max)
+    {
+        if (v < min)
+            return min;
+        if (v > max)
+            return max;
+        return v;
+    }
+
     public static void clear(int v[])
     {
         for (int i = 0; i < v.length; i++)
