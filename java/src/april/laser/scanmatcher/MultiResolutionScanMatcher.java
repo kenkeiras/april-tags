@@ -17,8 +17,8 @@ public class MultiResolutionScanMatcher
     public double refine_shrink_ratio;
     public int    refine_max_iterations;
 
-    public boolean reweight;
-    public double  reweight_distance;
+//    public boolean reweight;
+//    public double  reweight_distance;
 
     // maximum number of times to pick a low resolution cell to be
     // researched at high resolution
@@ -34,13 +34,13 @@ public class MultiResolutionScanMatcher
         this.debug = config.getBoolean("debug", debug);
 
         this.refine = config.getBoolean("refine", true);
-        this.refine_initial_stepsize = config.getDoubles("refine_initial_stepsize", new double[] { 0.1, 0.1, 0.09 });
-        this.refine_minimum_stepsize = config.getDoubles("refine_minimum_stepsize", new double[] { 0.0005, 0.0005, 0.0009 });
+        this.refine_initial_stepsize = config.getDoubles("refine_initial_stepsize", new double[] { 0.1, 0.1, Math.toRadians(2) });
+        this.refine_minimum_stepsize = config.getDoubles("refine_minimum_stepsize", new double[] { 0.001, 0.001, Math.toRadians(0.05) });
         this.refine_shrink_ratio = config.getDouble("refine_shrink_ratio", 0.7);
         this.refine_max_iterations = config.getInt("refine_max_iterations", 1000);
 
-        this.reweight = config.getBoolean("reweight", true);
-        this.reweight_distance = config.getDouble("reweight_distance", 0.1);
+//        this.reweight = config.getBoolean("reweight", true);
+//        this.reweight_distance = config.getDouble("reweight_distance", 0.1);
 
         this.max_search_iterations = config.getInt("max_search_iterations", 100);
     }
@@ -286,7 +286,7 @@ public class MultiResolutionScanMatcher
 
         int iterations = 0;
 
-        double weights[] = computeWeights(points);
+//        double weights[] = computeWeights(points);
 
         for (iterations = 0; iterations < refine_max_iterations; iterations++) {
 
@@ -348,6 +348,7 @@ public class MultiResolutionScanMatcher
         return new double[] {x, y, t};
     }
 
+/*
     double[] computeWeights(ArrayList<double[]> points)
     {
         if (!reweight) {
@@ -371,4 +372,5 @@ public class MultiResolutionScanMatcher
 
         return weights;
     }
+*/
 }

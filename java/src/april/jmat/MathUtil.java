@@ -163,9 +163,9 @@ public class MathUtil
     **/
     public static final double atan(double x)
     {
-        if (x<1 && x>-1)
+        if (Math.abs(x) <= 1)
             return atan_mag1(x);
-        if (x<0)
+        if (x < 0)
             return -Math.PI/2-atan_mag1(1/x);
         else
             return Math.PI/2-atan_mag1(1/x);
@@ -178,7 +178,8 @@ public class MathUtil
         //	return x/(1+0.28087207802773*x*x);
 
         if (true) {
-            assert (Math.abs(x) <= 1);
+            if (Math.abs(x) > 1)
+                System.out.printf("ATAN_MAG1: %15f\n", x);
 
             final double p0 = -0.000158023363661;
             final double p1 = 1.003839939589617;
