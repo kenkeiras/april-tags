@@ -90,8 +90,6 @@ public class Wavefront
             }
         }
 
-        System.out.printf("bestdist: %15f rep %d\n", bestdist, rep);
-
         if (bestdist == Double.MAX_VALUE)
             return null;
 
