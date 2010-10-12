@@ -1293,6 +1293,46 @@ public final class LinAlg
         return X;
     }
 
+    public static void printTranspose(byte v[])
+    {
+        for (int i = 0; i < v.length; i++)
+            System.out.printf("%15d\t", v[i]);
+        System.out.printf("\n");
+    }
+
+    public static void printTranspose(int v[])
+    {
+        for (int i = 0; i < v.length; i++)
+            System.out.printf("%15d\t", v[i]);
+        System.out.printf("\n");
+    }
+
+    public static void printTranspose(float v[])
+    {
+        for (int i = 0; i < v.length; i++)
+            System.out.printf("%15f\t", v[i]);
+        System.out.printf("\n");
+    }
+
+    public static void printTranspose(double v[])
+    {
+        for (int i = 0; i < v.length; i++)
+            System.out.printf("%15f\t", v[i]);
+        System.out.printf("\n");
+    }
+
+    public static void printTranspose(double v[][])
+    {
+        if (v.length == 0)
+            return;
+        for (int j = 0; j < v[0].length; j++) {
+            for (int i = 0; i < v.length; i++) {
+                System.out.printf("%14f ", v[i][j]);
+            }
+            System.out.printf("\n");
+        }
+    }
+
     public static void print(byte v[])
     {
         for (int i = 0; i < v.length; i++)
@@ -1619,6 +1659,15 @@ public final class LinAlg
     }
 
     public static double clamp(double v, double min, double max)
+    {
+        if (v < min)
+            return min;
+        if (v > max)
+            return max;
+        return v;
+    }
+
+    public static int clamp(int v, int min, int max)
     {
         if (v < min)
             return min;
