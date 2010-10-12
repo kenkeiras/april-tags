@@ -67,6 +67,11 @@ public class VisData implements VisObject, VisSerializable
         vertexbuf = null;
     }
 
+    public synchronized int nPoints()
+    {
+        return points.size();
+    }
+
     public synchronized void render(VisContext vc, GL gl, GLU glu)
     {
         for (VisDataStyle style : styles) {
