@@ -176,7 +176,7 @@ public class VisText implements VisObject, VisSerializable
 
     public VisText(double pos[], ANCHOR anchor, String s)
     {
-        this(pos, anchor, s, 0.0, false);
+        this(pos, anchor, null, s, 0.0, false);
     }
 
     /** @param pos Coordinates in world space where the text should be
@@ -194,10 +194,14 @@ public class VisText implements VisObject, VisSerializable
      **/
     public VisText(double pos[], ANCHOR anchor, String s, double alpha)
     {
-        this(pos, anchor, s, alpha, true);
+        this(pos, anchor, null, s, alpha, true);
     }
 
-    public VisText(double pos[], ANCHOR anchor, String s, double alpha, boolean dropShadow)
+    /**
+     * Constructor: fully specified parameters
+     **/
+    public VisText(double pos[], ANCHOR anchor, JUSTIFICATION defaultJustification,
+                   String s, double alpha, boolean dropShadow)
     {
         if (pos != null) {
             if (pos.length==3)
@@ -210,6 +214,8 @@ public class VisText implements VisObject, VisSerializable
             this.dropShadow = true;
             this.dropShadowAlpha = alpha;
         }
+        if (defaultJustification != null)
+            this.defaultJustification = defaultJustification;
         if (anchor != null)
             this.anchor = anchor;
         if (s != null)
@@ -219,22 +225,24 @@ public class VisText implements VisObject, VisSerializable
     /** Convenience constructor. **/
     public VisText(ANCHOR anchor, String s, double alpha)
     {
-        this(null, anchor, s, alpha, true);
+        this(null, anchor, null, s, alpha, true);
     }
     public VisText(ANCHOR anchor, String s)
     {
-        this(null, anchor, s, 0.0, false);
+        this(null, anchor, null, s, 0.0, false);
     }
 
     /** Convenience constructor. **/
     public VisText(ANCHOR anchor, JUSTIFICATION defaultJustification, String s)
     {
-        if (defaultJustification != null)
-            this.defaultJustification = defaultJustification;
-        if (anchor != null)
-            this.anchor = anchor;
-        if (s != null)
-            handleText(s);
+        this(null, anchor, defaultJustification, s, 0.0, false);
+    }
+
+    /** Convenience constructor. **/
+    public VisText(ANCHOR anchor, JUSTIFICATION defaultJustification, String s,
+                   double alpha)
+    {
+        this(null, anchor, defaultJustification, s, alpha, true);
     }
 
     void handleText(String s)
