@@ -23,7 +23,13 @@ public class PeriodicTasks
 
         public int compareTo(Record t)
         {
-            return (int) (nextRunTime - t.nextRunTime);
+            System.out.printf("%10d %10d\n", t.nextRunTime, nextRunTime);
+            long v = nextRunTime - t.nextRunTime;
+            if (v < 0)
+                return -1;
+            if (v == 0)
+                return 0;
+            return 1;
         }
     }
 
@@ -50,7 +56,6 @@ public class PeriodicTasks
     {
         Record r = new Record();
         r.task = task;
-        r.nextRunTime = System.currentTimeMillis();
         r.period = (int) (dt * 1000);
         r.fixedRate = true;
 
@@ -61,11 +66,11 @@ public class PeriodicTasks
     {
         Record r = new Record();
         r.task = task;
-        r.nextRunTime = System.currentTimeMillis();
         r.period = (int) (dt * 1000);
         r.fixedRate = false;
 
         queue.put(r);
+        System.out.println(queue.size());
     }
 
     public synchronized void setRunning(boolean b)
@@ -105,8 +110,10 @@ public class PeriodicTasks
                 try {
                     r = queue.take();
 
-                    if (r.task == null)
-                        break;
+                    if (r.task == null) {
+                        System.out.println("exiting");
+                        return;
+                    }
 
                     now = System.currentTimeMillis();
 

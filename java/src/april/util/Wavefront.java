@@ -17,8 +17,6 @@ import java.util.*;
 public class Wavefront
 {
     GridMap gm;
-    ArrayList<double[]> sinks;
-    double source[];
 
     IntMaxHeap heap;
 
@@ -29,14 +27,76 @@ public class Wavefront
     // quit as soon as we've found a path--- don't compute the whole cost map.
     public boolean earlyExit = true;
 
-    public Wavefront(GridMap gm, ArrayList<double[]> sinks, double source[])
+    public Wavefront(GridMap gm)
     {
         this.gm = gm;
-        this.sinks = sinks;
-        this.source = source;
     }
 
-    public ArrayList<double[]> compute()
+    // using 8-connectivity, find the point closest to a point in sinks that is accessible from source.
+    public double[] findClosestAccessiblePoint(double source[], ArrayList<double[]> sinks)
+    {
+        UnionFindSimple ufs = new UnionFindSimple(gm.data.length);
+
+        // connect together all adjacent non-obstacle pixels.
+        for (int iy = 1; iy + 1 < gm.height; iy++) {
+            for (int ix = 1; ix + 1 < gm.width; ix++) {
+
+                int v0 = gm.data[iy*gm.width + ix] & 0xff;
+                if (v0 == 255)
+                    continue;
+
+                for (int dy = -1; dy <= 1; dy++) {
+                    int y = iy+dy;
+
+                    for (int dx = -1; dx <= 1; dx++) {
+                        int x = ix+dx;
+
+                        int v1 = gm.data[y*gm.width + x] & 0xff;
+                        if (v1 == 255)
+                            continue;
+
+                        ufs.connectNodes(iy*gm.width + ix, y*gm.width + x);
+                    }
+                }
+            }
+        }
+
+        // what connected region is the source in?
+        int sx = (int) ((source[0] - gm.x0) / gm.metersPerPixel);
+        int sy = (int) ((source[1] - gm.y0) / gm.metersPerPixel);
+        sx = LinAlg.clamp(sx, 0, gm.width - 1);
+        sy = LinAlg.clamp(sy, 0, gm.height - 1);
+
+        int rep = ufs.getRepresentative(sy*gm.width + sx);
+
+        double bestdist = Double.MAX_VALUE;
+        double besty = -1, bestx = -1;
+
+        for (int iy = 0; iy < gm.height; iy++) {
+            for (int ix = 0; ix < gm.width; ix++) {
+                if (ufs.getRepresentative(iy*gm.width + ix) == rep) {
+
+                    for (double sink[] : sinks) {
+                        double dist = LinAlg.sq(sink[0] - (gm.x0 + (ix+.5)*gm.metersPerPixel)) +
+                            LinAlg.sq(sink[1] - (gm.y0 + (iy+.5)*gm.metersPerPixel));
+
+                        if (dist < bestdist) {
+                            bestx = gm.x0 + (ix+.5)*gm.metersPerPixel;
+                            besty = gm.y0 + (iy+.5)*gm.metersPerPixel;
+                            bestdist = dist;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (bestdist == Double.MAX_VALUE)
+            return null;
+
+        return new double[] { bestx, besty };
+    }
+
+    public ArrayList<double[]> compute(double source[], ArrayList<double[]> sinks)
     {
         costs = new double[gm.data.length];
         heap = new IntMaxHeap();
@@ -304,9 +364,9 @@ public class Wavefront
                 return;
 
             Tic tic = new Tic();
-            Wavefront wf = new Wavefront(gm, sinks, source);
+            Wavefront wf = new Wavefront(gm);
             wf.earlyExit = pg.gb("earlyexit");
-            ArrayList<double[]> path = wf.compute();
+            ArrayList<double[]> path = wf.compute(source, sinks);
             double dt = tic.toc();
 
             if (true) {

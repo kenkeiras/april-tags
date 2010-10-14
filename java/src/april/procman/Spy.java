@@ -245,7 +245,7 @@ class Spy implements LCMSubscriber
         lcm.subscribe("PROCMAN_PROCESS_LIST", this);
     }
 
-    public void updateTableSelection()
+    public synchronized void updateTableSelection()
     {
         int row = proctable.getSelectedRow();
         if (row >= 0) {
@@ -513,6 +513,8 @@ class Spy implements LCMSubscriber
     {
         Style defaultStyle, errorStyle, summaryStyle;
 
+        static final int MAX_LENGTH = 128*1024;
+
         ProcGUIDocument()
         {
             defaultStyle = getStyle(StyleContext.DEFAULT_STYLE);
@@ -532,11 +534,19 @@ class Spy implements LCMSubscriber
 
         void insertStringEx(int pos, String s, Style style)
         {
-            try {
-                insertString(getLength(), s, style);
-            } catch (Exception ex) {
-                System.out.print("caught: ");
-                ex.printStackTrace();
+            // avoid synchrony with UpdateTableSelection, which causes an exception.
+            synchronized(Spy.this) {
+
+                try {
+                    if (getLength() > MAX_LENGTH) {
+                        remove(0, MAX_LENGTH / 10);
+                    }
+
+                    insertString(getLength(), s, style);
+                } catch (Exception ex) {
+                    System.out.print("caught: ");
+                    ex.printStackTrace();
+                }
             }
         }
 
