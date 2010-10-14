@@ -174,6 +174,11 @@ public class VisText implements VisObject, VisSerializable
 	    }
     }
 
+    public VisText(double pos[], ANCHOR anchor, String s)
+    {
+        this(pos, anchor, s, 0.0, false);
+    }
+
     /** @param pos Coordinates in world space where the text should be
      * drawn. If null, text will be drawn relative to the corners of
      * the screen (and the 'anchor' parameter determines which corner).
@@ -187,7 +192,12 @@ public class VisText implements VisObject, VisSerializable
      * legibility? The color of the drop shadow will be computed
      * automatically from the background color of the VisCanvas.
      **/
-    public VisText(double pos[], ANCHOR anchor, String s)
+    public VisText(double pos[], ANCHOR anchor, String s, double alpha)
+    {
+        this(pos, anchor, s, alpha, true);
+    }
+
+    public VisText(double pos[], ANCHOR anchor, String s, double alpha, boolean dropShadow)
     {
         if (pos != null) {
             if (pos.length==3)
@@ -196,6 +206,10 @@ public class VisText implements VisObject, VisSerializable
                 this.pos = new double[] {pos[0], pos[1], 0};
         }
 
+        if (dropShadow) {
+            this.dropShadow = true;
+            this.dropShadowAlpha = alpha;
+        }
         if (anchor != null)
             this.anchor = anchor;
         if (s != null)
@@ -203,9 +217,13 @@ public class VisText implements VisObject, VisSerializable
     }
 
     /** Convenience constructor. **/
+    public VisText(ANCHOR anchor, String s, double alpha)
+    {
+        this(null, anchor, s, alpha, true);
+    }
     public VisText(ANCHOR anchor, String s)
     {
-        this(null, anchor, s);
+        this(null, anchor, s, 0.0, false);
     }
 
     /** Convenience constructor. **/
@@ -280,7 +298,7 @@ public class VisText implements VisObject, VisSerializable
                 toks[i] = toks[i].toLowerCase().trim();
 
                 // #RRGGBB
-                if (toks[i].startsWith("#") && toks[i].length()==7) {
+                if (toks[i].startsWith("#") && (toks[i].length()==7 || toks[i].length()==9)) {
                     c = stringToColor(toks[i]);
                     continue;
                 }
