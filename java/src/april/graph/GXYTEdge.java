@@ -129,6 +129,7 @@ public class GXYTEdge extends GEdge
         outs.writeDoubles(truth);
         outs.writeComment("Covariance");
         outs.writeMatrix(P);
+        Attributes.write(attributes, outs);
     }
 
     public void read(StructureReader ins) throws IOException
@@ -140,6 +141,7 @@ public class GXYTEdge extends GEdge
         z = ins.readDoubles();
         truth = ins.readDoubles();
         P = ins.readMatrix();
+        attributes = Attributes.read(ins);
     }
 
     public Linearization linearize(Graph g, Linearization lin)
