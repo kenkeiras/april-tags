@@ -81,18 +81,27 @@ public class CholeskySolver implements GraphSolver
 
             // characteristic weight of J'WJ. Should be between lambda_max
             // and lambda_min
-            double W0 = 1; 	    // XXX FIXME
+            double W0 = 1000; 	    // XXX FIXME
 
-            for (int i = 0; i < A.getRowDimension(); i++) {
-                if (A.get(i,i)==0)
-                    A.set(i,i, W0);
+            boolean rooted = false;
+
+            for (GEdge ge : g.edges) {
+                if (ge instanceof GXYTPosEdge) {
+                    rooted = true;
+                    break;
+                }
             }
 
-            // Add an extra constraint to pose 0.
-            GNode gn = g.nodes.get(0);
-            int idx = g.getStateIndex(0);
-            for (int i = 0; i < gn.getDOF(); i++)
-                A.set(idx+i, idx+i, A.get(idx+i, idx+i)+W0);
+            if (!rooted) {
+                // Add an extra constraint to pose 0.
+                GNode gn = g.nodes.get(0);
+                int idx = g.getStateIndex(0);
+                for (int i = 0; i < gn.getDOF(); i++)
+                    A.set(idx+i, idx+i, A.get(idx+i, idx+i)+W0);
+
+                if (verbose)
+                    System.out.printf("Adding a virtual edge to pose zero\n");
+            }
         }
 
         Matrix x = null;
