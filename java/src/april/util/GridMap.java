@@ -144,7 +144,7 @@ public final class GridMap
                           (int) (height / metersPerPixel), roundUpDimensions);
     }
 
-    protected GridMap cropPixels(int xmin, int ymin, int _width, int _height, boolean roundUpDimensions)
+    public GridMap cropPixels(int xmin, int ymin, int _width, int _height, boolean roundUpDimensions)
     {
         xmin = Math.max(0, xmin);
         ymin = Math.max(0, ymin);
