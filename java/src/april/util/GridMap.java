@@ -163,8 +163,8 @@ public final class GridMap
 
         if (roundUpDimensions) {
             // round up to multiple of four (necessary for OpenGL happiness)
-            gm.width += 4 - (gm.width%4);
-            gm.height += 4 - (gm.height%4);
+            gm.width += (4 - (gm.width%4))%4;
+            gm.height += (4 - (gm.height%4))%4;
         }
 
         gm.data = new byte[gm.width*gm.height];
@@ -209,6 +209,67 @@ public final class GridMap
         }
 
         return cropPixels(xmin, ymin, xmax-xmin+1, ymax-ymin+1, roundUpDimensions);
+
+    }
+    // Returns a new grid map 'grid-aligned' with 'this', given the new bounds
+    //  Eventually we should have crop reference this function
+    public GridMap resizeMeters(double x0_m, double y0_m, double width_m, double height_m, boolean roundUpDimensions)
+    {
+        // Compute the number of pixels to offset by
+        int xmin = 0;
+        int ymin = 0;
+        if (x0_m < x0)
+            xmin = (int)Math.floor((x0_m -x0) /metersPerPixel);
+        else
+            xmin = (int)Math.ceil((x0_m -x0) /metersPerPixel);
+        if (y0_m < y0)
+            ymin = (int)Math.floor((y0_m -y0) /metersPerPixel);
+        else
+            ymin = (int)Math.ceil((y0_m -y0) /metersPerPixel);
+
+        // We may need to shift x0_m since we are constrained to 'this''s grid spacing
+        double x0_round = x0 + xmin * metersPerPixel;
+        double y0_round = y0 + ymin * metersPerPixel;
+
+        int width = (int)Math.ceil(width_m/metersPerPixel + (x0_m - x0_round));
+        int height = (int)Math.ceil(height_m/metersPerPixel + (y0_m - y0_round));
+
+
+        return resizePixels(xmin, ymin, width, height, roundUpDimensions);
+
+    }
+
+    public GridMap resizePixels(int xmin, int ymin, int _width, int _height, boolean roundUpDimensions)
+    {
+        GridMap gm = new GridMap();
+
+        gm.x0 = x0 + xmin * metersPerPixel;
+        gm.y0 = y0 + ymin * metersPerPixel;
+        gm.width =  _width;
+        gm.height = _height;
+        gm.metersPerPixel = metersPerPixel;
+        gm.defaultFill = (byte) defaultFill;
+
+        if (roundUpDimensions) {
+            // round up to multiple of four (necessary for OpenGL happiness)
+            gm.width += (4 - (gm.width%4))%4;
+            gm.height += (4 - (gm.height%4))%4;
+        }
+
+        gm.data = new byte[gm.width*gm.height];
+
+        // crawl the new gm and insert old values where applicable
+        for (int y = 0; y < gm.height; y++) {
+            for (int x = 0; x < gm.width; x++) {
+                if (y + ymin >= 0 && y + ymin < height &&
+                    x + xmin >= 0 && x + xmin < width)
+                    gm.data[y*gm.width+x] = data[(y+ymin)*width + (x+xmin)];
+                else
+                    gm.data[y*gm.width+x] = gm.defaultFill;
+            }
+        }
+
+        return gm;
     }
 
     protected GridMap()
