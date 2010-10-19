@@ -152,33 +152,7 @@ public final class GridMap
         _width = Math.max(0, _width);
         _height = Math.max(0, _height);
 
-        GridMap gm = new GridMap();
-
-        gm.x0 = x0 + xmin * metersPerPixel;
-        gm.y0 = y0 + ymin * metersPerPixel;
-        gm.width = _width;
-        gm.height = _height;
-        gm.metersPerPixel = metersPerPixel;
-        gm.defaultFill = (byte) defaultFill;
-
-        if (roundUpDimensions) {
-            // round up to multiple of four (necessary for OpenGL happiness)
-            gm.width += (4 - (gm.width%4))%4;
-            gm.height += (4 - (gm.height%4))%4;
-        }
-
-        gm.data = new byte[gm.width*gm.height];
-
-        for (int y = 0; y < gm.height; y++) {
-            for (int x = 0; x < gm.width; x++) {
-                if (y+ymin < height && x + xmin < width)
-                    gm.data[y*gm.width+x] = data[(y+ymin)*width + (x+xmin)];
-                else
-                    gm.data[y*gm.width+x] = defaultFill;
-            }
-        }
-
-        return gm;
+        return resizePixels(xmin,ymin, _width, _height, roundUpDimensions);
     }
 
     // Return a gridmap that contains all of the non-zero pixels, but
@@ -208,7 +182,7 @@ public final class GridMap
             ymax = 0;
         }
 
-        return cropPixels(xmin, ymin, xmax-xmin+1, ymax-ymin+1, roundUpDimensions);
+        return resizePixels(xmin, ymin, xmax-xmin+1, ymax-ymin+1, roundUpDimensions);
 
     }
     // Returns a new grid map 'grid-aligned' with 'this', given the new bounds
@@ -216,23 +190,15 @@ public final class GridMap
     public GridMap resizeMeters(double x0_m, double y0_m, double width_m, double height_m, boolean roundUpDimensions)
     {
         // Compute the number of pixels to offset by
-        int xmin = 0;
-        int ymin = 0;
-        if (x0_m < x0)
-            xmin = (int)Math.floor((x0_m -x0) /metersPerPixel);
-        else
-            xmin = (int)Math.ceil((x0_m -x0) /metersPerPixel);
-        if (y0_m < y0)
-            ymin = (int)Math.floor((y0_m -y0) /metersPerPixel);
-        else
-            ymin = (int)Math.ceil((y0_m -y0) /metersPerPixel);
+        int xmin = (int)Math.floor((x0_m -x0) /metersPerPixel);
+        int ymin = (int)Math.floor((y0_m -y0) /metersPerPixel);
 
         // We may need to shift x0_m since we are constrained to 'this''s grid spacing
         double x0_round = x0 + xmin * metersPerPixel;
         double y0_round = y0 + ymin * metersPerPixel;
 
-        int width = (int)Math.ceil(width_m/metersPerPixel + (x0_m - x0_round));
-        int height = (int)Math.ceil(height_m/metersPerPixel + (y0_m - y0_round));
+        int width = (int)Math.ceil((width_m + x0_m - x0_round)/metersPerPixel);
+        int height = (int)Math.ceil((height_m + y0_m - y0_round)/metersPerPixel);
 
 
         return resizePixels(xmin, ymin, width, height, roundUpDimensions);
@@ -252,8 +218,8 @@ public final class GridMap
 
         if (roundUpDimensions) {
             // round up to multiple of four (necessary for OpenGL happiness)
-            gm.width += (4 - (gm.width%4))%4;
-            gm.height += (4 - (gm.height%4))%4;
+            gm.width += (4 - (gm.width % 4)) % 4; // final mod ensures we don't add 4 needlessly
+            gm.height += (4 - (gm.height% 4)) % 4;
         }
 
         gm.data = new byte[gm.width*gm.height];
