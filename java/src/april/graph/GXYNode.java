@@ -1,6 +1,5 @@
 package april.graph;
 
-
 import java.io.*;
 import java.util.*;
 import java.lang.reflect.*;
@@ -19,7 +18,7 @@ public class GXYNode extends GNode
         if (truth != null)
             g.truth = LinAlg.copy(truth);
 
-        g.attributes = copyAttributes();
+        g.attributes = attributes.copy();
 
         return g;
     }

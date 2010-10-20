@@ -23,7 +23,12 @@ public class PeriodicTasks
 
         public int compareTo(Record t)
         {
-            return (int) (nextRunTime - t.nextRunTime);
+            long v = nextRunTime - t.nextRunTime;
+            if (v < 0)
+                return -1;
+            if (v == 0)
+                return 0;
+            return 1;
         }
     }
 
@@ -50,7 +55,6 @@ public class PeriodicTasks
     {
         Record r = new Record();
         r.task = task;
-        r.nextRunTime = System.currentTimeMillis();
         r.period = (int) (dt * 1000);
         r.fixedRate = true;
 
@@ -61,7 +65,6 @@ public class PeriodicTasks
     {
         Record r = new Record();
         r.task = task;
-        r.nextRunTime = System.currentTimeMillis();
         r.period = (int) (dt * 1000);
         r.fixedRate = false;
 
@@ -105,8 +108,9 @@ public class PeriodicTasks
                 try {
                     r = queue.take();
 
-                    if (r.task == null)
-                        break;
+                    if (r.task == null) {
+                        return;
+                    }
 
                     now = System.currentTimeMillis();
 

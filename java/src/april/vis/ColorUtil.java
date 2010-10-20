@@ -56,7 +56,8 @@ public class ColorUtil
 
     /**
      * Converts a color to its String representation for VisText and
-     * HTML in the #RRGGBB format
+     * HTML in the #RRGGBBAA format
+     * @param Color
      */
     public static String toHTMLString(Color c)
     {
@@ -64,6 +65,7 @@ public class ColorUtil
         String r = Integer.toHexString(c.getRed());
         String g = Integer.toHexString(c.getGreen());
         String b = Integer.toHexString(c.getBlue());
+        String a = Integer.toHexString(c.getAlpha());
 
         if ( r.length() == 1)
             r = "0"+r;
@@ -71,8 +73,35 @@ public class ColorUtil
             g = "0"+g;
         if ( b.length() == 1)
             b = "0"+b;
+        if ( a.length() == 1)
+            a = "0"+a;
 
-        return "#" + r + g + b;
+        return "#" + r + g + b + a;
+    }
+
+    /**
+     * Converts a color to its String representation for VisText and
+     * HTML in the #RRGGBBAA format
+     * @param int color in aarrggbb format (as from getRGB())
+     */
+    public static String toHTMLString(int color)
+    {
+        // Either one or two characters long
+        String r = Integer.toHexString((color >> 16) & 0xFF);
+        String g = Integer.toHexString((color >> 8)  & 0xFF);
+        String b = Integer.toHexString((color >> 0)  & 0xFF);
+        String a = Integer.toHexString((color >> 24) & 0xFF);
+
+        if ( r.length() == 1)
+            r = "0"+r;
+        if ( g.length() == 1)
+            g = "0"+g;
+        if ( b.length() == 1)
+            b = "0"+b;
+        if ( a.length() == 1)
+            a = "0"+a;
+
+        return "#" + r + g + b + a;
     }
 }
 

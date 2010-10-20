@@ -21,6 +21,10 @@ public class VisChain implements VisObject, VisSerializable
 {
     ArrayList<Object> operations = new ArrayList<Object>();
 
+    int displayListId;
+    GL displayListGL;
+    boolean lock;
+
     public VisChain()
     {
     }
@@ -28,6 +32,21 @@ public class VisChain implements VisObject, VisSerializable
     public VisChain(Object ... os)
     {
         add(os);
+    }
+
+
+    public synchronized void lock()
+    {
+        lock = true;
+    }
+
+    public synchronized void unlock()
+    {
+        if (displayListGL != null) {
+            displayListGL.glDeleteLists(displayListId, 1);
+            displayListGL = null;
+            displayListId = -1;
+        }
     }
 
     // this method must be added to disabiguate between a
@@ -92,8 +111,19 @@ public class VisChain implements VisObject, VisSerializable
         }
     }
 
-    public void render(VisContext vc, GL gl, GLU glu)
+    public synchronized void render(VisContext vc, GL gl, GLU glu)
     {
+        if (lock) {
+            if (displayListGL != null && displayListGL == gl) {
+                gl.glCallList(displayListId);
+                return;
+            }
+
+            displayListGL = gl;
+            displayListId = gl.glGenLists(1);
+            gl.glNewList(displayListId, GL.GL_COMPILE);
+        }
+
         boolean pushed = false;
 
         for (Object o : operations) {
@@ -116,6 +146,11 @@ public class VisChain implements VisObject, VisSerializable
 
         if (pushed)
             VisUtil.popGLState(gl);
+
+        if (lock) {
+            gl.glEndList();
+            gl.glCallList(displayListId);
+        }
     }
 
     public void serialize(LCMDataOutputStream out) throws IOException
@@ -166,7 +201,5 @@ public class VisChain implements VisObject, VisSerializable
                 assert(false);
             }
         }
-
     }
-
 }

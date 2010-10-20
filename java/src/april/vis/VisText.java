@@ -174,6 +174,11 @@ public class VisText implements VisObject, VisSerializable
 	    }
     }
 
+    public VisText(double pos[], ANCHOR anchor, String s)
+    {
+        this(pos, anchor, null, s, 0.0, false);
+    }
+
     /** @param pos Coordinates in world space where the text should be
      * drawn. If null, text will be drawn relative to the corners of
      * the screen (and the 'anchor' parameter determines which corner).
@@ -187,7 +192,16 @@ public class VisText implements VisObject, VisSerializable
      * legibility? The color of the drop shadow will be computed
      * automatically from the background color of the VisCanvas.
      **/
-    public VisText(double pos[], ANCHOR anchor, String s)
+    public VisText(double pos[], ANCHOR anchor, String s, double alpha)
+    {
+        this(pos, anchor, null, s, alpha, true);
+    }
+
+    /**
+     * Constructor: fully specified parameters
+     **/
+    public VisText(double pos[], ANCHOR anchor, JUSTIFICATION defaultJustification,
+                   String s, double alpha, boolean dropShadow)
     {
         if (pos != null) {
             if (pos.length==3)
@@ -196,27 +210,39 @@ public class VisText implements VisObject, VisSerializable
                 this.pos = new double[] {pos[0], pos[1], 0};
         }
 
-        if (anchor != null)
-            this.anchor = anchor;
-        if (s != null)
-            handleText(s);
-    }
-
-    /** Convenience constructor. **/
-    public VisText(ANCHOR anchor, String s)
-    {
-        this(null, anchor, s);
-    }
-
-    /** Convenience constructor. **/
-    public VisText(ANCHOR anchor, JUSTIFICATION defaultJustification, String s)
-    {
+        if (dropShadow) {
+            this.dropShadow = true;
+            this.dropShadowAlpha = alpha;
+        }
         if (defaultJustification != null)
             this.defaultJustification = defaultJustification;
         if (anchor != null)
             this.anchor = anchor;
         if (s != null)
             handleText(s);
+    }
+
+    /** Convenience constructor. **/
+    public VisText(ANCHOR anchor, String s, double alpha)
+    {
+        this(null, anchor, null, s, alpha, true);
+    }
+    public VisText(ANCHOR anchor, String s)
+    {
+        this(null, anchor, null, s, 0.0, false);
+    }
+
+    /** Convenience constructor. **/
+    public VisText(ANCHOR anchor, JUSTIFICATION defaultJustification, String s)
+    {
+        this(null, anchor, defaultJustification, s, 0.0, false);
+    }
+
+    /** Convenience constructor. **/
+    public VisText(ANCHOR anchor, JUSTIFICATION defaultJustification, String s,
+                   double alpha)
+    {
+        this(null, anchor, defaultJustification, s, alpha, true);
     }
 
     void handleText(String s)
@@ -280,7 +306,7 @@ public class VisText implements VisObject, VisSerializable
                 toks[i] = toks[i].toLowerCase().trim();
 
                 // #RRGGBB
-                if (toks[i].startsWith("#") && toks[i].length()==7) {
+                if (toks[i].startsWith("#") && (toks[i].length()==7 || toks[i].length()==9)) {
                     c = stringToColor(toks[i]);
                     continue;
                 }
