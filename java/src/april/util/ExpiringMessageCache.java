@@ -3,12 +3,12 @@ package april.util;
 public class ExpiringMessageCache<T>
 {
     T    t;
-    long receivedUtime;  //
-    double maxAge;
+    long receivedUtime;  // local host time
+    double maxAge;       // in seconds
 
     // prevent stale message from becoming current message
     boolean ensureMonotonicUtimes;
-    long msgUtime;  // used for monotonicity
+    long msgUtime;  // may be another host's utime
 
     public ExpiringMessageCache(double maxAge)
     {
@@ -32,14 +32,18 @@ public class ExpiringMessageCache<T>
      * @param T the data to cache
      * @param msgUtime utime in message (host time of sender)
      * @param receivedUtime generally, local TimeUtil.utime(), but not always
+     * @return boolean for whether the cache was updated
      **/
-    public synchronized void put(T t, long msgUtime, long receivedUtime)
+    public synchronized boolean put(T t, long msgUtime, long receivedUtime)
     {
-        if (!ensureMonotonicUtimes || msgUtime >= this.msgUtime) {
+        // this is more strict than monotonic in that it req's ">" as opposed to ">="
+        if (!ensureMonotonicUtimes || msgUtime > this.msgUtime) {
             this.t = t;
             this.msgUtime = msgUtime;
             this.receivedUtime = receivedUtime;
+            return true;
         }
+        return false;
     }
 
     public synchronized T get()
@@ -53,5 +57,23 @@ public class ExpiringMessageCache<T>
             return null;
 
         return t;
+    }
+
+    public synchronized Pair<T, Double> getWithAge()
+    {
+        if (t == null)
+            return null;
+
+        long now = TimeUtil.utime();
+        double age = (now - receivedUtime) / 1000000.0;
+        if (age > maxAge)
+            return null;
+
+        return new Pair<T, Double>(t, age);
+    }
+
+    public long getMsgUtime()
+    {
+        return msgUtime;
     }
 }
