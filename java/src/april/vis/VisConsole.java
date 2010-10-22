@@ -17,6 +17,8 @@ public class VisConsole
     PipedInputStream pins;
     PrintStream ppouts;
 
+    public int drawOrder = 10;
+
     ArrayList<Listener> listeners = new ArrayList<Listener>();
 
     // how long to display stuff
@@ -96,6 +98,7 @@ public class VisConsole
             buffer += INPUT_STYLE + ":" + command;
 
         VisWorld.Buffer vb = vw.getBuffer("command output");
+        vb.setDrawOrder(drawOrder);
         vb.addBuffered(new VisText(VisText.ANCHOR.BOTTOM_LEFT, VisText.JUSTIFICATION.LEFT, buffer));
         vb.switchBuffer();
     }
