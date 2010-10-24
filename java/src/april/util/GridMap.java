@@ -1124,13 +1124,6 @@ public final class GridMap
                                           data[(iy+1)*width+ix+1]&0xff));
                 gm.data[iy*width+ix] = (byte) v;
             }
-            gm.data[iy*width + width-1] = (byte) Math.max(data[(iy)*width + width-1]&0xff,
-                                                          data[(iy+1)*width + width-1]&0xff);
-        }
-
-        for (int ix = 0; ix + 1 < width; ix++) {
-            gm.data[(height-1)*width + ix] = (byte) Math.max(data[(height-1)*width + ix]&0xff,
-                                                             data[(height-1)*width + ix+1]&0xff);
         }
 
         return gm;
