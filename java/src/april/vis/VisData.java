@@ -67,7 +67,7 @@ public class VisData implements VisObject, VisSerializable
         vertexbuf = null;
     }
 
-    public synchronized int nPoints()
+    public synchronized int getNumPoints()
     {
         return points.size();
     }

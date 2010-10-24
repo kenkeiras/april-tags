@@ -29,9 +29,12 @@ public class ProcManDaemon implements Runnable
 
     HashMap<Integer, ProcRecordD> records = new HashMap<Integer, ProcRecordD>();
 
-    String host = System.getenv("PROCMAN_HOST");
+    // host defaulted to System.getenv("PROCMAN_HOST");
+    String host;
 
     procman_process_list_t next_proc_list;
+
+    public boolean verbose;
 
     class ProcRecordD extends ProcRecord
     {
@@ -98,10 +101,18 @@ public class ProcManDaemon implements Runnable
 
     public ProcManDaemon()
     {
-        if (host == null) {
+        this(System.getenv("PROCMAN_HOST"));
+    }
+
+    public ProcManDaemon(String host)
+    {
+        if (host == null || host.equals("")) {
             host = "localhost";
             System.out.println("NFO: PROCMAN_HOST not defined. Using "+host+" instead");
-        }
+        } else
+            System.out.println("NFO: using host: " + host);
+
+        this.host = host;
 
         // Runtime.getRuntime().addShutdownHook(new ShutdownHandler());
         lcm.subscribe("PROCMAN_PROCESS_LIST", new MySubscriber());
@@ -225,7 +236,8 @@ public class ProcManDaemon implements Runnable
             procman_process_t p = proc_list.processes[i];
 
             if (!p.host.equals(host)) {
-                System.out.println("NFO: Host mismatch. Expected "+host+" got "+p.host);
+                if (verbose)
+                    System.out.println("NFO: Host mismatch. Expected "+host+" got "+p.host);
                 continue;
             }
 
@@ -400,6 +412,8 @@ public class ProcManDaemon implements Runnable
     {
         GetOpt opts  = new GetOpt();
 
+        opts.addString('n',"hostname",System.getenv("PROCMAN_HOST"),
+                       "Hostname wle uses env($PROCMAN_HOST)");
         opts.addBoolean('h',"help",false,"See this help screen");
 
         if (!opts.parse(args))
@@ -413,7 +427,7 @@ public class ProcManDaemon implements Runnable
             System.exit(1);
         }
 
-        ProcManDaemon pm = new ProcManDaemon();
+        ProcManDaemon pm = new ProcManDaemon(opts.getString("hostname"));
         pm.run();
     }
 }
