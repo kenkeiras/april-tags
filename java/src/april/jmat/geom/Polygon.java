@@ -56,6 +56,11 @@ public class Polygon
         return points.get(idx);
     }
 
+    public ArrayList<double[]> getPoints()
+    {
+        return points;
+    }
+
     public ArrayList<int[]> getTriangles()
     {
         tesselate();
