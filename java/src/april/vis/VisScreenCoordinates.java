@@ -23,11 +23,21 @@ import april.jmat.*;
  **/
 public class VisScreenCoordinates implements VisObject
 {
+    double pos[];
+
     VisObject vo;
 
+    // Draw in screen coordinates (aligned with the window)
     public VisScreenCoordinates(VisObject vo)
     {
         this.vo = vo;
+    }
+
+    // Re-center coordinates around the given xyz pos (in 'meters')
+    public VisScreenCoordinates(double pos[], VisObject vo)
+    {
+        this.vo = vo;
+        this.pos = pos;
     }
 
     public void render(VisContext vc, GL gl, GLU glu)
@@ -36,7 +46,14 @@ public class VisScreenCoordinates implements VisObject
         double proj_matrix[] = new double[16];
         int viewport[] = new int[4];
 
-        VisUtil.pushGLWholeState(gl);
+        if (true) {
+            gl.glMatrixMode(gl.GL_PROJECTION);
+            gl.glPushMatrix();
+            gl.glMatrixMode(gl.GL_MODELVIEW);
+            gl.glPushMatrix();
+        } else {
+            VisUtil.pushGLWholeState(gl); //XXX Slow way
+        }
 
         gl.glGetDoublev(gl.GL_MODELVIEW_MATRIX, model_matrix, 0);
         gl.glGetDoublev(gl.GL_PROJECTION_MATRIX, proj_matrix, 0);
@@ -50,8 +67,31 @@ public class VisScreenCoordinates implements VisObject
         gl.glMatrixMode(gl.GL_MODELVIEW);
         gl.glLoadIdentity();
 
+
+        if (pos != null) {
+            // Find pixel coorindates for 'pos'
+            double winxyz[] = new double[3];
+
+            // align with respect to coordinates in the scene.
+            if (!glu.gluProject(pos[0], pos[1], pos[2],
+                                model_matrix, 0, proj_matrix, 0, viewport, 0,
+                                winxyz, 0)) {
+                System.out.printf("VisText: GluProject failure\n");
+                return;
+            }
+
+            VisUtil.multiplyMatrix(gl, LinAlg.translate(winxyz));
+        }
+
         vo.render(vc, gl, glu);
 
-        VisUtil.popGLWholeState(gl);
+        if (true) {
+            gl.glMatrixMode(gl.GL_PROJECTION);
+            gl.glPopMatrix();
+            gl.glMatrixMode(gl.GL_MODELVIEW);
+            gl.glPopMatrix();
+        } else {
+            VisUtil.popGLWholeState(gl);
+        }
     }
 }
