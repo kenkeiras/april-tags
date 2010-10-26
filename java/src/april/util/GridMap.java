@@ -1121,14 +1121,18 @@ public final class GridMap
             // which output row should this affect?
             int oy = iy/factor;
 
-            // loop over output columns
-            for (int ox = 0; ox < gm.width; ox++) {
-                // loop over input columns for the current output column.
+            // loop over input columns
+            for (int ix = 0; ix < width; ix+= factor) {
+                // destination column?
+                int ox = ix/factor;
+
                 int maxv = 0;
                 int maxdx = Math.min(factor, width - ox*factor);
-                for (int dx = 0; dx < maxdx; dx++) {
+
+                // loop over the input pixels that all map to (ox,oy)
+                for (int dx = 0; dx < maxdx; dx++)
                     maxv = Math.max(maxv, data[iy*width + ox*factor + dx]&0xff);
-                }
+
                 // update output column
                 gm.data[oy*gm.width + ox] = (byte) Math.max(gm.data[oy*gm.width + ox]&0xff, maxv);
             }
