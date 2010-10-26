@@ -5,6 +5,9 @@ import java.awt.image.*;
 import java.util.*;
 import java.io.*;
 
+import april.image.*;
+import april.jmat.*;
+
 /** Image utility functions. **/
 public class ImageUtil
 {
@@ -56,11 +59,11 @@ public class ImageUtil
     {
         BufferedImage out = new BufferedImage(newwidth, newheight, in.getType());
         Graphics2D g = out.createGraphics();
-        
+
         final Object interp = (newwidth < in.getWidth() && newheight < in.getHeight()) ?
                     RenderingHints.VALUE_INTERPOLATION_BILINEAR :
                     RenderingHints.VALUE_INTERPOLATION_BICUBIC;
-        
+
         g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, interp);
         g.drawImage(in, 0, 0, out.getWidth(), out.getHeight(), null);
         g.dispose();
@@ -74,4 +77,32 @@ public class ImageUtil
         return scale(in, newwidth, newheight);
     }
 
+    public static BufferedImage smooth(BufferedImage in, double sigma, int kernelsize)
+    {
+        float k[] = SigProc.makeGaussianFilter(sigma, kernelsize);
+
+        FloatImage fr = new FloatImage(in, 16);
+        FloatImage fg = new FloatImage(in, 8);
+        FloatImage fb = new FloatImage(in, 0);
+
+        fr.filterFactoredCentered(k, k);
+        fg.filterFactoredCentered(k, k);
+        fb.filterFactoredCentered(k, k);
+
+        BufferedImage out = new BufferedImage(in.getWidth(), in.getHeight(), BufferedImage.TYPE_INT_RGB);
+        for (int y = 0; y < in.getHeight(); y++) {
+            for (int x = 0; x < in.getWidth(); x++) {
+                int r = (int) (255.0*fr.get(x, y) + .5);
+                int g = (int) (255.0*fg.get(x, y) + .5);
+                int b = (int) (255.0*fb.get(x, y) + .5);
+                r = LinAlg.clamp(r, 0, 255);
+                g = LinAlg.clamp(g, 0, 255);
+                b = LinAlg.clamp(b, 0, 255);
+
+                out.setRGB(x, y, (r<<16)|(g<<8)|b);
+            }
+        }
+
+        return out;
+    }
 }
