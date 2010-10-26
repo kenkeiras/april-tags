@@ -15,7 +15,8 @@ import april.jmat.*;
  *
  * pixelx pixely pixelz longitude latitude altitude
  *
- * The pixelz and altitude fields are ignored and are typically zero.
+ * The pixelz and altitude fields are ignored and are typically
+ * zero. GPS positions correspond to pixel *centers*.
  *
  *
  *  How to create your own GeoImage:
@@ -151,6 +152,18 @@ public class GeoImage
     public BufferedImage getImage()
     {
         return im;
+    }
+
+    /** get a 4x4 matrix that scales and rotates the image properly. **/
+    public double[][] getMatrix()
+    {
+        double T[][] = LinAlg.identity(4);
+        for (int i = 0; i < 2; i++)
+            for (int j = 0; j < 2; j++)
+                T[i][j] = im2xy_P[i][j];
+        T[0][3] = im2xy_offset[0];
+        T[1][3] = im2xy_offset[1];
+        return T;
     }
 
     /** Convert pixel coordinates to meters **/
