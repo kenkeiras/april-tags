@@ -208,6 +208,7 @@ public class ProcManDaemon implements Runnable
                 }
 
                 pr.cmdline = p.cmdline;
+                pr.name = p.name;
                 pr.restartDelayMS = p.restart_delay_ms;
                 pr.visited = true;
             }
