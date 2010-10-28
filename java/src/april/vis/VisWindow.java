@@ -29,7 +29,7 @@ public class VisWindow implements VisObject, VisSerializable
 
     ArrayList<VisObject> objects = new ArrayList<VisObject>();
 
-    public Color backgroundColor = Color.black;
+    public Color backgroundColor = null;
 
     /** Define a new window of size (in pixels) winwidth x winheight,
         which will be aligned with respect to the viewable region of
@@ -154,7 +154,7 @@ public class VisWindow implements VisObject, VisSerializable
         gl.glMatrixMode(gl.GL_MODELVIEW);
         gl.glLoadIdentity();
 
-        if (true) {
+        if (backgroundColor != null) {
             gl.glClearColor(backgroundColor.getRed()/255f,
                             backgroundColor.getGreen()/255f,
                             backgroundColor.getBlue()/255f,
