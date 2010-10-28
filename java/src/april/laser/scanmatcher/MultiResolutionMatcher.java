@@ -44,12 +44,12 @@ public class MultiResolutionMatcher
         if (false) {
             int border = 1024;
             GridMap gmc = GridMap.makePixels(gm0.x0 - border*gm0.metersPerPixel,
-                                            gm0.y0 - border*gm0.metersPerPixel,
-                                            gm0.width + 2*border,
-                                            gm0.height + 2*border,
+                                             gm0.y0 - border*gm0.metersPerPixel,
+                                             gm0.width + 2*border,
+                                             gm0.height + 2*border,
                                              gm0.metersPerPixel,
-                                            gm0.defaultFill,
-                                            true);
+                                             gm0.defaultFill,
+                                             true);
 
             for (int y = 0; y < gm0.height; y++) {
                 for (int x = 0; x < gm0.width; x++) {
@@ -84,9 +84,10 @@ public class MultiResolutionMatcher
     }
 
     public double[] match(ArrayList<double[]> points, double prior[], double priorinv[][],
+                          double xyt0[],
                           double xrange, double yrange, double trange, double tres)
     {
-        Search search = new Search(points, prior, priorinv, xrange, yrange, trange, tres);
+        Search search = new Search(points, prior, priorinv, xyt0, xrange, yrange, trange, tres);
         return search.compute();
     }
 
@@ -113,6 +114,14 @@ public class MultiResolutionMatcher
         // in units of metersPerPixel (of the finest resolution grid)
         int tx0, ty0;
         int searchwidth, searchheight; // amount to search, in units of metersPerPixel
+
+        void print()
+        {
+            System.out.printf("score %15f = %15f + %15f\n", score, match_score, chi2_score);
+            System.out.printf("  tidx: %-5d   gmidx: %-5d\n", tidx, gmidx);
+            System.out.printf("   tx0: %-5d     ty0: %-5d\n", tx0, ty0);
+            System.out.printf("    w: %-5d        h: %-5d\n", searchwidth, searchheight);
+        }
     }
 
     static final double reduceMagnitude(double v, double reduction)
@@ -126,6 +135,7 @@ public class MultiResolutionMatcher
     {
         ArrayList<double[]> points;
         double prior[];
+        double xyt0[]; // center of search (usually == prior)
         double priorinv[][];
         double xrange, yrange;
 
@@ -136,41 +146,30 @@ public class MultiResolutionMatcher
         MaxHeap<Object> heap = new MaxHeap<Object>();
 
         ArrayList<Pt> ptsCache[][]; // tidx, gmidx
+        Chi2Data chi2data[];
 
         Search(ArrayList<double[]> points, double prior[], double priorinv[][],
+               double xyt0[],
                double xrange, double yrange, double trange, double tres)
         {
             this.points = points;
             this.prior = prior;
+            this.xyt0 = xyt0;
             this.priorinv = priorinv;
             this.xrange = xrange;
             this.yrange = yrange;
 
-            this.t0 = prior[2] - trange;
+            this.t0 = xyt0[2] - trange;
             this.tres = tres;
             this.tcnt = (int) LinAlg.clamp(2*trange/tres + 1, 1, 2*Math.PI / tres);
 
             ptsCache = new ArrayList[tcnt][ndecimate];
-        }
 
-        double computeChi2(Node n)
-        {
-            // what is the RBT at the "center" of this node's search area?
-            double mx = gms[0].metersPerPixel*(n.tx0 + n.searchwidth / 2.0);
-            double my = gms[0].metersPerPixel*(n.ty0 + n.searchheight / 2.0);
-            double mt = t0 + tres*(n.tidx + .5);
+            double priorP[][] = LinAlg.inverse(priorinv);
 
-            // what is the error wrt the prior?
-            double ex = reduceMagnitude(mx - prior[0], gms[0].metersPerPixel * n.searchwidth / 2.0);
-            double ey = reduceMagnitude(my - prior[1], gms[0].metersPerPixel * n.searchheight / 2.0);
-            double et = reduceMagnitude(MathUtil.mod2pi(mt - prior[2]), tres/2);
-
-            double chi2 = ex*ex*priorinv[0][0] + 2*ex*ey*priorinv[0][1] + 2*ex*et*priorinv[0][2] +
-                ey*ey*priorinv[1][1] + ey*et*priorinv[1][2] +
-                et*et*priorinv[2][2];
-
-//            return 0;
-            return chi2;
+            chi2data = new Chi2Data[tcnt];
+            for (int i = 0; i < tcnt; i++)
+                chi2data[i] = new Chi2Data(prior, priorP, t0 + i*tres);
         }
 
         double[] compute()
@@ -183,13 +182,18 @@ public class MultiResolutionMatcher
 
                 // round aggressively...
                 n.tidx = tidx;
-                n.tx0 = (int) ((prior[0]-xrange) / gms[0].metersPerPixel - 1);
-                n.ty0 = (int) ((prior[1]-yrange) / gms[0].metersPerPixel - 1);
+                n.tx0 = (int) ((xyt0[0]-xrange) / gms[0].metersPerPixel - 1);
+                n.ty0 = (int) ((xyt0[1]-yrange) / gms[0].metersPerPixel - 1);
                 n.searchwidth = (int) (2*xrange / gms[0].metersPerPixel + 2);
                 n.searchheight = (int) (2*yrange / gms[0].metersPerPixel + 2);
 
                 n.match_score = points.size()*255;
-                n.chi2_score = -computeChi2(n);
+
+                double tx = (n.tx0 + n.searchwidth / 2.0)*gms[0].metersPerPixel;
+                double ty = (n.ty0 + n.searchheight / 2.0)*gms[0].metersPerPixel;
+                double r = gms[0].metersPerPixel*Math.sqrt(n.searchwidth*n.searchwidth/4.0 + n.searchheight*n.searchheight/4.0);
+
+                n.chi2_score = -chi2data[n.tidx].computeChi2(tx, ty, r);
                 n.score = n.match_score + n.chi2_score;
 
                 heap.add(n, n.score);
@@ -214,9 +218,16 @@ public class MultiResolutionMatcher
 
                 Node n = (Node) heapobj;
 
-//                if (n.score > lastScore)
-//                    System.out.printf("heap ordering violated %15f %15f\n", n.score, lastScore);
-//                lastScore = n.score;
+/*
+  if (n.score > lastScore)
+  System.out.printf("heap ordering violated %15f %15f\n", n.score, lastScore);
+  lastScore = n.score;
+*/
+
+                if (n == null) {
+                    System.out.println("NULL heap entry!");
+                    continue;
+                }
 
                 if (debug) {
                     // create debug records for all but the initial searches
@@ -229,7 +240,7 @@ public class MultiResolutionMatcher
                     }
                 }
 
-              if (n.gmidx == -1) {
+                if (n.gmidx == -1) {
                     // we're done!
                     GridMap gm = gms[0];
 
@@ -298,6 +309,10 @@ public class MultiResolutionMatcher
                             continue;
 
                         // create a new search job
+                        double tx = (n.tx0 + n.searchwidth / 2.0)*gms[0].metersPerPixel;
+                        double ty = (n.ty0 + n.searchheight / 2.0)*gms[0].metersPerPixel;
+                        double r = gms[0].metersPerPixel*Math.sqrt(n.searchwidth*n.searchwidth/4.0 + n.searchheight*n.searchheight/4.0);
+
                         Node child = new Node();
                         child.gmidx = n.gmidx - 1;
                         child.tidx = n.tidx;
@@ -306,8 +321,14 @@ public class MultiResolutionMatcher
                         child.searchwidth = Math.min(n.tx0+n.searchwidth - dx, resolution);
                         child.searchheight = Math.min(n.ty0+n.searchheight - dy, resolution);
                         child.match_score = score;
-                        child.chi2_score = - computeChi2(child);
+                        child.chi2_score = -chi2data[child.tidx].computeChi2(tx, ty, r);
                         child.score = child.match_score + child.chi2_score;
+
+                        if (false && child.chi2_score > n.chi2_score+.0001) {
+                            System.out.printf("\nchi2 %15f %15f\n", child.chi2_score, n.chi2_score);
+                            child.print();
+                            n.print();
+                        }
 
                         children.add(child);
 
