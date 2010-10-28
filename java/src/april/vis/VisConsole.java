@@ -35,7 +35,13 @@ public class VisConsole
         String s;
     }
 
+
     public VisConsole(VisCanvas vc, VisWorld vw)
+    {
+        this(vc, vw, 100000);
+    }
+
+    public VisConsole(VisCanvas vc, VisWorld vw, int eventpriority)
     {
         this.vc = vc;
         this.vw = vw;
@@ -49,7 +55,7 @@ public class VisConsole
             System.out.println("ex: "+ex);
         }
 
-        vc.addEventHandler(new MyCommandPromptHandler(), 100000);
+        vc.addEventHandler(new MyCommandPromptHandler(), eventpriority);
         new UpdateThread().start();
         new OutputThread().start();
     }
