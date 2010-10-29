@@ -48,10 +48,38 @@ public class GXYTEdge extends GEdge
 
         ge.z = LinAlg.xytInverse(z);
 
+        double J11 = -c, J12 = -s, J13 = -c*y + s*x;
+        double J21 = s, J22 = -c, J23 = s*y + c*x;
+        double P11 = P[0][0];
+        double P12 = P[0][1];
+        double P13 = P[0][2];
+        double P22 = P[1][1];
+        double P23 = P[1][2];
+        double P33 = P[2][2];
+
+        double Z[][] = new double[3][3];
+        Z[0][0] = P11*J11*J11 + 2*P12*J11*J12 + 2*P13*J11*J13 + P22*J12*J12 + 2*P23*J12*J13 + P33*J13*J13;
+        Z[0][1] = J21*(J11*P11 + J12*P12 + J13*P13) + J22*(J11*P12 + J12*P22 + J13*P23) + J23*(J11*P13 + J12*P23 + J13*P33);
+        Z[0][2] = - J11*P13 - J12*P23 - J13*P33;
+        Z[1][0] = Z[0][1];
+        Z[1][1] = P11*J21*J21 + 2*P12*J21*J22 + 2*P13*J21*J23 + P22*J22*J22 + 2*P23*J22*J23 + P33*J23*J23;
+        Z[1][2] = - J21*P13 - J22*P23 - J23*P33;
+        Z[2][0] = Z[0][2];
+        Z[2][1] = Z[1][2];
+        Z[2][2] = P33;
+
+        ge.P = Z;
+
+        /*
+        // the code above is just an unrolling of the following:
+
         double J[][] = new double[][] { { -c, -s, -c*y + s*x },
                                         { s,  -c,  s*y + c*x },
                                         { 0,   0,     -1     } };
         ge.P = LinAlg.matrixABCt(J, P, J);
+
+        */
+
         return ge;
     }
 
@@ -66,6 +94,43 @@ public class GXYTEdge extends GEdge
 
         double sa = Math.sin(ta), ca = Math.cos(ta);
 
+        double P11 = P[0][0];
+        double P12 = P[0][1];
+        double P13 = P[0][2];
+        double P22 = P[1][1];
+        double P23 = P[1][2];
+        double P33 = P[2][2];
+
+        double Q11 = ge.P[0][0];
+        double Q12 = ge.P[0][1];
+        double Q13 = ge.P[0][2];
+        double Q22 = ge.P[1][1];
+        double Q23 = ge.P[1][2];
+        double Q33 = ge.P[2][2];
+
+        double JA13 = -sa*xb - ca*yb;
+        double JA23 = ca*xb - sa*yb;
+        double JB11 = ca;
+        double JB12 = -sa;
+        double JB21 = sa;
+        double JB22 = ca;
+
+        double Z[][] = new double[3][3];
+        Z[0][0] = P33*JA13*JA13 + 2*P13*JA13 + Q11*JB11*JB11 + 2*Q12*JB11*JB12 + Q22*JB12*JB12 + P11;
+        Z[0][1] = P12 + JA23*(P13 + JA13*P33) + JA13*P23 + JB21*(JB11*Q11 + JB12*Q12) + JB22*(JB11*Q12 + JB12*Q22);
+        Z[0][2] = P13 + JA13*P33 + JB11*Q13 + JB12*Q23;
+        Z[1][0] = Z[0][1];
+        Z[1][1] = P33*JA23*JA23 + 2*P23*JA23 + Q11*JB21*JB21 + 2*Q12*JB21*JB22 + Q22*JB22*JB22 + P22;
+        Z[1][2] = P23 + JA23*P33 + JB21*Q13 + JB22*Q23;
+        Z[2][0] = Z[0][2];
+        Z[2][1] = Z[1][2];
+        Z[2][2] = P33 + Q33;
+
+        newge.P = Z;
+
+/*
+  // the code above is just an unrolling of the following:
+
         double JA[][] = new double[][] { { 1, 0, -sa*xb - ca*yb },
                                          { 0, 1, ca*xb - sa*yb },
                                          { 0, 0, 1 } };
@@ -75,6 +140,7 @@ public class GXYTEdge extends GEdge
 
         newge.P = LinAlg.add(LinAlg.matrixABCt(JA, P, JA),
                              LinAlg.matrixABCt(JB, ge.P, JB));
+*/
 
         newge.z = LinAlg.xytMultiply(z, ge.z);
 

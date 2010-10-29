@@ -2197,6 +2197,16 @@ public final class LinAlg
         return matrixToXyzrpy(AB);
     }
 
+    public static double trace(double M[][])
+    {
+        double t = 0;
+
+        for (int i = 0; i < Math.min(M.length, M[0].length); i++)
+            t += M[i][i];
+
+        return t;
+    }
+
     public static double det(double M[][])
     {
         int n = M.length, m = M[0].length;

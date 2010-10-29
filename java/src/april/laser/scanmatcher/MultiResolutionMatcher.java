@@ -23,7 +23,7 @@ public class MultiResolutionMatcher
     GridMap gms[];
 
     ArrayList<Debug> debugs = new ArrayList<Debug>();
-    boolean debug = true;
+    boolean debug = false;
 
     static class Debug
     {
@@ -238,7 +238,7 @@ public class MultiResolutionMatcher
                         Debug dbg = new Debug();
                         dbg.n = n;
                         dbg.gm = gms[n.gmidx+1];
-                        dbg.pts = getPoints(n.tidx, n.gmidx+1); //(int) Math.pow(decimate, n.gmidx+1));
+                        dbg.pts = getPoints(n.tidx, n.gmidx+1);
                         debugs.add(dbg);
                     }
                 }
@@ -370,7 +370,7 @@ public class MultiResolutionMatcher
             double s = Math.sin(t), c = Math.cos(t);
 
             HashMap<Integer, Pt> ptMap = new HashMap<Integer, Pt>(points.size());
-            pts = new ArrayList<Pt>();
+            pts = new ArrayList<Pt>(points.size());
 
             GridMap gm = gms[0];
             int resolution = (int) Math.pow(decimate, gmidx);
