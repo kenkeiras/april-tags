@@ -41,8 +41,8 @@ public class VisText implements VisObject, VisSerializable
     /** What color is the text if not otherwise specified? If null, it
      * will be the inverse of the VisCanvas background color.
      **/
-    Color defaultColor = null;
-    int defaultFont = GLUT.BITMAP_HELVETICA_12; //GLUT.BITMAP_9_BY_15;
+    public Color defaultColor = null;
+    public int defaultFont = GLUT.BITMAP_HELVETICA_12; //GLUT.BITMAP_9_BY_15;
 
     //int font = GLUT.BITMAP_9_BY_15;         // sizes: 8x13, 9x15
     //int font = GLUT.BITMAP_TIMES_ROMAN_10;  // sizes: 10, 24
@@ -51,7 +51,7 @@ public class VisText implements VisObject, VisSerializable
     boolean dropShadow = true;
 
     /** What color is the drop shadow? If null, it will be the same color as the VisCanvas background. **/
-    Color dropShadowColor = null;
+    public Color dropShadowColor = null;
 
     /** How transparent is the drop shadow? 0.0 means fully
      * transparent (invisible). This parameter only applies when
