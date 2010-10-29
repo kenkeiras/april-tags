@@ -224,9 +224,12 @@ public class MultiResolutionMatcher
   lastScore = n.score;
 */
 
+                // We can end up finding no solution since we don't
+                // expand children whose score is zero. This means
+                // that we can't find an overlapping solution subject
+                // to the prior constraint. Thus, we just return the prior.
                 if (n == null) {
-                    System.out.println("NULL heap entry!");
-                    continue;
+                    return new double[] { prior[0], prior[1], prior[2], 0 };
                 }
 
                 if (debug) {
@@ -246,7 +249,7 @@ public class MultiResolutionMatcher
 
                     double result[] = new double[] { (n.tx0+.5)*gm.metersPerPixel,
                                                      (n.ty0+.5)*gm.metersPerPixel,
-                                                     t0 + n.tidx*tres,
+                                                     t0 + n.tidx*tres, // don't add 0.5
                                                      n.score };
 
                     return result;
