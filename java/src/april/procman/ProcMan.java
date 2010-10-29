@@ -127,6 +127,7 @@ public class ProcMan// implements Runnable
                 boolean autoRestart = config.requireBoolean(proc+"auto-restart");
                 int restartDelayMS = config.requireInt(proc+"restart-delay-ms");
                 boolean autoStart = config.requireBoolean(proc+"auto-start");
+                String name = config.getString(proc+"name", "unknown");
 
                 if (host == null || command == null) {
                     System.err.println("ERR: Malformatted config file."+
@@ -134,28 +135,30 @@ public class ProcMan// implements Runnable
                     System.exit(1);
                 }
 
-                addProc(host, command, autoRestart, restartDelayMS, autoStart);
+                addProc(host, name, command, autoRestart, restartDelayMS, autoStart);
             }
         }
 
     }
 
-    synchronized void addProc(String host, String cmdline, boolean restart,
+    synchronized void addProc(String host, String name, String cmdline, boolean restart,
                               int restartDelay, boolean autorun)
     {
         ProcRecord pr = new ProcRecord();
         pr.procid = nextProcId++;
         pr.host = host;
         pr.cmdline = cmdline;
+        pr.name = name;
         pr.autoRestart = restart;
         pr.restartDelayMS = restartDelay;
         pr.running = autorun;
 
         if (verbose)
-            System.out.printf("Adding new proc: id=%d host=%s cmd=%s"+
+            System.out.printf("Adding new proc: id=%d host=%s name=%s cmd=%s"+
                               " autorestart=%s restart-delay=%d running=%s\n",
                               pr.procid,
                               pr.host,
+                              pr.name,
                               pr.cmdline,
                               ""+pr.autoRestart,
                               pr.restartDelayMS,
@@ -210,6 +213,7 @@ public class ProcMan// implements Runnable
             ProcRecord pr = processes.get(i);
             pp.procid = pr.procid;
             pp.cmdline = pr.cmdline;
+            pp.name = pr.name;
             pp.host = pr.host;
             pp.auto_restart = pr.autoRestart;
             pp.restart_delay_ms = pr.restartDelayMS;

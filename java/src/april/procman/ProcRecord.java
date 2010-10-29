@@ -5,6 +5,7 @@ class ProcRecord
     int    procid;
     String host;
     String cmdline;
+    String name;
 
     int restartCount;
     int lastExitCode;

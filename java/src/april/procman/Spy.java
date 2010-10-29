@@ -235,6 +235,7 @@ class Spy implements LCMSubscriber
         tcm.getColumn(1).setPreferredWidth(500);
         tcm.getColumn(2).setPreferredWidth(100);
         tcm.getColumn(3).setPreferredWidth(100);
+        tcm.getColumn(4).setPreferredWidth(100);
 
         jf.setSize(WIN_WIDTH, WIN_HEIGHT);
         jf.setVisible(true);
@@ -320,7 +321,7 @@ class Spy implements LCMSubscriber
                 ProcRecordG pr = ensureProcRecord(p.procid);
                 pr.cmdline = p.cmdline;
                 pr.host = p.host;
-
+                pr.name = p.name;
                 processTableModel.fireTableRowsUpdated(pr.pridx, pr.pridx);
             }
         }
@@ -345,7 +346,7 @@ class Spy implements LCMSubscriber
 
     class ProcessTableModel extends AbstractTableModel
     {
-        String columnNames[] = { "ProcID", "Command", "Host", "Status" };
+        String columnNames[] = { "ProcID", "Command", "Name", "Host", "Status" };
 
         public int getColumnCount()
         {
@@ -372,8 +373,10 @@ class Spy implements LCMSubscriber
                 case 1:
                     return pr.cmdline;
                 case 2:
-                    return pr.host;
+                    return pr.name;
                 case 3:
+                    return pr.host;
+                case 4:
                     if (pr.lastStatus == null)
                         return "Unknown";
                     else {
@@ -447,6 +450,7 @@ class Spy implements LCMSubscriber
         pr.procid = procid;
         pr.cmdline = "???";
         pr.host = "???";
+        pr.name = "???";
         pr.pridx = processes.size();
 
         processes.add(pr);
