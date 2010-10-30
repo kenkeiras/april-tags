@@ -30,6 +30,97 @@ public class HillClimbing
         this.gm = gm;
     }
 
+    public double[] matchGreedy(ArrayList<double[]> points, double prior[], double pinv[][],
+                                double xyt0[])
+    {
+        double x = xyt0[0];
+        double y = xyt0[1];
+        double t = xyt0[2];
+
+        int score = gm.score(points, x, y, t, prior, pinv);
+        double stepsize[] = LinAlg.copy(refine_initial_stepsize);
+
+        double newxyt[] = new double[3];
+
+        int iterations = 0;
+        int direction = 0;
+
+        for (iterations = 0; iterations < refine_max_iterations; iterations++) {
+
+            switch (direction) {
+                case 0 :
+                    newxyt[0] = x + stepsize[0];
+                    newxyt[1] = y;
+                    newxyt[2] = t;
+                    break;
+
+                case 3:
+                    newxyt[0] = x - stepsize[0];
+                    newxyt[1] = y;
+                    newxyt[2] = t;
+                    break;
+
+                case 1:
+                    newxyt[0] = x;
+                    newxyt[1] = y + stepsize[1];
+                    newxyt[2] = t;
+                    break;
+
+                case 4:
+                    newxyt[0] = x;
+                    newxyt[1] = y - stepsize[1];
+                    newxyt[2] = t;
+                    break;
+
+                case 2:
+                    newxyt[0] = x;
+                    newxyt[1] = y;
+                    newxyt[2] = t + stepsize[2];
+                    break;
+
+                case 5:
+                    newxyt[0] = x;
+                    newxyt[1] = y;
+                    newxyt[2] = t - stepsize[2];
+                    break;
+            }
+
+            // move in the best direction. (Roughly a local gradient search.)
+            int newscore = gm.score(points, newxyt[0], newxyt[1], newxyt[2], prior, pinv);
+
+            if (newscore > score) {
+                score = newscore;
+                x = newxyt[0];
+                y = newxyt[1];
+                t = newxyt[2];
+
+                // repeat with same step size and direction
+                continue;
+            }
+
+            // score didn't go up. try a different direction.
+            direction = (direction + 1) % 6;
+
+            // have we tried all the directions?
+            if (direction == 0) {
+                // We've rejected that step. Reduce our step size.
+                boolean searchMore = false;
+                for (int i = 0; i < 3; i++) {
+                    if (stepsize[i] > refine_minimum_stepsize[i]) {
+                        searchMore = true;
+                        stepsize[i] = Math.max(refine_minimum_stepsize[i], stepsize[i]*refine_shrink_ratio);
+                    }
+                }
+
+                if (!searchMore)
+                    break;
+            }
+
+        }
+
+        return new double[] {x, y, t, score};
+    }
+
     public double[] match(ArrayList<double[]> points, double prior[], double pinv[][],
                           double xyt0[])
     {
