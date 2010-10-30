@@ -91,7 +91,7 @@ public class MultiResolutionMatcher
         return search.compute();
     }
 
-    static class Pt
+    static final class Pt
     {
         // coordinates of the point, after rotation, in units of
         // metersPerPixel (of the highest-resolution gridmap) relative
@@ -174,6 +174,13 @@ public class MultiResolutionMatcher
 
         double[] compute()
         {
+            makePoints();
+
+            // What is the score of the best leaf we've yet
+            // encountered?  (There's no sense in expanding nodes
+            // whose upper bound is worse than this.)
+            double bestLeafScore = -Double.MAX_VALUE;
+
             // create an initial set of nodes that search over all the
             // thetas at our coarsest level of resolution.
             for (int tidx = 0; tidx < tcnt; tidx++) {
@@ -196,6 +203,25 @@ public class MultiResolutionMatcher
                 n.chi2_score = -chi2data[n.tidx].computeChi2(tx, ty, r);
                 n.score = n.match_score + n.chi2_score;
 
+                heap.add(n, n.score);
+            }
+
+            // now, create one more node that represents our fall-back
+            // to the prior. We can never do worse than a score of
+            // zero!
+            if (true) {
+                Node n = new Node();
+                n.gmidx = -1; // finest
+                n.tidx = (int) Math.round((prior[2] - t0) / tres);
+                n.tx0 = (int) Math.round(prior[0] / gms[0].metersPerPixel);
+                n.ty0 = (int) Math.round(prior[1] / gms[0].metersPerPixel);
+                n.searchwidth = 1; // shouldn't be used
+                n.searchheight = 1;
+                n.match_score = 0; // worst-case
+                n.chi2_score = 0;  // by definition
+                n.score = n.match_score + n.chi2_score;
+
+                bestLeafScore = n.score;
                 heap.add(n, n.score);
             }
 
@@ -229,6 +255,7 @@ public class MultiResolutionMatcher
                 // that we can't find an overlapping solution subject
                 // to the prior constraint. Thus, we just return the prior.
                 if (n == null) {
+                    System.out.printf("MultiResolutionMatcher: Heap returned null--THIS SHOULD NEVER HAPPEN!!!\n");
                     return new double[] { prior[0], prior[1], prior[2], 0 };
                 }
 
@@ -308,7 +335,7 @@ public class MultiResolutionMatcher
                             score += v * pt.cnt;
                         }
 
-                        if (score == 0)
+                        if (score <= bestLeafScore)
                             continue;
 
                         // create a new search job
@@ -333,6 +360,10 @@ public class MultiResolutionMatcher
                             n.print();
                         }
 
+                        if (child.gmidx == -1) {
+                            bestLeafScore = Math.max(bestLeafScore, child.score);
+                        }
+
                         children.add(child);
 
                         if (bestNode == null || score > bestNode.score) {
@@ -355,6 +386,62 @@ public class MultiResolutionMatcher
                         heap.add(children, bestNode.score);
                 }
 
+            }
+        }
+
+        void makePoints()
+        {
+            GridMap gm = gms[0];
+
+            HashMap<Integer, Pt> ptMap = new HashMap<Integer, Pt>(points.size());
+
+            for (int tidx = 0; tidx < tcnt; tidx++) {
+                double t = t0 + tidx*tres;
+                double s = Math.sin(t), c = Math.cos(t);
+
+                for (int i = 0; i < ndecimate; i++) {
+                    ptsCache[tidx][i] = new ArrayList<Pt>();
+                }
+
+                for (double p[] : points) {
+                    int ix = (int) ((c*p[0] - s*p[1] - gm.x0) / gm.metersPerPixel);
+                    int iy = (int) ((s*p[0] + c*p[1] - gm.y0) / gm.metersPerPixel);
+
+                    int key = (ix << 16) + iy;
+                    Pt pt = ptMap.get(key);
+                    if (pt == null) {
+                        pt = new Pt();
+                        pt.ix = ix;
+                        pt.iy = iy;
+                        pt.cnt = 1;
+                        ptsCache[tidx][0].add(pt);
+                        ptMap.put(key, pt);
+                    } else {
+                        pt.cnt ++;
+                    }
+                }
+
+                int resolution = decimate;
+                for (int gmidx = 1; gmidx < ndecimate; gmidx++) {
+                    ptMap.clear();
+
+                    for (Pt pt : ptsCache[tidx][gmidx-1]) {
+                        int key = ((pt.ix / resolution)<<16) + (pt.iy / resolution);
+                        Pt newpt = ptMap.get(key);
+                        if (newpt == null) {
+                            newpt = new Pt();
+                            newpt.ix = pt.ix;
+                            newpt.iy = pt.iy;
+                            newpt.cnt = pt.cnt;
+                            ptsCache[tidx][gmidx].add(newpt);
+                            ptMap.put(key, newpt);
+                        } else {
+                            newpt.cnt+= pt.cnt;
+                        }
+                    }
+
+                    resolution *= decimate;
+                }
             }
         }
 
