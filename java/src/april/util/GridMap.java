@@ -1110,8 +1110,8 @@ public final class GridMap
 
     public GridMap decimateMax(int factor)
     {
-        int newwidth = width / factor;
-        int newheight = height / factor;
+        int newwidth = (width + factor - 1) / factor;
+        int newheight = (height + factor - 1) / factor + 1;
 
         GridMap gm = GridMap.makePixels(x0, y0, newwidth, newheight, metersPerPixel*factor, (byte) 0, true);
         gm.defaultFill = defaultFill;
@@ -1155,8 +1155,25 @@ public final class GridMap
                                           data[(iy+1)*width+ix+1]&0xff));
                 gm.data[iy*width+ix] = (byte) v;
             }
+
+            // fix up right most pixel, which is a function of just
+            // itself and the pixel below it.
+            if (iy + 1 < height) {
+                int ix = width - 1;
+                gm.data[iy*width+ix] = (byte) Math.max(data[iy*width+ix]&0xff,
+                                                       data[(iy+1)*width+ix]&0xff);
+            }
         }
 
+        // fix up bottom row, where each pixel is just a function of
+        // itself and the pixel to its right.
+        for (int ix = 0; ix + 1 < width; ix++) {
+            int iy = height - 1;
+
+            gm.data[iy*width+ix] = (byte) Math.max(data[iy*width+ix]&0xff,
+                                                   data[iy*width+ix+1]&0xff);
+
+        }
         return gm;
     }
 

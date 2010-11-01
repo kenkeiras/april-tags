@@ -2471,4 +2471,19 @@ public final class LinAlg
 
         return false;
     }
+
+    // factor 2x2 symmetric matrix S into L, such that S=L'L
+    public static double[][] cholesky22(double S[][])
+    {
+        double a = S[0][0];
+        double b = S[0][1];
+        double c = S[1][1];
+
+        double sa = Math.sqrt(a);
+
+        return new double[][] { { sa, b/sa },
+                                { 0, Math.sqrt(c - b*b/a) } };
+    }
 }
+
+

@@ -79,6 +79,16 @@ public class MaxHeap<T>
         return (T) objs[0];
     }
 
+    public boolean selfTest()
+    {
+        for (int i = 0; i < heapsize; i++) {
+            if (scores[i] > scores[0])
+                return false;
+        }
+
+        return true;
+    }
+
     public Pair<T> peekMaxPair()
     {
         if (heapsize == 0)

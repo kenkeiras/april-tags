@@ -22,8 +22,10 @@ public class MultiResolutionMatcher
     // resolution. 2 = 1/decimate^2 resolution
     GridMap gms[];
 
+
+    static boolean debug = false;
+    static MultiResolutionMatcher.DebugViewer matcherDebugViewer = debug ? new MultiResolutionMatcher.DebugViewer() : null;
     ArrayList<Debug> debugs = new ArrayList<Debug>();
-    boolean debug = false;
 
     static class Debug
     {
@@ -41,8 +43,9 @@ public class MultiResolutionMatcher
     {
         gms = new GridMap[ndecimate];
 
+        // pad the gridmap with a border
         if (false) {
-            int border = 1024;
+            int border = 512;
             GridMap gmc = GridMap.makePixels(gm0.x0 - border*gm0.metersPerPixel,
                                              gm0.y0 - border*gm0.metersPerPixel,
                                              gm0.width + 2*border,
@@ -62,6 +65,7 @@ public class MultiResolutionMatcher
 
         gms[0] = gm0;
 
+        // create gridmap pyramid
         for (int i = 1; i < ndecimate; i++) {
             gms[i] = gms[i-1].decimateMax(decimate);
         }
@@ -88,7 +92,10 @@ public class MultiResolutionMatcher
                           double xrange, double yrange, double trange, double tres)
     {
         Search search = new Search(points, prior, priorinv, xyt0, xrange, yrange, trange, tres);
-        return search.compute();
+        double res[] = search.compute();
+        if (debug)
+            matcherDebugViewer.set(this);
+        return res;
     }
 
     static final class Pt
@@ -112,6 +119,11 @@ public class MultiResolutionMatcher
 
         // what is the search range?  tx0, ty0 are translation offsets
         // in units of metersPerPixel (of the finest resolution grid)
+        // note that tx0=0, ty0=0 corresponds to the center of our
+        // search range (usually the prior).
+        //
+        // This node represents the search range from [tx0, tx0 +
+        // searchwidth), and similarly for y.
         int tx0, ty0;
         int searchwidth, searchheight; // amount to search, in units of metersPerPixel
 
@@ -135,7 +147,7 @@ public class MultiResolutionMatcher
     {
         ArrayList<double[]> points;
         double prior[];
-        double xyt0[]; // center of search (usually == prior)
+        double xyt0[]; // center of search (usually == prior, but doesn't have to be.)
         double priorinv[][];
         double xrange, yrange;
 
@@ -169,7 +181,27 @@ public class MultiResolutionMatcher
 
             chi2data = new Chi2Data[tcnt];
             for (int i = 0; i < tcnt; i++)
-                chi2data[i] = new Chi2Data(prior, priorP, t0 + i*tres);
+                chi2data[i] = new Chi2Data(prior, priorP, priorinv, t0 + i*tres);
+        }
+
+        double computeNodeChi2(Node n)
+        {
+            double cx = (n.tx0 + n.searchwidth / 2.0)*gms[0].metersPerPixel;
+            double cy = (n.ty0 + n.searchheight / 2.0)*gms[0].metersPerPixel;
+            double cr = gms[0].metersPerPixel*Math.sqrt(n.searchwidth*n.searchwidth/4.0 + n.searchheight*n.searchheight/4.0);
+
+            return -chi2data[n.tidx].computeChi2(cx, cy, cr);
+        }
+
+        double computeNodeChi2Verbose(Node n)
+        {
+            double cx = (n.tx0 + n.searchwidth / 2.0)*gms[0].metersPerPixel;
+            double cy = (n.ty0 + n.searchheight / 2.0)*gms[0].metersPerPixel;
+            double cr = gms[0].metersPerPixel*Math.sqrt(n.searchwidth*n.searchwidth/4.0 + n.searchheight*n.searchheight/4.0);
+
+            double chi2 = -chi2data[n.tidx].computeChi2(cx, cy, cr);
+            System.out.printf("cx = %15f, cy = %15f, cr = %15f : chi2 = %15f\n", cx, cy, cr, chi2);
+            return chi2;
         }
 
         double[] compute()
@@ -194,13 +226,10 @@ public class MultiResolutionMatcher
                 n.searchwidth = (int) (2*xrange / gms[0].metersPerPixel + 2);
                 n.searchheight = (int) (2*yrange / gms[0].metersPerPixel + 2);
 
+                // best case score; this will cause us to expand this
+                // node to see how good its children *actually* are.
                 n.match_score = points.size()*255;
-
-                double tx = (n.tx0 + n.searchwidth / 2.0)*gms[0].metersPerPixel;
-                double ty = (n.ty0 + n.searchheight / 2.0)*gms[0].metersPerPixel;
-                double r = gms[0].metersPerPixel*Math.sqrt(n.searchwidth*n.searchwidth/4.0 + n.searchheight*n.searchheight/4.0);
-
-                n.chi2_score = -chi2data[n.tidx].computeChi2(tx, ty, r);
+                n.chi2_score = computeNodeChi2(n);
                 n.score = n.match_score + n.chi2_score;
 
                 heap.add(n, n.score);
@@ -230,9 +259,10 @@ public class MultiResolutionMatcher
             // node that is already at the finest resolution (i.e.,
             // has no children), we're done.
 
-            double lastScore = Double.MAX_VALUE;
+            Node lastNode = null;
 
             for (int iter = 0; true; iter++) {
+
                 Object heapobj = heap.removeMax();
 
                 if (heapobj instanceof ArrayList) {
@@ -244,11 +274,16 @@ public class MultiResolutionMatcher
 
                 Node n = (Node) heapobj;
 
-/*
-  if (n.score > lastScore)
-  System.out.printf("heap ordering violated %15f %15f\n", n.score, lastScore);
-  lastScore = n.score;
-*/
+                if (lastNode != null && n.score > lastNode.score) {
+                    System.out.printf("*** ORDERING **************************************************\n");
+                    System.out.printf("heap ordering violated %15f %15f\n", n.score, lastNode.score);
+
+                    System.out.printf("this node: \n");
+                    n.print();
+                    System.out.printf("last node: \n");
+                    lastNode.print();
+                }
+                lastNode = n;
 
                 // We can end up finding no solution since we don't
                 // expand children whose score is zero. This means
@@ -319,7 +354,7 @@ public class MultiResolutionMatcher
                             int v;
 
                             // if mx or my is closer to zero, then for
-                            // some translation within this block,
+                            // *some translation* within this block,
                             // we'll appear at pixel 0,0.
                             if (mx <= -resolution || my <= -resolution) {
                                 v = (gm.defaultFill&0xff);
@@ -339,10 +374,6 @@ public class MultiResolutionMatcher
                             continue;
 
                         // create a new search job
-                        double tx = (n.tx0 + n.searchwidth / 2.0)*gms[0].metersPerPixel;
-                        double ty = (n.ty0 + n.searchheight / 2.0)*gms[0].metersPerPixel;
-                        double r = gms[0].metersPerPixel*Math.sqrt(n.searchwidth*n.searchwidth/4.0 + n.searchheight*n.searchheight/4.0);
-
                         Node child = new Node();
                         child.gmidx = n.gmidx - 1;
                         child.tidx = n.tidx;
@@ -351,12 +382,97 @@ public class MultiResolutionMatcher
                         child.searchwidth = Math.min(n.tx0+n.searchwidth - dx, resolution);
                         child.searchheight = Math.min(n.ty0+n.searchheight - dy, resolution);
                         child.match_score = score;
-                        child.chi2_score = -chi2data[child.tidx].computeChi2(tx, ty, r);
+                        child.chi2_score = computeNodeChi2(child);
                         child.score = child.match_score + child.chi2_score;
 
-                        if (false && child.chi2_score > n.chi2_score+.0001) {
-                            System.out.printf("\nchi2 %15f %15f\n", child.chi2_score, n.chi2_score);
+                        if (child.chi2_score > n.chi2_score+.0001) {
+                            System.out.printf("** CHI2 **************************************\n");
+                            System.out.printf("\nchi2 child = %15f, parent = %15f\n", child.chi2_score, n.chi2_score);
+                            LinAlg.print(chi2data[child.tidx].P);
+                            LinAlg.print(chi2data[child.tidx].u);
+
+                            System.out.printf("child: ");
                             child.print();
+                            computeNodeChi2Verbose(child);
+                            System.out.printf("parent: ");
+                            n.print();
+                            computeNodeChi2Verbose(n);
+
+                         }
+
+                        if (child.match_score > n.match_score && pts.size() < 20) {
+                            System.out.printf("** MATCH **************************************\n");
+                            System.out.printf("\nscore child = %15f, parent = %15f\n", child.match_score, n.match_score);
+                            System.out.printf("child: ");
+                            child.print();
+                            System.out.printf("parent: ");
+                            n.print();
+
+                            System.out.printf("tx0: %5d,  ty0: %5d\n", child.tx0, child.ty0);
+                            for (Pt pt : pts) {
+                                int mx = (pt.ix + child.tx0);
+                                int my = (pt.iy + child.ty0);
+
+                                int v;
+
+                                // if mx or my is closer to zero, then for
+                                // *some translation* within this block,
+                                // we'll appear at pixel 0,0.
+                                if (mx <= -resolution || my <= -resolution) {
+                                    v = (gm.defaultFill&0xff);
+                                    mx /= resolution;
+                                    my /= resolution;
+                                } else {
+                                    mx /= resolution;
+                                    my /= resolution;
+
+                                    if (mx >= gm.width || my >= gm.height)
+                                        v = gm.defaultFill & 0xff;
+                                    else
+                                        v = (gm.data[my*gm.width + mx] & 0xff);
+                                }
+
+                                System.out.printf("(%5d,%5d)->(%5d,%5d) x %5d : %5d\n", pt.ix, pt.iy, mx, my, pt.cnt, v);
+                            }
+
+                            System.out.printf("\n");
+
+                            int nres = resolution * decimate;
+                            GridMap ngm = gms[child.gmidx+1];
+
+                            System.out.printf("tx0: %5d,  ty0: %5d\n", n.tx0, n.ty0);
+
+                            for (Pt pt : getPoints(n.tidx, n.gmidx)) {
+                                int mx = (pt.ix + n.tx0);
+                                int my = (pt.iy + n.ty0);
+
+                                int v;
+
+                                // if mx or my is closer to zero, then for
+                                // *some translation* within this block,
+                                // we'll appear at pixel 0,0.
+                                if (mx <= -nres || my <= -nres) {
+                                    v = (gm.defaultFill&0xff);
+                                } else {
+                                    mx /= nres;
+                                    my /= nres;
+
+                                    if (mx >= ngm.width || my >= ngm.height)
+                                        v = ngm.defaultFill & 0xff;
+                                    else
+                                        v = (ngm.data[my*ngm.width + mx] & 0xff);
+                                }
+
+                                System.out.printf("(%5d,%5d)->(%5d,%5d) x %5d : %5d\n", pt.ix, pt.iy, mx, my, pt.cnt, v);
+                            }
+                        }
+
+                        if (child.score > n.score) {
+                            System.out.printf("** OVERALL SCORE **************************************\n");
+                            System.out.printf("\nscore child = %15f, parent = %15f\n", child.score, n.score);
+                            System.out.printf("child: ");
+                            child.print();
+                            System.out.printf("parent: ");
                             n.print();
                         }
 
@@ -366,7 +482,7 @@ public class MultiResolutionMatcher
 
                         children.add(child);
 
-                        if (bestNode == null || score > bestNode.score) {
+                        if (bestNode == null || child.score > bestNode.score) {
                             bestNode = child;
                         }
 
@@ -393,6 +509,9 @@ public class MultiResolutionMatcher
         {
             GridMap gm = gms[0];
 
+            if (true)
+                return;
+
             HashMap<Integer, Pt> ptMap = new HashMap<Integer, Pt>(points.size());
 
             for (int tidx = 0; tidx < tcnt; tidx++) {
@@ -417,6 +536,8 @@ public class MultiResolutionMatcher
                         ptsCache[tidx][0].add(pt);
                         ptMap.put(key, pt);
                     } else {
+                        assert(pt.ix == ix);
+                        assert(pt.iy == iy);
                         pt.cnt ++;
                     }
                 }
@@ -436,11 +557,20 @@ public class MultiResolutionMatcher
                             ptsCache[tidx][gmidx].add(newpt);
                             ptMap.put(key, newpt);
                         } else {
-                            newpt.cnt+= pt.cnt;
+                            newpt.cnt += pt.cnt;
+                            assert((newpt.ix / resolution) == (pt.ix / resolution));
+                            assert((newpt.iy / resolution) == (pt.iy / resolution));
                         }
                     }
 
                     resolution *= decimate;
+
+                    int totalPoints = 0;
+                    for (Pt pt : ptsCache[tidx][gmidx])
+                        totalPoints += pt.cnt;
+                    for (Pt pt : ptsCache[tidx][gmidx-1])
+                        totalPoints -= pt.cnt;
+                    assert(totalPoints == 0);
                 }
             }
         }
@@ -453,6 +583,8 @@ public class MultiResolutionMatcher
             if (pts != null)
                 return pts;
 
+//            assert(false);
+//            return null;
             double t = t0 + tidx*tres;
             double s = Math.sin(t), c = Math.cos(t);
 
@@ -462,11 +594,14 @@ public class MultiResolutionMatcher
             GridMap gm = gms[0];
             int resolution = (int) Math.pow(decimate, gmidx);
 
+//            System.out.printf("getPoints, resolution=%d\n", resolution);
             for (double p[] : points) {
                 int ix = (int) ((c*p[0] - s*p[1] - gm.x0) / gm.metersPerPixel);
                 int iy = (int) ((s*p[0] + c*p[1] - gm.y0) / gm.metersPerPixel);
 
-                int key = ((ix / resolution)<<16) + (iy / resolution);
+                int key = (((ix+resolution*1000) / resolution)<<16) + ((iy+resolution*1000) / resolution);
+
+//                System.out.printf("%5d %5d %08x\n", ix, iy, key);
                 Pt pt = ptMap.get(key);
                 if (pt != null) {
                     pt.cnt ++;
@@ -483,6 +618,7 @@ public class MultiResolutionMatcher
             ptsCache[tidx][gmidx] = pts;
 
             return pts;
+
         }
     }
 
