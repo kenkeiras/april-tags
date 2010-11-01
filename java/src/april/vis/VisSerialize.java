@@ -69,7 +69,7 @@ public class VisSerialize
         // Instantiate
         VisSerializable obj = (VisSerializable)ReflectUtil.createObject(obj_name);
         if (obj == null) {
-            System.out.println("WRN Failed to read class "+obj_name+"!");
+            System.out.println("WRN Failed to read class '"+obj_name+"'!");
             return null;
         }
 

@@ -10,7 +10,9 @@ import java.io.*;
 
 import april.util.*;
 
-public class VisGeoImageSet implements VisObject
+import lcm.lcm.*;
+
+public class VisGeoImageSet implements VisObject, VisSerializable
 {
     GPSLinearization gpslin;
     ArrayList<Tile> tiles = new ArrayList<Tile>();
@@ -23,7 +25,17 @@ public class VisGeoImageSet implements VisObject
         double M[][];
     }
 
+    // only for unserialize
+    public VisGeoImageSet()
+    {
+    }
+
     public VisGeoImageSet(String dirpath, GPSLinearization gpslin, boolean asyncLoad) throws IOException
+    {
+        init(dirpath, gpslin, asyncLoad);
+    }
+
+    void init(String dirpath, GPSLinearization gpslin, boolean asyncLoad) throws IOException
     {
         this.gpslin = gpslin;
         this.dirpath = dirpath;
@@ -107,4 +119,22 @@ public class VisGeoImageSet implements VisObject
         }
     }
 
+    public void serialize(LCMDataOutputStream out) throws IOException
+    {
+        out.writeStringZ(dirpath);
+        out.writeDouble(gpslin.getOriginLL()[0]);
+        out.writeDouble(gpslin.getOriginLL()[1]);
+        out.writeInt(modulateColor.getRGB());
+    }
+
+    public void unserialize(LCMDataInputStream in) throws IOException
+    {
+        String _dirpath = in.readStringZ();
+        double ll[] = new double[] { in.readDouble(), in.readDouble() };
+        GPSLinearization _gpslin = new GPSLinearization(ll);
+
+        init(_dirpath, _gpslin, true);
+
+        modulateColor = new Color(in.readInt(), true);
+    }
 }

@@ -211,8 +211,8 @@ public class VisWindow implements VisObject, VisSerializable
         out.writeDouble(xy1[0]);
         out.writeDouble(xy1[1]);
 
-        out.writeDouble(winwidth);
-        out.writeDouble(winheight);
+        out.writeInt(winwidth);
+        out.writeInt(winheight);
 
         int count = 0;
         for(VisObject o : objects)
@@ -229,15 +229,15 @@ public class VisWindow implements VisObject, VisSerializable
     public void unserialize(LCMDataInputStream in) throws IOException
     {
         align = getAlign(in.readInt());
-        xy0 = new double[]{in.readDouble(), in.readDouble()};
-        xy1 = new double[]{in.readDouble(), in.readDouble()};
+        xy0 = new double[] { in.readDouble(), in.readDouble() };
+        xy1 = new double[] { in.readDouble(), in.readDouble() };
 
         winwidth = in.readInt();
         winheight = in.readInt();
 
         int nobjs = in.readInt();
-        for (int  i= 0; i < nobjs; i++)
-            objects.add((VisObject)VisSerialize.unserialize(in));
+        for (int i = 0; i < nobjs; i++)
+            objects.add((VisObject) VisSerialize.unserialize(in));
     }
 
     // Converting to enums from ints
