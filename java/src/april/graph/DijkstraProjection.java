@@ -84,8 +84,9 @@ public class DijkstraProjection
 
         ///////////////////////////////////////////////////////////
         // allocate the projection datastructure
-        projection = new ArrayList<GXYTEdge>(g.nodes.size());
-        while (projection.size() < g.nodes.size())
+
+        projection = new ArrayList<GXYTEdge>();
+        while (projection.size() < nodeEdges.size())
             projection.add(null);
 
         heap = new MaxHeap<GXYTEdge>(nodeEdges.size());
