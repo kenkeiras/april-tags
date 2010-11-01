@@ -1108,6 +1108,60 @@ public final class GridMap
         return v;
     }
 
+    public GridMap maxConvolution(int k)
+    {
+        GridMap gm = copy();
+
+        // first, do rows.
+        for (int y = 0; y < height; y++)
+            maxConvolution(data, y*width, width, k, gm.data, y*width);
+
+        byte tmp[] = new byte[height];
+        byte tmp2[] = new byte[height];
+        for (int x = 0; x < width; x++) {
+
+            // copy column into 1D array for locality
+            for (int y = 0; y < height; y++)
+                tmp[y] = gm.data[y*width+x];
+
+            maxConvolution(tmp, 0, height, k, tmp2, 0);
+
+            // copy back
+            for (int y = 0; y < height; y++)
+                gm.data[y*width+x] = tmp2[y];
+        }
+
+        return gm;
+    }
+
+    static final void maxConvolution(byte in[], int in_offset, int width, int k, byte out[], int out_offset)
+    {
+        boolean zeros = false;
+
+        for (int x = 0; x < width; x++) {
+            int v = 0;
+            int cnt = Math.min(k, width - x);
+
+            // if the last convolution step was all zeros, and the
+            // right-most position is a zero, then we know the result
+            // for this pixel will be zero.
+            if (zeros && in[in_offset + x + cnt - 1]==0) {
+                v = 0;
+            } else {
+                for (int i = 0;  i < cnt; i++) {
+                    v = Math.max(v, in[in_offset + x + i] & 0xff);
+                    if (v == 255) // no need to keep searching.
+                        break;
+                }
+            }
+
+            out[out_offset + x] = (byte) v;
+
+            if (v == 0)
+                zeros = true;
+        }
+    }
+
     public GridMap decimateMax(int factor)
     {
         int newwidth = (width + factor - 1) / factor;
@@ -1537,5 +1591,15 @@ public final class GridMap
             else
                 data[i] = vfalse;
         }
+    }
+
+    public static void main(String args[])
+    {
+        byte a[] = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 7, 6, 5, 4, 3, 2, 1 };
+        byte b[] = new byte[a.length];
+
+        maxConvolution(a, 0, a.length, 4, b, 0);
+        for (int i = 0; i < a.length; i++)
+            System.out.printf("%d %d\n", a[i]&0xff, b[i]&0xff);
     }
 }

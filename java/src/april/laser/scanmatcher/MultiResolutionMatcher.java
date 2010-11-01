@@ -22,7 +22,6 @@ public class MultiResolutionMatcher
     // resolution. 2 = 1/decimate^2 resolution
     GridMap gms[];
 
-
     static boolean debug = false;
     static MultiResolutionMatcher.DebugViewer matcherDebugViewer = debug ? new MultiResolutionMatcher.DebugViewer() : null;
     ArrayList<Debug> debugs = new ArrayList<Debug>();
@@ -43,47 +42,16 @@ public class MultiResolutionMatcher
     {
         gms = new GridMap[ndecimate];
 
-        // pad the gridmap with a border
-        if (false) {
-            int border = 512;
-            GridMap gmc = GridMap.makePixels(gm0.x0 - border*gm0.metersPerPixel,
-                                             gm0.y0 - border*gm0.metersPerPixel,
-                                             gm0.width + 2*border,
-                                             gm0.height + 2*border,
-                                             gm0.metersPerPixel,
-                                             gm0.defaultFill,
-                                             true);
-
-            for (int y = 0; y < gm0.height; y++) {
-                for (int x = 0; x < gm0.width; x++) {
-                    gmc.data[(y+border)*gmc.width + (x+border)] = gm0.data[y*gm0.width+x];
-                }
-            }
-
-            gm0 = gmc;
-        }
-
         gms[0] = gm0;
 
         // create gridmap pyramid
         for (int i = 1; i < ndecimate; i++) {
-            gms[i] = gms[i-1].decimateMax(decimate);
-        }
+            int lastdecimate = (int) Math.pow(decimate, i-1);
+            int thisdecimate = (int) Math.pow(decimate, i);
+            // last + k - 1 = thisdecimate
+            int k = thisdecimate - lastdecimate + 1;
 
-        // When we're translating points at high levels of the image
-        // pyramid, we're translating them by relatively large
-        // amounts. It's possible that the point was on the far right
-        // of its cell, such that it would map to the next grid cell
-        // over. If this grid cell had a higher value than the current
-        // value, we would underestimate the score. Taking the max4()
-        // solves this problem.
-        //
-        // Example (in 1D). Suppose we have a point mapped to index 3
-        // at a quarter-resolution level of the pyramid. We want to
-        // evaluate translations from 0-3. For translations 1-3, the
-        // point will change buckets.
-        for (int i = 1; i < ndecimate; i++) {
-            gms[i] = gms[i].max4();
+            gms[i] = gms[i-1].maxConvolution(k);
         }
     }
 
@@ -157,7 +125,7 @@ public class MultiResolutionMatcher
 
         MaxHeap<Object> heap = new MaxHeap<Object>();
 
-        ArrayList<Pt> ptsCache[][]; // tidx, gmidx
+        ArrayList<Pt> ptsCache[]; // tidx
         Chi2Data chi2data[];
 
         Search(ArrayList<double[]> points, double prior[], double priorinv[][],
@@ -175,7 +143,7 @@ public class MultiResolutionMatcher
             this.tres = tres;
             this.tcnt = (int) LinAlg.clamp(2*trange/tres + 1, 1, 2*Math.PI / tres);
 
-            ptsCache = new ArrayList[tcnt][ndecimate];
+            ptsCache = new ArrayList[tcnt];
 
             double priorP[][] = LinAlg.inverse(priorinv);
 
@@ -206,8 +174,6 @@ public class MultiResolutionMatcher
 
         double[] compute()
         {
-            makePoints();
-
             // What is the score of the best leaf we've yet
             // encountered?  (There's no sense in expanding nodes
             // whose upper bound is worse than this.)
@@ -300,7 +266,7 @@ public class MultiResolutionMatcher
                         Debug dbg = new Debug();
                         dbg.n = n;
                         dbg.gm = gms[n.gmidx+1];
-                        dbg.pts = getPoints(n.tidx, n.gmidx+1);
+                        dbg.pts = getPoints(n.tidx);
                         debugs.add(dbg);
                     }
                 }
@@ -309,8 +275,8 @@ public class MultiResolutionMatcher
                     // we're done!
                     GridMap gm = gms[0];
 
-                    double result[] = new double[] { (n.tx0+.5)*gm.metersPerPixel,
-                                                     (n.ty0+.5)*gm.metersPerPixel,
+                    double result[] = new double[] { (n.tx0+n.searchwidth/2.0)*gm.metersPerPixel,
+                                                     (n.ty0+n.searchheight/2.0)*gm.metersPerPixel,
                                                      t0 + n.tidx*tres, // don't add 0.5
                                                      n.score };
 
@@ -328,7 +294,7 @@ public class MultiResolutionMatcher
                 // gms[0] does one pixel in gm represent?
                 int resolution = (int) Math.pow(decimate, n.gmidx);
 
-                ArrayList<Pt> pts = getPoints(n.tidx, n.gmidx);
+                ArrayList<Pt> pts = getPoints(n.tidx);
 
 //                System.out.printf("%6d : res %d,  score %15f,  heapsz %6d,  ( xyt %5d %5d %5d ) (sz %5d %5d) pts %d\n",
 //                                  iter, n.gmidx, n.score, heap.size(), n.tx0, n.ty0, n.tidx, n.searchwidth, n.searchheight, pts.size());
@@ -356,17 +322,17 @@ public class MultiResolutionMatcher
                             // if mx or my is closer to zero, then for
                             // *some translation* within this block,
                             // we'll appear at pixel 0,0.
-                            if (mx <= -resolution || my <= -resolution) {
-                                v = (gm.defaultFill&0xff);
-                            } else {
-                                mx /= resolution;
-                                my /= resolution;
+                            if (mx < 0 && mx > -resolution)
+                                mx = 0;
+                            if (my < 0 && my > -resolution)
+                                my = 0;
 
-                                if (mx >= gm.width || my >= gm.height)
-                                    v = gm.defaultFill & 0xff;
-                                else
-                                    v = (gm.data[my*gm.width + mx] & 0xff);
+                            if (mx >= 0 && my >=0 && mx < gm.width && my < gm.height) {
+                                v = gm.data[my*gm.width + mx] & 0xff;
+                            } else {
+                                v = gm.defaultFill & 0xff;
                             }
+
                             score += v * pt.cnt;
                         }
 
@@ -385,97 +351,6 @@ public class MultiResolutionMatcher
                         child.chi2_score = computeNodeChi2(child);
                         child.score = child.match_score + child.chi2_score;
 
-                        if (child.chi2_score > n.chi2_score+.0001) {
-                            System.out.printf("** CHI2 **************************************\n");
-                            System.out.printf("\nchi2 child = %15f, parent = %15f\n", child.chi2_score, n.chi2_score);
-                            LinAlg.print(chi2data[child.tidx].P);
-                            LinAlg.print(chi2data[child.tidx].u);
-
-                            System.out.printf("child: ");
-                            child.print();
-                            computeNodeChi2Verbose(child);
-                            System.out.printf("parent: ");
-                            n.print();
-                            computeNodeChi2Verbose(n);
-
-                         }
-
-                        if (child.match_score > n.match_score && pts.size() < 20) {
-                            System.out.printf("** MATCH **************************************\n");
-                            System.out.printf("\nscore child = %15f, parent = %15f\n", child.match_score, n.match_score);
-                            System.out.printf("child: ");
-                            child.print();
-                            System.out.printf("parent: ");
-                            n.print();
-
-                            System.out.printf("tx0: %5d,  ty0: %5d\n", child.tx0, child.ty0);
-                            for (Pt pt : pts) {
-                                int mx = (pt.ix + child.tx0);
-                                int my = (pt.iy + child.ty0);
-
-                                int v;
-
-                                // if mx or my is closer to zero, then for
-                                // *some translation* within this block,
-                                // we'll appear at pixel 0,0.
-                                if (mx <= -resolution || my <= -resolution) {
-                                    v = (gm.defaultFill&0xff);
-                                    mx /= resolution;
-                                    my /= resolution;
-                                } else {
-                                    mx /= resolution;
-                                    my /= resolution;
-
-                                    if (mx >= gm.width || my >= gm.height)
-                                        v = gm.defaultFill & 0xff;
-                                    else
-                                        v = (gm.data[my*gm.width + mx] & 0xff);
-                                }
-
-                                System.out.printf("(%5d,%5d)->(%5d,%5d) x %5d : %5d\n", pt.ix, pt.iy, mx, my, pt.cnt, v);
-                            }
-
-                            System.out.printf("\n");
-
-                            int nres = resolution * decimate;
-                            GridMap ngm = gms[child.gmidx+1];
-
-                            System.out.printf("tx0: %5d,  ty0: %5d\n", n.tx0, n.ty0);
-
-                            for (Pt pt : getPoints(n.tidx, n.gmidx)) {
-                                int mx = (pt.ix + n.tx0);
-                                int my = (pt.iy + n.ty0);
-
-                                int v;
-
-                                // if mx or my is closer to zero, then for
-                                // *some translation* within this block,
-                                // we'll appear at pixel 0,0.
-                                if (mx <= -nres || my <= -nres) {
-                                    v = (gm.defaultFill&0xff);
-                                } else {
-                                    mx /= nres;
-                                    my /= nres;
-
-                                    if (mx >= ngm.width || my >= ngm.height)
-                                        v = ngm.defaultFill & 0xff;
-                                    else
-                                        v = (ngm.data[my*ngm.width + mx] & 0xff);
-                                }
-
-                                System.out.printf("(%5d,%5d)->(%5d,%5d) x %5d : %5d\n", pt.ix, pt.iy, mx, my, pt.cnt, v);
-                            }
-                        }
-
-                        if (child.score > n.score) {
-                            System.out.printf("** OVERALL SCORE **************************************\n");
-                            System.out.printf("\nscore child = %15f, parent = %15f\n", child.score, n.score);
-                            System.out.printf("child: ");
-                            child.print();
-                            System.out.printf("parent: ");
-                            n.print();
-                        }
-
                         if (child.gmidx == -1) {
                             bestLeafScore = Math.max(bestLeafScore, child.score);
                         }
@@ -485,9 +360,6 @@ public class MultiResolutionMatcher
                         if (bestNode == null || child.score > bestNode.score) {
                             bestNode = child;
                         }
-
-//                        System.out.printf("  heap add %15f %15f %15f\n", child.match_score, child.chi2_score, child.score);
-//                        heap.add(child, child.score);
                     }
                 }
 
@@ -501,107 +373,31 @@ public class MultiResolutionMatcher
                     if (children.size() > 0)
                         heap.add(children, bestNode.score);
                 }
-
-            }
-        }
-
-        void makePoints()
-        {
-            GridMap gm = gms[0];
-
-            if (true)
-                return;
-
-            HashMap<Integer, Pt> ptMap = new HashMap<Integer, Pt>(points.size());
-
-            for (int tidx = 0; tidx < tcnt; tidx++) {
-                double t = t0 + tidx*tres;
-                double s = Math.sin(t), c = Math.cos(t);
-
-                for (int i = 0; i < ndecimate; i++) {
-                    ptsCache[tidx][i] = new ArrayList<Pt>();
-                }
-
-                for (double p[] : points) {
-                    int ix = (int) ((c*p[0] - s*p[1] - gm.x0) / gm.metersPerPixel);
-                    int iy = (int) ((s*p[0] + c*p[1] - gm.y0) / gm.metersPerPixel);
-
-                    int key = (ix << 16) + iy;
-                    Pt pt = ptMap.get(key);
-                    if (pt == null) {
-                        pt = new Pt();
-                        pt.ix = ix;
-                        pt.iy = iy;
-                        pt.cnt = 1;
-                        ptsCache[tidx][0].add(pt);
-                        ptMap.put(key, pt);
-                    } else {
-                        assert(pt.ix == ix);
-                        assert(pt.iy == iy);
-                        pt.cnt ++;
-                    }
-                }
-
-                int resolution = decimate;
-                for (int gmidx = 1; gmidx < ndecimate; gmidx++) {
-                    ptMap.clear();
-
-                    for (Pt pt : ptsCache[tidx][gmidx-1]) {
-                        int key = ((pt.ix / resolution)<<16) + (pt.iy / resolution);
-                        Pt newpt = ptMap.get(key);
-                        if (newpt == null) {
-                            newpt = new Pt();
-                            newpt.ix = pt.ix;
-                            newpt.iy = pt.iy;
-                            newpt.cnt = pt.cnt;
-                            ptsCache[tidx][gmidx].add(newpt);
-                            ptMap.put(key, newpt);
-                        } else {
-                            newpt.cnt += pt.cnt;
-                            assert((newpt.ix / resolution) == (pt.ix / resolution));
-                            assert((newpt.iy / resolution) == (pt.iy / resolution));
-                        }
-                    }
-
-                    resolution *= decimate;
-
-                    int totalPoints = 0;
-                    for (Pt pt : ptsCache[tidx][gmidx])
-                        totalPoints += pt.cnt;
-                    for (Pt pt : ptsCache[tidx][gmidx-1])
-                        totalPoints -= pt.cnt;
-                    assert(totalPoints == 0);
-                }
             }
         }
 
         // Project our points into integer-valued coordinates relative
         // to (0,0) (not x0,y0).
-        ArrayList<Pt> getPoints(int tidx, int gmidx)
+        ArrayList<Pt> getPoints(int tidx)
         {
-            ArrayList<Pt> pts = (ArrayList<Pt>) ptsCache[tidx][gmidx];
+            ArrayList<Pt> pts = (ArrayList<Pt>) ptsCache[tidx];
             if (pts != null)
                 return pts;
 
-//            assert(false);
-//            return null;
             double t = t0 + tidx*tres;
             double s = Math.sin(t), c = Math.cos(t);
 
-            HashMap<Integer, Pt> ptMap = new HashMap<Integer, Pt>(points.size());
+            HashMap<Long, Pt> ptMap = new HashMap<Long, Pt>(points.size());
             pts = new ArrayList<Pt>(points.size());
 
             GridMap gm = gms[0];
-            int resolution = (int) Math.pow(decimate, gmidx);
 
-//            System.out.printf("getPoints, resolution=%d\n", resolution);
             for (double p[] : points) {
                 int ix = (int) ((c*p[0] - s*p[1] - gm.x0) / gm.metersPerPixel);
                 int iy = (int) ((s*p[0] + c*p[1] - gm.y0) / gm.metersPerPixel);
 
-                int key = (((ix+resolution*1000) / resolution)<<16) + ((iy+resolution*1000) / resolution);
+                long key = (ix << 32) + iy;
 
-//                System.out.printf("%5d %5d %08x\n", ix, iy, key);
                 Pt pt = ptMap.get(key);
                 if (pt != null) {
                     pt.cnt ++;
@@ -615,10 +411,9 @@ public class MultiResolutionMatcher
                 }
             }
 
-            ptsCache[tidx][gmidx] = pts;
+            ptsCache[tidx] = pts;
 
             return pts;
-
         }
     }
 
