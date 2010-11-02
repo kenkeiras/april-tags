@@ -224,8 +224,10 @@ public class MultiResolutionMatcher
             // promising to least promising. When we arrive at a
             // node that is already at the finest resolution (i.e.,
             // has no children), we're done.
-
             Node lastNode = null;
+
+            // count how many iterations we perform at each level for diagnostic purposes.
+            int depthCount[] = new int[ndecimate];
 
             for (int iter = 0; true; iter++) {
 
@@ -241,24 +243,17 @@ public class MultiResolutionMatcher
                 Node n = (Node) heapobj;
 
                 if (lastNode != null && n.score > lastNode.score) {
-                    System.out.printf("*** ORDERING **************************************************\n");
-                    System.out.printf("heap ordering violated %15f %15f\n", n.score, lastNode.score);
+                    if (false) {
+                        System.out.printf("*** ORDERING **************************************************\n");
+                        System.out.printf("heap ordering violated %15f %15f\n", n.score, lastNode.score);
 
-                    System.out.printf("this node: \n");
-                    n.print();
-                    System.out.printf("last node: \n");
-                    lastNode.print();
+                        System.out.printf("this node: \n");
+                        n.print();
+                        System.out.printf("last node: \n");
+                        lastNode.print();
+                    }
                 }
                 lastNode = n;
-
-                // We can end up finding no solution since we don't
-                // expand children whose score is zero. This means
-                // that we can't find an overlapping solution subject
-                // to the prior constraint. Thus, we just return the prior.
-                if (n == null) {
-                    System.out.printf("MultiResolutionMatcher: Heap returned null--THIS SHOULD NEVER HAPPEN!!!\n");
-                    return new double[] { prior[0], prior[1], prior[2], 0 };
-                }
 
                 if (debug) {
                     // create debug records for all but the initial searches
@@ -279,6 +274,13 @@ public class MultiResolutionMatcher
                                                      (n.ty0+n.searchheight/2.0)*gm.metersPerPixel,
                                                      t0 + n.tidx*tres, // don't add 0.5
                                                      n.score };
+
+                    if (false) {
+                        System.out.printf("depth count: ");
+                        for (int i = 0; i < ndecimate; i++)
+                            System.out.printf("%8d ", depthCount[i]);
+                        System.out.printf("\n");
+                    }
 
                     return result;
                 }
@@ -306,6 +308,8 @@ public class MultiResolutionMatcher
                     for (int dx = n.tx0; dx < n.tx0+n.searchwidth; dx+=resolution) {
 
                         double score = 0;
+
+                        depthCount[n.gmidx]++;
 
                         for (Pt pt : pts) {
                             // (mx,my) are pixel coordinates in gms[0]
@@ -362,7 +366,6 @@ public class MultiResolutionMatcher
                         }
                     }
                 }
-
 
                 if (n.gmidx == 0) {
                     // leaf node

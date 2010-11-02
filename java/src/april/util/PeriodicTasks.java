@@ -74,6 +74,11 @@ public class PeriodicTasks
         queue.put(r);
     }
 
+    public synchronized boolean isRunning()
+    {
+        return workers.size() > 0;
+    }
+
     public synchronized void setRunning(boolean b)
     {
         if (b) {
