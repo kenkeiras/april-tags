@@ -35,6 +35,9 @@ public class GXYEdge extends GEdge
             e.truth = LinAlg.copy(truth);
         e.P = LinAlg.copy(P);
 
+        if (attributes != null)
+            e.attributes = attributes.copy();
+
         return e;
     }
 
