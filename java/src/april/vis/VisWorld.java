@@ -56,7 +56,7 @@ public class VisWorld
             this.name = name;
         }
 
-        public void addBuffered(VisObject vo)
+        public synchronized void addBuffered(VisObject vo)
         {
             back.add(vo);
         }
