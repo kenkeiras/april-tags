@@ -105,11 +105,16 @@ public class VisConsole
             buffer += line.s + "\n";
 
         if (command != null) {
+            // cmd0: the part before the cursor
+            // cmd1: the cursor
+            // cmd2: the part after the cursor
             String cmd0 = command.substring(0, commandPos);
-            String cmd1 = "", cmd2 = "";
+            String cmd1 = "_", cmd2 = "";
             if (command.length() > commandPos) {
                 cmd1 = command.substring(commandPos, commandPos+1);
                 cmd2 = command.substring(commandPos + 1);
+                if (cmd1.equals(" "))
+                    cmd1 = "_";
             }
 
             buffer += INPUT_STYLE + ":" + cmd0 + INPUT_CURSOR_STYLE + cmd1 + INPUT_STYLE + cmd2;
@@ -284,6 +289,11 @@ public class VisConsole
                 command = command.substring(0, commandPos);
                 redraw();
                 return true;
+            }
+
+            // control-R
+            if (c==18) {
+
             }
 
             // left arrow
