@@ -9,8 +9,6 @@ public class VisConsole
     VisCanvas vc;
     VisWorld vw;
 
-    ArrayList<Line> lines = new ArrayList<Line>();
-
     String command = null;
     int commandPos = 0;
 
@@ -20,20 +18,80 @@ public class VisConsole
 
     public int drawOrder = 10;
 
+    ArrayList<Line> lines = new ArrayList<Line>();
     ArrayList<Listener> listeners = new ArrayList<Listener>();
-
+    ArrayList<Shortcut> shortcuts = new ArrayList<Shortcut>();
     ArrayList<String> history = new ArrayList<String>();
+
     int historyIdx = -1;
     String historyUndo = null; // what was typed in before they started browsing history
 
     // how long to display stuff
-    static final int DISPLAY_MS = 5000;
+    public int DISPLAY_MS = 5000;
 
     static final String INPUT_STYLE = "<<blue, mono-large>>";
     static final String INPUT_CURSOR_STYLE = "<<#ff3333, mono-large>>";
     static final String OLD_INPUT_STYLE = "<<gray, mono-large>>";
     static final String OUTPUT_STYLE = "<<black, mono-large>>";
     static final String COMPLETION_STYLE = "<<#000077, mono-large>>";
+
+    public static class Shortcut
+    {
+        public static final int SHIFT = 1, CTRL = 2, ALT = 4;
+
+        // what command is executed?
+        public String command;
+
+        // specify either 'c' or 'code'. The other is set to zero
+        public int c = -1;
+        public int code = -1; // e.g. VK_LEFT
+
+        // which modifiers must be down?
+        int modifiers;
+
+        public boolean matches(KeyEvent e)
+        {
+            if (c >= 0 && c != e.getKeyChar())
+                return false;
+
+            if (code >= 0 && code != e.getKeyCode())
+                return false;
+
+            int mods = e.getModifiersEx();
+            boolean shift = (mods&KeyEvent.SHIFT_DOWN_MASK) > 0;
+            boolean ctrl = (mods&KeyEvent.CTRL_DOWN_MASK) > 0;
+            boolean alt = (mods&KeyEvent.ALT_DOWN_MASK) > 0;
+
+            if (shift != ((modifiers & SHIFT) != 0))
+                return false;
+
+            if (ctrl != ((modifiers & CTRL) != 0))
+                return false;
+
+            if (alt != ((modifiers & ALT) != 0))
+                return false;
+
+            return true;
+        }
+
+        public static Shortcut makeChar(String command, int c, int modifiers)
+        {
+            Shortcut s = new Shortcut();
+            s.command = command;
+            s.c = c;
+            s.modifiers = modifiers;
+            return s;
+        }
+
+        public static Shortcut makeCode(String command, int code, int modifiers)
+        {
+            Shortcut s = new Shortcut();
+            s.command = command;
+            s.code = code;
+            s.modifiers = modifiers;
+            return s;
+        }
+    }
 
     static class Line
     {
@@ -89,6 +147,11 @@ public class VisConsole
          * non-matching completions; VisConsole will filter them
          * out.) You may return null. **/
         public ArrayList<String> consoleCompletions(VisConsole vc, String prefix);
+    }
+
+    synchronized public void addShortcut(Shortcut s)
+    {
+        shortcuts.add(s);
     }
 
     synchronized void redraw()
@@ -213,6 +276,15 @@ public class VisConsole
             boolean ctrl = (mods&KeyEvent.CTRL_DOWN_MASK) > 0;
             boolean alt = (mods&KeyEvent.ALT_DOWN_MASK) > 0;
 
+            for (Shortcut shortcut : shortcuts) {
+                if (shortcut.matches(e)) {
+                    output(OLD_INPUT_STYLE + ":" + shortcut.command);
+                    handleCommand(shortcut.command);
+                    redraw();
+                    return true;
+                }
+            }
+
             // starting a new command?
             if (command == null) {
                 if (c == ':') {
@@ -293,7 +365,7 @@ public class VisConsole
 
             // control-R
             if (c==18) {
-
+                // unimplemented
             }
 
             // left arrow
