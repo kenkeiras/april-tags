@@ -12,6 +12,7 @@ public class VisConsole
     ArrayList<Line> lines = new ArrayList<Line>();
 
     String command = null;
+    int commandPos = 0;
 
     PipedOutputStream pouts;
     PipedInputStream pins;
@@ -21,10 +22,15 @@ public class VisConsole
 
     ArrayList<Listener> listeners = new ArrayList<Listener>();
 
+    ArrayList<String> history = new ArrayList<String>();
+    int historyIdx = -1;
+    String historyUndo = null; // what was typed in before they started browsing history
+
     // how long to display stuff
     static final int DISPLAY_MS = 5000;
 
     static final String INPUT_STYLE = "<<blue, mono-large>>";
+    static final String INPUT_CURSOR_STYLE = "<<#ff3333, mono-large>>";
     static final String OLD_INPUT_STYLE = "<<gray, mono-large>>";
     static final String OUTPUT_STYLE = "<<black, mono-large>>";
     static final String COMPLETION_STYLE = "<<#000077, mono-large>>";
@@ -34,7 +40,6 @@ public class VisConsole
         long createTime;
         String s;
     }
-
 
     public VisConsole(VisCanvas vc, VisWorld vw)
     {
@@ -95,13 +100,20 @@ public class VisConsole
             else
                 break;
         }
-
         String buffer = "";
         for (Line line : lines)
             buffer += line.s + "\n";
 
-        if (command != null)
-            buffer += INPUT_STYLE + ":" + command;
+        if (command != null) {
+            String cmd0 = command.substring(0, commandPos);
+            String cmd1 = "", cmd2 = "";
+            if (command.length() > commandPos) {
+                cmd1 = command.substring(commandPos, commandPos+1);
+                cmd2 = command.substring(commandPos + 1);
+            }
+
+            buffer += INPUT_STYLE + ":" + cmd0 + INPUT_CURSOR_STYLE + cmd1 + INPUT_STYLE + cmd2;
+        }
 
         VisWorld.Buffer vb = vw.getBuffer("command output");
         vb.setDrawOrder(drawOrder);
@@ -181,6 +193,13 @@ public class VisConsole
 
         public boolean keyPressed(VisCanvas vc, KeyEvent e)
         {
+            synchronized(VisConsole.this) {
+                return keyPressedReal(vc, e);
+            }
+        }
+
+        boolean keyPressedReal(VisCanvas vc, KeyEvent e)
+        {
             char c = e.getKeyChar();
             int code = e.getKeyCode();
 
@@ -199,9 +218,10 @@ public class VisConsole
                 return false;
             }
 
-            // abort entry.
-            if (code == KeyEvent.VK_ESCAPE) {
+            // abort entry. (escape or control-C)
+            if (code == KeyEvent.VK_ESCAPE || c == 3) {
                 command = null;
+                commandPos = 0;
                 redraw();
                 return true;
             }
@@ -209,21 +229,151 @@ public class VisConsole
             // backspace
             if (code == KeyEvent.VK_BACK_SPACE || code == KeyEvent.VK_DELETE) {
 
+                String cmd0 = command.substring(0, commandPos);
+                String cmd1 = command.substring(commandPos);
+
                 if (alt) {
                     // delete last word, plus any trailing spaces
-                    while (command.endsWith(" "))
-                        command = command.substring(0, command.length() - 2);
-                    int idx = command.lastIndexOf(" ");
+                    while (cmd0.endsWith(" "))
+                        cmd0 = command.substring(0, cmd0.length() - 2);
+                    int idx = cmd0.lastIndexOf(" ");
                     if (idx < 0)
-                        command = "";
+                        cmd0 = "";
                     else
-                        command = command.substring(0, idx+1); // keep the space
+                        cmd0 = cmd0.substring(0, idx+1); // keep the space
 
                 } else {
                     // delete last char
-                    if (command.length() > 0)
-                        command = command.substring(0, command.length()-1);
+                    if (cmd0.length() > 0)
+                        cmd0 = cmd0.substring(0, cmd0.length()-1);
                 }
+                commandPos = cmd0.length();
+                command = cmd0 + cmd1;
+                redraw();
+                return true;
+            }
+
+            // control-A
+            if (c==1) {
+                commandPos = 0;
+                redraw();
+                return true;
+            }
+
+            // control-D
+            if (c==4) {
+                if (command.length() > commandPos) {
+                    String cmd0 = command.substring(0, commandPos);
+                    String cmd1 = command.substring(commandPos);
+
+                    command = cmd0 + cmd1.substring(1);
+                }
+                redraw();
+                return true;
+            }
+
+            // control-E
+            if (c==5) {
+                commandPos = command.length();
+                redraw();
+                return true;
+            }
+
+            // control-K
+            if (c==11) {
+                command = command.substring(0, commandPos);
+                redraw();
+                return true;
+            }
+
+            // left arrow
+            if (code == KeyEvent.VK_LEFT) {
+                if (alt) {
+                    int moved = 0;
+                    while (commandPos > 0) {
+                        if (command.charAt(commandPos-1)!=' ' || moved==0) {
+                            commandPos--;
+                            moved++;
+                            continue;
+                        }
+                        break;
+                    }
+                } else {
+                    commandPos = Math.max(0, commandPos - 1);
+                }
+                redraw();
+                return true;
+            }
+
+            // right arrow
+            if (code == KeyEvent.VK_RIGHT) {
+                // todo: alt
+                if (alt) {
+                    int moved = 0;
+                    while (commandPos+1 < command.length()) {
+                        if (command.charAt(commandPos+1) != ' ' || moved==0) {
+                            commandPos++;
+                            moved++;
+                            continue;
+                        }
+                        break;
+                    }
+                }
+
+                commandPos = Math.min(command.length(), commandPos + 1);
+                redraw();
+                return true;
+            }
+
+            // up arrow
+            if (code == KeyEvent.VK_UP) {
+                if (historyIdx < 0) {
+                    historyUndo = command;
+                    historyIdx = history.size();
+                }
+
+                historyIdx = Math.max(0, historyIdx - 1);
+                if (historyIdx >= 0) {
+                    if (history.size() > 0)
+                        command = history.get(historyIdx);
+                }
+
+                commandPos = command.length();
+                redraw();
+                return true;
+            }
+
+            // down arrow
+            if (code == KeyEvent.VK_DOWN) {
+                if (historyIdx >= 0) {
+                    historyIdx = Math.min(history.size(), historyIdx + 1);
+                    if (historyIdx == history.size())
+                        command = historyUndo;
+                    else
+                        command = history.get(historyIdx);
+                }
+
+                commandPos = command.length();
+                redraw();
+                return true;
+            }
+
+            // todo: alt-D
+            if ((c == 'D' || c=='d') && alt) {
+                String cmd0 = command.substring(0, commandPos);
+                String cmd1 = command.substring(commandPos);
+
+                int removed = 0;
+                while (cmd1.length() > 0) {
+                    if (cmd1.charAt(0) != ' ' || removed == 0) {
+                        cmd1 = cmd1.substring(1);
+                        removed++;
+                    } else {
+                        break;
+                    }
+                }
+
+                command = cmd0 + cmd1;
                 redraw();
                 return true;
             }
@@ -232,7 +382,11 @@ public class VisConsole
             if (c=='\n' || c=='\r') {
                 output(OLD_INPUT_STYLE + ":" + command);
                 handleCommand(command);
+                if (history.size() == 0 || !history.get(history.size()-1).equals(command))
+                    history.add(command);
+                historyIdx = -1;
                 command = null;
+                commandPos = 0;
                 redraw();
                 return true;
             }
@@ -305,8 +459,13 @@ public class VisConsole
             }
 
             // add new character
-            if (c >=32 && c < 176)
-                command += c;
+            if (c >=32 && c < 176) {
+                String cmd0 = command.substring(0, commandPos);
+                String cmd1 = command.substring(commandPos);
+                command = cmd0 + c + cmd1;
+                commandPos++;
+            }
+
             redraw();
 
             vc.drawNow(); // make text input very responsive
