@@ -9,25 +9,89 @@ public class VisConsole
     VisCanvas vc;
     VisWorld vw;
 
-    ArrayList<Line> lines = new ArrayList<Line>();
-
     String command = null;
+    int commandPos = 0;
 
-    PipedOutputStream pouts;
-    PipedInputStream pins;
+    OutputStream pouts;
+    InputStream pins;
     PrintStream ppouts;
 
     public int drawOrder = 10;
 
+    ArrayList<Line> lines = new ArrayList<Line>();
     ArrayList<Listener> listeners = new ArrayList<Listener>();
+    ArrayList<Shortcut> shortcuts = new ArrayList<Shortcut>();
+    ArrayList<String> history = new ArrayList<String>();
+
+    int historyIdx = -1;
+    String historyUndo = null; // what was typed in before they started browsing history
 
     // how long to display stuff
-    static final int DISPLAY_MS = 5000;
+    public int DISPLAY_MS = 5000;
 
     static final String INPUT_STYLE = "<<blue, mono-large>>";
+    static final String INPUT_CURSOR_STYLE = "<<#ff3333, mono-large>>";
     static final String OLD_INPUT_STYLE = "<<gray, mono-large>>";
     static final String OUTPUT_STYLE = "<<black, mono-large>>";
     static final String COMPLETION_STYLE = "<<#000077, mono-large>>";
+
+    public static class Shortcut
+    {
+        public static final int SHIFT = 1, CTRL = 2, ALT = 4;
+
+        // what command is executed?
+        public String command;
+
+        // specify either 'c' or 'code'. The other is set to zero
+        public int c = -1;
+        public int code = -1; // e.g. VK_LEFT
+
+        // which modifiers must be down?
+        int modifiers;
+
+        public boolean matches(KeyEvent e)
+        {
+            if (c >= 0 && c != e.getKeyChar())
+                return false;
+
+            if (code >= 0 && code != e.getKeyCode())
+                return false;
+
+            int mods = e.getModifiersEx();
+            boolean shift = (mods&KeyEvent.SHIFT_DOWN_MASK) > 0;
+            boolean ctrl = (mods&KeyEvent.CTRL_DOWN_MASK) > 0;
+            boolean alt = (mods&KeyEvent.ALT_DOWN_MASK) > 0;
+
+            if (shift != ((modifiers & SHIFT) != 0))
+                return false;
+
+            if (ctrl != ((modifiers & CTRL) != 0))
+                return false;
+
+            if (alt != ((modifiers & ALT) != 0))
+                return false;
+
+            return true;
+        }
+
+        public static Shortcut makeChar(String command, int c, int modifiers)
+        {
+            Shortcut s = new Shortcut();
+            s.command = command;
+            s.c = c;
+            s.modifiers = modifiers;
+            return s;
+        }
+
+        public static Shortcut makeCode(String command, int code, int modifiers)
+        {
+            Shortcut s = new Shortcut();
+            s.command = command;
+            s.code = code;
+            s.modifiers = modifiers;
+            return s;
+        }
+    }
 
     static class Line
     {
@@ -35,6 +99,75 @@ public class VisConsole
         String s;
     }
 
+    // The pipeinputstream java implementation is retarded, and throws
+    // exceptions like the "write end closed"
+    static class NonStupidPipe
+    {
+        static final int SZ = 4096;
+        byte buffer[] = new byte[SZ];
+        int readpos = 0, avail = 0;  // bufavail = # of readable bytes
+        int writepos = 0, space = SZ;
+
+        InputStream inputStream = new MyInputStream();
+        OutputStream outputStream = new MyOutputStream();
+
+        synchronized int read()
+        {
+            while (avail == 0) {
+                try {
+                    wait();
+                } catch (InterruptedException ex) {
+                }
+            }
+
+            int c = buffer[readpos] & 0xff;
+            readpos = (readpos + 1) % SZ;
+
+            avail--;
+            space++;
+            notifyAll();
+
+            return c;
+        }
+
+        synchronized void write(int b)
+        {
+            while (space == 0) {
+                try {
+                    wait();
+                } catch (InterruptedException ex) {
+                }
+            }
+
+            buffer[writepos] = (byte) b;
+            writepos = (writepos + 1) % SZ;
+
+            space--;
+            avail++;
+            notifyAll();
+        }
+
+        class MyInputStream extends InputStream
+        {
+            public int read()
+            {
+                return NonStupidPipe.this.read();
+            }
+
+            public int available()
+            {
+                return avail;
+            }
+        }
+
+        class MyOutputStream extends OutputStream
+        {
+            public void write(int b)
+            {
+                NonStupidPipe.this.write(b);
+            }
+        }
+    }
 
     public VisConsole(VisCanvas vc, VisWorld vw)
     {
@@ -46,14 +179,10 @@ public class VisConsole
         this.vc = vc;
         this.vw = vw;
 
-        try {
-            pouts = new PipedOutputStream();
-            pins = new PipedInputStream(pouts);
-            ppouts = new PrintStream(new BufferedOutputStream(pouts));
-
-        } catch (IOException ex) {
-            System.out.println("ex: "+ex);
-        }
+        NonStupidPipe p = new NonStupidPipe();
+        pouts = p.outputStream;
+        pins = p.inputStream;
+        ppouts = new PrintStream(new BufferedOutputStream(pouts));
 
         vc.addEventHandler(new MyCommandPromptHandler(), eventpriority);
         new UpdateThread().start();
@@ -86,6 +215,11 @@ public class VisConsole
         public ArrayList<String> consoleCompletions(VisConsole vc, String prefix);
     }
 
+    synchronized public void addShortcut(Shortcut s)
+    {
+        shortcuts.add(s);
+    }
+
     synchronized void redraw()
     {
         while (lines.size() > 0) {
@@ -95,13 +229,25 @@ public class VisConsole
             else
                 break;
         }
-
         String buffer = "";
         for (Line line : lines)
             buffer += line.s + "\n";
 
-        if (command != null)
-            buffer += INPUT_STYLE + ":" + command;
+        if (command != null) {
+            // cmd0: the part before the cursor
+            // cmd1: the cursor
+            // cmd2: the part after the cursor
+            String cmd0 = command.substring(0, commandPos);
+            String cmd1 = "_", cmd2 = "";
+            if (command.length() > commandPos) {
+                cmd1 = command.substring(commandPos, commandPos+1);
+                cmd2 = command.substring(commandPos + 1);
+                if (cmd1.equals(" "))
+                    cmd1 = "_";
+            }
+
+            buffer += INPUT_STYLE + ":" + cmd0 + INPUT_CURSOR_STYLE + cmd1 + INPUT_STYLE + cmd2;
+        }
 
         VisWorld.Buffer vb = vw.getBuffer("command output");
         vb.setDrawOrder(drawOrder);
@@ -113,12 +259,16 @@ public class VisConsole
     {
         public void run()
         {
-            BufferedReader ins = new BufferedReader(new InputStreamReader(pins));
-
             while (true) {
                 try {
-                    String line = ins.readLine();
-                    output(OUTPUT_STYLE + line);
+                    StringBuffer sb = new StringBuffer();
+                    while (true) {
+                        int c = pins.read();
+                        sb.append((char) c);
+                        if (c=='\r' || c=='\n')
+                            break;
+                    }
+                    output(OUTPUT_STYLE + sb.toString());
                     redraw();
                 } catch (IOException ex) {
                     System.out.println("VisConsole ex: "+ex);
@@ -181,6 +331,13 @@ public class VisConsole
 
         public boolean keyPressed(VisCanvas vc, KeyEvent e)
         {
+            synchronized(VisConsole.this) {
+                return keyPressedReal(vc, e);
+            }
+        }
+
+        boolean keyPressedReal(VisCanvas vc, KeyEvent e)
+        {
             char c = e.getKeyChar();
             int code = e.getKeyCode();
 
@@ -188,6 +345,15 @@ public class VisConsole
             boolean shift = (mods&KeyEvent.SHIFT_DOWN_MASK) > 0;
             boolean ctrl = (mods&KeyEvent.CTRL_DOWN_MASK) > 0;
             boolean alt = (mods&KeyEvent.ALT_DOWN_MASK) > 0;
+
+            for (Shortcut shortcut : shortcuts) {
+                if (shortcut.matches(e)) {
+                    output(OLD_INPUT_STYLE + ":" + shortcut.command);
+                    handleCommand(shortcut.command);
+                    redraw();
+                    return true;
+                }
+            }
 
             // starting a new command?
             if (command == null) {
@@ -199,9 +365,10 @@ public class VisConsole
                 return false;
             }
 
-            // abort entry.
-            if (code == KeyEvent.VK_ESCAPE) {
+            // abort entry. (escape or control-C)
+            if (code == KeyEvent.VK_ESCAPE || c == 3) {
                 command = null;
+                commandPos = 0;
                 redraw();
                 return true;
             }
@@ -209,21 +376,156 @@ public class VisConsole
             // backspace
             if (code == KeyEvent.VK_BACK_SPACE || code == KeyEvent.VK_DELETE) {
 
+                String cmd0 = command.substring(0, commandPos);
+                String cmd1 = command.substring(commandPos);
+
                 if (alt) {
                     // delete last word, plus any trailing spaces
-                    while (command.endsWith(" "))
-                        command = command.substring(0, command.length() - 2);
-                    int idx = command.lastIndexOf(" ");
+                    while (cmd0.endsWith(" "))
+                        cmd0 = command.substring(0, cmd0.length() - 2);
+                    int idx = cmd0.lastIndexOf(" ");
                     if (idx < 0)
-                        command = "";
+                        cmd0 = "";
                     else
-                        command = command.substring(0, idx+1); // keep the space
+                        cmd0 = cmd0.substring(0, idx+1); // keep the space
 
                 } else {
                     // delete last char
-                    if (command.length() > 0)
-                        command = command.substring(0, command.length()-1);
+                    if (cmd0.length() > 0)
+                        cmd0 = cmd0.substring(0, cmd0.length()-1);
                 }
+                commandPos = cmd0.length();
+                command = cmd0 + cmd1;
+                redraw();
+                return true;
+            }
+
+            // control-A
+            if (c==1) {
+                commandPos = 0;
+                redraw();
+                return true;
+            }
+
+            // control-D
+            if (c==4) {
+                if (command.length() > commandPos) {
+                    String cmd0 = command.substring(0, commandPos);
+                    String cmd1 = command.substring(commandPos);
+
+                    command = cmd0 + cmd1.substring(1);
+                }
+                redraw();
+                return true;
+            }
+
+            // control-E
+            if (c==5) {
+                commandPos = command.length();
+                redraw();
+                return true;
+            }
+
+            // control-K
+            if (c==11) {
+                command = command.substring(0, commandPos);
+                redraw();
+                return true;
+            }
+
+            // control-R
+            if (c==18) {
+                // unimplemented
+            }
+
+            // left arrow
+            if (code == KeyEvent.VK_LEFT) {
+                if (alt) {
+                    int moved = 0;
+                    while (commandPos > 0) {
+                        if (command.charAt(commandPos-1)!=' ' || moved==0) {
+                            commandPos--;
+                            moved++;
+                            continue;
+                        }
+                        break;
+                    }
+                } else {
+                    commandPos = Math.max(0, commandPos - 1);
+                }
+                redraw();
+                return true;
+            }
+
+            // right arrow
+            if (code == KeyEvent.VK_RIGHT) {
+                // todo: alt
+                if (alt) {
+                    int moved = 0;
+                    while (commandPos+1 < command.length()) {
+                        if (command.charAt(commandPos+1) != ' ' || moved==0) {
+                            commandPos++;
+                            moved++;
+                            continue;
+                        }
+                        break;
+                    }
+                }
+
+                commandPos = Math.min(command.length(), commandPos + 1);
+                redraw();
+                return true;
+            }
+
+            // up arrow
+            if (code == KeyEvent.VK_UP) {
+                if (historyIdx < 0) {
+                    historyUndo = command;
+                    historyIdx = history.size();
+                }
+
+                historyIdx = Math.max(0, historyIdx - 1);
+                if (historyIdx >= 0) {
+                    if (history.size() > 0)
+                        command = history.get(historyIdx);
+                }
+
+                commandPos = command.length();
+                redraw();
+                return true;
+            }
+
+            // down arrow
+            if (code == KeyEvent.VK_DOWN) {
+                if (historyIdx >= 0) {
+                    historyIdx = Math.min(history.size(), historyIdx + 1);
+                    if (historyIdx == history.size())
+                        command = historyUndo;
+                    else
+                        command = history.get(historyIdx);
+                }
+
+                commandPos = command.length();
+                redraw();
+                return true;
+            }
+
+            // todo: alt-D
+            if ((c == 'D' || c=='d') && alt) {
+                String cmd0 = command.substring(0, commandPos);
+                String cmd1 = command.substring(commandPos);
+
+                int removed = 0;
+                while (cmd1.length() > 0) {
+                    if (cmd1.charAt(0) != ' ' || removed == 0) {
+                        cmd1 = cmd1.substring(1);
+                        removed++;
+                    } else {
+                        break;
+                    }
+                }
+
+                command = cmd0 + cmd1;
                 redraw();
                 return true;
             }
@@ -232,7 +534,11 @@ public class VisConsole
             if (c=='\n' || c=='\r') {
                 output(OLD_INPUT_STYLE + ":" + command);
                 handleCommand(command);
+                if (history.size() == 0 || !history.get(history.size()-1).equals(command))
+                    history.add(command);
+                historyIdx = -1;
                 command = null;
+                commandPos = 0;
                 redraw();
                 return true;
             }
@@ -283,6 +589,8 @@ public class VisConsole
 
                 if (goodCompletions.size() == 1) {
                     command = goodCompletions.get(0);
+                    commandPos = command.length();
+
                     redraw();
                 } else if (goodCompletions.size() > 1) {
                     String commonPrefix = goodCompletions.get(0);
@@ -298,6 +606,7 @@ public class VisConsole
                     }
 
                     command = commonPrefix;
+                    commandPos = commonPrefix.length();
                     output(COMPLETION_STYLE + line.toString());
                 }
 
@@ -305,8 +614,13 @@ public class VisConsole
             }
 
             // add new character
-            if (c >=32 && c < 176)
-                command += c;
+            if (c >=32 && c < 176) {
+                String cmd0 = command.substring(0, commandPos);
+                String cmd1 = command.substring(commandPos);
+                command = cmd0 + c + cmd1;
+                commandPos++;
+            }
+
             redraw();
 
             vc.drawNow(); // make text input very responsive
@@ -331,8 +645,14 @@ public class VisConsole
 
     void handleCommand(String s)
     {
-        for (Listener listener : listeners)
-            listener.consoleCommand(this, ppouts, s);
+        for (Listener listener : listeners) {
+            try {
+                listener.consoleCommand(this, ppouts, s);
+            } catch (Exception ex) {
+                System.out.println("VisConsole: exception in handler "+ex);
+                ex.printStackTrace();
+            }
+        }
         ppouts.flush();
     }
 }

@@ -2,7 +2,7 @@ package april.laser.scanmatcher;
 
 import april.jmat.*;
 
-class Chi2Data
+final class Chi2Data
 {
     // compute a lower bound on the chi2 error for any point within
     // this search window. We assume that theta is fixed, i.e., that
@@ -91,30 +91,17 @@ class Chi2Data
         double ex = tx - u[0];
         double ey = ty - u[1];
 
-//        System.out.printf(" start v2: %15f %15f\n", ex, ey);
         double v2dot = v2[0]*ex + v2[1]*ey;
         double v2dist = (v2dot==0) ? 0 : v2dot*Math.min(Math.abs(v2dot), r)/Math.abs(v2dot);
-//        r = Math.sqrt(r*r - v2dist*v2dist);
         ex -= v2dist*v2[0];
         ey -= v2dist*v2[1];
 
-//        System.out.printf(" after v2: %15f %15f\n", ex, ey);
         double v1dot = v1[0]*ex + v1[1]*ey;
         double v1dist = (v1dot==0) ? 0 : v1dot*Math.min(Math.abs(v1dot), r)/Math.abs(v1dot);
         ex -= v1dist*v1[0];
         ey -= v1dist*v1[1];
 
-//        System.out.printf(" after v1: %15f %15f\n", ex, ey);
-//        System.out.printf("dists: %15f %15f\n", v2dist, v1dist);
-
         double chi2 = ex*ex*Pinv[0][0] + 2*ex*ey*Pinv[0][1] + ey*ey*Pinv[1][1] + tchi2;
-
-        if (false) {
-            double naivechi2 = ex*ex*priorPinv[0][0] + 2*ex*ey*priorPinv[0][1] + 2*ex*terr*priorPinv[0][2] +
-                ey*ey*priorPinv[1][1] + ey*terr*priorPinv[1][2] +
-                terr*terr*priorPinv[2][2];
-            System.out.printf("naive: %15f, ours: %15f\n", naivechi2, chi2);
-        }
 
         return chi2;
     }

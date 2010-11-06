@@ -1136,7 +1136,8 @@ public final class GridMap
 
     static final void maxConvolution(byte in[], int in_offset, int width, int k, byte out[], int out_offset)
     {
-        boolean zeros = false;
+        int runlength = 0;
+        int runvalue = 0;
 
         for (int x = 0; x < width; x++) {
             int v = 0;
@@ -1145,20 +1146,70 @@ public final class GridMap
             // if the last convolution step was all zeros, and the
             // right-most position is a zero, then we know the result
             // for this pixel will be zero.
-            if (zeros && in[in_offset + x + cnt - 1]==0) {
-                v = 0;
+            int right = in[in_offset+x+cnt-1] & 0xff; // right-most value
+            if (right == runvalue) {
+                runlength++;
             } else {
-                for (int i = 0;  i < cnt; i++) {
-                    v = Math.max(v, in[in_offset + x + i] & 0xff);
-                    if (v == 255) // no need to keep searching.
-                        break;
-                }
+                runlength = 1;
+                runvalue = right;
+            }
+
+            if (runlength >= k) {
+                out[out_offset + x] = (byte) runvalue;
+                continue;
+            }
+
+            // do the dumb convolution.
+            for (int i = 0;  i < cnt; i++) {
+                v = Math.max(v, in[in_offset + x + i] & 0xff);
+                if (v == 255)
+                    break;
             }
 
             out[out_offset + x] = (byte) v;
+        }
+    }
 
-            if (v == 0)
-                zeros = true;
+    static final void maxConvolution(byte in[], int in_offset, int width, int k, byte out[], int out_offset, int hist[])
+    {
+        // clear histogram
+        for (int i = 0; i < hist.length; i++)
+            hist[i] = 0;
+
+        int upperbound = 0;
+
+        // warm up histogram with first k-1 values
+        for (int x = 0; x < k; x++) {
+            int v = in[in_offset + x] & 0xff;
+            hist[v]++;
+            upperbound = Math.max(upperbound, v);
+        }
+
+        // compute convolution by adding right most element, removing
+        // left most element, then finding max.
+
+        for (int x = k; x < width + k; x++) {
+
+            // tighten upper bound (possible because the old max might
+            // have been removed on a previous iteration)
+            while (upperbound > 0 && hist[upperbound]==0)
+                upperbound--;
+
+            // produce output; our upperbound is now the actual max.
+            out[out_offset + x - k] = (byte) upperbound;
+
+            // add right most
+            if (x < width) {
+                int v = in[in_offset + x] & 0xff;
+                hist[v]++;
+
+                if (v > upperbound)
+                    upperbound = v;
+            }
+
+            // remove left most
+            int v = in[in_offset + x - k] & 0xff;
+            hist[v]--;
         }
     }
 
