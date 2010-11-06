@@ -26,6 +26,8 @@ public class MultiResolutionMatcher
     static MultiResolutionMatcher.DebugViewer matcherDebugViewer = debug ? new MultiResolutionMatcher.DebugViewer() : null;
     ArrayList<Debug> debugs = new ArrayList<Debug>();
 
+    static boolean warnedHeapOrder = false;
+
     static class Debug
     {
         Node n;
@@ -42,6 +44,29 @@ public class MultiResolutionMatcher
     {
         gms = new GridMap[ndecimate];
 
+       // pad the gridmap with a border
+        if (false) {
+            int border = 512;
+            GridMap gmc = GridMap.makePixels(gm0.x0 - border*gm0.metersPerPixel,
+                                             gm0.y0 - border*gm0.metersPerPixel,
+                                             gm0.width + 2*border,
+                                             gm0.height + 2*border,
+                                             gm0.metersPerPixel,
+                                             gm0.defaultFill,
+                                             true);
+
+            for (int y = 0; y < gm0.height; y++) {
+                for (int x = 0; x < gm0.width; x++) {
+                    gmc.data[(y+border)*gmc.width + (x+border)] = gm0.data[y*gm0.width+x];
+                }
+            }
+
+            gm0 = gmc;
+        }
+
+
+        Tic tic = new Tic();
+
         gms[0] = gm0;
 
         // create gridmap pyramid
@@ -52,6 +77,7 @@ public class MultiResolutionMatcher
             int k = thisdecimate - lastdecimate + 1;
 
             gms[i] = gms[i-1].maxConvolution(k);
+//            gms[i] = gms[0].maxConvolution(thisdecimate);
         }
     }
 
@@ -161,17 +187,6 @@ public class MultiResolutionMatcher
             return -chi2data[n.tidx].computeChi2(cx, cy, cr);
         }
 
-        double computeNodeChi2Verbose(Node n)
-        {
-            double cx = (n.tx0 + n.searchwidth / 2.0)*gms[0].metersPerPixel;
-            double cy = (n.ty0 + n.searchheight / 2.0)*gms[0].metersPerPixel;
-            double cr = gms[0].metersPerPixel*Math.sqrt(n.searchwidth*n.searchwidth/4.0 + n.searchheight*n.searchheight/4.0);
-
-            double chi2 = -chi2data[n.tidx].computeChi2(cx, cy, cr);
-            System.out.printf("cx = %15f, cy = %15f, cr = %15f : chi2 = %15f\n", cx, cy, cr, chi2);
-            return chi2;
-        }
-
         double[] compute()
         {
             // What is the score of the best leaf we've yet
@@ -243,7 +258,12 @@ public class MultiResolutionMatcher
                 Node n = (Node) heapobj;
 
                 if (lastNode != null && n.score > lastNode.score) {
-                    if (false) {
+                    if (true) {
+                        if (!warnedHeapOrder) {
+                            warnedHeapOrder = true;
+                            System.out.println("MultiResolutionMatcher: heap ordering violated. I'll be quiet now.");
+                        }
+                    } else {
                         System.out.printf("*** ORDERING **************************************************\n");
                         System.out.printf("heap ordering violated %15f %15f\n", n.score, lastNode.score);
 
