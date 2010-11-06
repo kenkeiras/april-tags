@@ -604,6 +604,7 @@ public class VisConsole
                     }
 
                     command = commonPrefix;
+                    commandPos = commonPrefix.length();
                     output(COMPLETION_STYLE + line.toString());
                 }
 
