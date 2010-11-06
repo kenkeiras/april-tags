@@ -12,8 +12,8 @@ public class VisConsole
     String command = null;
     int commandPos = 0;
 
-    PipedOutputStream pouts;
-    PipedInputStream pins;
+    OutputStream pouts;
+    InputStream pins;
     PrintStream ppouts;
 
     public int drawOrder = 10;
@@ -99,6 +99,76 @@ public class VisConsole
         String s;
     }
 
+    // The pipeinputstream java implementation is retarded, and throws
+    // exceptions like the "write end closed"
+    static class NonStupidPipe
+    {
+        static final int SZ = 4096;
+        byte buffer[] = new byte[SZ];
+        int readpos = 0, avail = 0;  // bufavail = # of readable bytes
+        int writepos = 0, space = SZ;
+
+        InputStream inputStream = new MyInputStream();
+        OutputStream outputStream = new MyOutputStream();
+
+        synchronized int read()
+        {
+            while (avail == 0) {
+                try {
+                    wait();
+                } catch (InterruptedException ex) {
+                }
+            }
+
+            int c = buffer[readpos] & 0xff;
+            readpos = (readpos + 1) % SZ;
+
+            avail--;
+            space++;
+            notifyAll();
+
+            return c;
+        }
+
+        synchronized void write(int b)
+        {
+            while (space == 0) {
+                try {
+                    wait();
+                } catch (InterruptedException ex) {
+                }
+            }
+
+            buffer[writepos] = (byte) b;
+            writepos = (writepos + 1) % SZ;
+
+            space--;
+            avail++;
+            notifyAll();
+        }
+
+        class MyInputStream extends InputStream
+        {
+            public int read()
+            {
+                return NonStupidPipe.this.read();
+            }
+
+            public int available()
+            {
+                return avail;
+            }
+        }
+
+        class MyOutputStream extends OutputStream
+        {
+            public void write(int b)
+            {
+                NonStupidPipe.this.write(b);
+            }
+        }
+    }
+
     public VisConsole(VisCanvas vc, VisWorld vw)
     {
         this(vc, vw, 100000);
@@ -109,14 +179,10 @@ public class VisConsole
         this.vc = vc;
         this.vw = vw;
 
-        try {
-            pouts = new PipedOutputStream();
-            pins = new PipedInputStream(pouts);
-            ppouts = new PrintStream(new BufferedOutputStream(pouts));
-
-        } catch (IOException ex) {
-            System.out.println("ex: "+ex);
-        }
+        NonStupidPipe p = new NonStupidPipe();
+        pouts = p.outputStream;
+        pins = p.inputStream;
+        ppouts = new PrintStream(new BufferedOutputStream(pouts));
 
         vc.addEventHandler(new MyCommandPromptHandler(), eventpriority);
         new UpdateThread().start();
@@ -193,12 +259,16 @@ public class VisConsole
     {
         public void run()
         {
-            BufferedReader ins = new BufferedReader(new InputStreamReader(pins));
-
             while (true) {
                 try {
-                    String line = ins.readLine();
-                    output(OUTPUT_STYLE + line);
+                    StringBuffer sb = new StringBuffer();
+                    while (true) {
+                        int c = pins.read();
+                        sb.append((char) c);
+                        if (c=='\r' || c=='\n')
+                            break;
+                    }
+                    output(OUTPUT_STYLE + sb.toString());
                     redraw();
                 } catch (IOException ex) {
                     System.out.println("VisConsole ex: "+ex);
@@ -572,8 +642,14 @@ public class VisConsole
 
     void handleCommand(String s)
     {
-        for (Listener listener : listeners)
-            listener.consoleCommand(this, ppouts, s);
+        for (Listener listener : listeners) {
+            try {
+                listener.consoleCommand(this, ppouts, s);
+            } catch (Exception ex) {
+                System.out.println("VisConsole: exception in handler "+ex);
+                ex.printStackTrace();
+            }
+        }
         ppouts.flush();
     }
 }
