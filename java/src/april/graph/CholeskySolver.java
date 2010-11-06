@@ -139,8 +139,37 @@ public class CholeskySolver implements GraphSolver
             Matrix PB = B.copy();
             PB.permuteRows(perm);
 
-            for (int i = 0; i < PAP.getRowDimension(); i++)
-                assert(PAP.get(i,i) > 0); //System.out.printf("%10d %15f\n", i, PAP.get(i,i));
+            if (true) {
+                double acc = 0;
+                int count = 0;
+                boolean underconstrained = false;
+
+                for (int i = 0; i < PAP.getRowDimension(); i++) {
+                    if (PAP.get(i,i) == 0) {
+                        underconstrained = true;
+                    } else {
+                        acc += PAP.get(i,i);
+                        count ++;
+                    }
+                }
+
+                if (underconstrained) {
+                    System.out.println("CholeskySolver: underconstrained graph. Trying to fix it (hack!)");
+
+                    if (count == 0) {
+                        acc = 1;
+                        count = 1;
+                    }
+
+                    for (int i = 0; i < PAP.getRowDimension(); i++) {
+                        if (PAP.get(i,i) == 0) {
+                            PAP.set(i,i, acc / count);
+                        }
+
+                        assert(PAP.get(i,i) > 0); //System.out.printf("%10d %15f\n", i, PAP.get(i,i));
+                    }
+                }
+            }
 
             if (verbose)
                 System.out.printf("P'AP size: %d    nz: %d   (%%): %f\n",

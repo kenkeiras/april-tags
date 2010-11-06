@@ -589,6 +589,8 @@ public class VisConsole
 
                 if (goodCompletions.size() == 1) {
                     command = goodCompletions.get(0);
+                    commandPos = command.length();
+
                     redraw();
                 } else if (goodCompletions.size() > 1) {
                     String commonPrefix = goodCompletions.get(0);
