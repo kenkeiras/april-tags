@@ -102,7 +102,9 @@ public class VisWorld
         {
             if (order != this.drawOrder) {
                 this.drawOrder = order;
-                Collections.sort(buffers);
+                synchronized(buffers) {
+                    Collections.sort(buffers);
+                }
             }
         }
     }
