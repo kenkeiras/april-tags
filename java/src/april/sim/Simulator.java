@@ -77,6 +77,8 @@ public class Simulator implements VisConsole.Listener
         }
 
         console.addListener(this);
+        console.addShortcut(VisConsole.Shortcut.makeCode("start", KeyEvent.VK_F1, 0));
+        console.addShortcut(VisConsole.Shortcut.makeCode("stop", KeyEvent.VK_F2, 0));
         draw();
 
         if (gopt.getBoolean("start")) {
