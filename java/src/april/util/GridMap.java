@@ -1314,13 +1314,13 @@ public final class GridMap
         return score;
     }
 
-    public int score(ArrayList<double[]> points,
+    public double score(ArrayList<double[]> points,
                      double tx, double ty, double theta, double prior[], double pinv[][])
     {
         double ct = Math.cos(theta), st = Math.sin(theta);
         double pixelsPerMeter = 1.0 / metersPerPixel;
 
-        int score = 0;
+        double score = 0;
 
         for (int pidx = 0; pidx < points.size(); pidx++) {
 
@@ -1349,7 +1349,7 @@ public final class GridMap
                 ey*ey*pinv[1][1] + 2*ey*et*pinv[1][2] +
                 et*et*pinv[2][2];
 
-            score -= (int) cost;
+            score -= cost;
         }
 
         return score;

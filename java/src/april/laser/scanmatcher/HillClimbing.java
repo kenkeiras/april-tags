@@ -37,7 +37,7 @@ public class HillClimbing
         double y = xyt0[1];
         double t = xyt0[2];
 
-        int score = gm.score(points, x, y, t, prior, pinv);
+        double score = gm.score(points, x, y, t, prior, pinv);
         double stepsize[] = LinAlg.copy(refine_initial_stepsize);
 
         double newxyt[] = new double[3];
@@ -86,7 +86,7 @@ public class HillClimbing
             }
 
             // move in the best direction. (Roughly a local gradient search.)
-            int newscore = gm.score(points, newxyt[0], newxyt[1], newxyt[2], prior, pinv);
+            double newscore = gm.score(points, newxyt[0], newxyt[1], newxyt[2], prior, pinv);
 
             if (newscore > score) {
                 score = newscore;
@@ -128,7 +128,7 @@ public class HillClimbing
         double y = xyt0[1];
         double t = xyt0[2];
 
-        int score = gm.score(points, x, y, t, prior, pinv);
+        double score = gm.score(points, x, y, t, prior, pinv);
         double stepsize[] = LinAlg.copy(refine_initial_stepsize);
 
         double newxyts[][] = new double[6][3];
@@ -164,7 +164,7 @@ public class HillClimbing
             // move in the best direction. (Roughly a local gradient search.)
             boolean stepped = false;
             for (int i = 0; i < 6; i++) {
-                int newscore = gm.score(points, newxyts[i][0], newxyts[i][1], newxyts[i][2], prior, pinv);
+                double newscore = gm.score(points, newxyts[i][0], newxyts[i][1], newxyts[i][2], prior, pinv);
 
                 if (newscore > score) {
                     stepped = true;
