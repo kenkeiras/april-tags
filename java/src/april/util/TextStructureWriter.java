@@ -75,6 +75,23 @@ public class TextStructureWriter implements StructureWriter
         outs.write(String.format("%g\n", v));
     }
 
+    public void writeInts(int v[]) throws IOException
+    {
+        doIndent();
+
+        if (v==null) {
+            outs.write("ivec -1\n");
+            return;
+        }
+
+        outs.write("ivec "+v.length+"\n");
+
+        doIndent();
+        for (int i = 0; i < v.length; i++)
+            outs.write(String.format("%d ", v[i]));
+        outs.write("\n");
+    }
+
     public void writeFloats(float v[]) throws IOException
     {
         doIndent();
