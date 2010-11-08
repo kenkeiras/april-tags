@@ -112,7 +112,7 @@ public class TextStructureWriter implements StructureWriter
     public void writeDouble(double v) throws IOException
     {
         doIndent();
-        outs.write(String.format("%g\n", v));
+        outs.write(String.format("%.15g\n", v));
     }
 
     public void writeDoubles(double v[]) throws IOException
@@ -128,7 +128,7 @@ public class TextStructureWriter implements StructureWriter
 
         doIndent();
         for (int i = 0; i < v.length; i++)
-            outs.write(String.format("%g ", v[i]));
+            outs.write(String.format("%.15g ", v[i]));
         outs.write("\n");
     }
 
