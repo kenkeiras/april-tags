@@ -51,6 +51,28 @@ public class TextStructureReader implements StructureReader
         return Integer.parseInt(ins.readLine());
     }
 
+    public int[] readInts() throws IOException
+    {
+        String line = ins.readLine();
+        String toks[] = line.split("\\s+");
+        assert(toks.length==2 && toks[0].equals("ivec"));
+        int length = Integer.parseInt(toks[1]);
+
+        if (length < 0)
+            return null;
+
+        line = ins.readLine();
+        toks = line.split("\\s+");
+
+        assert(length == toks.length);
+
+        int v[] = new int[toks.length];
+        for (int i = 0; i < toks.length; i++)
+            v[i] = Integer.parseInt(toks[i]);
+
+        return v;
+    }
+
     public long readLong() throws IOException
     {
         return Long.parseLong(ins.readLine());
