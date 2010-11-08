@@ -99,6 +99,8 @@ class Attributes
             coder = new LongCoder();
         if (o instanceof double[])
             coder = new DoublesCoder();
+        if (o instanceof int[])
+            coder = new IntsCoder();
         if (o instanceof LCMEncodable)
             coder = new LCMCoder();
         setAttribute(key, o, coder);
