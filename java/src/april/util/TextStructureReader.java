@@ -61,6 +61,9 @@ public class TextStructureReader implements StructureReader
         if (length < 0)
             return null;
 
+        if (length == 0)
+            return new int[0];
+
         line = ins.readLine();
         toks = line.split("\\s+");
 
@@ -93,6 +96,9 @@ public class TextStructureReader implements StructureReader
         if (length < 0)
             return null;
 
+        if (length == 0)
+            return new float[0];
+
         line = ins.readLine();
         toks = line.split("\\s+");
 
@@ -119,6 +125,9 @@ public class TextStructureReader implements StructureReader
 
         if (length < 0)
             return null;
+
+        if (length == 0)
+            return new double[0];
 
         line = ins.readLine();
         toks = line.split("\\s+");
