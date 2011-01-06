@@ -23,6 +23,10 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
     double translate_scale = 0.001;
     double rotate_scale = 0.0001;
 
+    Color colors[] = new Color[] {Color.black, Color.red, Color.yellow,
+                                  Color.green, Color.blue};
+    int colorset = 0;
+
     public SpaceNavigatorDemo()
     {
         // init vis
@@ -68,6 +72,12 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
         vg.rotate(LinAlg.rollPitchYawToQuat(new double[] {rotate_scale * me.roll,
                                                           rotate_scale * me.pitch,
                                                           rotate_scale * me.yaw}));
+
+        if (me.left)
+            colorset--;
+
+        if (me.right)
+            colorset++;
     }
 
     public class RedrawThread extends Thread
@@ -88,17 +98,20 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
 
         public void redraw()
         {
-            vb.addBuffered(new VisChain(LinAlg.translate(6, 4, 1),
-                                        new VisBox(3, 3, 2, new VisDataFillStyle(Color.blue))));
+            vb.addBuffered(new VisChain(LinAlg.translate(4, -5, 1),
+                                        new VisBox(3, 3, 2, new VisDataFillStyle(getColor(0)))));
 
-            vb.addBuffered(new VisChain(LinAlg.translate(-8, 2, 2),
-                                        new VisBox(3, 3, 4, new VisDataFillStyle(Color.magenta))));
+            vb.addBuffered(new VisChain(LinAlg.translate(4, 0, 1),
+                                        new VisBox(3, 3, 4, new VisDataFillStyle(getColor(1)))));
 
-            vb.addBuffered(new VisChain(LinAlg.translate(-2, 6, 1),
-                                        new VisBox(3, 2, 2, new VisDataFillStyle(Color.green))));
+            vb.addBuffered(new VisChain(LinAlg.translate(4, 5, 1),
+                                        new VisBox(3, 2, 2, new VisDataFillStyle(getColor(2)))));
 
-            vb.addBuffered(new VisChain(LinAlg.translate(4, 10, 1),
-                                        new VisBox(4, 4, 2, new VisDataFillStyle(Color.cyan))));
+            vb.addBuffered(new VisChain(LinAlg.translate(4, 12, 1),
+                                        new VisBox(4, 4, 2, new VisDataFillStyle(getColor(3)))));
+
+            vb.addBuffered(new VisChain(LinAlg.translate(4, 17, 1),
+                                        new VisBox(4, 4, 2, new VisDataFillStyle(getColor(4)))));
 
             // focus point
             vb.addBuffered(new VisChain(LinAlg.translate(lookAt[0], lookAt[1], lookAt[2]),
@@ -106,6 +119,13 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
 
             vb.switchBuffer();
         }
+    }
+
+    public Color getColor(int offset)
+    {
+        int idx = ((colorset + offset) % colors.length + colors.length) % colors.length;
+
+        return colors[idx];
     }
 
     public static void main(String args[])
