@@ -6,6 +6,43 @@ import java.util.*;
 import april.jmat.*;
 import april.util.*;
 
+/** This class is a driver for the 3Dconnexion SpaceNavigator joystick.
+   This is a 6-DOF joystick with two side buttons. While many joysticks
+   support 3-DOF (roll, pitch, and yaw), this device measures translation
+   on each axis, making it ideal for navigating 3D environments. Two popular
+   applications which use this device are Google Earth and Google Sketchup.<br>
+   <br>
+   <font color="red">Important!</font>
+   This driver was written for Linux (tested on Ubuntu 9.04) and expects the
+   device at /dev/spacenav. To automatically mount the device here, add a file
+   named<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/etc/udev/rules.d/99-<some name>.rules<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;e.g. /etc/udev/rules.d/99-spacenav.rules<br>
+   <br>
+    and paste in it the following line:<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ATTRS{name}=="3Dconnexion SpaceNavigator", NAME="spacenav", MODE="0666"<br>
+   <br>
+    This will tell udev to mount a device with this name at /dev/spacenav with
+    suitable permissions for user access.<br>
+   <br>
+    This driver minorly supports unplug actions (up to a fixed number of tries)
+    and will quit once max_attempts tries have failed sequentially.<br>
+   <br>
+    This driver does not currently support:<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;* notification on device open/close events<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;* setting device parameters (sensitivities, axes inversions)<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;* reading device parameters (^^)<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;* notification on button press/release (only current button status)<br>
+   <br>
+    <b>Notes on udev</b>
+    As an aside, if you want to use udev for another device, you can find
+    relevant parameters for the device<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;udevadm info -q all --attribute-walk -n /dev/spacenav<br>
+    where you should replace spacenav with the name of your device. /dev/input/
+    and /dev may contain devices of interest. One comprehensive udev guide
+    exists at:<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;http://reactivated.net/writing_udev_rules.html<br>
+   **/
 public class SpaceNavigator
 {
     boolean hexdump;
