@@ -27,8 +27,6 @@ public class SpaceNavigator
 
     public SpaceNavigator(boolean hexdump)
     {
-        System.out.println("SpaceNavigator starting...");
-
         this.hexdump = hexdump;
 
         // initialize stream
@@ -37,8 +35,6 @@ public class SpaceNavigator
         // start parsing thread
         ParsingThread t = new ParsingThread(f);
         t.start();
-
-        System.out.println("SpaceNavigator started.");
     }
 
     public class MotionEvent
