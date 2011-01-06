@@ -20,8 +20,15 @@ public class SpaceNavigator
 
     ArrayList<Listener> listeners = new ArrayList<Listener>();
 
+    public SpaceNavigator()
+    {
+        this(false);
+    }
+
     public SpaceNavigator(boolean hexdump)
     {
+        System.out.println("SpaceNavigator starting...");
+
         this.hexdump = hexdump;
 
         // initialize stream
@@ -30,6 +37,8 @@ public class SpaceNavigator
         // start parsing thread
         ParsingThread t = new ParsingThread(f);
         t.start();
+
+        System.out.println("SpaceNavigator started.");
     }
 
     public class MotionEvent
@@ -52,12 +61,12 @@ public class SpaceNavigator
 
         public MotionEvent(int values[])
         {
-            x = values[1];
-            y = values[0];
-            z = values[2];
-            roll = values[4];
-            pitch = values[3];
-            yaw = values[5];
+            x       = -values[1];
+            y       = -values[0];
+            z       = -values[2];
+            roll    = -values[4];
+            pitch   = -values[3];
+            yaw     = -values[5];
 
             left  = (values[6] == 1);
             right = (values[7] == 1);
@@ -191,7 +200,6 @@ public class SpaceNavigator
         GetOpt opts  = new GetOpt();
 
         opts.addBoolean('h',"help",false,"See this help screen");
-        opts.addBoolean('v',"verbose",false,"Verbose output");
         opts.addBoolean('x',"hexdump",false,"Enable hex dump");
 
         if (!opts.parse(args)) {
@@ -204,17 +212,10 @@ public class SpaceNavigator
             System.exit(1);
         }
 
-        boolean verbose = opts.getBoolean("verbose");
         boolean hexdump = opts.getBoolean("hexdump");
 
-        if (verbose && hexdump) {
-            System.out.println("Warning: hexdump switch disables verbosity");
-            verbose = false;
-        }
-
         SpaceNavigator sn = new SpaceNavigator(hexdump);
-        if (verbose)
-            sn.addListener(new ExampleListener());
+        sn.addListener(new ExampleListener());
     }
 }
 
