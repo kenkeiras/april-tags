@@ -13,7 +13,7 @@ import april.util.*;
    applications which use this device are Google Earth and Google Sketchup.<br>
    <br>
    <font color="red">Important!</font>
-   This driver was written for Linux (tested on Ubuntu 9.04) and expects the
+   This driver was written for Linux (tested on Ubuntu 10.04) and expects the
    device at /dev/spacenav. To automatically mount the device here, add a file
    named<br>
         &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/etc/udev/rules.d/99-<some name>.rules<br>
