@@ -10,6 +10,9 @@ public class SpaceNavigator
 {
     boolean hexdump;
 
+    int open_attempts = 0;
+    int max_attempts = 10;
+
     String path = "/dev/spacenav";
 
     int values[] = new int[8];
@@ -22,23 +25,10 @@ public class SpaceNavigator
         this.hexdump = hexdump;
 
         // initialize stream
-        FileInputStream f = null;
-        try {
-            f = new FileInputStream(path);
-        } catch (IOException e) {
-            System.err.printf("Error: no device at path '%s'\n",
-                               path);
-            System.out.println("Exception: e");
-            e.printStackTrace();
-        }
-
-        if (f == null) {
-            System.err.println("Exiting.");
-            System.exit(-1);
-        }
+        FileInputStream f = initialize(false);
 
         // start parsing thread
-        RunThread t = new RunThread(f);
+        ParsingThread t = new ParsingThread(f);
         t.start();
     }
 
@@ -62,11 +52,11 @@ public class SpaceNavigator
 
         public MotionEvent(int values[])
         {
-            x = values[0];
-            y = values[1];
+            x = values[1];
+            y = values[0];
             z = values[2];
-            roll = values[3];
-            pitch = values[4];
+            roll = values[4];
+            pitch = values[3];
             yaw = values[5];
 
             left  = (values[6] == 1);
@@ -84,11 +74,42 @@ public class SpaceNavigator
         listeners.add(listener);
     }
 
-    private class RunThread extends Thread
+    public FileInputStream initialize(boolean retry)
+    {
+        FileInputStream f = null;
+
+        try {
+            f = new FileInputStream(path);
+        } catch (IOException e) {
+            System.err.printf("Error: no device at path '%s'\n",
+                               path);
+        }
+
+        if (f == null) {
+            open_attempts++;
+
+            if (open_attempts > max_attempts) {
+                System.err.printf("Failed to re-open %d times. Exiting.\n",
+                                  max_attempts);
+                System.exit(-1);
+            }
+
+            if (!retry) {
+                System.err.println("Failed to open on launch. Exiting.");
+                System.exit(-1);
+            }
+        } else {
+            // reset attempts counter
+            open_attempts = 0;
+        }
+
+        return f;
+    }
+    private class ParsingThread extends Thread
     {
         FileInputStream is;
 
-        public RunThread(FileInputStream is)
+        public ParsingThread(FileInputStream is)
         {
             this.is = is;
         }
@@ -150,8 +171,16 @@ public class SpaceNavigator
                     }
 
                 } catch (IOException e) {
-                    System.err.println("Exception: "+e);
-                    e.printStackTrace();
+                    //System.err.println("Exception: "+e);
+                    //e.printStackTrace();
+                    System.out.println("Error: Device broken.");
+
+                    // re-initialize
+                    TimeUtil.sleep(1000);
+                    FileInputStream f = initialize(true);
+
+                    if (f != null)
+                        is = f;
                 }
             }
         }
