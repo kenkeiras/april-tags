@@ -39,6 +39,7 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
         vb = vw.getBuffer("main");
         vw.getBuffer("grid").addFront(new VisGrid());
         vw.getBuffer("axes").addFront(new VisAxes());
+        vc.getViewManager().setBufferEnabled("grid", false);
 
         jf = new JFrame("SpaceNavigator Demo");
         jf.setLayout(new BorderLayout());
@@ -50,6 +51,32 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
         jf.setVisible(true);
 
         redraw();
+    }
+
+    public double[] translationScaled(SpaceNavigator.MotionEvent me)
+    {
+        return new double[] {scale_t(me.x),
+                             scale_t(me.y),
+                             scale_t(me.z)};
+    }
+
+    public double scale_t(double i)
+    {
+        return 5.0E-4 * Math.pow(i, 1) +
+               1.0E-8 * Math.pow(i, 3);
+    }
+
+    public double[] rotationScaled(SpaceNavigator.MotionEvent me, double max_t)
+    {
+        return new double[] {scale_r(me.roll, max_t),
+                             scale_r(me.pitch, max_t),
+                             scale_r(me.yaw, max_t)};
+    }
+
+    public double scale_r(double i, double max_t)
+    {
+        double dampening = 0.075 / Math.pow(350, 2) * Math.pow(i, 2);
+        return 1.5E-4 * Math.pow(i, 1) * (1 - dampening);
     }
 
     @Override
@@ -87,17 +114,16 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
         double A[][] = LinAlg.transpose(new double[][] { x_norm,
                                                          y_norm,
                                                          z_norm });
-        double trans[] = LinAlg.matrixAB(A, new double[] {me.x * translate_scale,
-                                                          me.y * translate_scale,
-                                                          me.z * translate_scale});
+        double trans[] = LinAlg.matrixAB(A, translationScaled(me));
 
         double eye1[] = LinAlg.add(eye, trans);
 
         // rotate view_0 and up_0 with scaled r/p/y from the SpaceNavigator *in the
         // coordinate frame designated by view_0 and up_0
-        double R[][] = LinAlg.rollPitchYawToMatrix(new double[] {me.roll * rotate_scale,
-                                                                 me.pitch * rotate_scale,
-                                                                 me.yaw * rotate_scale});
+        double R[][] = LinAlg.rollPitchYawToMatrix(rotationScaled(me,
+                                                      LinAlg.max(new double[] {me.x,
+                                                                               me.y,
+                                                                               me.z})));
 
         double B[][] = LinAlg.matrixAB(A, LinAlg.select(R, 0, 2, 0, 2));
 
@@ -139,11 +165,6 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
 
         vb.addBuffered(new VisChain(LinAlg.translate(4, 17, 1),
                                     new VisBox(4, 4, 2, new VisDataFillStyle(getColor(4)))));
-
-        // focus point
-        double lookAt[] = LinAlg.copy(vc.getViewManager().viewGoal.lookAt);
-        vb.addBuffered(new VisChain(LinAlg.translate(lookAt[0], lookAt[1], lookAt[2]),
-                                    new VisSphere(0.05, new VisDataFillStyle(Color.red))));
 
         vb.switchBuffer();
     }
