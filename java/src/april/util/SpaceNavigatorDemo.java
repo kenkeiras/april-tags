@@ -66,16 +66,16 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
                1.0E-8 * Math.pow(i, 3);
     }
 
-    public double[] rotationScaled(SpaceNavigator.MotionEvent me, double max_t)
+    public double[] rotationScaled(SpaceNavigator.MotionEvent me, double mag_t)
     {
-        return new double[] {scale_r(me.roll, max_t),
-                             scale_r(me.pitch, max_t),
-                             scale_r(me.yaw, max_t)};
+        return new double[] {scale_r(me.roll, mag_t),
+                             scale_r(me.pitch, mag_t),
+                             scale_r(me.yaw, mag_t)};
     }
 
-    public double scale_r(double i, double max_t)
+    public double scale_r(double i, double mag_t)
     {
-        double dampening = 0.075 / Math.pow(350, 2) * Math.pow(i, 2);
+        double dampening = 0.5 / Math.pow(350, 2) * Math.pow(mag_t, 2);
         return 1.5E-4 * Math.pow(i, 1) * (1 - dampening);
     }
 
@@ -121,9 +121,9 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
         // rotate view_0 and up_0 with scaled r/p/y from the SpaceNavigator *in the
         // coordinate frame designated by view_0 and up_0
         double R[][] = LinAlg.rollPitchYawToMatrix(rotationScaled(me,
-                                                      LinAlg.max(new double[] {me.x,
-                                                                               me.y,
-                                                                               me.z})));
+                                                      LinAlg.magnitude(new double[] {me.x,
+                                                                                     me.y,
+                                                                                     me.z})));
 
         double B[][] = LinAlg.matrixAB(A, LinAlg.select(R, 0, 2, 0, 2));
 
