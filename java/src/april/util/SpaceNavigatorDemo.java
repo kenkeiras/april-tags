@@ -18,14 +18,14 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
 
     ParameterGUI pg;
 
-    double lookAt[];
-
     double translate_scale = 0.001;
     double rotate_scale = 0.0001;
 
     Color colors[] = new Color[] {Color.black, Color.red, Color.yellow,
                                   Color.green, Color.blue};
     int colorset = 0;
+
+    long last = 0;
 
     public SpaceNavigatorDemo()
     {
@@ -35,10 +35,10 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
         vw = new VisWorld();
         vc = new VisCanvas(vw);
         vc.getViewManager().setInterfaceMode(3);
-        vc.getViewManager().viewGoal.rotate(LinAlg.rollPitchYawToQuat(new double[] {0, 0, -Math.PI/2}));
 
         vb = vw.getBuffer("main");
         vw.getBuffer("grid").addFront(new VisGrid());
+        vw.getBuffer("axes").addFront(new VisAxes());
 
         jf = new JFrame("SpaceNavigator Demo");
         jf.setLayout(new BorderLayout());
@@ -49,76 +49,103 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
         jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         jf.setVisible(true);
 
-
-        // init virtual camera pose
-        lookAt = new double[3];
-
-        new RedrawThread().start();
+        redraw();
     }
 
     @Override
     public void handleUpdate(SpaceNavigator.MotionEvent me)
     {
-        lookAt[0] += me.x * translate_scale;
-        lookAt[1] += me.y * translate_scale;
-        lookAt[2] += me.z * translate_scale;
+        long now = TimeUtil.utime();
+        double dt = (now - last) / 1.0E6;
+        last = now;
+        vw.getBuffer("FPS").addBuffered(new VisText(VisText.ANCHOR.TOP_LEFT,
+                                                    String.format("FPS: %3.1f",
+                                                                  1.0/dt)));
+        vw.getBuffer("FPS").switchBuffer();
+
 
         VisView vg = vc.getViewManager().viewGoal;
 
-        vg.lookAt(vg.eye,
+        // get positions of camera and focus point
+        double eye[]    = LinAlg.copy(vg.eye);
+        double lookAt[] = LinAlg.copy(vg.lookAt);
+        double up[]     = LinAlg.copy(vg.up);
+
+        vg.lookAt(eye,
                   lookAt,
                   vg.up);
 
-        vg.rotate(LinAlg.rollPitchYawToQuat(new double[] {rotate_scale * me.roll,
-                                                          rotate_scale * me.pitch,
-                                                          rotate_scale * me.yaw}));
+        // compute view_0
+        double view0[] = LinAlg.subtract(lookAt, eye);
+
+        // compute unit vectors for in-view coordinate frame
+        double x_norm[] = LinAlg.normalize(view0);
+        double z_norm[] = LinAlg.normalize(up);
+        double y_norm[] = LinAlg.crossProduct(z_norm, x_norm);
+
+        // translate eye_0 to eye_1 with the scaled tx/ty/tz from the SpaceNavigator
+        double A[][] = LinAlg.transpose(new double[][] { x_norm,
+                                                         y_norm,
+                                                         z_norm });
+        double trans[] = LinAlg.matrixAB(A, new double[] {me.x * translate_scale,
+                                                          me.y * translate_scale,
+                                                          me.z * translate_scale});
+
+        double eye1[] = LinAlg.add(eye, trans);
+
+        // rotate view_0 and up_0 with scaled r/p/y from the SpaceNavigator *in the
+        // coordinate frame designated by view_0 and up_0
+        double R[][] = LinAlg.rollPitchYawToMatrix(new double[] {me.roll * rotate_scale,
+                                                                 me.pitch * rotate_scale,
+                                                                 me.yaw * rotate_scale});
+
+        double B[][] = LinAlg.matrixAB(A, LinAlg.select(R, 0, 2, 0, 2));
+
+        // update lookAt and up
+        double Bt[][] = LinAlg.transpose(B);
+        double view1[] = Bt[0];
+        double up1[] = Bt[2];
+
+        double lookAt1[] = LinAlg.add(eye1, view1);
+
+        // set view parameters
+        vg.lookAt(eye1, lookAt1, up1);
+
+        // draw lookat sphere
 
         if (me.left)
             colorset--;
 
         if (me.right)
             colorset++;
+
+
+        redraw();
     }
 
-    public class RedrawThread extends Thread
+    public void redraw()
     {
-        public RedrawThread()
-        {
-        }
+        vb.addBuffered(new VisChain(LinAlg.translate(4, -5, 1),
+                                    new VisBox(3, 3, 2, new VisDataFillStyle(getColor(0)))));
 
-        public void run()
-        {
-            while (true) {
-                redraw();
+        vb.addBuffered(new VisChain(LinAlg.translate(4, 0, 1),
+                                    new VisBox(3, 3, 4, new VisDataFillStyle(getColor(1)))));
 
-                TimeUtil.sleep(33);
-            }
-        }
+        vb.addBuffered(new VisChain(LinAlg.translate(4, 5, 1),
+                                    new VisBox(3, 2, 2, new VisDataFillStyle(getColor(2)))));
 
+        vb.addBuffered(new VisChain(LinAlg.translate(4, 12, 1),
+                                    new VisBox(4, 4, 2, new VisDataFillStyle(getColor(3)))));
 
-        public void redraw()
-        {
-            vb.addBuffered(new VisChain(LinAlg.translate(4, -5, 1),
-                                        new VisBox(3, 3, 2, new VisDataFillStyle(getColor(0)))));
+        vb.addBuffered(new VisChain(LinAlg.translate(4, 17, 1),
+                                    new VisBox(4, 4, 2, new VisDataFillStyle(getColor(4)))));
 
-            vb.addBuffered(new VisChain(LinAlg.translate(4, 0, 1),
-                                        new VisBox(3, 3, 4, new VisDataFillStyle(getColor(1)))));
+        // focus point
+        double lookAt[] = LinAlg.copy(vc.getViewManager().viewGoal.lookAt);
+        vb.addBuffered(new VisChain(LinAlg.translate(lookAt[0], lookAt[1], lookAt[2]),
+                                    new VisSphere(0.05, new VisDataFillStyle(Color.red))));
 
-            vb.addBuffered(new VisChain(LinAlg.translate(4, 5, 1),
-                                        new VisBox(3, 2, 2, new VisDataFillStyle(getColor(2)))));
-
-            vb.addBuffered(new VisChain(LinAlg.translate(4, 12, 1),
-                                        new VisBox(4, 4, 2, new VisDataFillStyle(getColor(3)))));
-
-            vb.addBuffered(new VisChain(LinAlg.translate(4, 17, 1),
-                                        new VisBox(4, 4, 2, new VisDataFillStyle(getColor(4)))));
-
-            // focus point
-            vb.addBuffered(new VisChain(LinAlg.translate(lookAt[0], lookAt[1], lookAt[2]),
-                                        new VisSphere(0.05, new VisDataFillStyle(Color.red))));
-
-            vb.switchBuffer();
-        }
+        vb.switchBuffer();
     }
 
     public Color getColor(int offset)
