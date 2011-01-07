@@ -68,8 +68,8 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
 
     public double[] rotationScaled(SpaceNavigator.MotionEvent me, double mag_t)
     {
-        return new double[] {scale_r(me.roll, mag_t),
-                             scale_r(me.pitch, mag_t),
+        return new double[] {scale_r(me.roll, mag_t)  * 0.3,
+                             scale_r(me.pitch, mag_t) * 0.3,
                              scale_r(me.yaw, mag_t)};
     }
 
@@ -151,6 +151,9 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
 
     public void redraw()
     {
+        vb.addBuffered(new VisChain(LinAlg.translate(0, 0, -1),
+                                    new VisBox(100, 100, 2, new VisDataFillStyle(Color.gray))));
+
         vb.addBuffered(new VisChain(LinAlg.translate(4, -5, 1),
                                     new VisBox(3, 3, 2, new VisDataFillStyle(getColor(0)))));
 
