@@ -7,10 +7,10 @@ import april.util.*;
 
 import lcm.lcm.*;
 
-class Attributes
+public class Attributes
 {
 
-    static class Attr
+    public static class Attr
     {
         public Object          o;
         public StructureCoder  coder;
@@ -22,7 +22,7 @@ class Attributes
         }
     }
 
-    HashMap<String, Attr> attrs = new HashMap<String, Attr>();
+    public HashMap<String, Attr> attrs = new HashMap<String, Attr>();
 
 
     static Attributes read(StructureReader ins ) throws IOException
