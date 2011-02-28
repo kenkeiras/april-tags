@@ -111,7 +111,7 @@ JNIEXPORT jobject JNICALL Java_april_jcam_ImageSourceNative_image_1source_1enume
     jobject arrayList = (*jenv)->NewObject(jenv, arrayListClass, initMethodId);
 
     jmethodID addMethodId = (*jenv)->GetMethodID(jenv, arrayListClass, "add", "(Ljava/lang/Object;)Z");
-    assert(initMethodId != NULL);
+    assert(addMethodId != NULL);
 
     char **urls = image_source_enumerate();
 
