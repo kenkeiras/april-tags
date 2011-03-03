@@ -980,7 +980,7 @@ int sick_config_write_our_settings(sick_t *s)
     buf[7] =0x00; // F:
     buf[8] =0x00; // G:
     buf[9] =0x02; // H: multiple evaluation (????) (1-125, 2 default)
-    buf[10]=0x02; // I: restart behavior
+    buf[10]=0x42; // I: restart behavior. output C outputs sync pulse.
     buf[11]=0x02; // J: restart time (0x01 current)
     buf[12]=0x00; // K: 2nd multiple evaluation
     buf[13]=0x00; // L: contour A
