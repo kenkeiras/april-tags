@@ -8,6 +8,8 @@ import april.lcmtypes.*;
 
 import lcm.lcm.*;
 
+/** TODO: Send commands to Applanix in order to configure the data rate. Right now, we assume that group 1 messages have been configured to be sent on the logging port at a high rate (e.g., 100 Hz). **/
+
 public class ApplanixDriver
 {
     Socket sock;
