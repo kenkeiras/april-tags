@@ -11,9 +11,16 @@ public class ApplanixMessages
         int group = (b[4]&0xff) + (b[5]&0xff)*256;
         EndianDataInputStream ins = new EndianDataInputStream(b, true);
 
+        // discard header.
+        byte hdr[] = new byte[8];
+//        ins.readFully(hdr);
+        ins.readDouble();
+
         switch (group) {
             case 1:
                 return new Group1(ins);
+            case 10006:
+                return new Group10006(ins);
         }
 
 //        System.out.printf("unknown group %d\n", group);
@@ -85,4 +92,23 @@ public class ApplanixMessages
         }
     }
 
+    /** Raw DMI Data Status **/
+    public static class Group10006 extends Message
+    {
+        public TimeDistance timeDistance;
+        public int upDown;
+        public int upDownRectified;
+        public int eventCount;
+        public int reservedCount;
+
+        public Group10006(EndianDataInputStream ins) throws IOException
+        {
+            timeDistance = new TimeDistance(ins);
+
+            upDown = ins.readInt();
+            upDownRectified = ins.readInt();
+            eventCount = ins.readInt();
+            reservedCount = ins.readInt();
+        }
+    }
 }
