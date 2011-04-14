@@ -12,6 +12,7 @@ public class DummyPoseSource
 
         while (true) {
             pose_t pose = new pose_t();
+	    pose.utime = TimeUtil.utime();
             pose.pos = new double[3];
             pose.orientation = new double[] { 1, 0, 0, 0 };
 
