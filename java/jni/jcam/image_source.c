@@ -22,13 +22,18 @@ image_source_t *image_source_open(const char *url)
         isrc = image_source_v4l2_open(location);
     else if (!strcmp(protocol, "dc1394://")) {
         isrc = image_source_dc1394_open(urlp);
+    } else if (!strcmp(protocol, "islog://")) {
+        isrc = image_source_islog_open(urlp);
     }
 
     if (isrc != NULL) {
+
         // handle parameters
         for (int idx = 0; idx < url_parser_num_parameters(urlp); idx++) {
             const char *key = url_parser_get_parameter_name(urlp, idx);
             const char *value = url_parser_get_parameter_value(urlp, idx);
+
+//            printf("%s => %s\n", key, value);
 
             if (!strcmp(key, "fidx")) {
                 int fidx = atoi(url_parser_get_parameter(urlp, "fidx", "0"));
@@ -44,6 +49,7 @@ image_source_t *image_source_open(const char *url)
             // pass through a device-specific parameter.
             int found = 0;
             for (int idx = 0; idx < isrc->num_features(isrc); idx++) {
+
                 if (!strcmp(isrc->get_feature_name(isrc, idx), key)) {
                     char *endptr = NULL;
                     double dv = strtod(value, &endptr);
@@ -66,7 +72,6 @@ image_source_t *image_source_open(const char *url)
 cleanup:
     url_parser_destroy(urlp);
 
-    // don't know what to do!
     return isrc;
 }
 

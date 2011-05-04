@@ -121,7 +121,7 @@ public class JCamView
 
     class RecordPanel extends JPanel implements ActionListener, ChangeListener
     {
-        JTextField pathBox = new JTextField("/tmp/jcam-capture/");
+        JTextField pathBox = new JTextField("/tmp/jcam-capture/camera.islog");
 
         JButton startStopButton = new JButton("Record");
 
@@ -135,6 +135,10 @@ public class JCamView
         int framesWritten = 0;
         JLabel framesWrittenLabel = new JLabel("");
 
+        JComboBox formatComboBox = new JComboBox(new String[] { "Log file" , "Individual PNGs" });
+
+        ISLogWriter logWriter;
+
         public RecordPanel()
         {
             setLayout(new VFlowLayout());
@@ -147,8 +151,13 @@ public class JCamView
             fpsSlider.addChangeListener(this);
             add(indentPanel(fpsPanel));
 
+            add(new JLabel("Format: "));
+            add(indentPanel(formatComboBox));
+
             add(new JLabel("Destination path: "));
             add(indentPanel(pathBox));
+
+
             add(Box.createVerticalStrut(10));
             add(startStopButton);
 
@@ -168,18 +177,49 @@ public class JCamView
             recording ^= true;
 
             if (recording) {
-                startStopButton.setText("Stop");
                 framesWritten = 0;
                 firstms = System.currentTimeMillis();
 
-                new File(pathBox.getText()).mkdirs();
+                if (formatComboBox.getSelectedIndex() == 0) {
+                    new File(pathBox.getText()).getParentFile().mkdirs();
 
+                    // log format
+                    try {
+                        logWriter = new ISLogWriter(new FileOutputStream(pathBox.getText()));
+                    } catch (IOException ex) {
+                        recording = false;
+                        System.out.println("ex: "+ex);
+                        return;
+                    }
+
+                } else {
+                    new File(pathBox.getText()).mkdirs();
+
+                    // directory of PNGs
+
+                    // nothing to do here.
+                }
+
+                startStopButton.setText("Stop");
+                pathBox.setEnabled(false);
+                formatComboBox.setEnabled(false);
             } else {
+                if (formatComboBox.getSelectedIndex() == 0) {
+                    try {
+                        logWriter.close();
+                    } catch (IOException ex) {
+                        System.out.println("ex: "+ex);
+                    }
+                } else {
+                }
+
                 startStopButton.setText("Record");
+                formatComboBox.setEnabled(true);
+                pathBox.setEnabled(true);
             }
         }
 
-        public synchronized void handleImage(BufferedImage im)
+        public synchronized void handleImage(BufferedImage im, ImageSourceFormat ifmt, byte imbuf[])
         {
             if (!recording)
                 return;
@@ -191,10 +231,15 @@ public class JCamView
                 lastms = nowms;
 
                 try {
-                    String path = String.format("%s/image_%06d.png", pathBox.getText(), nowms - firstms);
-                    ImageIO.write(im, "png", new File(path));
-                    framesWritten++;
-                    framesWrittenLabel.setText(String.format("%d frames written", framesWritten));
+                    if (formatComboBox.getSelectedIndex() == 0) {
+                        logWriter.write(ifmt, imbuf);
+                    } else {
+                        String path = String.format("%s/image_%06d.png", pathBox.getText(), nowms - firstms);
+                        ImageIO.write(im, "png", new File(path));
+                        framesWritten++;
+                        framesWrittenLabel.setText(String.format("%d frames written", framesWritten));
+                    }
+
                 } catch (IOException ex) {
                     System.out.println("Ex: "+ex);
                 }
@@ -395,7 +440,7 @@ public class JCamView
                     continue;
 
                 jim.setImage(im);
-                recordPanel.handleImage(im);
+                recordPanel.handleImage(im, ifmt, imbuf);
 
                 if (true) {
                     long frame_mtime = System.currentTimeMillis();
