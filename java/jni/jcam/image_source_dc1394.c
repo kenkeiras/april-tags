@@ -234,8 +234,14 @@ static int set_named_format(image_source_t *isrc, const char *desired_format)
 
 static int num_features(image_source_t *isrc)
 {
-    return 13;
+    // don't forget: feature index starts at 0
+    return 18;
 }
+
+// Features we may want to implement (from dc1394feature_t enum)
+//
+//    DC1394_FEATURE_TRIGGER
+//    DC1394_FEATURE_TRIGGER_DELAY
 
 static const char* get_feature_name(image_source_t *isrc, int idx)
 {
@@ -256,19 +262,27 @@ static const char* get_feature_name(image_source_t *isrc, int idx)
     case 6:
         return "brightness";
     case 7:
-        return "gamma-manual";
+        return "shutter-manual";
     case 8:
-        return "gamma";
+        return "shutter";
     case 9:
-        return "timestamps-enable";
+        return "gain-manual";
     case 10:
-        return "frame-rate-manual";
+        return "gain";
     case 11:
-        return "frame-rate";
-    case 13:
-        return "packetsize";
+        return "gamma-manual";
     case 12:
+        return "gamma";
+    case 13:
         return "hdr";
+    case 14:
+        return "frame-rate-manual";
+    case 15:
+        return "frame-rate";
+    case 16:
+        return "timestamps-enable";
+    case 17:
+        return "frame-counter-enable";
     default:
         return NULL;
     }
@@ -303,17 +317,27 @@ static double get_feature_min(image_source_t *isrc, int idx)
         return 0;
     case 6: // brightness
         return find_feature(isrc, DC1394_FEATURE_BRIGHTNESS)->min;
-    case 7: // gamma-manual
+    case 7: // shutter-manual
         return 0;
-    case 8: // gamma
+    case 8: // shutter
+        return find_feature(isrc, DC1394_FEATURE_SHUTTER)->min;
+    case 9: // gain-manual
+        return 0;
+    case 10: // gain
+        return find_feature(isrc, DC1394_FEATURE_GAIN)->min;
+    case 11: // gamma-manual
+        return 0;
+    case 12: // gamma
         return find_feature(isrc, DC1394_FEATURE_GAMMA)->min;
-    case 9: // timestamps-enable
+    case 13: // hdr
         return 0;
-    case 10: // frame-rate-mode
+    case 14: // frame-rate-mode
         return 0;
-    case 11: // frame-rate
+    case 15: // frame-rate
         return find_feature(isrc, DC1394_FEATURE_FRAME_RATE)->abs_min;
-    case 12: // hdr
+    case 16: // timestamps-enable
+        return 0;
+    case 17: // frame-counter-enable
         return 0;
     default:
         return 0;
@@ -337,17 +361,27 @@ static double get_feature_max(image_source_t *isrc, int idx)
         return 1;
     case 6: // brightness
         return find_feature(isrc, DC1394_FEATURE_BRIGHTNESS)->max;
-    case 7: // gamma-manual
+    case 7: // shutter-manual
         return 1;
-    case 8: // gamma
+    case 8: // shutter
+        return find_feature(isrc, DC1394_FEATURE_SHUTTER)->max;
+    case 9: // gain-manual
+        return 1;
+    case 10: // gain
+        return find_feature(isrc, DC1394_FEATURE_GAIN)->max;
+    case 11: // gamma-manual
+        return 1;
+    case 12: // gamma
         return find_feature(isrc, DC1394_FEATURE_GAMMA)->max;
-    case 9: // timestamps-enable
+    case 13: // hdr
         return 1;
-    case 10: // frame-rate-mode
+    case 14: // frame-rate-mode
         return 1;
-    case 11: // frame-rate
+    case 15: // frame-rate
         return find_feature(isrc, DC1394_FEATURE_FRAME_RATE)->abs_max;
-    case 12: // hdr
+    case 16: // timestamps-enable
+        return 1;
+    case 17: // frame-counter-enable
         return 1;
     default:
         return 0;
@@ -403,39 +437,43 @@ static double get_feature_value(image_source_t *isrc, int idx)
         return v;
     }
 
-    case 7: { // gamma-manual
+    case 7: { // shutter-manual
+        dc1394feature_mode_t mode = DC1394_FEATURE_MODE_AUTO;
+        dc1394_feature_get_mode(impl->cam, DC1394_FEATURE_SHUTTER, &mode);
+
+        return mode == DC1394_FEATURE_MODE_MANUAL;
+    }
+    case 8: { // shutter
+        uint32_t v = 0;
+        dc1394_feature_get_value(impl->cam, DC1394_FEATURE_SHUTTER, &v); // XXX error checking
+        return v;
+    }
+
+    case 9: { // gain-manual
+        dc1394feature_mode_t mode = DC1394_FEATURE_MODE_AUTO;
+        dc1394_feature_get_mode(impl->cam, DC1394_FEATURE_GAIN, &mode);
+
+        return mode == DC1394_FEATURE_MODE_MANUAL;
+    }
+    case 10: { // gain
+        uint32_t v = 0;
+        dc1394_feature_get_value(impl->cam, DC1394_FEATURE_GAIN, &v); // XXX error checking
+        return v;
+    }
+
+    case 11: { // gamma-manual
         dc1394switch_t mode = DC1394_OFF;
         dc1394_feature_get_power(impl->cam, DC1394_FEATURE_GAMMA, &mode);
         return mode == DC1394_ON;
     }
 
-    case 8: { // gamma
+    case 12: { // gamma
         uint32_t v = 0;
         dc1394_feature_get_value(impl->cam, DC1394_FEATURE_GAMMA, &v); // XXX error checking
         return v;
     }
 
-    case 9: { // timestamps-enable
-        uint32_t value;
-        if (dc1394_get_adv_control_register(impl->cam, 0x2F8, &value) != DC1394_SUCCESS)
-            return 0;
-
-        return value & 1;
-    }
-
-    case 10: { // frame-rate-mode
-        dc1394feature_mode_t mode = DC1394_FEATURE_MODE_AUTO;
-        dc1394_feature_get_mode(impl->cam, DC1394_FEATURE_FRAME_RATE, &mode);
-        return mode == DC1394_FEATURE_MODE_MANUAL;
-    }
-
-    case 11: { // frame rate
-        float v = 0;
-        dc1394_feature_get_absolute_value(impl->cam, DC1394_FEATURE_FRAME_RATE, &v); // XXX error checking
-        return v;
-    }
-
-    case 12: { // hdr
+    case 13: { // hdr
          uint64_t offset = 0x0F00000ULL;
 
        // write address of imager register to pointgrey pass-through register
@@ -447,6 +485,34 @@ static double get_feature_value(image_source_t *isrc, int idx)
             return -1;
 
         return (value & 0x40) ? 1 : 0;
+    }
+
+    case 14: { // frame-rate-mode
+        dc1394feature_mode_t mode = DC1394_FEATURE_MODE_AUTO;
+        dc1394_feature_get_mode(impl->cam, DC1394_FEATURE_FRAME_RATE, &mode);
+        return mode == DC1394_FEATURE_MODE_MANUAL;
+    }
+
+    case 15: { // frame rate
+        float v = 0;
+        dc1394_feature_get_absolute_value(impl->cam, DC1394_FEATURE_FRAME_RATE, &v); // XXX error checking
+        return v;
+    }
+
+    case 16: { // timestamps-enable
+        uint32_t value;
+        if (dc1394_get_adv_control_register(impl->cam, 0x2F8, &value) != DC1394_SUCCESS)
+            return 0;
+
+        return value & 0x01;
+    }
+
+    case 17: { // frame-counter-enable
+        uint32_t value;
+        if (dc1394_get_adv_control_register(impl->cam, 0x2F8, &value) != DC1394_SUCCESS)
+            return 0;
+
+        return value & 0x40;
     }
 
     default:
@@ -512,7 +578,41 @@ static int set_feature_value(image_source_t *isrc, int idx, double v)
         dc1394_feature_set_value(impl->cam, DC1394_FEATURE_BRIGHTNESS, (uint32_t) v);
         break;
 
-    case 7: { // gamma-manual
+    case 7: { // shutter-manual
+        if (v == 1) {
+            dc1394_feature_set_power(           impl->cam, DC1394_FEATURE_SHUTTER, DC1394_ON);
+            dc1394_feature_set_mode(            impl->cam, DC1394_FEATURE_SHUTTER, DC1394_FEATURE_MODE_MANUAL);
+            dc1394_feature_set_absolute_control(impl->cam, DC1394_FEATURE_SHUTTER, DC1394_OFF);
+        } else {
+            dc1394_feature_set_power(           impl->cam, DC1394_FEATURE_SHUTTER, DC1394_ON);
+            dc1394_feature_set_mode(            impl->cam, DC1394_FEATURE_SHUTTER, DC1394_FEATURE_MODE_AUTO);
+            dc1394_feature_set_absolute_control(impl->cam, DC1394_FEATURE_SHUTTER, DC1394_ON);
+        }
+        break;
+    }
+    case 8: { // shutter
+        dc1394_feature_set_value(impl->cam, DC1394_FEATURE_SHUTTER, (uint32_t) v);
+        break;
+    }
+
+    case 9: { // gain-manual
+        if (v == 1) {
+            dc1394_feature_set_power(           impl->cam, DC1394_FEATURE_GAIN, DC1394_ON);
+            dc1394_feature_set_mode(            impl->cam, DC1394_FEATURE_GAIN, DC1394_FEATURE_MODE_MANUAL);
+            dc1394_feature_set_absolute_control(impl->cam, DC1394_FEATURE_GAIN, DC1394_OFF);
+        } else {
+            dc1394_feature_set_power(           impl->cam, DC1394_FEATURE_GAIN, DC1394_ON);
+            dc1394_feature_set_mode(            impl->cam, DC1394_FEATURE_GAIN, DC1394_FEATURE_MODE_AUTO);
+            dc1394_feature_set_absolute_control(impl->cam, DC1394_FEATURE_GAIN, DC1394_ON);
+        }
+        break;
+    }
+    case 10: { // gain
+        dc1394_feature_set_value(impl->cam, DC1394_FEATURE_GAIN, (uint32_t) v);
+        break;
+    }
+
+    case 11: { // gamma-manual
         if (v==1) {
             dc1394_feature_set_power(impl->cam, DC1394_FEATURE_GAMMA, DC1394_ON);
             dc1394_feature_set_mode(impl->cam, DC1394_FEATURE_GAMMA, DC1394_FEATURE_MODE_MANUAL);
@@ -521,38 +621,10 @@ static int set_feature_value(image_source_t *isrc, int idx, double v)
         }
     }
 
-    case 8: // gamma
+    case 12: // gamma
         return dc1394_feature_set_value(impl->cam, DC1394_FEATURE_GAMMA, (uint32_t) v);
 
-
-    case 9: { // timestamps-enable
-        uint32_t value;
-        if (dc1394_get_adv_control_register(impl->cam, 0x2F8, &value) != DC1394_SUCCESS)
-            return -1;
-
-        value &= (~1);
-        value |= (int) v;
-
-        if (dc1394_set_adv_control_register(impl->cam, 0x2F8, value) != DC1394_SUCCESS)
-            return -1;
-
-        break;
-    }
-
-    case 10: { // frame-rate-mode
-        dc1394_feature_set_power(impl->cam, DC1394_FEATURE_FRAME_RATE, DC1394_ON);
-        dc1394_feature_set_mode(impl->cam, DC1394_FEATURE_FRAME_RATE, v!=0 ? DC1394_FEATURE_MODE_MANUAL :
-                                DC1394_FEATURE_MODE_AUTO);
-
-        break;
-    }
-
-    case 11: { // frame rate
-        dc1394_feature_set_absolute_value(impl->cam, DC1394_FEATURE_FRAME_RATE, (float) v);
-        break;
-    }
-
-    case 12: { // hdr
+    case 13: { // hdr
 
         uint64_t offset = 0x0F00000ULL;
 
@@ -588,6 +660,47 @@ static int set_feature_value(image_source_t *isrc, int idx, double v)
         }
 
         if (dc1394_set_register(impl->cam,  offset + 0x1a04, value) != DC1394_SUCCESS)
+            return -1;
+
+        break;
+    }
+
+    case 14: { // frame-rate-mode
+        dc1394_feature_set_power(impl->cam, DC1394_FEATURE_FRAME_RATE, DC1394_ON);
+        dc1394_feature_set_mode(impl->cam, DC1394_FEATURE_FRAME_RATE, v!=0 ? DC1394_FEATURE_MODE_MANUAL :
+                                DC1394_FEATURE_MODE_AUTO);
+
+        break;
+    }
+
+    case 15: { // frame rate
+        dc1394_feature_set_absolute_value(impl->cam, DC1394_FEATURE_FRAME_RATE, (float) v);
+        break;
+    }
+
+    case 16: { // timestamps-enable
+        uint32_t value;
+        if (dc1394_get_adv_control_register(impl->cam, 0x2F8, &value) != DC1394_SUCCESS)
+            return -1;
+
+        value &= (~0x01);
+        value |= ((int) v) << 0;
+
+        if (dc1394_set_adv_control_register(impl->cam, 0x2F8, value) != DC1394_SUCCESS)
+            return -1;
+
+        break;
+    }
+
+    case 17: { // frame-counter-enable
+        uint32_t value;
+        if (dc1394_get_adv_control_register(impl->cam, 0x2F8, &value) != DC1394_SUCCESS)
+            return -1;
+
+        value &= (~0x40);
+        value |= ((int) v) << 6;
+
+        if (dc1394_set_adv_control_register(impl->cam, 0x2F8, value) != DC1394_SUCCESS)
             return -1;
 
         break;
