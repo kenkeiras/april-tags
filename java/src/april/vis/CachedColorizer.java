@@ -9,14 +9,21 @@ import java.io.*;
  */
 public class CachedColorizer implements Colorizer, VisSerializable
 {
+    int colorIndex;
     public int colorize(double p[])
     {
-        return (int) p[3];
+        return (int) p[colorIndex];
     }
 
     // Serialization for this class is trivial
     public CachedColorizer()
     {
+        colorIndex = 3;
+    }
+
+    public CachedColorizer(int index)
+    {
+        colorIndex = index;
     }
 
     public void serialize(LCMDataOutputStream out) throws IOException
