@@ -171,11 +171,29 @@ public final class LinAlg
         return Math.sqrt(mag);
     }
 
+    /** average of elements in a vector **/
+    public static float average(float a[])
+    {
+        float sum = 0;
+        for (int i=0; i < a.length; i++)
+            sum += a[i];
+        return sum / a.length;
+    }
+
+    /** average of elements in a vector **/
+    public static double average(double a[])
+    {
+        double sum = 0;
+        for (int i=0; i < a.length; i++)
+            sum += a[i];
+        return sum / a.length;
+    }
+
     public static float normL1(float a[])
     {
         float mag = 0;
         for (int i = 0; i < a.length; i++)
-            mag += a[i];
+            mag += Math.abs(a[i]);
         return mag;
     }
 
@@ -183,7 +201,7 @@ public final class LinAlg
     {
         double mag = 0;
         for (int i = 0; i < a.length; i++)
-            mag += a[i];
+            mag += Math.abs(a[i]);
         return mag;
     }
 
