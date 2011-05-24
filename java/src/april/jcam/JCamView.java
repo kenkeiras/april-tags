@@ -78,6 +78,8 @@ public class JCamView
         leftPanel = new JPanel();
         int vspace = 15;
         leftPanel.setLayout(new VFlowLayout());
+        cameraList.setFixedCellWidth(40); // prevent long camera urls from
+                                          // screwing up the panel width
         leftPanel.add(makeChoicePanel("Cameras", cameraList));
         leftPanel.add(Box.createVerticalStrut(vspace));
         leftPanel.add(makeChoicePanel("Formats", formatList));
@@ -97,7 +99,9 @@ public class JCamView
 
         jf.add(jsp, BorderLayout.CENTER);
 
-        jf.setSize(800,600);
+        int width = Math.min(1000,
+                             800 + (int) leftPanel.getPreferredSize().getWidth() + 30);
+        jf.setSize(width,600);
         jf.setVisible(true);
     }
 
