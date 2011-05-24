@@ -26,6 +26,8 @@ struct buffer {
 typedef struct impl_v4l2 impl_v4l2_t;
 struct impl_v4l2
 {
+    char                    *path;
+
     int fd;
 
     int                     nformats;
@@ -85,6 +87,16 @@ static int set_format(image_source_t *isrc, int idx)
         return 0;
 
     assert(idx>=0 && idx < impl->nformats);
+
+    // XXX Hack. Some cameras don't seem to like changing formats
+    // after they've been opened and started. So close and re-open it!
+    close(impl->fd);
+    impl->fd = open(impl->path, O_RDWR, 0); // | O_NONBLOCK, 0);
+
+    if (impl->fd < 0) {
+        printf("reopening device failed\n");
+        return -1;
+    }
 
     if (ioctl (impl->fd, VIDIOC_S_FMT, impl->formats[idx]->priv) < 0) {
         printf("set format failed\n");
@@ -375,6 +387,8 @@ image_source_t *image_source_v4l2_open(const char *path)
     isrc->release_frame = release_frame;
     isrc->stop = stop;
     isrc->close = my_close;
+
+    impl->path = strdup(path);
 
     impl->fd = open(path, O_RDWR, 0); // | O_NONBLOCK, 0);
     if (impl->fd < 0)
