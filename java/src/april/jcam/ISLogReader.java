@@ -14,6 +14,12 @@ public class ISLogReader
     public static final long ISMAGIC = 0x17923349ab10ea9aL;
     String path;
 
+    public ISLogReader(File file, String mode) throws IOException
+    {
+        this.path = file.getPath();
+        raf = new BufferedRandomAccessFile(file, mode);
+    }
+
     public ISLogReader(String path, String mode) throws IOException
     {
         this.path = path;
@@ -48,6 +54,12 @@ public class ISLogReader
          * Image buffer
          **/
         public byte[]               buf;
+    }
+
+    public synchronized ISEvent readAtPosition(long position) throws IOException
+    {
+        raf.seek(position);
+        return readNext();
     }
 
     public synchronized ISEvent readNext() throws IOException
