@@ -44,7 +44,7 @@ public class ISLogViewer
     public ISLogViewer(String filename)
     {
         try {
-            reader = new ISLogReader(filename);
+            reader = new ISLogReader(filename, "r");
         } catch (IOException ex) {
             System.err.println("ERR: Could not create ISLogReader file");
             System.exit(-1);
@@ -150,13 +150,23 @@ public class ISLogViewer
                                                              true)));
 
         // HUD
+        String str =    "" +
+                        "<<mono-normal,left>>ELAPSED:     %14.3f s\n" +
+                        "<<mono-normal,left>>POSITION:    %15.1f%%\n" +
+                        "<<mono-normal,left>>UTIME:       %16d\n" +
+                        "<<mono-normal,left>>BYTE OFFSET: %16d";
+
+        double position = 0;
+        try {
+            position = reader.getPositionFraction();
+        } catch (IOException ex) {}
+
         vbhud.addBuffered(new VisText(VisText.ANCHOR.TOP_LEFT,
-                                      String.format("<<mono-normal,left>>%d", e.utime)));
-        vbhud.addBuffered(new VisText(VisText.ANCHOR.TOP_RIGHT,
-                                      String.format("<<mono-normal,left>>%d", e.byteOffset)));
-        vbhud.addBuffered(new VisText(VisText.ANCHOR.BOTTOM_LEFT,
-                                      String.format("<<mono-normal,left>>ELAPSED: %8.3fs",
-                                                    (e.utime - log_t0)*1e-6)));
+                                      String.format(str,
+                                                    (e.utime - log_t0)*1e-6,
+                                                    100*position,
+                                                    e.utime,
+                                                    e.byteOffset)));
 
         if (once) {
             once = false;

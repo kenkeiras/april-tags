@@ -4,18 +4,20 @@ import java.io.*;
 
 import april.util.*;
 
+import lcm.util.BufferedRandomAccessFile;
+
 public class ISLogReader
 {
     // XXX should we use the buffered version from lcm-java?
-    RandomAccessFile raf;
+    BufferedRandomAccessFile raf;
 
     public static final long ISMAGIC = 0x17923349ab10ea9aL;
     String path;
 
-    public ISLogReader(String path) throws IOException
+    public ISLogReader(String path, String mode) throws IOException
     {
         this.path = path;
-        raf = new RandomAccessFile(path, "r");
+        raf = new BufferedRandomAccessFile(path, mode);
     }
 
     /**
@@ -88,8 +90,53 @@ public class ISLogReader
         return e;
     }
 
+    /** Get position in percent
+      **/
+    public synchronized double getPositionFraction() throws IOException
+    {
+        return raf.getFilePointer()/((double) raf.length());
+    }
+
+    /** Jump to position in percent
+      **/
+    public synchronized void seekPositionFraction(double frac) throws IOException
+    {
+        raf.seek((long) (raf.length()*frac));
+    }
+
+    /** Get position as the RandomAccessFile offset
+      **/
+    public synchronized long getPosition() throws IOException
+    {
+        return raf.getFilePointer();
+    }
+
+    /** Set position with a RandomAccessFile offset
+      **/
+    public synchronized void seekPosition(long position) throws IOException
+    {
+        raf.seek(position);
+    }
+
     public synchronized void close() throws IOException
     {
         raf.close();
+    }
+
+    public synchronized long write(ImageSourceFormat ifmt, byte imbuf[]) throws IOException
+    {
+        long frameStartOffset = raf.getFilePointer();
+
+        raf.writeLong(ISMAGIC);
+        raf.writeLong(TimeUtil.utime());
+        raf.writeInt(ifmt.width);
+        raf.writeInt(ifmt.height);
+        raf.writeInt(ifmt.format.length());
+        byte strbuf[] = ifmt.format.getBytes();
+        raf.write(strbuf, 0, strbuf.length);
+        raf.writeInt(imbuf.length);
+        raf.write(imbuf, 0, imbuf.length);
+
+        return frameStartOffset;
     }
 }
