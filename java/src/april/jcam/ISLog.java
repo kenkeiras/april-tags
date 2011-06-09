@@ -6,7 +6,7 @@ import april.util.*;
 
 import lcm.util.BufferedRandomAccessFile;
 
-public class ISLogReader
+public class ISLog
 {
     // XXX should we use the buffered version from lcm-java?
     BufferedRandomAccessFile raf;
@@ -14,13 +14,13 @@ public class ISLogReader
     public static final long ISMAGIC = 0x17923349ab10ea9aL;
     String path;
 
-    public ISLogReader(File file, String mode) throws IOException
+    public ISLog(File file, String mode) throws IOException
     {
         this.path = file.getPath();
         raf = new BufferedRandomAccessFile(file, mode);
     }
 
-    public ISLogReader(String path, String mode) throws IOException
+    public ISLog(String path, String mode) throws IOException
     {
         this.path = path;
         raf = new BufferedRandomAccessFile(path, mode);

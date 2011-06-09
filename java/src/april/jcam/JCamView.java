@@ -141,7 +141,7 @@ public class JCamView
 
         JComboBox formatComboBox = new JComboBox(new String[] { "Log file" , "Individual PNGs" });
 
-        ISLogWriter logWriter;
+        ISLog logWriter;
 
         public RecordPanel()
         {
@@ -189,7 +189,7 @@ public class JCamView
 
                     // log format
                     try {
-                        logWriter = new ISLogWriter(new FileOutputStream(pathBox.getText()));
+                        logWriter = new ISLog(pathBox.getText());
                     } catch (IOException ex) {
                         recording = false;
                         System.out.println("ex: "+ex);
