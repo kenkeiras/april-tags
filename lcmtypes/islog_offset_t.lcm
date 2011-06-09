@@ -1,0 +1,7 @@
+struct islog_offset_t
+{
+    int64_t utime;
+
+    // Offset value for ImageSourceLog (ISLog) RandomAccessFile backend
+    int64_t offset;
+}

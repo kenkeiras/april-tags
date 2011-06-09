@@ -13,7 +13,10 @@ import april.util.*;
 import april.vis.*;
 import april.jmat.*;
 
-public class ISLogViewer
+import lcm.lcm.*;
+import april.lcmtypes.*;
+
+public class ISLogViewer implements LCMSubscriber
 {
     JFrame jf;
     VisWorld vw;
@@ -29,20 +32,24 @@ public class ISLogViewer
     long sys_t0;
     long log_t0;
 
+    LCM lcm = LCM.getSingleton();
+    String channel;
+
     boolean once = true;
 
     public static void main(String args[])
     {
-        if (args.length != 1) {
-            System.err.println("Usage: <log file path>");
-            System.exit(-1);
-        }
-
-        new ISLogViewer(args[0]);
+        if (args.length == 1)
+            new ISLogViewer(args[0]);
+        else if (args.length == 2)
+            new ISLogViewer(args[0], args[1]);
+        else
+            System.err.println("Usage: <log file path> [<lcm channel>]");
     }
 
     public ISLogViewer(String filename)
     {
+        System.out.printf("Opening ISLog '%s'\n", filename);
         try {
             reader = new ISLog(filename, "r");
         } catch (IOException ex) {
@@ -65,6 +72,26 @@ public class ISLogViewer
         }
 
         new ViewThread().start();
+    }
+
+    public ISLogViewer(String filename, String channel)
+    {
+        this.channel = channel;
+
+        System.out.printf("Opening ISLog '%s'\n", filename);
+        System.out.printf("Using LCM Channel '%s' for playback control\n", channel);
+        try {
+            reader = new ISLog(filename, "r");
+        } catch (IOException ex) {
+            System.err.println("ERR: Could not create ISLog file");
+            System.exit(-1);
+        }
+
+        setupPG();
+        setupVis();
+        setupGUI();
+
+        lcm.subscribe(this.channel, this);
     }
 
     private void setupPG()
@@ -134,6 +161,21 @@ public class ISLogViewer
 
                 plotFrame(e);
             }
+        }
+    }
+
+    public synchronized void messageReceived(LCM lcm, String channel, LCMDataInputStream ins)
+    {
+        try {
+            if (channel.equals(this.channel)) {
+                islog_offset_t isoff = new islog_offset_t(ins);
+
+                ISLog.ISEvent e = reader.readAtPosition(isoff.offset);
+
+                plotFrame(e);
+            }
+        } catch (IOException ex) {
+            System.err.println("Exception: "+ex);
         }
     }
 
