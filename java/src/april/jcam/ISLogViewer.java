@@ -25,7 +25,7 @@ public class ISLogViewer
     ParameterGUI pg;
     JPanel paramsPanel;
 
-    ISLogReader reader;
+    ISLog reader;
     long sys_t0;
     long log_t0;
 
@@ -44,9 +44,9 @@ public class ISLogViewer
     public ISLogViewer(String filename)
     {
         try {
-            reader = new ISLogReader(filename, "r");
+            reader = new ISLog(filename, "r");
         } catch (IOException ex) {
-            System.err.println("ERR: Could not create ISLogReader file");
+            System.err.println("ERR: Could not create ISLog file");
             System.exit(-1);
         }
 
@@ -54,7 +54,7 @@ public class ISLogViewer
         setupVis();
         setupGUI();
 
-        ISLogReader.ISEvent e;
+        ISLog.ISEvent e;
         try {
             e = reader.readNext();
             log_t0 = e.utime;
@@ -116,7 +116,7 @@ public class ISLogViewer
     {
         public void run()
         {
-            ISLogReader.ISEvent e;
+            ISLog.ISEvent e;
 
             while (true) {
                 try {
@@ -137,7 +137,7 @@ public class ISLogViewer
         }
     }
 
-    public void plotFrame(ISLogReader.ISEvent e)
+    public void plotFrame(ISLog.ISEvent e)
     {
         // Image
         BufferedImage im = ImageConvert.convertToImage(e.ifmt.format, e.ifmt.width,

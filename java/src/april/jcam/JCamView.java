@@ -189,7 +189,7 @@ public class JCamView
 
                     // log format
                     try {
-                        logWriter = new ISLog(pathBox.getText());
+                        logWriter = new ISLog(pathBox.getText(), "rw");
                     } catch (IOException ex) {
                         recording = false;
                         System.out.println("ex: "+ex);
