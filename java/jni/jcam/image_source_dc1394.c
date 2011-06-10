@@ -919,7 +919,7 @@ image_source_t *image_source_dc1394_open(url_parser_t *urlp)
     isrc->stop = stop;
     isrc->close = my_close;
 
-    impl->num_buffers = 10;
+    impl->num_buffers = 2;
 
     impl->dc1394 = dc1394_new();
     if (!impl->dc1394)
