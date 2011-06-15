@@ -18,12 +18,14 @@ image_source_t *image_source_open(const char *url)
     const char *protocol = url_parser_get_protocol(urlp);
     const char *location = url_parser_get_location(urlp);
 
-    if (!strcmp(protocol, "v4l2://"))
+    if (!strcmp(protocol, "v4l2://")) {
         isrc = image_source_v4l2_open(location);
-    else if (!strcmp(protocol, "dc1394://")) {
+    } else if (!strcmp(protocol, "dc1394://")) {
         isrc = image_source_dc1394_open(urlp);
     } else if (!strcmp(protocol, "islog://")) {
         isrc = image_source_islog_open(urlp);
+    } else if (!strcmp(protocol, "pgusb://")) {
+        isrc = image_source_pgusb_open(urlp);
     }
 
     if (isrc != NULL) {
@@ -80,7 +82,8 @@ char** image_source_enumerate()
     char **urls = calloc(1, sizeof(char*));
 
     urls = image_source_enumerate_v4l2(urls);
-    urls = image_source_enumerate_dc1394(urls);
+//    urls = image_source_enumerate_dc1394(urls);
+    urls = image_source_enumerate_pgusb(urls);
 
     return urls;
 }
