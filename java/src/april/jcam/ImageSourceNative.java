@@ -23,6 +23,7 @@ public class ImageSourceNative extends ImageSource
     protected static native double image_source_get_feature_max(int isrc, int idx);
     protected static native double image_source_get_feature_value(int isrc, int idx);
     protected static native int image_source_set_feature_value(int isrc, int idx, double v);
+    protected static native void image_source_print_info(int isrc);
     protected static native ArrayList<String> image_source_enumerate_jni();
 
     static {
@@ -130,6 +131,11 @@ public class ImageSourceNative extends ImageSource
     public synchronized int setFeatureValue(int idx, double v)
     {
         return image_source_set_feature_value(srcid, idx, v);
+    }
+
+    public synchronized void printInfo()
+    {
+        image_source_print_info(srcid);
     }
 
     public synchronized int close()

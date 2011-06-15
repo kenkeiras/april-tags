@@ -37,6 +37,7 @@ public class JCamView
     JPanel leftPanel;
 
     RecordPanel recordPanel = new RecordPanel();
+    PrintPanel printPanel = new PrintPanel();
 
     public JCamView(ArrayList<String> urls)
     {
@@ -87,6 +88,8 @@ public class JCamView
         leftPanel.add(makeChoicePanel("Controls", featurePanel));
         leftPanel.add(Box.createVerticalStrut(vspace));
         leftPanel.add(makeChoicePanel("Record", recordPanel));
+        leftPanel.add(Box.createVerticalStrut(vspace));
+        leftPanel.add(makeChoicePanel("Camera Info", printPanel));
 
         JPanel bottomPanel = new JPanel();
         bottomPanel.setLayout(new FlowLayout());
@@ -121,6 +124,25 @@ public class JCamView
         jp.add(c, BorderLayout.CENTER);
         jp.setBorder(BorderFactory.createTitledBorder(title));
         return jp;
+    }
+
+    class PrintPanel extends JPanel implements ActionListener
+    {
+        JButton printButton = new JButton("Print to terminal");
+
+        public PrintPanel()
+        {
+            setLayout(new VFlowLayout());
+
+            add(printButton);
+
+            printButton.addActionListener(this);
+        }
+
+        public synchronized void actionPerformed(ActionEvent e)
+        {
+            isrc.printInfo();
+        }
     }
 
     class RecordPanel extends JPanel implements ActionListener, ChangeListener

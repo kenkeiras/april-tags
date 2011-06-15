@@ -291,3 +291,16 @@ JNIEXPORT jint JNICALL Java_april_jcam_ImageSourceNative_image_1source_1set_1fea
 
     return isrc->set_feature_value(isrc, idx, v);
 }
+
+/*
+ * Class:     april_jcam_ImageSourceNative
+ * Method:    image_source_print_info
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_april_jcam_ImageSourceNative_image_1source_1print_1info
+  (JNIEnv *jenv, jclass jcls, jint srcid)
+{
+    image_source_t *isrc = isrcs[srcid];
+
+    isrc->printInfo(isrc);
+}

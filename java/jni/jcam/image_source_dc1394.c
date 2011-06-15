@@ -320,11 +320,11 @@ static double get_feature_min(image_source_t *isrc, int idx)
     case 7: // shutter-manual
         return 0;
     case 8: // shutter
-        return find_feature(isrc, DC1394_FEATURE_SHUTTER)->min;
+        return find_feature(isrc, DC1394_FEATURE_SHUTTER)->abs_min*1e3;
     case 9: // gain-manual
         return 0;
     case 10: // gain
-        return find_feature(isrc, DC1394_FEATURE_GAIN)->min;
+        return find_feature(isrc, DC1394_FEATURE_GAIN)->abs_min;
     case 11: // gamma-manual
         return 0;
     case 12: // gamma
@@ -364,11 +364,11 @@ static double get_feature_max(image_source_t *isrc, int idx)
     case 7: // shutter-manual
         return 1;
     case 8: // shutter
-        return find_feature(isrc, DC1394_FEATURE_SHUTTER)->max;
+        return find_feature(isrc, DC1394_FEATURE_SHUTTER)->abs_max*1e3;
     case 9: // gain-manual
         return 1;
     case 10: // gain
-        return find_feature(isrc, DC1394_FEATURE_GAIN)->max;
+        return find_feature(isrc, DC1394_FEATURE_GAIN)->abs_max;
     case 11: // gamma-manual
         return 1;
     case 12: // gamma
@@ -444,8 +444,9 @@ static double get_feature_value(image_source_t *isrc, int idx)
         return mode == DC1394_FEATURE_MODE_MANUAL;
     }
     case 8: { // shutter
-        uint32_t v = 0;
-        dc1394_feature_get_value(impl->cam, DC1394_FEATURE_SHUTTER, &v); // XXX error checking
+        float v = 0;
+        dc1394_feature_get_absolute_value(impl->cam, DC1394_FEATURE_SHUTTER, &v); // XXX error checking
+        v *= 1e3;
         return v;
     }
 
@@ -456,8 +457,8 @@ static double get_feature_value(image_source_t *isrc, int idx)
         return mode == DC1394_FEATURE_MODE_MANUAL;
     }
     case 10: { // gain
-        uint32_t v = 0;
-        dc1394_feature_get_value(impl->cam, DC1394_FEATURE_GAIN, &v); // XXX error checking
+        float v = 0;
+        dc1394_feature_get_absolute_value(impl->cam, DC1394_FEATURE_GAIN, &v); // XXX error checking
         return v;
     }
 
@@ -591,7 +592,7 @@ static int set_feature_value(image_source_t *isrc, int idx, double v)
         break;
     }
     case 8: { // shutter
-        dc1394_feature_set_value(impl->cam, DC1394_FEATURE_SHUTTER, (uint32_t) v);
+        dc1394_feature_set_absolute_value(impl->cam, DC1394_FEATURE_SHUTTER, ((float) v)/1e3);
         break;
     }
 
@@ -608,7 +609,7 @@ static int set_feature_value(image_source_t *isrc, int idx, double v)
         break;
     }
     case 10: { // gain
-        dc1394_feature_set_value(impl->cam, DC1394_FEATURE_GAIN, (uint32_t) v);
+        dc1394_feature_set_absolute_value(impl->cam, DC1394_FEATURE_GAIN, (float) v);
         break;
     }
 
@@ -865,6 +866,18 @@ static int my_close(image_source_t *isrc)
     return close(impl->fd);
 }
 
+static void printInfo(image_source_t *isrc)
+{
+    impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
+
+    // official print options
+    printf("========================================\n");
+    printf(" DC1394 Info\n");
+    printf("========================================\n");
+    dc1394_camera_print_info(impl->cam, stdout);
+    dc1394_feature_print_all(&impl->features, stdout);
+}
+
 /** Open the given guid, or if -1, open the first camera available. **/
 image_source_t *image_source_dc1394_open(url_parser_t *urlp)
 {
@@ -918,6 +931,8 @@ image_source_t *image_source_dc1394_open(url_parser_t *urlp)
     isrc->release_frame = release_frame;
     isrc->stop = stop;
     isrc->close = my_close;
+
+    isrc->printInfo = printInfo;
 
     impl->num_buffers = 2;
 
