@@ -28,30 +28,33 @@ public class ISLogViewer implements LCMSubscriber
     ParameterGUI pg;
     JPanel paramsPanel;
 
-    ISLog reader;
+    ISLog log;
     long sys_t0;
     long log_t0;
 
     LCM lcm = LCM.getSingleton();
+    String logdir;
     String channel;
 
     boolean once = true;
 
     public static void main(String args[])
     {
-        if (args.length == 1)
+        if (args.length == 1) {
             new ISLogViewer(args[0]);
-        else if (args.length == 2)
+        } else if (args.length == 2) {
             new ISLogViewer(args[0], args[1]);
-        else
-            System.err.println("Usage: <log file path> [<lcm channel>]");
+        } else {
+            System.err.println("Usage (basic):     <log path>");
+            System.err.println("Usage (LCM+ISLog): <log directory> <lcm channel>");
+        }
     }
 
     public ISLogViewer(String filename)
     {
-        System.out.printf("Opening ISLog '%s'\n", filename);
+        System.out.printf("Using ISLog '%s'\n", filename);
         try {
-            reader = new ISLog(filename, "r");
+            log = new ISLog(filename, "r");
         } catch (IOException ex) {
             System.err.println("ERR: Could not create ISLog file");
             System.exit(-1);
@@ -63,7 +66,7 @@ public class ISLogViewer implements LCMSubscriber
 
         ISLog.ISEvent e;
         try {
-            e = reader.readNext();
+            e = log.readNext();
             log_t0 = e.utime;
             sys_t0 = TimeUtil.utime();
         } catch (IOException ex) {
@@ -74,18 +77,13 @@ public class ISLogViewer implements LCMSubscriber
         new ViewThread().start();
     }
 
-    public ISLogViewer(String filename, String channel)
+    public ISLogViewer(String logdir, String channel)
     {
+        this.logdir = logdir;
         this.channel = channel;
 
-        System.out.printf("Opening ISLog '%s'\n", filename);
+        System.out.printf("Using log directory '%s'\n", logdir);
         System.out.printf("Using LCM Channel '%s' for playback control\n", channel);
-        try {
-            reader = new ISLog(filename, "r");
-        } catch (IOException ex) {
-            System.err.println("ERR: Could not create ISLog file");
-            System.exit(-1);
-        }
 
         setupPG();
         setupVis();
@@ -147,7 +145,7 @@ public class ISLogViewer implements LCMSubscriber
 
             while (true) {
                 try {
-                    e = reader.readNext();
+                    e = log.readNext();
                 } catch (IOException ex) {
                     System.out.println("WRN: End of ISLog reached. Exception: "+ex);
                     break;
@@ -164,13 +162,46 @@ public class ISLogViewer implements LCMSubscriber
         }
     }
 
+    public ISLog ensureLogOpen(URLParser up, ISLog currentLog) throws IOException
+    {
+        String protocol = up.get("protocol");
+        if (protocol == null)
+            throw new IOException();
+
+        String location = up.get("network");
+        if (location == null)
+            throw new IOException();
+
+        String path = logdir + location;
+        // close old log if it's time for the new one
+        if (currentLog != null && !path.equals(currentLog.getPath())) {
+            currentLog.close();
+            currentLog = null;
+        }
+
+        // we don't have a log! open one!
+        if (currentLog == null) {
+            System.out.printf("Opening log at path '%s'\n", path);
+            return new ISLog(path, "r");
+        }
+
+        return currentLog;
+    }
+
     public synchronized void messageReceived(LCM lcm, String channel, LCMDataInputStream ins)
     {
         try {
             if (channel.equals(this.channel)) {
-                islog_offset_t isoff = new islog_offset_t(ins);
+                url_t url = new url_t(ins);
+                URLParser up = new URLParser(url.url);
 
-                ISLog.ISEvent e = reader.readAtPosition(isoff.offset);
+                log = ensureLogOpen(up, log);
+
+                String offset = up.get("offset");
+                if (offset == null)
+                    return;
+
+                ISLog.ISEvent e = log.readAtPosition(Long.valueOf(offset));
 
                 plotFrame(e);
             }
@@ -200,7 +231,7 @@ public class ISLogViewer implements LCMSubscriber
 
         double position = 0;
         try {
-            position = reader.getPositionFraction();
+            position = log.getPositionFraction();
         } catch (IOException ex) {}
 
         vbhud.addBuffered(new VisText(VisText.ANCHOR.TOP_LEFT,
