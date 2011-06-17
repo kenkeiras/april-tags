@@ -749,17 +749,9 @@ restart:
     uint32_t psize_unit, psize_max;
     dc1394_format7_get_packet_parameters(impl->cam, format_priv->dc1394_mode, &psize_unit, &psize_max);
 
-    if (impl->packet_size == 0) {
-        impl->packet_size = psize_max; //4096;
-    } else {
-        impl->packet_size = psize_unit * (impl->packet_size / psize_unit);
-        if (impl->packet_size > psize_max)
-            impl->packet_size = psize_max;
-        if (impl->packet_size < psize_unit)
-            impl->packet_size = psize_unit;
-    }
-
-    // printf("psize_unit: %d, psize_max: %d, packet_size: %d\n", psize_unit, psize_max, impl->packet_size);
+    // XXX There may be some reason to be more clever with this value later, but we don't
+    // see it now (and the code that was here was buggy)
+    impl->packet_size = psize_max; //4096;
 
     dc1394_format7_set_packet_size(impl->cam, format_priv->dc1394_mode, impl->packet_size);
     uint64_t bytes_per_frame;
