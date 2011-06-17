@@ -336,6 +336,8 @@ public class JCamView
                 add(jcb, BorderLayout.CENTER);
             } else {
                 js = new JSlider((int) (min*scale), (int) (max*scale), (int) (value*scale));
+                updateSlider();
+
                 js.addChangeListener(this);
                 add(new JLabel(isrc.getFeatureName(idx)), BorderLayout.NORTH);
                 add(js, BorderLayout.CENTER);
@@ -367,10 +369,39 @@ public class JCamView
             updateLabel();
         }
 
+        private void updateSlider()
+        {
+            // extents
+            js.setMinimum((int) (min*scale));
+            js.setMaximum((int) (max*scale));
+
+            // label table
+            Hashtable labelTable = new Hashtable();
+
+            JLabel minLabel = new JLabel(String.format("%.2f", min));
+            JLabel maxLabel = new JLabel(String.format("%.2f", max));
+
+            Font f = minLabel.getFont();
+            f = new Font( f.getName(), f.getStyle(), f.getSize() - 3);
+            minLabel.setFont(f);
+            maxLabel.setFont(f);
+
+            labelTable.put(new Integer((int) (min*scale)), minLabel);
+            labelTable.put(new Integer((int) (max*scale)), maxLabel);
+
+            js.setLabelTable(labelTable);
+            js.setPaintLabels(true);
+        }
+
         public void stateChanged(ChangeEvent e)
         {
             if (js != null) {
                 int res = isrc.setFeatureValue(idx, js.getValue()/scale);
+
+                min = isrc.getFeatureMin(idx);
+                max = isrc.getFeatureMax(idx);
+
+                updateSlider();
 
                 if (verbose)
                     System.out.printf("%s: value: desired %f actual %f min/max: (%f, %f)\n",
