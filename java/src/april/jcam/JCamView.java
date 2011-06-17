@@ -39,9 +39,12 @@ public class JCamView
     RecordPanel recordPanel = new RecordPanel();
     PrintPanel printPanel = new PrintPanel();
 
-    public JCamView(ArrayList<String> urls)
+    boolean verbose = false;
+
+    public JCamView(ArrayList<String> urls, boolean verbose)
     {
         this.urls = urls;
+        this.verbose = verbose;
 
         jf = new JFrame("JCamView");
         jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -128,20 +131,30 @@ public class JCamView
 
     class PrintPanel extends JPanel implements ActionListener
     {
-        JButton printButton = new JButton("Print to terminal");
+        JButton printButton = new JButton("Print details");
+        JCheckBox jcb;
 
         public PrintPanel()
         {
             setLayout(new VFlowLayout());
 
-            add(printButton);
+            jcb = new JCheckBox("Verbose UI", verbose);
 
+            add(printButton);
+            add(jcb);
+
+            jcb.addActionListener(this);
             printButton.addActionListener(this);
         }
 
         public synchronized void actionPerformed(ActionEvent e)
         {
-            isrc.printInfo();
+            if (e.getSource() == jcb) {
+                verbose = jcb.isSelected();
+                System.out.printf("Verbose is now %s\n", verbose ? "true" : "false");
+            } else if (e.getSource() == printButton) {
+                isrc.printInfo();
+            }
         }
     }
 
@@ -312,6 +325,9 @@ public class JCamView
             max = isrc.getFeatureMax(idx);
             value = isrc.getFeatureValue(idx);
 
+            if (verbose)
+                System.out.printf("Feature %2d : %30s (%10.4f, %10.4f, %10.4f)\n", idx, isrc.getFeatureName(idx), min, max, value);
+
             setLayout(new BorderLayout());
 
             if (min==0 && max==1) {
@@ -336,11 +352,14 @@ public class JCamView
                 valueLabel.setText(""+value);
             else
                 valueLabel.setText(String.format("%.2f", value));
+            valueLabel.setVerticalAlignment(SwingConstants.NORTH);
         }
 
         public void actionPerformed(ActionEvent e)
         {
             if (jcb != null) {
+                if (verbose)
+                    System.out.printf("isSelected: %s\n", jcb.isSelected() ? "yes" : "no");
                 int res = isrc.setFeatureValue(idx, jcb.isSelected() ? 1 : 0);
                 if (res != 0)
                     System.out.println("Error setting feature");
@@ -352,6 +371,13 @@ public class JCamView
         {
             if (js != null) {
                 int res = isrc.setFeatureValue(idx, js.getValue()/scale);
+
+                if (verbose)
+                    System.out.printf("%s: value: desired %f actual %f min/max: (%f, %f)\n",
+                                      isrc.getFeatureName(idx),
+                                      js.getValue()/scale,
+                                      isrc.getFeatureValue(idx),
+                                      min, max);
                 if (res != 0)
                     System.out.println("Error setting feature");
             }
@@ -383,8 +409,6 @@ public class JCamView
             featurePanel.setLayout(new GridLayout(nfeatures, 1));
 
             for (int i = 0; i < nfeatures; i++) {
-//                System.out.printf("Feature %d : %s (%f, %f, %f)\n", i, isrc.getFeatureName(i), isrc.getFeatureMin(i), isrc.getFeatureMax(i), isrc.getFeatureValue(i));
-
                 featurePanel.add(new FeatureControl(isrc, i));
             }
         }
@@ -504,8 +528,15 @@ public class JCamView
 
         ArrayList<String> urls = new ArrayList<String>();
 
-        for (String arg : args)
+        boolean verbose = false;
+        for (String arg : args) {
+            if (arg.equals("-v") || arg.equals("--verbose")) {
+                verbose = true;
+                continue;
+            }
+
             urls.add(arg);
+        }
 
         if (urls.size()==0) {
             System.out.println("Found cameras: ");
@@ -520,6 +551,6 @@ public class JCamView
             return;
         }
 
-        new JCamView(urls);
+        new JCamView(urls, verbose);
     }
 }
