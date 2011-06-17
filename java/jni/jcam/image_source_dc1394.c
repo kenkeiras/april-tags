@@ -293,8 +293,11 @@ static dc1394feature_info_t *find_feature(image_source_t *isrc, dc1394feature_t 
     impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
 
     for (int i = 0; i < DC1394_FEATURE_NUM; i++) {
-        if (impl->features.feature[i].id == id)
+        if (impl->features.feature[i].id == id) {
+            dc1394_feature_get(impl->cam, &impl->features.feature[i]);
+
             return &impl->features.feature[i];
+        }
     }
 
     return NULL;
@@ -875,6 +878,8 @@ static void printInfo(image_source_t *isrc)
     printf(" DC1394 Info\n");
     printf("========================================\n");
     dc1394_camera_print_info(impl->cam, stdout);
+
+    dc1394_feature_get_all(impl->cam, &impl->features);
     dc1394_feature_print_all(&impl->features, stdout);
 }
 
