@@ -132,6 +132,7 @@ public class JCamView
     class PrintPanel extends JPanel implements ActionListener
     {
         JButton printButton = new JButton("Print details");
+        JButton printURLButton = new JButton("Print camera URL");
         JCheckBox jcb;
 
         public PrintPanel()
@@ -141,10 +142,12 @@ public class JCamView
             jcb = new JCheckBox("Verbose UI", verbose);
 
             add(printButton);
+            add(printURLButton);
             add(jcb);
 
             jcb.addActionListener(this);
             printButton.addActionListener(this);
+            printURLButton.addActionListener(this);
         }
 
         public synchronized void actionPerformed(ActionEvent e)
@@ -154,6 +157,29 @@ public class JCamView
                 System.out.printf("Verbose is now %s\n", verbose ? "true" : "false");
             } else if (e.getSource() == printButton) {
                 isrc.printInfo();
+            } else if (e.getSource() == printURLButton) {
+                ImageSourceFormat fmt = isrc.getCurrentFormat();
+
+                String camera = urls.get(cameraList.getSelectedIndex());
+                String format = fmt.format;
+
+                String url = String.format("\"%s?format=%s", camera, format);
+
+                for (int i=0; i < isrc.getNumFeatures(); i++) {
+                    String key = isrc.getFeatureName(i);
+                    double value = isrc.getFeatureValue(i);
+
+                    if (value == (int) value)
+                        url = String.format("%s&%s=%.0f", url,
+                                            key, value);
+                    else
+                        url = String.format("%s&%s=%.2f", url,
+                                            key, value);
+                }
+                url = url + "\"";
+
+                System.out.println("Camera url:");
+                System.out.println(url);
             }
         }
     }
