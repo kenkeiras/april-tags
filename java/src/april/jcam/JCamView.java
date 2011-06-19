@@ -335,7 +335,8 @@ public class JCamView
                 jcb.addActionListener(this);
                 add(jcb, BorderLayout.CENTER);
             } else {
-                js = new JSlider((int) (min*scale), (int) (max*scale), (int) (value*scale));
+                double safeValue = Math.min(Math.max(value, min), max);
+                js = new JSlider((int) (min*scale), (int) (max*scale), (int) (safeValue*scale));
                 updateSlider();
 
                 js.addChangeListener(this);
