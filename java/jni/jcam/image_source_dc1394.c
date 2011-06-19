@@ -443,20 +443,17 @@ static double get_feature_value(image_source_t *isrc, int idx)
     case 7: { // shutter-manual
         dc1394feature_mode_t mode = DC1394_FEATURE_MODE_AUTO;
         dc1394_feature_get_mode(impl->cam, DC1394_FEATURE_SHUTTER, &mode);
-
         return mode == DC1394_FEATURE_MODE_MANUAL;
     }
     case 8: { // shutter
         float v = 0;
         dc1394_feature_get_absolute_value(impl->cam, DC1394_FEATURE_SHUTTER, &v); // XXX error checking
-        v *= 1e3;
-        return v;
+        return v * 1e3;
     }
 
     case 9: { // gain-manual
         dc1394feature_mode_t mode = DC1394_FEATURE_MODE_AUTO;
         dc1394_feature_get_mode(impl->cam, DC1394_FEATURE_GAIN, &mode);
-
         return mode == DC1394_FEATURE_MODE_MANUAL;
     }
     case 10: { // gain
@@ -583,15 +580,10 @@ static int set_feature_value(image_source_t *isrc, int idx, double v)
         break;
 
     case 7: { // shutter-manual
-        if (v == 1) {
-            dc1394_feature_set_power(           impl->cam, DC1394_FEATURE_SHUTTER, DC1394_ON);
-            dc1394_feature_set_mode(            impl->cam, DC1394_FEATURE_SHUTTER, DC1394_FEATURE_MODE_MANUAL);
-            dc1394_feature_set_absolute_control(impl->cam, DC1394_FEATURE_SHUTTER, DC1394_OFF);
-        } else {
-            dc1394_feature_set_power(           impl->cam, DC1394_FEATURE_SHUTTER, DC1394_ON);
-            dc1394_feature_set_mode(            impl->cam, DC1394_FEATURE_SHUTTER, DC1394_FEATURE_MODE_AUTO);
-            dc1394_feature_set_absolute_control(impl->cam, DC1394_FEATURE_SHUTTER, DC1394_ON);
-        }
+        dc1394_feature_set_power(impl->cam, DC1394_FEATURE_SHUTTER, DC1394_ON);
+        dc1394_feature_set_absolute_control(impl->cam, DC1394_FEATURE_SHUTTER, DC1394_ON);
+        dc1394_feature_set_mode(impl->cam, DC1394_FEATURE_SHUTTER, v!=0 ? DC1394_FEATURE_MODE_MANUAL :
+                                DC1394_FEATURE_MODE_AUTO);
         break;
     }
     case 8: { // shutter
@@ -600,15 +592,10 @@ static int set_feature_value(image_source_t *isrc, int idx, double v)
     }
 
     case 9: { // gain-manual
-        if (v == 1) {
-            dc1394_feature_set_power(           impl->cam, DC1394_FEATURE_GAIN, DC1394_ON);
-            dc1394_feature_set_mode(            impl->cam, DC1394_FEATURE_GAIN, DC1394_FEATURE_MODE_MANUAL);
-            dc1394_feature_set_absolute_control(impl->cam, DC1394_FEATURE_GAIN, DC1394_OFF);
-        } else {
-            dc1394_feature_set_power(           impl->cam, DC1394_FEATURE_GAIN, DC1394_ON);
-            dc1394_feature_set_mode(            impl->cam, DC1394_FEATURE_GAIN, DC1394_FEATURE_MODE_AUTO);
-            dc1394_feature_set_absolute_control(impl->cam, DC1394_FEATURE_GAIN, DC1394_ON);
-        }
+        dc1394_feature_set_power(impl->cam, DC1394_FEATURE_GAIN, DC1394_ON);
+        dc1394_feature_set_absolute_control(impl->cam, DC1394_FEATURE_GAIN, DC1394_ON);
+        dc1394_feature_set_mode(impl->cam, DC1394_FEATURE_GAIN, v!=0 ? DC1394_FEATURE_MODE_MANUAL :
+                                DC1394_FEATURE_MODE_AUTO);
         break;
     }
     case 10: { // gain
@@ -671,6 +658,7 @@ static int set_feature_value(image_source_t *isrc, int idx, double v)
 
     case 14: { // frame-rate-mode
         dc1394_feature_set_power(impl->cam, DC1394_FEATURE_FRAME_RATE, DC1394_ON);
+        dc1394_feature_set_absolute_control(impl->cam, DC1394_FEATURE_FRAME_RATE, DC1394_ON);
         dc1394_feature_set_mode(impl->cam, DC1394_FEATURE_FRAME_RATE, v!=0 ? DC1394_FEATURE_MODE_MANUAL :
                                 DC1394_FEATURE_MODE_AUTO);
 
