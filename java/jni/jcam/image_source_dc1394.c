@@ -505,7 +505,7 @@ static double get_feature_value(image_source_t *isrc, int idx)
         if (dc1394_get_adv_control_register(impl->cam, 0x2F8, &value) != DC1394_SUCCESS)
             return 0;
 
-        return value & 0x01;
+        return (value & 0x01) >> 0;
     }
 
     case 17: { // frame-counter-enable
@@ -513,7 +513,7 @@ static double get_feature_value(image_source_t *isrc, int idx)
         if (dc1394_get_adv_control_register(impl->cam, 0x2F8, &value) != DC1394_SUCCESS)
             return 0;
 
-        return value & 0x40;
+        return (value & 0x40) >> 6;
     }
 
     default:
