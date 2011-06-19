@@ -51,6 +51,7 @@ image_source_t *image_source_open(const char *url);
 image_source_t *image_source_v4l2_open(const char *path);
 image_source_t *image_source_dc1394_open(url_parser_t *urlp);
 image_source_t *image_source_islog_open(url_parser_t *urlp);
+image_source_t *image_source_pgusb_open(url_parser_t *urlp);
 
 char** image_source_enumerate();
 void image_source_enumerate_free(char **b);
@@ -58,6 +59,7 @@ void image_source_enumerate_free(char **b);
 /** Adds URLs to 'urls' **/
 char** image_source_enumerate_v4l2(char **urls);
 char** image_source_enumerate_dc1394(char **urls);
+char** image_source_enumerate_pgusb(char **urls);
 
 #endif
 

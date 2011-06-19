@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <libusb-1.0/libusb.h>
+#include <pthread.h>
 
 /*
 http://www.1394ta.org/press/WhitePapers/Firewire%20Reference%20Tutorial.pdf
@@ -23,6 +24,12 @@ http://damien.douxchamps.net/ieee1394/libdc1394/iidc/IIDC_1.31.pdf
 #include "image_source.h"
 
 #define IMPL_TYPE 0x7123b65a
+
+struct transfer_info
+{
+    struct libusb_transfer *transfer;
+    uint8_t *buf;
+};
 
 typedef struct impl_pgusb impl_pgusb_t;
 struct impl_pgusb
@@ -36,15 +43,26 @@ struct impl_pgusb
     int                   current_format_idx;
 
     // must add CONFIG_ROM_BASE to each of these.
-    uint64_t unit_directory_offset;
-    uint64_t unit_dependent_directory_offset;
-    uint64_t command_regs_base;
+    uint32_t unit_directory_offset;
+    uint32_t unit_dependent_directory_offset;
+    uint32_t command_regs_base;
+
+//    int nframes;
+//    struct usb_frame *frames;
+
+    int bytes_per_frame;
+
+    int nrecords;
+    struct transfer_info *records;
+
+    pthread_t worker_thread;
 };
 
 struct format_priv
 {
     int format7_mode_idx;
     int color_coding_idx;
+    uint32_t csr;
 };
 
 struct usb_vendor_product
@@ -64,6 +82,7 @@ static struct usb_vendor_product vendor_products[] =
 
 static const char* COLOR_MODES[] = { "GRAY", "YUV422", "UYVY", "IYU2", "RGB",
                                      "GRAY16", "RGB16", "GRAY16", "SRGB16", "RAW8", "RAW16" };
+static const char* BAYER_MODES[] = { "BAYER_RGGB", "BAYER_GBRG", "BAYER_GRBG", "BAYER_BGGR" };
 
 #define REQUEST_TIMEOUT_MS 1000
 #define CONFIG_ROM_BASE             0xFFFFF0000000ULL
@@ -159,9 +178,30 @@ static int do_read(libusb_device_handle *handle, uint64_t address, uint32_t *qua
     return ret_quads;
 }
 
-static int get_registers(libusb_device_handle *handle, uint64_t offset, uint32_t *value, uint32_t num_regs)
+static int do_write(libusb_device_handle *handle, uint64_t address, uint32_t *quads, int num_quads)
 {
-    return do_read(handle, offset, value, num_regs);
+    int request = address_to_request(address);
+    if (request < 0)
+        return -1;
+
+    unsigned char buf[num_quads*4];
+
+    // Convert from host-endian to little-endian
+    for (int i = 0; i < num_quads; i++) {
+        buf[4*i]   = quads[0] & 0xff;
+        buf[4*i+1] = (quads[0] >> 8) & 0xff;
+        buf[4*i+2] = (quads[0] >> 16) & 0xff;
+        buf[4*i+3] = (quads[0] >> 24) & 0xff;
+    }
+
+    // IEEE 1394 address writes are mapped to USB control transfers as
+    // shown here.
+    int ret = libusb_control_transfer (handle, 0x40, request,
+                                       address & 0xffff, (address >> 16) & 0xffff,
+                                       buf, num_quads * 4, REQUEST_TIMEOUT_MS);
+    if (ret < 0)
+        return -1;
+    return ret / 4;
 }
 
 // returns number of quads actually read.
@@ -187,7 +227,11 @@ static int read_config_rom(libusb_device *dev, uint32_t *quads, int nquads)
 static uint64_t get_guid(libusb_device *dev)
 {
     uint32_t config[256];
-    int configlen = read_config_rom(dev, config, 256);
+
+    if (read_config_rom(dev, config, 256) < 0) {
+        printf("error reading camera GUID\n");
+        return -1;
+    }
 
     // not an IIDC camera?
     if ((config[0] >> 24) != 0x4)
@@ -337,9 +381,165 @@ static int num_features(image_source_t *isrc)
     return 0;
 }
 
+static void callback(struct libusb_transfer *transfer)
+{
+    image_source_t *isrc = (image_source_t*) transfer->user_data;
+    assert(isrc->impl_type == IMPL_TYPE);
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    image_source_format_t *ifmt = get_format(isrc, get_current_format(isrc));
+
+    if (transfer->status == LIBUSB_TRANSFER_COMPLETED && transfer->actual_length == transfer->length) {
+        printf("good frame!\n");
+
+    } else {
+        printf("bad usb transfer status %d\n", transfer->status);
+    }
+
+    int i = 0;
+
+    libusb_fill_bulk_transfer(impl->records[i].transfer, impl->handle,
+                              0x81, impl->records[i].buf, impl->bytes_per_frame, callback, isrc, 0);
+
+    if (libusb_submit_transfer(impl->records[i].transfer) < 0) {
+        printf("submit failed\n");
+    }
+}
+
+static void *worker_thread_proc(void *arg)
+{
+    image_source_t *isrc = (image_source_t*) arg;
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+
+    while (1) {
+    printf("***\n");
+
+        struct timeval tv = {
+            .tv_sec = 0,
+            .tv_usec = 100000,
+        };
+
+        libusb_handle_events_timeout(impl->context, &tv);
+    }
+
+    return NULL;
+}
+
+static int start(image_source_t *isrc)
+{
+    assert(isrc->impl_type == IMPL_TYPE);
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    image_source_format_t *ifmt = get_format(isrc, get_current_format(isrc));
+    struct format_priv *format_priv = (struct format_priv*) ifmt->priv;
+
+    for (int i = 0x0600; i <= 0x0630; i+=4) {
+        uint32_t d;
+        do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + i, &d, 1);
+        printf("%04x: %08x\n", i, d);
+    }
+
+    // set format 7
+    if (1) {
+        uint32_t quads[] = { 0xe0000000 }; // 7 << 29
+        if (do_write(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + 0x608, quads, 1) != 1)
+            printf("ack!\n");
+    }
+
+    // set format 7 mode
+    if (1) {
+        uint32_t quads[] = { format_priv->format7_mode_idx<<24 };
+        if (do_write(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + 0x604, quads, 1) != 1)
+            printf("ack!\n");
+    }
+
+    // set image position
+    if (1) {
+        uint32_t quads[] = { 0 };
+        if (do_write(impl->handle, CONFIG_ROM_BASE + format_priv->csr + 0x08, quads, 1) != 1)
+            printf("ack!\n");
+    }
+
+    // set image size
+    if (1) {
+        uint32_t quads[] = { ifmt->height + (ifmt->width<<16) };
+        if (do_write(impl->handle, CONFIG_ROM_BASE + format_priv->csr + 0x0c, quads, 1) != 1)
+            printf("ack!\n");
+    }
+
+    // set format 7 color mode
+    if (1) {
+        uint32_t quads[] = { format_priv->color_coding_idx<<24 };
+        if (do_write(impl->handle, CONFIG_ROM_BASE + format_priv->csr + 0x10, quads, 1) != 1)
+            printf("ack!\n");
+    }
+
+    // set up USB transfers
+    if (libusb_claim_interface(impl->handle, 0) < 0) {
+        printf("couldn't claim interface\n");
+    }
+
+    if (1) {
+        for (int i = 0x0600; i <= 0x0630; i+=4) {
+            uint32_t d;
+            do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + i, &d, 1);
+            printf("%04x: %08x\n", i, d);
+        }
+    }
+
+    if (1) {
+        int nquads = 32;
+        uint32_t quads[32];
+        if (do_read(impl->handle, CONFIG_ROM_BASE + format_priv->csr, quads, nquads) != nquads)
+            return -1;
+
+        for (int i = 0; i < 32; i++)
+            printf(" %03x : %08x\n", i*4, quads[i]);
+    }
+
+    impl->nrecords = 1;
+    impl->records = (struct transfer_info*) calloc(impl->nrecords, sizeof(struct transfer_info));
+
+    int bytes_per_pixel = 1;
+    if ((format_priv->color_coding_idx >=5 && format_priv->color_coding_idx <= 8) ||
+        (format_priv->color_coding_idx == 10)) {
+        bytes_per_pixel = 2;
+    }
+
+    impl->bytes_per_frame = ifmt->width * ifmt->height * bytes_per_pixel;
+
+    printf("bytes_per_frame %d\n", impl->bytes_per_frame);
+
+    for (int i = 0; i < impl->nrecords; i++) {
+        impl->records[i].transfer = libusb_alloc_transfer(0);
+        impl->records[i].buf = malloc(impl->bytes_per_frame);
+        libusb_fill_bulk_transfer(impl->records[i].transfer, impl->handle,
+                                  0x81, impl->records[i].buf, impl->bytes_per_frame, callback, isrc, 0);
+
+        if (libusb_submit_transfer(impl->records[i].transfer) < 0) {
+            printf("submit failed\n");
+        }
+    }
+
+    // set transmission to ON
+    if (1) {
+        uint32_t quads[] = { 0x80000000UL };
+        if (do_write(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + 0x614, quads, 1) != 1)
+            printf("ack!\n");
+    }
+
+    if (pthread_create(&impl->worker_thread, NULL, worker_thread_proc, isrc) != 0) {
+        perror("pthread");
+        return -1;
+    }
+
+    while (1)
+        sleep(1);
+
+    return 0;
+}
+
 image_source_t *image_source_pgusb_open(url_parser_t *urlp)
 {
-    const char *protocol = url_parser_get_protocol(urlp);
+//    const char *protocol = url_parser_get_protocol(urlp);
     const char *location = url_parser_get_location(urlp);
 
     libusb_context *context;
@@ -411,14 +611,14 @@ image_source_t *image_source_pgusb_open(url_parser_t *urlp)
     }
 
     uint32_t magic;
-    if (get_registers(impl->handle, CONFIG_ROM_BASE + 0x404, &magic, 1) != 1)
+    if (do_read(impl->handle, CONFIG_ROM_BASE + 0x404, &magic, 1) != 1)
         return NULL;
     if (magic != 0x31333934)
         return NULL;
 
     if (1) {
         uint32_t tmp;
-        if (get_registers(impl->handle, CONFIG_ROM_BASE + 0x424, &tmp, 1) != 1)
+        if (do_read(impl->handle, CONFIG_ROM_BASE + 0x424, &tmp, 1) != 1)
             return NULL;
 
         assert((tmp>>24)==0xd1);
@@ -429,7 +629,7 @@ image_source_t *image_source_pgusb_open(url_parser_t *urlp)
 
     if (1) {
         uint32_t tmp;
-        if (get_registers(impl->handle, CONFIG_ROM_BASE + impl->unit_directory_offset + 0x0c, &tmp, 1) != 1)
+        if (do_read(impl->handle, CONFIG_ROM_BASE + impl->unit_directory_offset + 0x0c, &tmp, 1) != 1)
             return NULL;
 
         assert((tmp>>24)==0xd4);
@@ -440,7 +640,7 @@ image_source_t *image_source_pgusb_open(url_parser_t *urlp)
 
     if (1) {
         uint32_t tmp;
-        if (get_registers(impl->handle, CONFIG_ROM_BASE + impl->unit_dependent_directory_offset + 0x4, &tmp, 1) != 1)
+        if (do_read(impl->handle, CONFIG_ROM_BASE + impl->unit_dependent_directory_offset + 0x4, &tmp, 1) != 1)
             return NULL;
 
         assert((tmp>>24)==0x40);
@@ -452,7 +652,7 @@ image_source_t *image_source_pgusb_open(url_parser_t *urlp)
 /*
     for (int i = 0x0400; i <= 0x0500; i+=4) {
         uint32_t d;
-        get_registers(impl->handle, CONFIG_ROM_BASE + i, &d, 1);
+        do_read(impl->handle, CONFIG_ROM_BASE + i, &d, 1);
         printf("%04x: %08x\n", i, d);
     }
 */
@@ -461,7 +661,7 @@ image_source_t *image_source_pgusb_open(url_parser_t *urlp)
         // which modes are supported by format 7?
 
         uint32_t v_mode_inq_7;
-        if (get_registers(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + 0x019c, &v_mode_inq_7, 1) != 1)
+        if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + 0x019c, &v_mode_inq_7, 1) != 1)
             return NULL;
 
         printf("v_mode_inq_7: %08x\n", v_mode_inq_7);
@@ -472,36 +672,43 @@ image_source_t *image_source_pgusb_open(url_parser_t *urlp)
             if ((v_mode_inq_7 & (1<<(7-mode)))) {
 
                 uint32_t mode_csr;
-                if (get_registers(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + 0x2e0 + mode*4, &mode_csr, 1) != 1)
+                if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + 0x2e0 + mode*4, &mode_csr, 1) != 1)
                     return NULL;
 
                 mode_csr *= 4;
 
                 printf("mode %d csr %08x\n", mode, mode_csr);
 
-                uint32_t quads[15];
-                if (get_registers(impl->handle, CONFIG_ROM_BASE + mode_csr, quads, 15) != 15)
+                int nquads = 32;
+                uint32_t quads[32];
+                if (do_read(impl->handle, CONFIG_ROM_BASE + mode_csr, quads, nquads) != nquads)
                     return NULL;
 
-                for (int i = 0; i < 15; i++)
+                for (int i = 0; i < 32; i++)
                     printf(" %03x : %08x\n", i*4, quads[i]);
 
-                uint32_t cmodes = quads[5] >> 24;
-                for (int cmode = 0; cmode < 8; cmode++) {
-                    if (cmodes & (1<<(7-cmode))) {
-                        printf(" %d %s\n", cmodes, COLOR_MODES[cmode]);
+                uint32_t cmodes = quads[5];
+                for (int cmode = 0; cmode < 11; cmode++) {
+                    if (cmodes & (1<<(31-cmode))) {
+                        printf(" %d %s\n", cmode, COLOR_MODES[cmode]);
 
                         impl->formats = realloc(impl->formats, (impl->nformats+1) * sizeof(image_source_format_t*));
                         impl->formats[impl->nformats] = calloc(1, sizeof(image_source_format_t));
-                        impl->formats[impl->nformats]->width = quads[0] & 0xffff;
-                        impl->formats[impl->nformats]->height = quads[0] >> 16;
-                        impl->formats[impl->nformats]->format = strdup(COLOR_MODES[cmode]);
+                        impl->formats[impl->nformats]->height = quads[0] & 0xffff;
+                        impl->formats[impl->nformats]->width = quads[0] >> 16;
 
-                        // XXX Map color_modes with RAW encoding using filter data e.g. BAYER_RGGB.
+                        if (cmode == 9 || cmode == 10) {
+                            int filter_mode = quads[22]>>24;
+                            impl->formats[impl->nformats]->format = strdup(BAYER_MODES[filter_mode]);
+                        } else {
+                            impl->formats[impl->nformats]->format = strdup(COLOR_MODES[cmode]);
+                        }
 
                         struct format_priv *format_priv = calloc(1, sizeof(format_priv));
                         format_priv->format7_mode_idx = mode;
                         format_priv->color_coding_idx = cmode;
+                        format_priv->csr = mode_csr;
+
                         impl->formats[impl->nformats]->priv = format_priv;
                         impl->nformats++;
                     }
@@ -510,11 +717,8 @@ image_source_t *image_source_pgusb_open(url_parser_t *urlp)
         }
     }
 
-    // Retrieve legal formats.
-    uint32_t fmts;
-
     uint32_t resolution;
-    int res = get_registers(impl->handle, CONFIG_ROM_BASE + 0x404, &resolution, 1);
+    int res = do_read(impl->handle, CONFIG_ROM_BASE + 0x404, &resolution, 1);
     printf("res %d %08x\n", res, resolution);
 
     isrc->num_formats = num_formats;
@@ -529,8 +733,9 @@ image_source_t *image_source_pgusb_open(url_parser_t *urlp)
     isrc->get_feature_max = get_feature_max;
     isrc->get_feature_value = get_feature_value;
     isrc->set_feature_value = set_feature_value;
+*/
     isrc->start = start;
-    isrc->get_frame = get_frame;
+/*    isrc->get_frame = get_frame;
     isrc->release_frame = release_frame;
     isrc->stop = stop;
     isrc->close = my_close;

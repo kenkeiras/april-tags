@@ -60,7 +60,11 @@ image_source_t *image_source_open(const char *url)
                                isrc->get_feature_name(isrc, idx));
                         goto cleanup;
                     }
-                    int res = isrc->set_feature_value(isrc, idx, dv);
+
+                    if (isrc->set_feature_value(isrc, idx, dv) < 0) {
+                        printf("setting feature failed.\n");
+                    }
+
                     found = 1;
                     break;
                 }
@@ -82,8 +86,8 @@ char** image_source_enumerate()
     char **urls = calloc(1, sizeof(char*));
 
     urls = image_source_enumerate_v4l2(urls);
-//    urls = image_source_enumerate_dc1394(urls);
-    urls = image_source_enumerate_pgusb(urls);
+    urls = image_source_enumerate_dc1394(urls);
+//    urls = image_source_enumerate_pgusb(urls);
 
     return urls;
 }
