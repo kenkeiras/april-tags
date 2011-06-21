@@ -235,7 +235,7 @@ static int set_named_format(image_source_t *isrc, const char *desired_format)
 static int num_features(image_source_t *isrc)
 {
     // don't forget: feature index starts at 0
-    return 18;
+    return 34;
 }
 
 // Features we may want to implement (from dc1394feature_t enum)
@@ -283,6 +283,38 @@ static const char* get_feature_name(image_source_t *isrc, int idx)
         return "timestamps-enable";
     case 17:
         return "frame-counter-enable";
+    case 18:
+        return "strobe-0-manual";
+    case 19:
+        return "strobe-0-polarity";
+    case 20:
+        return "strobe-0-delay";
+    case 21:
+        return "strobe-0-duration";
+    case 22:
+        return "strobe-1-manual";
+    case 23:
+        return "strobe-1-polarity";
+    case 24:
+        return "strobe-1-delay";
+    case 25:
+        return "strobe-1-duration";
+    case 26:
+        return "strobe-2-manual";
+    case 27:
+        return "strobe-2-polarity";
+    case 28:
+        return "strobe-2-delay";
+    case 29:
+        return "strobe-2-duration";
+    case 30:
+        return "strobe-3-manual";
+    case 31:
+        return "strobe-3-polarity";
+    case 32:
+        return "strobe-3-delay";
+    case 33:
+        return "strobe-3-duration";
     default:
         return NULL;
     }
@@ -301,6 +333,230 @@ static dc1394feature_info_t *find_feature(image_source_t *isrc, dc1394feature_t 
     }
 
     return NULL;
+}
+
+static uint32_t flip_endianness(uint32_t in)
+{
+    uint32_t out;
+
+    for (int i=0; i < 32; i++)
+        out |= ((in >> (32 - (i+1))) & 0x1) << i;
+
+    return out;
+}
+
+static uint32_t get_strobe_inquiry_offset(uint32_t strobe)
+{
+    switch (strobe) {
+        case 0:
+            return 0x100;
+        case 1:
+            return 0x104;
+        case 2:
+            return 0x108;
+        case 3:
+            return 0x10C;
+    }
+
+    return 0;
+}
+
+static uint32_t get_strobe_control_offset(uint32_t strobe)
+{
+    switch (strobe) {
+        case 0:
+            return 0x200;
+        case 1:
+            return 0x204;
+        case 2:
+            return 0x208;
+        case 3:
+            return 0x20C;
+    }
+
+    return 0;
+}
+
+static uint32_t get_strobe_min(image_source_t *isrc, uint32_t strobe)
+{
+    impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
+
+    uint32_t value;
+    int offset = get_strobe_inquiry_offset(strobe);
+    if (dc1394_get_strobe_register(impl->cam, offset, &value) != DC1394_SUCCESS)
+        return 0;
+
+    value = flip_endianness(value);
+    return (value >> 8) & 0xFFF;
+}
+
+static uint32_t get_strobe_max(image_source_t *isrc, uint32_t strobe)
+{
+    impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
+
+    uint32_t value;
+    int offset = get_strobe_inquiry_offset(strobe);
+    if (dc1394_get_strobe_register(impl->cam, offset, &value) != DC1394_SUCCESS)
+        return 0;
+
+    value = flip_endianness(value);
+    return (value >> 20) & 0xFFF;
+}
+
+static uint32_t get_strobe_power(image_source_t *isrc, uint32_t strobe)
+{
+    impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
+
+    uint32_t value;
+    int offset = get_strobe_control_offset(strobe);
+    if (dc1394_get_strobe_register(impl->cam, offset, &value) != DC1394_SUCCESS)
+        return 0;
+
+    value = flip_endianness(value);
+    return (value >> 6) & 0x1;
+}
+
+static uint32_t get_strobe_polarity(image_source_t *isrc, uint32_t strobe)
+{
+    impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
+
+    uint32_t value;
+    int offset = get_strobe_control_offset(strobe);
+    if (dc1394_get_strobe_register(impl->cam, offset, &value) != DC1394_SUCCESS)
+        return 0;
+
+    value = flip_endianness(value);
+    return (value >> 7) & 0x1;
+}
+
+static uint32_t get_strobe_delay(image_source_t *isrc, uint32_t strobe)
+{
+    impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
+
+    uint32_t value;
+    int offset = get_strobe_control_offset(strobe);
+    if (dc1394_get_strobe_register(impl->cam, offset, &value) != DC1394_SUCCESS)
+        return 0;
+
+    value = flip_endianness(value);
+    return flip_endianness((value >> 8) & 0xFFF);
+}
+
+static uint32_t get_strobe_duration(image_source_t *isrc, uint32_t strobe)
+{
+    impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
+
+    uint32_t value;
+    int offset = get_strobe_control_offset(strobe);
+    if (dc1394_get_strobe_register(impl->cam, offset, &value) != DC1394_SUCCESS)
+        return 0;
+
+    value = flip_endianness(value);
+    return flip_endianness((value >> 20) & 0xFFF);
+}
+
+static dc1394error_t set_strobe_power(image_source_t *isrc, uint32_t strobe, uint32_t v)
+{
+    impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
+
+    // return -1 if we can't set this field
+    uint32_t inquiry_value;
+    int inquiry_offset = get_strobe_inquiry_offset(strobe);
+    if (dc1394_get_strobe_register(impl->cam, inquiry_offset, &inquiry_value) != DC1394_SUCCESS)
+        return 0;
+
+    inquiry_value = flip_endianness(inquiry_value);
+    if (((inquiry_value >> 5) & 0x1) == 0)
+        return -1;
+
+    // actually set it
+    uint32_t value;
+    int offset = get_strobe_control_offset(strobe);
+    if (dc1394_get_strobe_register(impl->cam, offset, &value) != DC1394_SUCCESS)
+        return 0;
+
+    // make big endian
+    value = flip_endianness(value);
+    if (v == 1) {
+        value |= (1 << 6);
+    } else {
+        value &= ~(1 << 6);
+    }
+    // make little endian
+    value = flip_endianness(value);
+
+    return dc1394_set_strobe_register(impl->cam, offset, value);
+}
+
+static dc1394error_t set_strobe_polarity(image_source_t *isrc, uint32_t strobe, uint32_t v)
+{
+    impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
+
+    // return -1 if we can't set this field
+    uint32_t inquiry_value;
+    int inquiry_offset = get_strobe_inquiry_offset(strobe);
+    if (dc1394_get_strobe_register(impl->cam, inquiry_offset, &inquiry_value) != DC1394_SUCCESS)
+        return 0;
+
+    inquiry_value = flip_endianness(inquiry_value);
+    if (((inquiry_value >> 6) & 0x1) == 0)
+        return -1;
+
+    // actually set it
+    uint32_t value;
+    int offset = get_strobe_control_offset(strobe);
+    if (dc1394_get_strobe_register(impl->cam, offset, &value) != DC1394_SUCCESS)
+        return 0;
+
+    // make big endian
+    value = flip_endianness(value);
+    if (v == 1) {
+        value |= (1 << 7);
+    } else {
+        value &= ~(1 << 7);
+    }
+    // make little endian
+    value = flip_endianness(value);
+
+    return dc1394_set_strobe_register(impl->cam, offset, value);
+}
+
+static dc1394error_t set_strobe_delay(image_source_t *isrc, uint32_t strobe, uint32_t v)
+{
+    impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
+
+    uint32_t value;
+    int offset = get_strobe_control_offset(strobe);
+    if (dc1394_get_strobe_register(impl->cam, offset, &value) != DC1394_SUCCESS)
+        return 0;
+
+    // make big endian
+    value = flip_endianness(value);
+    value &= ~(0xFFF << 8);
+    value |= (v & 0xFFF) << 8;
+    // make little endian
+    value = flip_endianness(value);
+
+    return dc1394_set_strobe_register(impl->cam, offset, value);
+}
+
+static dc1394error_t set_strobe_duration(image_source_t *isrc, uint32_t strobe, uint32_t v)
+{
+    impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
+
+    uint32_t value;
+    int offset = get_strobe_control_offset(strobe);
+    if (dc1394_get_strobe_register(impl->cam, offset, &value) != DC1394_SUCCESS)
+        return 0;
+
+    // make big endian
+    value = flip_endianness(value);
+    value &= ~(0xFFF << 20);
+    value |= (v & 0xFFF) << 20;
+    // make little endian
+    value = flip_endianness(value);
+
+    return dc1394_set_strobe_register(impl->cam, offset, value);
 }
 
 static double get_feature_min(image_source_t *isrc, int idx)
@@ -342,6 +598,38 @@ static double get_feature_min(image_source_t *isrc, int idx)
         return 0;
     case 17: // frame-counter-enable
         return 0;
+    case 18: // strobe-0-manual
+        return 0;
+    case 19: // strobe-0-polarity
+        return 0;
+    case 20: // strobe-0-delay
+        return get_strobe_min(isrc, 0);
+    case 21: // strobe-0-duration
+        return get_strobe_min(isrc, 0);
+    case 22: // strobe-1-manual
+        return 0;
+    case 23: // strobe-1-polarity
+        return 0;
+    case 24: // strobe-1-delay
+        return get_strobe_min(isrc, 1);
+    case 25: // strobe-1-duration
+        return get_strobe_min(isrc, 1);
+    case 26: // strobe-2-manual
+        return 0;
+    case 27: // strobe-2-polarity
+        return 0;
+    case 28: // strobe-2-delay
+        return get_strobe_min(isrc, 2);
+    case 29: // strobe-2-duration
+        return get_strobe_min(isrc, 2);
+    case 30: // strobe-3-manual
+        return 0;
+    case 31: // strobe-3-polarity
+        return 0;
+    case 32: // strobe-3-delay
+        return get_strobe_min(isrc, 3);
+    case 33: // strobe-3-duration
+        return get_strobe_min(isrc, 3);
     default:
         return 0;
     }
@@ -386,6 +674,38 @@ static double get_feature_max(image_source_t *isrc, int idx)
         return 1;
     case 17: // frame-counter-enable
         return 1;
+    case 18: // strobe-0-manual
+        return 1;
+    case 19: // strobe-0-polarity
+        return 1;
+    case 20: // strobe-0-delay
+        return get_strobe_max(isrc, 0);
+    case 21: // strobe-0-duration
+        return get_strobe_max(isrc, 0);
+    case 22: // strobe-1-manual
+        return 1;
+    case 23: // strobe-1-polarity
+        return 1;
+    case 24: // strobe-1-delay
+        return get_strobe_max(isrc, 1);
+    case 25: // strobe-1-duration
+        return get_strobe_max(isrc, 1);
+    case 26: // strobe-2-manual
+        return 1;
+    case 27: // strobe-2-polarity
+        return 1;
+    case 28: // strobe-2-delay
+        return get_strobe_max(isrc, 2);
+    case 29: // strobe-2-duration
+        return get_strobe_max(isrc, 2);
+    case 30: // strobe-3-manual
+        return 1;
+    case 31: // strobe-3-polarity
+        return 1;
+    case 32: // strobe-3-delay
+        return get_strobe_max(isrc, 3);
+    case 33: // strobe-3-duration
+        return get_strobe_max(isrc, 3);
     default:
         return 0;
     }
@@ -514,6 +834,70 @@ static double get_feature_value(image_source_t *isrc, int idx)
             return 0;
 
         return (value & 0x40) >> 6;
+    }
+
+    case 18: { // strobe-0-manual
+        return get_strobe_power(isrc, 0);
+    }
+
+    case 19: { // strobe-0-polarity
+        return get_strobe_polarity(isrc, 0);
+    }
+
+    case 20: { // strobe-0-delay
+        return get_strobe_delay(isrc, 0);
+    }
+
+    case 21: { // strobe-0-duration
+        return get_strobe_duration(isrc, 0);
+    }
+
+    case 22: { // strobe-1-manual
+        return get_strobe_power(isrc, 1);
+    }
+
+    case 23: { // strobe-1-polarity
+        return get_strobe_polarity(isrc, 1);
+    }
+
+    case 24: { // strobe-1-delay
+        return get_strobe_delay(isrc, 1);
+    }
+
+    case 25: { // strobe-1-duration
+        return get_strobe_duration(isrc, 1);
+    }
+
+    case 26: { // strobe-2-manual
+        return get_strobe_power(isrc, 2);
+    }
+
+    case 27: { // strobe-2-polarity
+        return get_strobe_polarity(isrc, 2);
+    }
+
+    case 28: { // strobe-2-delay
+        return get_strobe_delay(isrc, 2);
+    }
+
+    case 29: { // strobe-2-duration
+        return get_strobe_duration(isrc, 2);
+    }
+
+    case 30: { // strobe-3-manual
+        return get_strobe_power(isrc, 3);
+    }
+
+    case 31: { // strobe-3-polarity
+        return get_strobe_polarity(isrc, 3);
+    }
+
+    case 32: { // strobe-3-delay
+        return get_strobe_delay(isrc, 3);
+    }
+
+    case 33: { // strobe-3-duration
+        return get_strobe_duration(isrc, 3);
     }
 
     default:
@@ -698,6 +1082,70 @@ static int set_feature_value(image_source_t *isrc, int idx, double v)
         break;
     }
 
+    case 18: { // strobe-0-manual
+        return set_strobe_power(isrc, 0, v);
+    }
+
+    case 19: { // strobe-0-polarity
+        return set_strobe_polarity(isrc, 0, v);
+    }
+
+    case 20: { // strobe-0-delay
+        return set_strobe_delay(isrc, 0, v);
+    }
+
+    case 21: { // strobe-0-duration
+        return set_strobe_duration(isrc, 0, v);
+    }
+
+    case 22: { // strobe-1-manual
+        return set_strobe_power(isrc, 1, v);
+    }
+
+    case 23: { // strobe-1-polarity
+        return set_strobe_polarity(isrc, 1, v);
+    }
+
+    case 24: { // strobe-1-delay
+        return set_strobe_delay(isrc, 1, v);
+    }
+
+    case 25: { // strobe-1-duration
+        return set_strobe_duration(isrc, 1, v);
+    }
+
+    case 26: { // strobe-2-manual
+        return set_strobe_power(isrc, 2, v);
+    }
+
+    case 27: { // strobe-2-polarity
+        return set_strobe_polarity(isrc, 2, v);
+    }
+
+    case 28: { // strobe-2-delay
+        return set_strobe_delay(isrc, 2, v);
+    }
+
+    case 29: { // strobe-2-duration
+        return set_strobe_duration(isrc, 2, v);
+    }
+
+    case 30: { // strobe-3-manual
+        return set_strobe_power(isrc, 3, v);
+    }
+
+    case 31: { // strobe-3-polarity
+        return set_strobe_polarity(isrc, 3, v);
+    }
+
+    case 32: { // strobe-3-delay
+        return set_strobe_delay(isrc, 3, v);
+    }
+
+    case 33: { // strobe-3-duration
+        return set_strobe_duration(isrc, 3, v);
+    }
+
     default:
         return 0;
     }
@@ -853,14 +1301,184 @@ static void printInfo(image_source_t *isrc)
 {
     impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
 
-    // official print options
+    // camera info
     printf("========================================\n");
     printf(" DC1394 Info\n");
     printf("========================================\n");
     dc1394_camera_print_info(impl->cam, stdout);
 
+    // feature info
     dc1394_feature_get_all(impl->cam, &impl->features);
     dc1394_feature_print_all(&impl->features, stdout);
+
+    // strobe info
+    {
+        printf("Strobe registers:\n");
+
+        uint32_t val = 0;
+        int offset = 0;
+        if (dc1394_get_strobe_register(impl->cam, offset, &val) == DC1394_SUCCESS) {
+            printf("\tlocation: 0x%08lX reads little endian: 0x%08X (big endian: 0x%08X)\n",
+                   impl->cam->strobe_control_csr + offset,
+                   val,
+                   flip_endianness(val));
+        } else {
+            printf("\terror reading location 0x%08lX\n",
+                   impl->cam->strobe_control_csr + offset);
+        }
+
+        printf("\n\tThe following registers are only known to be defined for Point Grey cameras:\n");
+        for (int offset=0x100; offset <= 0x10C; offset += 0x4) {
+            if (dc1394_get_strobe_register(impl->cam, offset, &val) == DC1394_SUCCESS) {
+                printf("\tlocation: 0x%08lX reads little endian: 0x%08X (big endian: 0x%08X)\n",
+                       impl->cam->strobe_control_csr + offset,
+                       val,
+                       flip_endianness(val));
+            } else {
+                printf("\terror reading location 0x%08lX\n",
+                       impl->cam->strobe_control_csr + offset);
+            }
+        }
+
+        for (int offset=0x200; offset <= 0x20C; offset += 0x4) {
+            if (dc1394_get_strobe_register(impl->cam, offset, &val) == DC1394_SUCCESS) {
+                printf("\tlocation: 0x%08lX reads little endian: 0x%08X (big endian: 0x%08X)\n",
+                       impl->cam->strobe_control_csr + offset,
+                       val,
+                       flip_endianness(val));
+            } else {
+                printf("\terror reading location 0x%08lX\n",
+                       impl->cam->strobe_control_csr + offset);
+            }
+        }
+    }
+
+    // trigger info
+    {
+        printf("Trigger:\n");
+        dc1394error_t res = 0;
+
+        dc1394trigger_mode_t mode;
+        if (dc1394_external_trigger_get_mode(impl->cam, &mode) == DC1394_SUCCESS) {
+            switch (mode)
+            {
+                case DC1394_TRIGGER_MODE_0:
+                    printf("\tmode 0\n");
+                    break;
+                case DC1394_TRIGGER_MODE_1:
+                    printf("\tmode 1\n");
+                    break;
+                case DC1394_TRIGGER_MODE_2:
+                    printf("\tmode 2\n");
+                    break;
+                case DC1394_TRIGGER_MODE_3:
+                    printf("\tmode 3\n");
+                    break;
+                case DC1394_TRIGGER_MODE_4:
+                    printf("\tmode 4\n");
+                    break;
+                case DC1394_TRIGGER_MODE_5:
+                    printf("\tmode 5\n");
+                    break;
+                case DC1394_TRIGGER_MODE_14:
+                    printf("\tmode 14\n");
+                    break;
+                case DC1394_TRIGGER_MODE_15:
+                    printf("\tmode 15\n");
+                    break;
+            }
+        } else {
+            printf("\terror reading mode\n");
+        }
+
+        dc1394trigger_polarity_t polarity;
+        if (dc1394_external_trigger_get_polarity(impl->cam, &polarity) == DC1394_SUCCESS) {
+            switch (polarity)
+            {
+                case DC1394_TRIGGER_ACTIVE_LOW:
+                    printf("\tactive low\n");
+                    break;
+                case DC1394_TRIGGER_ACTIVE_HIGH:
+                    printf("\tactive high\n");
+                    break;
+            }
+        } else {
+            printf("\terror reading polarity\n");
+        }
+
+        dc1394bool_t polarity_capable;
+        if (dc1394_external_trigger_has_polarity(impl->cam, &polarity_capable) == DC1394_SUCCESS) {
+            printf("\tpolarity %s\n", polarity_capable == DC1394_TRUE ? "capable" : "incapable");
+        } else {
+            printf("\terror reading if polarity capable\n");
+        }
+
+        dc1394switch_t ext_pwr;
+        if (dc1394_external_trigger_get_power(impl->cam, &ext_pwr) == DC1394_SUCCESS) {
+            printf("\texternally enabled: %s\n", ext_pwr == DC1394_ON ? "true" : "false");
+        } else {
+            printf("\terror reading external trigger power\n");
+        }
+
+        dc1394switch_t sw_pwr;
+        if (dc1394_software_trigger_get_power(impl->cam, &sw_pwr) == DC1394_SUCCESS) {
+            printf("\tsoftware enabled: %s\n", sw_pwr == DC1394_ON ? "true" : "false");
+        } else {
+            printf("\terror reading if software powered\n");
+        }
+
+        dc1394trigger_source_t source;
+        if (dc1394_external_trigger_get_source(impl->cam, &source) == DC1394_SUCCESS) {
+            switch (source)
+            {
+                case DC1394_TRIGGER_SOURCE_0:
+                    printf("\tsource (current): 0\n");
+                    break;
+                case DC1394_TRIGGER_SOURCE_1:
+                    printf("\tsource (current): 1\n");
+                    break;
+                case DC1394_TRIGGER_SOURCE_2:
+                    printf("\tsource (current): 2\n");
+                    break;
+                case DC1394_TRIGGER_SOURCE_3:
+                    printf("\tsource (current): 3\n");
+                    break;
+                case DC1394_TRIGGER_SOURCE_SOFTWARE:
+                    printf("\tsource (current): software\n");
+                    break;
+            }
+        } else {
+            printf("\terror reading source\n");
+        }
+
+        dc1394trigger_sources_t sources;
+        if (dc1394_external_trigger_get_supported_sources(impl->cam, &sources) == DC1394_SUCCESS) {
+            printf("\tsources supported:\n");
+            for (int i=0; i < sources.num; i++) {
+                printf("\t\t[%d] ", i);
+                switch (sources.sources[i])
+                {
+                    case DC1394_TRIGGER_SOURCE_0:
+                        printf("source: 0\n");
+                        break;
+                    case DC1394_TRIGGER_SOURCE_1:
+                        printf("source: 1\n");
+                        break;
+                    case DC1394_TRIGGER_SOURCE_2:
+                        printf("source: 2\n");
+                        break;
+                    case DC1394_TRIGGER_SOURCE_3:
+                        printf("source: 3\n");
+                        break;
+                    case DC1394_TRIGGER_SOURCE_SOFTWARE:
+                        printf("source: software\n");
+                        break;
+                }
+            }
+        } else {
+            printf("\terror reading sources supported\n");
+        }
+    }
 }
 
 /** Open the given guid, or if -1, open the first camera available. **/
