@@ -390,6 +390,7 @@ public class JCamView
                 if (verbose)
                     System.out.printf("isSelected: %s\n", jcb.isSelected() ? "yes" : "no");
                 int res = isrc.setFeatureValue(idx, jcb.isSelected() ? 1 : 0);
+                jcb.setSelected(isrc.getFeatureValue(idx) == 1 ? true : false);
                 if (res != 0)
                     System.out.println("Error setting feature");
             }
