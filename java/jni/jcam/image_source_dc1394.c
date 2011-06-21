@@ -235,13 +235,8 @@ static int set_named_format(image_source_t *isrc, const char *desired_format)
 static int num_features(image_source_t *isrc)
 {
     // don't forget: feature index starts at 0
-    return 34;
+    return 39;
 }
-
-// Features we may want to implement (from dc1394feature_t enum)
-//
-//    DC1394_FEATURE_TRIGGER
-//    DC1394_FEATURE_TRIGGER_DELAY
 
 static const char* get_feature_name(image_source_t *isrc, int idx)
 {
@@ -315,6 +310,16 @@ static const char* get_feature_name(image_source_t *isrc, int idx)
         return "strobe-3-delay";
     case 33:
         return "strobe-3-duration";
+    case 34:
+        return "external-trigger-power";
+    case 35:
+        return "external-trigger-mode";
+    case 36:
+        return "external-trigger-polarity";
+    case 37:
+        return "external-trigger-source";
+    case 38:
+        return "software-trigger";
     default:
         return NULL;
     }
@@ -630,6 +635,16 @@ static double get_feature_min(image_source_t *isrc, int idx)
         return get_strobe_min(isrc, 3);
     case 33: // strobe-3-duration
         return get_strobe_min(isrc, 3);
+    case 34: // external-trigger-power
+        return 0;
+    case 35: // external-trigger-mode
+        return 0;
+    case 36: // external-trigger-polarity
+        return 0;
+    case 37: // external-trigger-source
+        return DC1394_TRIGGER_SOURCE_MIN;
+    case 38:
+        return 0;
     default:
         return 0;
     }
@@ -706,6 +721,16 @@ static double get_feature_max(image_source_t *isrc, int idx)
         return get_strobe_max(isrc, 3);
     case 33: // strobe-3-duration
         return get_strobe_max(isrc, 3);
+    case 34: // external-trigger-power
+        return 1;
+    case 35: // external-trigger-mode
+        return DC1394_TRIGGER_MODE_MAX - DC1394_TRIGGER_MODE_MIN;
+    case 36: // external-trigger-polarity
+        return 1;
+    case 37: // external-trigger-source
+        return DC1394_TRIGGER_SOURCE_MAX;
+    case 38:
+        return 1;
     default:
         return 0;
     }
@@ -898,6 +923,61 @@ static double get_feature_value(image_source_t *isrc, int idx)
 
     case 33: { // strobe-3-duration
         return get_strobe_duration(isrc, 3);
+    }
+
+    case 34: { // external-trigger-power
+        impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
+
+        dc1394switch_t ext_pwr;
+        if (dc1394_external_trigger_get_power(impl->cam, &ext_pwr) != DC1394_SUCCESS)
+            return 0;
+
+        return ext_pwr;
+    }
+
+    case 35: { // external-trigger-mode
+        impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
+
+        dc1394trigger_mode_t mode;
+        if (dc1394_external_trigger_get_mode(impl->cam, &mode) != DC1394_SUCCESS)
+            return 0;
+
+        return mode - DC1394_TRIGGER_MODE_MIN;
+    }
+
+    case 36: { // external-trigger-polarity
+        impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
+
+        dc1394bool_t polarity_capable;
+        if (dc1394_external_trigger_has_polarity(impl->cam, &polarity_capable) != DC1394_SUCCESS)
+            return 0;
+
+        if (polarity_capable == DC1394_FALSE)
+            return 0;
+
+        dc1394trigger_polarity_t polarity;
+        if (dc1394_external_trigger_get_polarity(impl->cam, &polarity) != DC1394_SUCCESS)
+            return 0;
+
+        return polarity;
+    }
+
+    case 37: { // external-trigger-source
+        impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
+
+        dc1394trigger_source_t source;
+        if (dc1394_external_trigger_get_source(impl->cam, &source) != DC1394_SUCCESS)
+            return 0;
+
+        return source;
+    }
+
+    case 38: { // software-trigger
+        dc1394switch_t pwr = DC1394_OFF;
+        if (dc1394_software_trigger_get_power(impl->cam, &pwr) != DC1394_SUCCESS)
+            return 0;
+
+        return pwr;
     }
 
     default:
@@ -1144,6 +1224,33 @@ static int set_feature_value(image_source_t *isrc, int idx, double v)
 
     case 33: { // strobe-3-duration
         return set_strobe_duration(isrc, 3, v);
+    }
+
+    case 34: { // external-trigger-power
+        return dc1394_external_trigger_set_power(impl->cam, (uint32_t) v);
+    }
+
+    case 35: { // external-trigger-mode
+        return dc1394_external_trigger_set_mode(impl->cam, DC1394_TRIGGER_MODE_MIN + (uint32_t) v);
+    }
+
+    case 36: { // external-trigger-polarity
+        dc1394bool_t polarity_capable;
+        if (dc1394_external_trigger_has_polarity(impl->cam, &polarity_capable) != DC1394_SUCCESS)
+            return -1;
+
+        if (polarity_capable == DC1394_FALSE)
+            return -1;
+
+        return dc1394_external_trigger_set_polarity(impl->cam, (uint32_t) v);
+    }
+
+    case 37: { // external-trigger-source
+        return dc1394_external_trigger_set_source(impl->cam, (uint32_t) v);
+    }
+
+    case 38: { // software-trigger
+        return dc1394_software_trigger_set_power(impl->cam, (uint32_t) v);
     }
 
     default:
@@ -1432,19 +1539,19 @@ static void printInfo(image_source_t *isrc)
             switch (source)
             {
                 case DC1394_TRIGGER_SOURCE_0:
-                    printf("\tsource (current): 0\n");
+                    printf("\tsource (current): GPIO 0\n");
                     break;
                 case DC1394_TRIGGER_SOURCE_1:
-                    printf("\tsource (current): 1\n");
+                    printf("\tsource (current): GPIO 1\n");
                     break;
                 case DC1394_TRIGGER_SOURCE_2:
-                    printf("\tsource (current): 2\n");
+                    printf("\tsource (current): GPIO 2\n");
                     break;
                 case DC1394_TRIGGER_SOURCE_3:
-                    printf("\tsource (current): 3\n");
+                    printf("\tsource (current): GPIO 3\n");
                     break;
                 case DC1394_TRIGGER_SOURCE_SOFTWARE:
-                    printf("\tsource (current): software\n");
+                    printf("\tsource (current): Software\n");
                     break;
             }
         } else {
@@ -1459,19 +1566,19 @@ static void printInfo(image_source_t *isrc)
                 switch (sources.sources[i])
                 {
                     case DC1394_TRIGGER_SOURCE_0:
-                        printf("source: 0\n");
+                        printf("source: GPIO 0\n");
                         break;
                     case DC1394_TRIGGER_SOURCE_1:
-                        printf("source: 1\n");
+                        printf("source: GPIO 1\n");
                         break;
                     case DC1394_TRIGGER_SOURCE_2:
-                        printf("source: 2\n");
+                        printf("source: GPIO 2\n");
                         break;
                     case DC1394_TRIGGER_SOURCE_3:
-                        printf("source: 3\n");
+                        printf("source: GPIO 3\n");
                         break;
                     case DC1394_TRIGGER_SOURCE_SOFTWARE:
-                        printf("source: software\n");
+                        printf("source: Software\n");
                         break;
                 }
             }
