@@ -38,6 +38,7 @@ public class JCamView
 
     RecordPanel recordPanel = new RecordPanel();
     PrintPanel printPanel = new PrintPanel();
+    TriggerPanel triggerPanel = new TriggerPanel();
 
     boolean verbose = false;
 
@@ -88,6 +89,8 @@ public class JCamView
         leftPanel.add(Box.createVerticalStrut(vspace));
         leftPanel.add(makeChoicePanel("Formats", formatList));
         leftPanel.add(Box.createVerticalStrut(vspace));
+        leftPanel.add(makeChoicePanel("Software trigger thread", triggerPanel));
+        leftPanel.add(Box.createVerticalStrut(vspace));
         leftPanel.add(makeChoicePanel("Controls", featurePanel));
         leftPanel.add(Box.createVerticalStrut(vspace));
         leftPanel.add(makeChoicePanel("Record", recordPanel));
@@ -129,6 +132,61 @@ public class JCamView
         return jp;
     }
 
+    class TriggerPanel extends JPanel implements ActionListener, ChangeListener
+    {
+        JButton toggleButton = new JButton("Start thread");
+        JSlider fpsSlider = new JSlider(1, 100, 30);
+        JLabel valueLabel = new JLabel(fpsSlider.getValue()+" FPS");
+
+        TriggerThread tThread = null;
+
+        public TriggerPanel()
+        {
+            setLayout(new BorderLayout());
+
+            add(fpsSlider, BorderLayout.CENTER);
+            add(valueLabel, BorderLayout.EAST);
+            add(toggleButton, BorderLayout.SOUTH);
+
+            fpsSlider.addChangeListener(this);
+            toggleButton.addActionListener(this);
+        }
+
+        void updateLabel()
+        {
+            valueLabel.setText(fpsSlider.getValue()+" FPS");
+        }
+
+        int computeDelay()
+        {
+            return (int) Math.round(1000.0/fpsSlider.getValue());
+        }
+
+        public synchronized void actionPerformed(ActionEvent e)
+        {
+            if (e.getSource() == toggleButton) {
+                if (tThread == null) {
+                    tThread = new TriggerThread(computeDelay());
+                    tThread.start();
+                    toggleButton.setText("Stop thread");
+                } else {
+                    tThread.stopRequest();
+                    tThread = null;
+                    toggleButton.setText("Start thread");
+                }
+            }
+        }
+
+        public synchronized void stateChanged(ChangeEvent e)
+        {
+            if (e.getSource() == fpsSlider) {
+                if (tThread != null)
+                    tThread.setDelay(computeDelay());
+
+                updateLabel();
+            }
+        }
+    }
     class PrintPanel extends JPanel implements ActionListener
     {
         JButton printButton = new JButton("Print details");
@@ -510,6 +568,54 @@ public class JCamView
                 System.out.println("ex: "+ex);
             }
             runThread = null;
+        }
+    }
+
+    class TriggerThread extends Thread
+    {
+        int delay;
+        int idx = -1;
+        boolean stop = false;
+
+        public TriggerThread(int delay)
+        {
+            this.delay = delay;
+
+            for (int i=0; i < isrc.getNumFeatures(); i++) {
+                if (isrc.getFeatureName(i).equals("software-trigger"))
+                    idx = i;
+            }
+
+            if (idx == -1)
+                System.out.println("Software trigger not supported for image source");
+        }
+
+        public void setDelay(int delay)
+        {
+            this.delay = delay;
+        }
+
+        public void stopRequest()
+        {
+            stop = true;
+        }
+
+        public void run()
+        {
+            if (idx == -1)
+                return;
+
+            long t0, t1;
+            t0 = TimeUtil.utime();
+            t1 = TimeUtil.utime();
+            while (!stop) {
+                t1 = TimeUtil.utime();
+                int ms = (int) (delay - (t1 - t0)/1e3);
+                TimeUtil.sleep(ms);
+
+                t0 = TimeUtil.utime();
+                int res = isrc.setFeatureValue(idx, 1);
+            }
         }
     }
 
