@@ -56,7 +56,7 @@ public class ImageSourceNative extends ImageSource
     }
 
     /** Will return null in the event of an I/O error. **/
-    public synchronized byte[] getFrame()
+    public byte[] getFrame()
     {
         byte b[] = image_source_get_frame_jni(srcid);
 
