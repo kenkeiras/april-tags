@@ -1001,6 +1001,7 @@ static int set_feature_value(image_source_t *isrc, int idx, double v)
         } else {
             dc1394_feature_set_power(impl->cam, DC1394_FEATURE_WHITE_BALANCE, DC1394_OFF);
         }
+        dc1394_feature_set_absolute_control(impl->cam, DC1394_FEATURE_WHITE_BALANCE, DC1394_OFF);
 
         break;
     }
@@ -1016,12 +1017,14 @@ static int set_feature_value(image_source_t *isrc, int idx, double v)
         if (idx==2)
             b = (uint32_t) v;
 
+        dc1394_feature_set_absolute_control(impl->cam, DC1394_FEATURE_WHITE_BALANCE, DC1394_OFF);
         dc1394_feature_whitebalance_set_value(impl->cam, (uint32_t) b, (uint32_t) r);
         break;
     }
 
     case 3: { // exposure-manual
         dc1394_feature_set_power(impl->cam, DC1394_FEATURE_EXPOSURE, DC1394_ON);
+        dc1394_feature_set_absolute_control(impl->cam, DC1394_FEATURE_EXPOSURE, DC1394_OFF);
         dc1394_feature_set_mode(impl->cam, DC1394_FEATURE_EXPOSURE, v!=0 ? DC1394_FEATURE_MODE_MANUAL :
                                 DC1394_FEATURE_MODE_AUTO);
         break;
@@ -1034,6 +1037,7 @@ static int set_feature_value(image_source_t *isrc, int idx, double v)
 
     case 5: { // brightness-manual
         dc1394_feature_set_power(impl->cam, DC1394_FEATURE_BRIGHTNESS, DC1394_ON);
+        dc1394_feature_set_absolute_control(impl->cam, DC1394_FEATURE_BRIGHTNESS, DC1394_OFF);
         dc1394_feature_set_mode(impl->cam, DC1394_FEATURE_BRIGHTNESS, v!=0 ? DC1394_FEATURE_MODE_MANUAL :
                                 DC1394_FEATURE_MODE_AUTO);
         break;
@@ -1068,16 +1072,16 @@ static int set_feature_value(image_source_t *isrc, int idx, double v)
     }
 
     case 11: { // gamma-manual
-        if (v==1) {
-            dc1394_feature_set_power(impl->cam, DC1394_FEATURE_GAMMA, DC1394_ON);
-            dc1394_feature_set_mode(impl->cam, DC1394_FEATURE_GAMMA, DC1394_FEATURE_MODE_MANUAL);
-        } else {
-            dc1394_feature_set_power(impl->cam, DC1394_FEATURE_GAMMA, DC1394_OFF);
-        }
+        dc1394_feature_set_power(impl->cam, DC1394_FEATURE_GAMMA, v!=0 ? DC1394_ON : DC1394_OFF);
+        dc1394_feature_set_absolute_control(impl->cam, DC1394_FEATURE_GAMMA, DC1394_OFF);
+        dc1394_feature_set_mode(impl->cam, DC1394_FEATURE_GAMMA, DC1394_FEATURE_MODE_MANUAL);
+        break;
     }
 
-    case 12: // gamma
-        return dc1394_feature_set_value(impl->cam, DC1394_FEATURE_GAMMA, (uint32_t) v);
+    case 12: { // gamma
+        dc1394_feature_set_value(impl->cam, DC1394_FEATURE_GAMMA, (uint32_t) v);
+        break;
+    }
 
     case 13: { // hdr
 
