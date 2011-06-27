@@ -191,7 +191,7 @@ static int set_named_format(image_source_t *isrc, const char *desired_format)
 
 static int num_features(image_source_t *isrc)
 {
-    return 1;
+    return 2;
 }
 
 static const char* get_feature_name(image_source_t *isrc, int idx)
