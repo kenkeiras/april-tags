@@ -32,55 +32,47 @@ image_source_t *image_source_open(const char *url)
     if (isrc != NULL) {
         int found[url_parser_num_parameters(urlp)];
 
-        for (int param_order = 0; param_order < 3; param_order++) {
-            for (int param_idx = 0; param_idx < url_parser_num_parameters(urlp); param_idx++) {
-                const char *key = url_parser_get_parameter_name(urlp, param_idx);
-                const char *value = url_parser_get_parameter_value(urlp, param_idx);
+        for (int param_idx = 0; param_idx < url_parser_num_parameters(urlp); param_idx++) {
+            const char *key = url_parser_get_parameter_name(urlp, param_idx);
+            const char *value = url_parser_get_parameter_value(urlp, param_idx);
 
-                if (param_order == 0) { // set format
-                    if (strstr(key, "fidx") == NULL && strstr(key, "format") == NULL)
-                        continue;
+            if (!strcmp(key, "fidx")) {
+                printf("image_source_dc1394.c: set feature %30s = %15s\n", key, value);
+                int fidx = atoi(url_parser_get_parameter(urlp, "fidx", "0"));
+                isrc->set_format(isrc, fidx);
+                found[param_idx] = 1;
+                continue;
+            }
 
-                    if (!strcmp(key, "fidx")) {
-                        int fidx = atoi(url_parser_get_parameter(urlp, "fidx", "0"));
-                        isrc->set_format(isrc, fidx);
-                        found[param_idx] = 1;
-                        continue;
+            if (!strcmp(key, "format")) {
+                printf("image_source_dc1394.c: set feature %30s = %15s\n", key, value);
+                isrc->set_named_format(isrc, value);
+                found[param_idx] = 1;
+                continue;
+            }
+
+            // pass through a device-specific parameter.
+            for (int feature_idx = 0; feature_idx < isrc->num_features(isrc); feature_idx++) {
+
+                if (!strcmp(isrc->get_feature_name(isrc, feature_idx), key)) {
+                    char *endptr = NULL;
+                    double dv = strtod(value, &endptr);
+                    if (endptr != value + strlen(value)) {
+                        printf("Parameter for key '%s' is invalid. Must be a number.\n",
+                               isrc->get_feature_name(isrc, feature_idx));
+                        goto cleanup;
                     }
 
-                    if (!strcmp(key, "format")) {
-                        isrc->set_named_format(isrc, value);
-                        found[param_idx] = 1;
-                        continue;
-                    }
-                } else if (param_order == 1) { // set manual/auto or enabled/disabled (enabled or manual)
-                    if (strstr(key, "-manual") == NULL && strstr(key, "-enable") == NULL)
-                        continue;
-                } else if (param_order == 2){ // set values
-                    if (strstr(key, "-manual") != NULL || strstr(key, "-enable") != NULL)
-                        continue;
-                }
+                    int res = isrc->set_feature_value(isrc, feature_idx, dv);
+                    if (res != 0)
+                        printf("Error setting feature: key %s value %s, error code %d\n",
+                               key, value, res);
 
-                // pass through a device-specific parameter.
-                for (int feature_idx = 0; feature_idx < isrc->num_features(isrc); feature_idx++) {
+                    double setvalue = isrc->get_feature_value(isrc, feature_idx);
+                    printf("image_source_dc1394.c: set feature %30s = %15s. Actually set to %8.3f\n", key, value, setvalue);
 
-                    if (!strcmp(isrc->get_feature_name(isrc, feature_idx), key)) {
-                        char *endptr = NULL;
-                        double dv = strtod(value, &endptr);
-                        if (endptr != value + strlen(value)) {
-                            printf("Parameter for key '%s' is invalid. Must be a number.\n",
-                                   isrc->get_feature_name(isrc, feature_idx));
-                            goto cleanup;
-                        }
-
-                        int res = isrc->set_feature_value(isrc, feature_idx, dv);
-                        if (res != 0)
-                            printf("Error setting feature: key %s value %s, error code %d\n",
-                                   key, value, res);
-
-                        found[param_idx] = 1;
-                        break;
-                    }
+                    found[param_idx] = 1;
+                    break;
                 }
             }
         }
