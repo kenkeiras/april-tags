@@ -53,6 +53,19 @@ struct format_priv
     int color_coding_idx;
 };
 
+static int strobe_warned = 0;
+
+static void print_strobe_warning()
+{
+    if (strobe_warned == 0) {
+        printf("image_source_dc1394.c: Decoding strobe duration & delay number format not supported.\n");
+        printf("image_source_dc1394.c: Example values for FireFly MV: Delay = 2 (1ms), 6 (2ms), 14 (3ms), 1 (4ms).\n");
+        printf("image_source_dc1394.c: Contact developer if interested.\n");
+
+        strobe_warned = 1;
+    }
+}
+
 static int strposat(const char *haystack, const char *needle, int haystackpos)
 {
     int idx = haystackpos;
@@ -238,6 +251,63 @@ static int num_features(image_source_t *isrc)
     return 39;
 }
 
+static char* dc1394_feature_id_to_string(unsigned int id)
+{
+    switch (id)
+    {
+        case DC1394_FEATURE_BRIGHTNESS:
+            return "brightness";
+        case DC1394_FEATURE_EXPOSURE:
+            return "exposure";
+        case DC1394_FEATURE_SHARPNESS:
+            return "sharpness";
+        case DC1394_FEATURE_WHITE_BALANCE:
+            return "white balance";
+        case DC1394_FEATURE_HUE:
+            return "hue";
+        case DC1394_FEATURE_SATURATION:
+            return "saturation";
+        case DC1394_FEATURE_GAMMA:
+            return "gamma";
+        case DC1394_FEATURE_SHUTTER:
+            return "shutter";
+        case DC1394_FEATURE_GAIN:
+            return "gain";
+        case DC1394_FEATURE_IRIS:
+            return "iris";
+        case DC1394_FEATURE_FOCUS:
+            return "focus";
+        case DC1394_FEATURE_TEMPERATURE:
+            return "temperature";
+        case DC1394_FEATURE_TRIGGER:
+            return "trigger";
+        case DC1394_FEATURE_TRIGGER_DELAY:
+            return "trigger delay";
+        case DC1394_FEATURE_WHITE_SHADING:
+            return "white shading";
+        case DC1394_FEATURE_FRAME_RATE:
+            return "frame rate";
+        case DC1394_FEATURE_ZOOM:
+            return "zoom";
+        case DC1394_FEATURE_PAN:
+            return "pan";
+        case DC1394_FEATURE_TILT:
+            return "tilt";
+        case DC1394_FEATURE_OPTICAL_FILTER:
+            return "optical filter";
+        case DC1394_FEATURE_CAPTURE_SIZE:
+            return "capture size";
+        case DC1394_FEATURE_CAPTURE_QUALITY:
+            return "capture quality";
+        default:
+            printf("image_source_dc1394.c: cannot determine feature name for feature %d\n", id);
+            return "unknown";
+    }
+
+    printf("image_source_dc1394.c: cannot determine feature name for feature %d\n", id);
+    return "unknown";
+}
+
 static const char* get_feature_name(image_source_t *isrc, int idx)
 {
     switch(idx)
@@ -311,7 +381,7 @@ static const char* get_feature_name(image_source_t *isrc, int idx)
     case 33:
         return "strobe-3-duration";
     case 34:
-        return "external-trigger-power";
+        return "external-trigger-manual";
     case 35:
         return "external-trigger-mode";
     case 36:
@@ -382,7 +452,7 @@ static uint32_t get_strobe_control_offset(uint32_t strobe)
     return 0;
 }
 
-static uint32_t get_strobe_min(image_source_t *isrc, uint32_t strobe)
+static double get_strobe_min(image_source_t *isrc, uint32_t strobe)
 {
     impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
 
@@ -392,10 +462,10 @@ static uint32_t get_strobe_min(image_source_t *isrc, uint32_t strobe)
         return 0;
 
     value = flip_endianness(value);
-    return (value >> 8) & 0xFFF;
+    return (double) ((value >> 8) & 0xFFF);
 }
 
-static uint32_t get_strobe_max(image_source_t *isrc, uint32_t strobe)
+static double get_strobe_max(image_source_t *isrc, uint32_t strobe)
 {
     impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
 
@@ -405,7 +475,7 @@ static uint32_t get_strobe_max(image_source_t *isrc, uint32_t strobe)
         return 0;
 
     value = flip_endianness(value);
-    return (value >> 20) & 0xFFF;
+    return (double) ((value >> 20) & 0xFFF);
 }
 
 static uint32_t get_strobe_power(image_source_t *isrc, uint32_t strobe)
@@ -434,7 +504,7 @@ static uint32_t get_strobe_polarity(image_source_t *isrc, uint32_t strobe)
     return (value >> 7) & 0x1;
 }
 
-static uint32_t get_strobe_delay(image_source_t *isrc, uint32_t strobe)
+static double get_strobe_delay(image_source_t *isrc, uint32_t strobe)
 {
     impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
 
@@ -443,11 +513,12 @@ static uint32_t get_strobe_delay(image_source_t *isrc, uint32_t strobe)
     if (dc1394_get_strobe_register(impl->cam, offset, &value) != DC1394_SUCCESS)
         return 0;
 
+    print_strobe_warning();
     value = flip_endianness(value);
-    return flip_endianness((value >> 8) & 0xFFF);
+    return (double) ((value >> 8) & 0xFFF);
 }
 
-static uint32_t get_strobe_duration(image_source_t *isrc, uint32_t strobe)
+static double get_strobe_duration(image_source_t *isrc, uint32_t strobe)
 {
     impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
 
@@ -456,8 +527,9 @@ static uint32_t get_strobe_duration(image_source_t *isrc, uint32_t strobe)
     if (dc1394_get_strobe_register(impl->cam, offset, &value) != DC1394_SUCCESS)
         return 0;
 
+    print_strobe_warning();
     value = flip_endianness(value);
-    return flip_endianness((value >> 20) & 0xFFF);
+    return (double) ((value >> 20) & 0xFFF);
 }
 
 static dc1394error_t set_strobe_power(image_source_t *isrc, uint32_t strobe, uint32_t v)
@@ -542,6 +614,7 @@ static dc1394error_t set_strobe_delay(image_source_t *isrc, uint32_t strobe, uin
     // make little endian
     value = flip_endianness(value);
 
+    print_strobe_warning();
     return dc1394_set_strobe_register(impl->cam, offset, value);
 }
 
@@ -561,6 +634,7 @@ static dc1394error_t set_strobe_duration(image_source_t *isrc, uint32_t strobe, 
     // make little endian
     value = flip_endianness(value);
 
+    print_strobe_warning();
     return dc1394_set_strobe_register(impl->cam, offset, value);
 }
 
@@ -635,7 +709,7 @@ static double get_feature_min(image_source_t *isrc, int idx)
         return get_strobe_min(isrc, 3);
     case 33: // strobe-3-duration
         return get_strobe_min(isrc, 3);
-    case 34: // external-trigger-power
+    case 34: // external-trigger-manual
         return 0;
     case 35: // external-trigger-mode
         return 0;
@@ -721,7 +795,7 @@ static double get_feature_max(image_source_t *isrc, int idx)
         return get_strobe_max(isrc, 3);
     case 33: // strobe-3-duration
         return get_strobe_max(isrc, 3);
-    case 34: // external-trigger-power
+    case 34: // external-trigger-manual
         return 1;
     case 35: // external-trigger-mode
         return DC1394_TRIGGER_MODE_MAX - DC1394_TRIGGER_MODE_MIN;
@@ -925,7 +999,7 @@ static double get_feature_value(image_source_t *isrc, int idx)
         return get_strobe_duration(isrc, 3);
     }
 
-    case 34: { // external-trigger-power
+    case 34: { // external-trigger-manual
         impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
 
         dc1394switch_t ext_pwr;
@@ -1230,7 +1304,7 @@ static int set_feature_value(image_source_t *isrc, int idx, double v)
         return set_strobe_duration(isrc, 3, v);
     }
 
-    case 34: { // external-trigger-power
+    case 34: { // external-trigger-manual
         return dc1394_external_trigger_set_power(impl->cam, (uint32_t) v);
     }
 
@@ -1590,6 +1664,8 @@ static void printInfo(image_source_t *isrc)
             printf("\terror reading sources supported\n");
         }
     }
+
+    fflush(stdout);
 }
 
 /** Open the given guid, or if -1, open the first camera available. **/
@@ -1699,7 +1775,9 @@ image_source_t *image_source_dc1394_open(url_parser_t *urlp)
         for (int i = 0; i < DC1394_FEATURE_NUM; i++) {
             dc1394feature_info_t *f = &impl->features.feature[i];
             if (f->available && f->absolute_capable && !f->abs_control) {
-                printf("absolute mode\n");
+                printf("image_source_dc1394.c: automatically enabled absolute mode for dc1394 feature '%s'\n",
+                       dc1394_feature_id_to_string(f->id));
+                fflush(stdout);
                 dc1394_feature_set_absolute_control(impl->cam, f->id, DC1394_ON);
                 reread = 1;
             }
