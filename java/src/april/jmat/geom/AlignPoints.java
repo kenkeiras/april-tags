@@ -164,6 +164,8 @@ public class AlignPoints
             double sumDimErr = 0;
             double maxDimErr = 0;
             int npts = 0;
+            double sumTime = 0;
+            double maxTime = 0;
             april.util.Tic tic = new april.util.Tic();
             int ntrials = 1000;
             for (int trial  = 0; trial < ntrials; trial++) {
@@ -194,11 +196,13 @@ public class AlignPoints
                     end.add(e);
                 }
 
+                tic.tic();
                 double H[][] = null;
                 if (dim == 2 && dimIdx == dimensions.length -1)
                     H = xytToMatrix33(AlignPoints2D.align(start,end));
                 else
                     H = align(start,end);
+                double time = tic.toc();
 
                 // System.out.println("T");
                 // LinAlg.print(T);
@@ -218,11 +222,12 @@ public class AlignPoints
                 maxDimErr = Math.max(err/ start.size(), maxDimErr);
                 sumDimErr += err;
                 npts += start.size();
+                maxTime = Math.max(maxTime, time);
+                sumTime += time;
             }
-            double t = tic.toc();
 
-            System.out.printf("Finished dim %d:   maxErr = %.15f,    avgErr = %.15f   time = %.8f (per trial)\n",
-                              dim, maxDimErr, sumDimErr/npts, t/ntrials);
+            System.out.printf("Finished dim %d:   maxErr = %.15f,    avgErr = %.15f   time(avg)  = %.8f  time(max) = %.8f\n",
+                              dim, maxDimErr, sumDimErr/npts, sumTime/ntrials, maxTime);
         }
 
     }
