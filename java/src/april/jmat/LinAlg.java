@@ -2502,6 +2502,24 @@ public final class LinAlg
         return new double[][] { { sa, b/sa },
                                 { 0, Math.sqrt(c - b*b/a) } };
     }
+
+    // compute determinant of small matrix. For large matrices an
+    // alright method is to take product of diagonals of L and U
+    public static double det33(double A[][])
+    {
+        assert(A.length == 3 && A[0].length == 3);
+
+        return -A[0][2]*A[1][1]*A[2][0] + A[0][1]*A[1][2]*A[2][0] + A[0][2]*A[1][0]*A[2][1]
+            - A[0][0]*A[1][2]*A[2][1] - A[0][1]*A[1][0]*A[2][2] + A[0][0]*A[1][1]*A[2][2];
+    }
+
+    public static double det22(double A[][])
+    {
+        assert(A.length == 2 && A[0].length == 2);
+
+        return A[0][0]*A[1][1] - A[1][0] *A[0][1];
+    }
+
 }
 
 
