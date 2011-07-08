@@ -3,7 +3,7 @@ package april.jmat.geom;
 import java.util.*;
 import april.jmat.*;
 
-public class AlignPoints
+public class AlignPoints3D
 {
 
     // returns T, an n+1 by n+1 homogeneous transform points of dimension n
@@ -113,6 +113,7 @@ public class AlignPoints
                 M[i][j] = r.nextGaussian();
 
         QRDecomposition qr = new QRDecomposition(new Matrix(M));
+
         return qr.getQ().copyArray();
     }
 
@@ -163,6 +164,7 @@ public class AlignPoints
 
             double sumDimErr = 0;
             double maxDimErr = 0;
+            double minDimErr = Double.MAX_VALUE;
             int npts = 0;
             double sumTime = 0;
             double maxTime = 0;
@@ -172,12 +174,14 @@ public class AlignPoints
                 // generate N random vectors, translate, rotate them and check that we solve correctly
 
                 double R[][] = randomOrthogonalMatrix(dim, r);
-                double t[] = randomVector(dim, trial < 10 ? 0 : 10.0, r); // do ten trials with no translation
-                if (det(R) < 0) { // make R right handed
+                double t[] = randomVector(dim, trial < 10 ? 0.0 : 10.0, r); // do ten trials with no translation
+                double rDet = det(R);
+                if (rDet < 0) { // make R right handed
                     double S[][] = LinAlg.identity(dim);
                     S[dim-1][dim-1] = -1;
                     R = LinAlg.matrixAB(R,S);
                 }
+
                 double T[][] = LinAlg.identity(dim+1);
                 for (int i = 0; i < dim; i++)
                     for (int j = 0; j < dim; j++)
@@ -204,11 +208,6 @@ public class AlignPoints
                     H = align(start,end);
                 double time = tic.toc();
 
-                // System.out.println("T");
-                // LinAlg.print(T);
-                // System.out.println("H");
-                // LinAlg.print(H);
-
                 double err = 0;
                 for (int i = 0; i < start.size(); i++) {
                     double s[] = start.get(i);
@@ -220,14 +219,15 @@ public class AlignPoints
                 }
 
                 maxDimErr = Math.max(err/ start.size(), maxDimErr);
+                minDimErr = Math.min(err/ start.size(), minDimErr);
                 sumDimErr += err;
                 npts += start.size();
                 maxTime = Math.max(maxTime, time);
                 sumTime += time;
             }
 
-            System.out.printf("Finished dim %d:   maxErr = %.15f,    avgErr = %.15f   time(avg)  = %.8f  time(max) = %.8f\n",
-                              dim, maxDimErr, sumDimErr/npts, sumTime/ntrials, maxTime);
+            System.out.printf("Finished dim %d:   Err min/max/avg  %.15f / %.15f / %.15f    time(avg)  = %.8f  time(max) = %.8f\n",
+                              dim, minDimErr, maxDimErr, sumDimErr/npts, sumTime/ntrials, maxTime);
         }
 
     }
