@@ -19,4 +19,24 @@ public class ReflectUtil
             return null;
         }
     }
+
+
+    public static Object createObject(String className, Object ... args)
+    {
+        try {
+            Class cls = Class.forName(className);
+            Class clss[] = new Class[args.length];
+            for (int i = 0; i < args.length; i++)
+                clss[i] = args[i].getClass();
+
+            Object o = cls.getConstructor(clss).newInstance(args);
+            return o;
+        } catch (Exception ex) {
+           System.out.println("ReflectUtil.createObject ex: "+ex);
+           ex.printStackTrace();
+            return null;
+        }
+    }
+
+
 }
