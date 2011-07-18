@@ -57,10 +57,11 @@ public class GXYEdge extends GEdge
 
         double xa = gna.state[0], ya = gna.state[1], ta = 0;
         double xb = gnb.state[0], yb = gnb.state[1], tb = 0;
-        double sa = Math.sin(ta), ca = Math.cos(ta);
 
         if (gna instanceof GXYTNode)
             ta = gna.state[2];
+
+        double sa = Math.sin(ta), ca = Math.cos(ta);
 
 
         double zpred[] = LinAlg.resize(LinAlg.xytInvMul31(new double[] {xa, ya, ta},

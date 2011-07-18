@@ -14,6 +14,12 @@ public class CholeskySolver implements GraphSolver
 
     Matrix L;
 
+    // Consistency Constructor Solver(Graph g)
+    public CholeskySolver(Graph g)
+    {
+        this(g, new MinimumDegreeOrdering());
+    }
+
     public CholeskySolver(Graph g, Ordering ordering)
     {
         this.g = g;
