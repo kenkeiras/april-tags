@@ -4,7 +4,7 @@ public class ConstantColorizer implements Colorizer
 {
     int aarrggbb;
 
-    ConstantColorizer(int aarrggbb)
+    public ConstantColorizer(int aarrggbb)
     {
         this.aarrggbb = aarrggbb;
     }
