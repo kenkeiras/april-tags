@@ -725,16 +725,14 @@ public class TagDetector
             }
         }
 
-        if (debug) {
-            if (debugSegments != null)
-                debugSegments.switchBuffer();
-            if (debugQuads != null)
-                debugQuads.switchBuffer();
-            if (debugSamples != null)
-                debugSamples.switchBuffer();
-            if (debugLabels != null)
-                debugLabels.switchBuffer();
-        }
+        if (debugSegments != null)
+            debugSegments.switchBuffer();
+        if (debugQuads != null)
+            debugQuads.switchBuffer();
+        if (debugSamples != null)
+            debugSamples.switchBuffer();
+        if (debugLabels != null)
+            debugLabels.switchBuffer();
 
         ////////////////////////////////////////////////////////////////
         // Step nine. Some quads may be detected more than once, due
