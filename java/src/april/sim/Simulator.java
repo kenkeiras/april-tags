@@ -65,6 +65,7 @@ public class Simulator implements VisConsole.Listener
 
         jf.setSize(800,600);
         jf.setVisible(true);
+        jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         vc.addEventHandler(new MyEventHandler());
 
@@ -253,6 +254,27 @@ public class Simulator implements VisConsole.Listener
         public String getName()
         {
             return "World Editor";
+        }
+
+        public void doHelp(HelpOutput houts)
+        {
+            houts.beginMouseCommands(this);
+            houts.addMouseCommand(this, HelpOutput.LEFT | HelpOutput.DRAG,
+								  "Move selected object (xy plane)");
+            houts.addMouseCommand(this, HelpOutput.LEFT | HelpOutput.CTRL | HelpOutput.DRAG,
+								  "Create or resize selected SimBox");
+            houts.addMouseCommand(this, HelpOutput.LEFT | HelpOutput.SHIFT | HelpOutput.DRAG,
+								  "Rotate selected object (xy plane)");
+
+            houts.beginKeyboardCommands(this);
+            houts.addKeyboardCommand(this, "r", 0, "Set color to Red");
+            houts.addKeyboardCommand(this, "g", 0, "Set color to Gray");
+            houts.addKeyboardCommand(this, "b", 0, "Set color to Blue");
+            houts.addKeyboardCommand(this, "m", 0, "Set color to Magenta");
+            houts.addKeyboardCommand(this, "c", 0, "Set color to Cyan");
+            houts.addKeyboardCommand(this, "[1-9]", 0, "Set selected SimBox size");
+            houts.addKeyboardCommand(this, "delete", 0, "Delete selected object");
+            houts.addKeyboardCommand(this, "backspace", 0, "Delete selected object");
         }
 
         public boolean mouseReleased(VisCanvas vc, GRay3D ray, MouseEvent e)
