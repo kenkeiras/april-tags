@@ -15,8 +15,8 @@ import lcm.lcm.*;
 /** Workhorse of 2D and 3D data viewing. **/
 public class VisData implements VisObject, VisSerializable
 {
-    ArrayList<double[]> points = new ArrayList<double[]>();
-    ArrayList<VisDataStyle> styles = new ArrayList<VisDataStyle>();
+    public ArrayList<double[]> points = new ArrayList<double[]>();
+    public ArrayList<VisDataStyle> styles = new ArrayList<VisDataStyle>();
 
     DoubleBuffer vertexbuf;
 
