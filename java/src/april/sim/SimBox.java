@@ -19,7 +19,6 @@ public class SimBox implements SimObject
 
     public double[][] getPose()
     {
-        this.T[2][3] = sxyz[2] / 2;
         return LinAlg.copy(T);
     }
 

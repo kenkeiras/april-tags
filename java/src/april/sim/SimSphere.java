@@ -19,7 +19,6 @@ public class SimSphere implements SimObject
 
     public double[][] getPose()
     {
-        this.T[2][3] = r;
         return LinAlg.copy(T);
     }
 
