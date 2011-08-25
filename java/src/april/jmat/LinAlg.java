@@ -2462,7 +2462,8 @@ public final class LinAlg
      * positive on the other side.
      *
      * The plane and points must be in the same coordinate frame
-     * (@see tranformPlanes())
+     * @see #transformPlane(double[][], double[])
+
      *
      * We then test each of the points; if they are all on the
      * positive side of the plane, we return true.
@@ -2475,8 +2476,11 @@ public final class LinAlg
      * returning early) when checking the planes of one hull to the
      * points of another.  In these cases, we know that any negative
      * value is a violation.
+     * @param points an arraylist of 3D points (in coord frame A)
+     * @param plane vector {A, B, C, D} (also in coord frame A)
+     * @return boolean as true if all points are above plane.
      **/
-    public static boolean pointsAbovePlane(double[] plane, ArrayList<double[]> points)
+    public static boolean pointsAbovePlane(ArrayList<double[]> points, double[] plane)
     {
         for (double p[] : points) {
             double v = plane[0] * p[0] + plane[1] * p[1] + plane[2] * p[2] + plane[3];
@@ -2534,30 +2538,22 @@ public final class LinAlg
     }
 
     /** This function analyzes which side of a plane a set of points
-     * resides.  This function defines a plane by its normal and a
-     * point on the plane.
+     * resides, where the plane is defined by its normal and a point
+     * on the plane.
      *
-     * An absence of a collision is defined as the presence of a plane
-     * such that all the points of one hull are above the plane and
-     * the points of the other hull are below this plane.  First check
-     * the planes of the hull, with the simplified pointsAbovePlane()
-     * function, but the full convex hull collision test requires also
-     * checking additional planes (namely those with normals equal to
-     * the cross-product of 2 edges, one from each hull).
+     * @see #pointsOnWhichSideOfPlane(ArrayList<double[]>, double[]),
+     * description* where the plane is defined by plane equation, for
+     * descriptiona * full description.
      *
-     * This function is a more general formulation of the
-     * pointsAbovePlane() function, required for 6DOF hulls, and
-     * returns one of three values {-1, 0, 1} depending on what side
-     * of the face all the points are on.
-     *
-     * @param points an arraylist of 3D points (in coord frame A)
-     * @param unit normal vector for a surface
-     * @param any point on the same surface as normal vector comes from
+     * @param points an arraylist of 3D points (in coord. frame A)
+     * @param normal vector for a surface (need not be unit length)
+     * @param p is any point on the same surface as normal vector
+     * comes from (in coord. frame A)
      * @return {-1, 0, 1}: '1' when all points are above plane, '-1'
      * when all points are below the plane and '0' when points are
      * both above and below the plane.
     **/
-    public static int pointsOnWhichSideOfFace(ArrayList<double[]> points,
+    public static int pointsOnWhichSideOfPlane(ArrayList<double[]> points,
                                               double[] normal, double[] p)
     {
         boolean pos = false;

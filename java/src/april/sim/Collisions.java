@@ -123,10 +123,10 @@ public class Collisions
 
         // check the easy cases (handles 2D case) use planes as separators
         for (double [] plane : sa2.planes)
-            if (LinAlg.pointsAbovePlane(plane, sb2.vertices))
+            if (LinAlg.pointsAbovePlane(sb2.vertices, plane))
                 return false;
         for (double [] plane : sb2.planes)
-            if (LinAlg.pointsAbovePlane(plane, sa2.vertices))
+            if (LinAlg.pointsAbovePlane(sa2.vertices, plane))
                 return false;
 
         // must check for other separators by using cross-products of all edges between shapes
@@ -134,11 +134,11 @@ public class Collisions
             for(BoxShape.Edge edgeB : sb2.getEdges()){
                 double[] cross = LinAlg.crossProduct(edgeA.getVector(), edgeB.getVector());
 
-                int sideA = LinAlg.pointsOnWhichSideOfFace(sa2.vertices, cross, edgeA.v1);
+                int sideA = LinAlg.pointsOnWhichSideOfPlane(sa2.vertices, cross, edgeA.v1);
                 if (sideA == 0)
                     continue;
 
-                int sideB = LinAlg.pointsOnWhichSideOfFace(sb2.vertices, cross, edgeA.v1);
+                int sideB = LinAlg.pointsOnWhichSideOfPlane(sb2.vertices, cross, edgeA.v1);
                 if (sideB == 0)
                     continue;
                 if (sideA * sideB < 0)
