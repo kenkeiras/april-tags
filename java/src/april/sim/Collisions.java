@@ -121,10 +121,30 @@ public class Collisions
         BoxShape sa2 = sa.transform(Ta);
         BoxShape sb2 = sb.transform(Tb);
 
-        if (LinAlg.faceBelowPoints(sa2.planes, sb2.vertices) ||
-            LinAlg.faceBelowPoints(sb2.planes, sa2.vertices))
-            return false;
+        // check the easy cases (handles 2D case) use planes as separators
+        for (double [] plane : sa2.planes)
+            if (LinAlg.pointsAbovePlane(plane, sb2.vertices))
+                return false;
+        for (double [] plane : sb2.planes)
+            if (LinAlg.pointsAbovePlane(plane, sa2.vertices))
+                return false;
 
+        // must check for other separators by using cross-products of all edges between shapes
+        for(BoxShape.Edge edgeA : sa2.getEdges()){
+            for(BoxShape.Edge edgeB : sb2.getEdges()){
+                double[] cross = LinAlg.crossProduct(edgeA.getVector(), edgeB.getVector());
+
+                int sideA = LinAlg.pointsOnWhichSideOfFace(sa2.vertices, cross, edgeA.v1);
+                if (sideA == 0)
+                    continue;
+
+                int sideB = LinAlg.pointsOnWhichSideOfFace(sb2.vertices, cross, edgeA.v1);
+                if (sideB == 0)
+                    continue;
+                if (sideA * sideB < 0)
+                    return false;
+            }
+        }
         return true;
     }
 
