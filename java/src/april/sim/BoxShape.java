@@ -5,7 +5,8 @@ import java.util.*;
 
 public class BoxShape implements Shape
 {
-    double sxyz[];
+    double sxyz[];  // cartesian size
+    private double r;       // bounding radius
 
     ArrayList<double[]> planes;
     ArrayList<double[]> vertices;
@@ -47,6 +48,11 @@ public class BoxShape implements Shape
         return edges;
     }
 
+    public double getBoundingRadius()
+    {
+        return r;
+    }
+
     public BoxShape(double sx, double sy, double sz)
     {
         this(new double[] { sx, sy, sz } );
@@ -77,6 +83,8 @@ public class BoxShape implements Shape
         for (int i = 0; i < EDGE_PAIRS.length; i++)
             edges.add(new Edge(vertices.get(EDGE_PAIRS[i][0]),
                                vertices.get(EDGE_PAIRS[i][1])));
+
+        r = Math.sqrt(sxyz[0]*sxyz[0] + sxyz[1]*sxyz[1] + sxyz[2]*sxyz[2]) / 2;  // calculate once
     }
 
     protected BoxShape()
@@ -89,6 +97,7 @@ public class BoxShape implements Shape
         bs.sxyz = LinAlg.copy(sxyz);
         bs.vertices = LinAlg.transform(T, vertices);
         bs.planes = LinAlg.transformPlanes(T, planes);
+        bs.r = r;
 
         bs.edges = new ArrayList<Edge>();
         for (int i = 0; i < EDGE_PAIRS.length; i++)
