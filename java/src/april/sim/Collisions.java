@@ -16,10 +16,10 @@ public class Collisions
         // do fast check first (must check scale on T also)
         double scaleA = Math.sqrt(LinAlg.sq(Ta[0][0]) + LinAlg.sq(Ta[1][0]) + LinAlg.sq(Ta[2][0]));
         double scaleB = Math.sqrt(LinAlg.sq(Tb[0][0]) + LinAlg.sq(Tb[1][0]) + LinAlg.sq(Tb[2][0]));
-        double minDist = scaleA*_sa.getBoundingRadius() + scaleB*_sb.getBoundingRadius();
-        if (minDist < Math.sqrt(LinAlg.sq(Ta[0][3]-Tb[0][3]) +
-                                LinAlg.sq(Ta[1][3]-Tb[1][3]) +
-                                LinAlg.sq(Ta[2][3]-Tb[2][3]))) {
+        double minDist2 = LinAlg.sq(scaleA * _sa.getBoundingRadius() + scaleB * _sb.getBoundingRadius());
+        if (minDist2 < (LinAlg.sq(Ta[0][3]-Tb[0][3]) +
+                        LinAlg.sq(Ta[1][3]-Tb[1][3]) +
+                        LinAlg.sq(Ta[2][3]-Tb[2][3]))) {
             return false;
         }
 
@@ -86,8 +86,6 @@ public class Collisions
 
     public static boolean collision(BoxShape sa, double Ta[][], SphereShape sb, double Tb[][])
     {
-        // TODO: fast check first?
-
         // p_g = Ta p_a
         // p_g = Tb p_b
         // Ta p_a = Tb p_b
@@ -126,8 +124,6 @@ public class Collisions
 
     public static boolean collision(BoxShape sa, double Ta[][], BoxShape sb, double Tb[][])
     {
-        // TODO: fast check first?
-
         BoxShape sa2 = sa.transform(Ta);
         BoxShape sb2 = sb.transform(Tb);
 

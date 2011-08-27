@@ -35,9 +35,9 @@ public class CompoundShape implements Shape
             else {
                 ops.add(os[i]);
 
-                // now update mad radius
-
-                // use ops not os because last Object from previous add call could be double[][]
+                // now update max radius and use ops (not os) because
+                // last Object from previous add() call could have
+                // been a double[][]
                 int s = ops.size();
                 if (s > 1) {
                     Object o = ops.get(s-2);
@@ -61,6 +61,15 @@ public class CompoundShape implements Shape
     public double getBoundingRadius()
     {
         return r;
+    }
+
+    /** Allow users to manually set a compound shape's radius.  This
+        is because the upper bound caclulated above may be too
+        pessimistic **/
+    public void setBoundingRadius(double r)
+    {
+        if (r > 0)
+            this.r = r;
     }
 
     private void add(double M[][])
