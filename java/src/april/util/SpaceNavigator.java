@@ -46,6 +46,7 @@ import april.util.*;
 public class SpaceNavigator
 {
     boolean hexdump;
+    boolean verbose;
 
     int open_attempts = 0;
     int max_attempts = 10;
@@ -59,12 +60,18 @@ public class SpaceNavigator
 
     public SpaceNavigator()
     {
-        this(false);
+        this(false, false);
     }
 
     public SpaceNavigator(boolean hexdump)
     {
+        this(hexdump, false);
+    }
+
+    public SpaceNavigator(boolean hexdump, boolean verbose)
+    {
         this.hexdump = hexdump;
+        this.verbose = verbose;
 
         // initialize stream
         FileInputStream f = initialize(false);
@@ -166,7 +173,8 @@ public class SpaceNavigator
 
                     short type  = (short) (((buf[17] & 0xFF) << 8) | ((buf[16] & 0xFF)));
                     short index = (short) (((buf[19] & 0xFF) << 8) | ((buf[18] & 0xFF)));
-                    int value   = ((buf[23] & 0xFF) << 24) | ((buf[22] & 0xFF) << 16) | ((buf[21] & 0xFF) << 8) | ((buf[20] & 0xFF));
+                    int value   = (((buf[23] & 0xFF) << 24) | ((buf[22] & 0xFF) << 16) |
+                                   ((buf[21] & 0xFF) << 8) | ((buf[20] & 0xFF)));
 
                     switch (type) {
                         // motion event
@@ -206,6 +214,9 @@ public class SpaceNavigator
                             break;
                     }
 
+                    if (verbose)
+                        System.out.printf("type: %3d index: %3d value: %5d\n", type, index, value);
+
                     if (hexdump) {
                         for (int i=0; i < buf.length; i++)
                             System.out.printf("%2X ", buf[i] & 0xFF);
@@ -234,6 +245,7 @@ public class SpaceNavigator
 
         opts.addBoolean('h',"help",false,"See this help screen");
         opts.addBoolean('x',"hexdump",false,"Enable hex dump");
+        opts.addBoolean('v',"verbose",false,"Enable verbose");
 
         if (!opts.parse(args)) {
             System.out.println("option error: "+opts.getReason());
@@ -246,8 +258,9 @@ public class SpaceNavigator
         }
 
         boolean hexdump = opts.getBoolean("hexdump");
+        boolean verbose = opts.getBoolean("verbose");
 
-        SpaceNavigator sn = new SpaceNavigator(hexdump);
+        SpaceNavigator sn = new SpaceNavigator(hexdump, verbose);
         sn.addListener(new ExampleListener());
     }
 }
