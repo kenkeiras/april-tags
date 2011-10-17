@@ -179,6 +179,7 @@ public class SpaceNavigator
                     switch (type) {
                         // motion event
                         case 2:
+                        case 3:
                             values[index] = value;
                             button_event = false;
                             break;
