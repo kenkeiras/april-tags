@@ -22,25 +22,54 @@ public class VisBox implements VisObject, VisSerializable
 
     public VisBox()
     {
-         // For Serializable
+        // For Serializable
+    }
+
+    public VisBox(double[] args, Color fillcolor)
+    {
+        if (args.length == 6)
+            initialize(args[0], args[1], args[2], args[3], args[4], args[5], fillcolor, null);
+        else if (args.length == 3)
+            initialize(0, 0, 0, args[0], args[1], args[2], fillcolor, null);
+        else
+            assert(false);
+    }
+
+    public VisBox(double[] args, VisDataFillStyle style)
+    {
+        if (args.length == 6)
+            initialize(args[0], args[1], args[2], args[3], args[4], args[5], style.c, null);
+        else if (args.length == 3)
+            initialize(0, 0, 0, args[0], args[1], args[2], style.c, null);
+        else
+            assert(false);
     }
 
     public VisBox(double sizex, double sizey, double sizez, Color fillcolor)
     {
-        this(0, 0, 0, sizex, sizey, sizez, fillcolor, null);
+        initialize(0, 0, 0, sizex, sizey, sizez, fillcolor, null);
     }
 
     public VisBox(double sizex, double sizey, double sizez, VisDataFillStyle style)
     {
-        this(0, 0, 0, sizex, sizey, sizez, style.c, null);
+        initialize(0, 0, 0, sizex, sizey, sizez, style.c, null);
     }
 
-    public VisBox(double cx, double cy, double cz, double sizex, double sizey, double sizez, Color fillcolor)
+    public VisBox(double cx, double cy, double cz, double sizex, double sizey, double sizez,
+                  Color fillcolor)
     {
-        this(cx, cy, cz, sizex, sizey, sizez, fillcolor, null);
+        initialize(cx, cy, cz, sizex, sizey, sizez, fillcolor, null);
     }
 
-    public VisBox(double cx, double cy, double cz, double sizex, double sizey, double sizez, Color fillcolor, Color linecolor)
+    public VisBox(double cx, double cy, double cz, double sizex, double sizey, double sizez,
+                  Color fillcolor, Color linecolor)
+    {
+        initialize(cx, cy, cz, sizex, sizey, sizez, fillcolor, linecolor);
+    }
+
+    private void initialize (double cx, double cy, double cz,
+                             double sizex, double sizey, double sizez,
+                             Color fillcolor, Color linecolor)
     {
         this.cx = cx;
         this.cy = cy;
