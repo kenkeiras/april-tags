@@ -22,11 +22,11 @@ import javax.media.opengl.glu.*;
 public class Simulator implements VisConsole.Listener
 {
     JFrame jf;
-    VisWorld vw = new VisWorld();
+    public VisWorld vw = new VisWorld();
     VisCanvas vc = new VisCanvas(vw);
     VisConsole console = new VisConsole(vc, vw);
 
-    SimWorld world;
+    public SimWorld world;
     String worldFilePath = "/tmp/world.world";
 
     static final double MIN_SIZE = 0.25;

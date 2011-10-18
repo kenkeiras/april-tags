@@ -50,4 +50,22 @@ public class BoxShape implements Shape
         return bs;
     }
 
+    // Returns a deep copy of vertices
+    public ArrayList<double[]> getVertices()
+    {
+        ArrayList<double[]> v = new ArrayList<double[]>();
+        for (double [] p : vertices)
+            v.add(LinAlg.copy(p));
+        return v;
+    }
+
+    // Returns a deep copy of planes
+    public ArrayList<double[]> getPlanes()
+    {
+        ArrayList<double[]> v = new ArrayList<double[]>();
+        for (double [] p : planes)
+            v.add(LinAlg.copy(p));
+        return v;
+    }
+
 }
