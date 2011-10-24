@@ -221,13 +221,15 @@ public class Simulator implements VisConsole.Listener
             VisWorld.Buffer vb = vw.getBuffer("collide-info");
             boolean collide = false;
 
-            if (selectedObject != null) {
+            SimObject curSelectedObject = selectedObject;
+            if (curSelectedObject != null) {
                 // does this object now collide with anything else?
-
                 synchronized(world) {
                     for (SimObject so : world.objects) {
-                        if (so != selectedObject && Collisions.collision(so.getShape(), so.getPose(),
-                                                                         selectedObject.getShape(), selectedObject.getPose())) {
+                        if (so != curSelectedObject && Collisions.collision(so.getShape(),
+                                                                            so.getPose(),
+                                                                            curSelectedObject.getShape(),
+                                                                            curSelectedObject.getPose())) {
                             collide = true;
                             break;
                         }

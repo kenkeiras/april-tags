@@ -19,4 +19,9 @@ public class SphereShape implements Shape
     {
         return r;
     }
+
+    public double getBoundingRadius()
+    {
+        return r;
+    }
 }
