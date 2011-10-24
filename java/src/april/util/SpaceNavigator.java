@@ -216,7 +216,8 @@ public class SpaceNavigator
                     }
 
                     if (verbose)
-                        System.out.printf("type: %3d index: %3d value: %5d\n", type, index, value);
+                        System.out.printf("type: %3d index: %3d value: %5d bytesRead: %5d\n",
+                                          type, index, value, r);
 
                     if (hexdump) {
                         for (int i=0; i < buf.length; i++)
