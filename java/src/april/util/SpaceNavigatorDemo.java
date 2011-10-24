@@ -85,11 +85,31 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
         long now = TimeUtil.utime();
         double dt = (now - last) / 1.0E6;
         last = now;
-        vw.getBuffer("FPS").addBuffered(new VisText(VisText.ANCHOR.TOP_LEFT,
-                                                    String.format("FPS: %3.1f",
-                                                                  1.0/dt)));
-        vw.getBuffer("FPS").switchBuffer();
+        VisWorld.Buffer vb = vw.getBuffer("FPS");
+        vb.addBuffered(new VisText(VisText.ANCHOR.TOP_LEFT, String.format("FPS: %3.1f", 1.0/dt)));
+        vb.switchBuffer();
 
+
+        String str = String.format("Last Event:\n<<mono-normal>>" +
+                                   "%4d :x\n%4d :y\n%4d :z\n%4d :r\n%4d :p\n%4d :t",
+                                   me.x, me.y, me.z, me.roll, me.pitch, me.yaw);
+        vb = vw.getBuffer("MOTION_EVENT");
+        vb.addBuffered(new VisText(VisText.ANCHOR.TOP_RIGHT, VisText.JUSTIFICATION.RIGHT, str));
+        vb.switchBuffer();
+
+
+        // display cross at center of rotation (eye) in 2 colors to ensure
+        vb = vw.getBuffer("CENTER");
+        vb.addBuffered(new VisText(VisText.ANCHOR.CENTER, VisText.JUSTIFICATION.LEFT,
+                                   "<<large, blue>>|", 0.0));
+        vb.addBuffered(new VisText(VisText.ANCHOR.CENTER, VisText.JUSTIFICATION.LEFT,
+                                   "<<large, blue>>--", 0.0));
+        vb.switchBuffer();
+
+        vb = vw.getBuffer("CENTER2");
+        vb.addBuffered(new VisText(VisText.ANCHOR.CENTER, VisText.JUSTIFICATION.RIGHT,
+                                   "<<large, black>>+", 0.0));
+        vb.switchBuffer();
 
         VisView vg = vc.getViewManager().viewGoal;
 
