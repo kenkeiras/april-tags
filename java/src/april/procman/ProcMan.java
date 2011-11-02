@@ -24,6 +24,7 @@ import april.lcmtypes.*;
  *   - restart-delay-ms      If auto-restart is true, duration before restart
  *   - auto-start            If process should be started automatically on ProcMan start
  *   - cmd                   Actual command to be run
+ *   - name                  Short name for Spy (GUI)
  *   - group                 Group this process belongs to (e.g. debug, simulation)
  *
  * These properties are usually inherited from a default namespace
@@ -34,6 +35,7 @@ import april.lcmtypes.*;
  *     auto-restart = "true"; // restart on fail?
  *     restart-delay-ms = "500";
  *     auto-start = "true";
+ *     name = "unknown";
  *     group = "std";
  * }
  *
