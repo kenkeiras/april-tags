@@ -161,28 +161,28 @@ public class TagTest implements ParameterListener
                 double dt = tic.toc();
 
                 if (detector.debugInput!=null)
-                    vbInput.addBuffered(new VisDepthTest(false, new VisLighting(false, new VisImage(detector.debugInput))));
-                vbInput.switchBuffer();
+                    vbInput.addBack(new VisDepthTest(false, new VisLighting(false, new VisImage(detector.debugInput))));
+                vbInput.swap();
 
                 if (detector.debugSegmentation!=null)
-                    vbSegmentation.addBuffered(new VisLighting(false, new VisImage(detector.debugSegmentation)));
-                vbSegmentation.switchBuffer();
+                    vbSegmentation.addBack(new VisLighting(false, new VisImage(detector.debugSegmentation)));
+                vbSegmentation.swap();
 
-                vbOriginal.addBuffered(new VisDepthTest(false, new VisLighting(false, new VisImage(im))));
-                vbOriginal.switchBuffer();
+                vbOriginal.addBack(new VisDepthTest(false, new VisLighting(false, new VisImage(im))));
+                vbOriginal.swap();
 
                 if (detector.debugTheta != null)
-                    vbThetas.addBuffered(new VisLighting(false, new VisImage(detector.debugTheta)));
-                vbThetas.switchBuffer();
+                    vbThetas.addBack(new VisLighting(false, new VisImage(detector.debugTheta)));
+                vbThetas.swap();
 
                 if (detector.debugMag != null)
-                    vbMag.addBuffered(new VisLighting(false, new VisImage(detector.debugMag)));
-                vbMag.switchBuffer();
+                    vbMag.addBack(new VisLighting(false, new VisImage(detector.debugMag)));
+                vbMag.swap();
 
-                vbClock.addBuffered(new VisText(VisText.ANCHOR.BOTTOM_RIGHT,
+                vbClock.addBack(new VisText(VisText.ANCHOR.BOTTOM_RIGHT,
                                                 VisText.JUSTIFICATION.RIGHT,
                                                 String.format("<<blue>>%8.2f ms", dt*1000)));
-                vbClock.switchBuffer();
+                vbClock.swap();
 
                 for (TagDetection d : detections) {
                     double p0[] = d.interpolate(-1,-1);
@@ -190,7 +190,7 @@ public class TagTest implements ParameterListener
                     double p2[] = d.interpolate(1,1);
                     double p3[] = d.interpolate(-1,1);
 
-                    vbDetections.addBuffered(new VisChain(LinAlg.translate(0, im.getHeight(), 0),
+                    vbDetections.addBack(new VisChain(LinAlg.translate(0, im.getHeight(), 0),
                                                           LinAlg.scale(1, -1, 1),
                                                           new VisText(d.cxy, VisText.ANCHOR.CENTER,
                                                                       String.format("<<center,blue>>id %3d\n(err=%d)\n", d.id, d.hammingDistance)),
@@ -206,7 +206,7 @@ public class TagTest implements ParameterListener
                     double aspect = 752.0 / 480.0;
                     double M[][] = CameraUtil.homographyToPose(f, f, tagsize_m, d.homography);
 
-                    vbTag3D.addBuffered(new VisChain(LinAlg.rotateX(Math.PI/2),
+                    vbTag3D.addBack(new VisChain(LinAlg.rotateX(Math.PI/2),
                                                      M,
                                                      new VisImage(new VisTexture(tf.makeImage(d.id)),
                                                                   new double[] {-tagsize_m/2, -tagsize_m/2},
@@ -214,11 +214,11 @@ public class TagTest implements ParameterListener
                                                                   true)));
                 }
 
-                vbTag3D.addBuffered(new VisChain(LinAlg.rotateX(Math.PI/2),
+                vbTag3D.addBack(new VisChain(LinAlg.rotateX(Math.PI/2),
                                                  new VisCamera()));
-                vbTag3D.switchBuffer();
+                vbTag3D.swap();
 
-                vbDetections.switchBuffer();
+                vbDetections.swap();
             }
         }
     }

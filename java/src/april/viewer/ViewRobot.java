@@ -87,11 +87,16 @@ public class ViewRobot extends VisCanvasEventAdapter implements ViewObject, LCMS
     public void redraw()
     {
         VisWorld.Buffer vb = viewer.getVisWorld().getBuffer("Robot");
-        vb.addBuffered(new VisData(new VisDataLineStyle(Color.blue, 1), trajectory));
-        vb.addBuffered(new VisChain(pose.orientation, pose.pos, vrobot));
+        vb.addBack(new VisLines(new VisVertexData(trajectory),
+                                new VisConstantColor(Color.blue),
+                                1,
+                                VisLines.TYPE.LINE_STRIP));
+
+//        vb.addBack(new VisData(new VisDataLineStyle(Color.blue, 1), trajectory));
+        vb.addBack(new VisChain(pose.orientation, pose.pos, vrobot));
         if (vavatar != null)
-            vb.addBuffered(new VisChain(pose.orientation, pose.pos, vavatar));
-        vb.switchBuffer();
+            vb.addBack(new VisChain(pose.orientation, pose.pos, vavatar));
+        vb.swap();
     }
 
     synchronized void messageReceivedEx(String channel, LCMDataInputStream ins) throws IOException
@@ -254,9 +259,9 @@ public class ViewRobot extends VisCanvasEventAdapter implements ViewObject, LCMS
         if (e.getKeyChar() == 'f') {
             // Follow mode
             followMode = (followMode + 1) % 3;
-            vc.getWorld().removeTemporary(lastFollowTemporary);
+            viewer.vw.getBuffer("follow").removeTemporary(lastFollowTemporary);
             lastFollowTemporary = new VisText(VisText.ANCHOR.CENTER, followString[followMode]);
-            vc.getWorld().addTemporary(lastFollowTemporary, 1.0);
+            viewer.vw.getBuffer("follow").addTemporary(lastFollowTemporary, 1.0);
             return true;
         }
 
@@ -266,21 +271,21 @@ public class ViewRobot extends VisCanvasEventAdapter implements ViewObject, LCMS
 
             if (findCount % 2 == 1) {
                 // FIND.
-                VisViewManager viewManager = vc.getViewManager();
-                viewManager.viewGoal.lookAt(LinAlg.add(lastRobotPos, new double[] { 0, 0, 10 }),
-                                            lastRobotPos,
-                                            new double[] { 0, 1, 0 });
+                viewer.vl.cameraManager.uiLookAt(LinAlg.add(lastRobotPos, new double[] { 0, 0, 10 }),
+                                                 lastRobotPos,
+                                                 new double[] { 0, 1, 0 },
+                                                 false);
             } else {
-
-                VisViewManager viewManager = vc.getViewManager();
                 double rpy[] = LinAlg.quatToRollPitchYaw(lastRobotQuat);
                 double behindDist = 5;
-                viewManager.viewGoal.lookAt(LinAlg.add(lastRobotPos,
-                                                       new double[] { Math.cos(-rpy[2]) * behindDist,
-                                                                      Math.sin(-rpy[2]) * behindDist,
-                                                                      2 }),
-                                            lastRobotPos,
-                                            new double[] { 0, 0, 1 });
+
+                viewer.vl.cameraManager.uiLookAt(LinAlg.add(lastRobotPos,
+                                                            new double[] { Math.cos(-rpy[2]) * behindDist,
+                                                                           Math.sin(-rpy[2]) * behindDist,
+                                                                           2 }),
+                                                 lastRobotPos,
+                                                 new double[] { 0, 0, 1 },
+                                                 false);
             }
             return true;
         }

@@ -23,6 +23,7 @@ public class Viewer
 {
     JFrame jf;
     VisWorld   vw;
+    VisLayer   vl;
     VisCanvas  vc;
     JPanel paramsPanel;
 
@@ -61,7 +62,8 @@ public class Viewer
     public Viewer(Config _config)
     {
         vw = new VisWorld();
-        vc = new VisCanvas(vw);
+        vl = new VisLayer(vw);
+        vc = new VisCanvas(vl);
 
         jf = new JFrame("Viewer");
 

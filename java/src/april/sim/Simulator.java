@@ -16,14 +16,12 @@ import april.jmat.geom.*;
 
 import lcm.util.*;
 
-import javax.media.opengl.*;
-import javax.media.opengl.glu.*;
-
 public class Simulator implements VisConsole.Listener
 {
     JFrame jf;
     VisWorld vw = new VisWorld();
-    VisCanvas vc = new VisCanvas(vw);
+    VisLayer vl = new VisLayer(vw);
+    VisCanvas vc = new VisCanvas(vl);
     VisConsole console = new VisConsole(vc, vw);
 
     SimWorld world;
@@ -66,14 +64,14 @@ public class Simulator implements VisConsole.Listener
         jf.setSize(800,600);
         jf.setVisible(true);
 
-        vc.addEventHandler(new MyEventHandler());
+        vl.addEventHandler(new MyEventHandler());
 
         vw.getBuffer("grid").addFront(new VisGrid());
 
         if (true) {
             VisWorld.Buffer vb = vw.getBuffer("SimWorld");
-            vb.addBuffered(new VisSimWorld());
-            vb.switchBuffer();
+            vb.addBack(new VisSimWorld());
+            vb.swap();
         }
 
         console.addListener(this);
@@ -104,17 +102,16 @@ public class Simulator implements VisConsole.Listener
                 }
             }
 
-            VisTexture tex = new VisTexture(im);
-            tex.lock();
-            tex.setMagFilter(true);
-            vb.addBuffered(new VisChain(new VisDepthTest(false,
+            VisTexture tex = new VisTexture(im, false);
+/*            tex.setMagFilter(true);
+            vb.addBack(new VisChain(new VisDepthTest(false,
                                                          new VisImage(tex,
                                                                       world.geoimage.image2xy(new double[] {0,0}),
                                                                       world.geoimage.image2xy(new double[] {im.getWidth()-1,
                                                                                                             im.getHeight()-1})))));
-            vb.addBuffered(new VisData(new double[3], new VisDataPointStyle(Color.gray, 3)));
-
-            vb.switchBuffer();
+            vb.addBack(new VisData(new double[3], new VisDataPointStyle(Color.gray, 3)));
+*/
+            vb.swap();
         }
     }
 
@@ -201,12 +198,12 @@ public class Simulator implements VisConsole.Listener
 
     class VisSimWorld implements VisObject
     {
-        public void render(VisContext vc, GL gl, GLU glu)
+        public void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl)
         {
             synchronized(world) {
                 for (SimObject obj : world.objects) {
                     VisChain v = new VisChain(obj.getPose(), obj.getVisObject());
-                    v.render(vc, gl, glu);
+                    v.render(vc, layer, rinfo, gl);
                 }
             }
         }
@@ -232,13 +229,13 @@ public class Simulator implements VisConsole.Listener
                 }
             }
             if (collide)
-                vb.addBuffered(new VisText(VisText.ANCHOR.BOTTOM_RIGHT, "<<blue>>Collision"));
+                vb.addBack(new VisText(VisText.ANCHOR.BOTTOM_RIGHT, "<<blue>>Collision"));
 
-            vb.switchBuffer();
+            vb.swap();
         }
     }
 
-    class MyEventHandler extends VisCanvasEventAdapter
+    class MyEventHandler extends VisEventAdapter
     {
         double sz = 1;
         Color color = new Color(50,50,50);

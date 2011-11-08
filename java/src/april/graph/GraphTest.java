@@ -20,7 +20,8 @@ public class GraphTest implements ParameterListener
 {
     JFrame       jf;
     VisWorld     vw = new VisWorld();
-    VisCanvas    vc = new VisCanvas(vw);
+    VisLayer     vl = new VisLayer(vw);
+    VisCanvas    vc = new VisCanvas(vl);
     ParameterGUI pg = new ParameterGUI();
     Graph        g;
     GraphSolver  solver;
@@ -61,7 +62,7 @@ public class GraphTest implements ParameterListener
         double xyz1[] = bounds.get(1);
         double cxyz[] = new double[] { (xyz0[0] + xyz1[0]) / 2, (xyz0[1] + xyz1[1]) / 2, (xyz0[2] + xyz1[2]) / 2 };
         double dist = LinAlg.distance(xyz0, xyz1);
-        vc.getViewManager().viewGoal.lookAt(LinAlg.add(cxyz, new double[] { 0, 0, dist }), cxyz, new double[] { 0, 1, 0 });
+//        vc.getViewManager().viewGoal.lookAt(LinAlg.add(cxyz, new double[] { 0, 0, dist }), cxyz, new double[] { 0, 1, 0 });
         update();
     }
 
@@ -148,7 +149,7 @@ public class GraphTest implements ParameterListener
                 vd.add(gn.toXyzRpy(gn.state));
             }
 
-            vb.addBuffered(vd);
+            vb.addBack(vd);
         }
 
         for (GNode gn : g.nodes) {
@@ -156,18 +157,18 @@ public class GraphTest implements ParameterListener
             VisObject vo = new VisRobot();
             if (gn instanceof GXYNode)
                 vo = new VisStar();
-            vb.addBuffered(new VisChain(gn.toXyzRpy(gn.state), vo));
+            vb.addBack(new VisChain(gn.toXyzRpy(gn.state), vo));
             ArrayList<double[]> points = (ArrayList<double[]>) gn.getAttribute("points");
 
             if (points != null)
-                vb.addBuffered(new VisChain(gn.toXyzRpy(gn.state), new VisData(new VisDataPointStyle(Color.gray, 1), points)));
+                vb.addBack(new VisChain(gn.toXyzRpy(gn.state), new VisData(new VisDataPointStyle(Color.gray, 1), points)));
         }
 
         Graph.ErrorStats estats = g.getErrorStats();
-        vb.addBuffered(new VisText(VisText.ANCHOR.BOTTOM_LEFT, VisText.JUSTIFICATION.LEFT,
+        vb.addBack(new VisText(VisText.ANCHOR.BOTTOM_LEFT, VisText.JUSTIFICATION.LEFT,
                                    String.format("<<mono-normal>>chi^2:   %15f\nchi^2/s: %15f\nMSE(xy): %15f",
                                                  estats.chi2, estats.chi2normalized, estats.meanSquaredDistanceError)));
-        vb.switchBuffer();
+        vb.swap();
     }
 
     class RunThread extends Thread

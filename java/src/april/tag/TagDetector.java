@@ -507,7 +507,7 @@ public class TagDetector
 
                 double notch = Math.max(2, 0.1*seg.length);
 
-                debugSegments.addBuffered(new VisChain(LinAlg.translate(0, height, 0),
+                debugSegments.addBack(new VisChain(LinAlg.translate(0, height, 0),
                                                        LinAlg.scale(1, -1, 1),
                                                        new VisData(new VisDataLineStyle(Color.yellow, 1),
                                                                    new double[] { seg.x0, seg.y0},
@@ -585,7 +585,7 @@ public class TagDetector
 
         if (debug && debugQuads != null) {
             for (Quad q : quads) {
-                debugQuads.addBuffered(new VisChain(LinAlg.translate(0, height, 0),
+                debugQuads.addBack(new VisChain(LinAlg.translate(0, height, 0),
                                                     LinAlg.scale(1, -1, 1),
                                                     new VisData(new VisDataLineStyle(Color.orange, 2),
                                                                 q.p[0], q.p[1], q.p[2], q.p[3], q.p[0])));
@@ -683,7 +683,7 @@ public class TagDetector
             }
 
             if (debug && debugSamples != null) {
-                debugSamples.addBuffered(new VisChain(LinAlg.translate(0, height, 0),
+                debugSamples.addBack(new VisChain(LinAlg.translate(0, height, 0),
                                                       LinAlg.scale(1, -1, 1),
                                                       vdwhite,
                                                       vdblack,
@@ -727,13 +727,13 @@ public class TagDetector
 
         if (debug) {
             if (debugSegments != null)
-                debugSegments.switchBuffer();
+                debugSegments.swap();
             if (debugQuads != null)
-                debugQuads.switchBuffer();
+                debugQuads.swap();
             if (debugSamples != null)
-                debugSamples.switchBuffer();
+                debugSamples.swap();
             if (debugLabels != null)
-                debugLabels.switchBuffer();
+                debugLabels.swap();
         }
 
         ////////////////////////////////////////////////////////////////
