@@ -107,16 +107,16 @@ public class FHSegmentTest implements ParameterListener
             BufferedImage blurim = blurImage(im, pg.gd("sigma"));
 
             VisWorld.Buffer vb = vw.getBuffer("image");
-            vb.addBuffered(new VisImage(blurim));
-            vb.switchBuffer();
+            vb.addBack(new VisImage(blurim));
+            vb.swap();
 
             vb = vw.getBuffer("segment");
             long startmtime = System.currentTimeMillis();
             BufferedImage imseg = FHSegment.segment(blurim, pg.gi("k"), pg.gi("minsize"));
             long endmtime = System.currentTimeMillis();
             System.out.println(endmtime - startmtime);
-            vb.addBuffered(new VisImage(imseg));
-            vb.switchBuffer();
+            vb.addBack(new VisImage(imseg));
+            vb.swap();
         }
 
         public void run()

@@ -102,13 +102,13 @@ public class LaserExample implements LCMSubscriber
         {
             allFeature.add(LinAlg.transform(currentPose, new double[]{c.x,c.y}));
         }
-        vbMap.addBuffered(new VisData(allFeature,new VisDataPointStyle(Color.red,4)));
+        vbMap.addBack(new VisData(allFeature,new VisDataPointStyle(Color.red,4)));
         ArrayList<double[]>points=LaserHarris.laserToPoints(l, 10000, 0);
         allPoint.add(LinAlg.transform(currentPose, points));
         for (ArrayList<double[]>pointSet:allPoint)
-            vbMap.addBuffered(new VisData(pointSet,new VisDataPointStyle(Color.yellow,1)));
-        vbMap.switchBuffer();
-        vbFeature.switchBuffer();
+            vbMap.addBack(new VisData(pointSet,new VisDataPointStyle(Color.yellow,1)));
+        vbMap.swap();
+        vbFeature.swap();
     }
 
 

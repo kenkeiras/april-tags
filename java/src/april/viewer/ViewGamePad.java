@@ -56,7 +56,7 @@ public class ViewGamePad implements ViewObject, LCMSubscriber
             turn /= mag;
         }
         VisWorld.Buffer vb = viewer.getVisWorld().getBuffer("GamePad");
-        vb.addBuffered(new VisWindow(VisWindow.ALIGN.BOTTOM_RIGHT, 80, 80, new double[] { -1, -1 }, new double[] { 1, 1 }, new VisCircle(1, new VisDataFillStyle(Color.gray), new VisDataLineStyle(Color.darkGray, 2)), new VisChain(LinAlg.translate(turn, forward, 0), new VisCircle(0.1, new VisDataFillStyle(Color.white), new VisDataLineStyle(Color.black, 1)))));
-        vb.switchBuffer();
+        vb.addBack(new VisWindow(VisWindow.ALIGN.BOTTOM_RIGHT, 80, 80, new double[] { -1, -1 }, new double[] { 1, 1 }, new VisCircle(1, new VisDataFillStyle(Color.gray), new VisDataLineStyle(Color.darkGray, 2)), new VisChain(LinAlg.translate(turn, forward, 0), new VisCircle(0.1, new VisDataFillStyle(Color.white), new VisDataLineStyle(Color.black, 1)))));
+        vb.swap();
     }
 }

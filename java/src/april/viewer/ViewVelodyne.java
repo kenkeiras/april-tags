@@ -93,8 +93,8 @@ public class ViewVelodyne implements ViewObject, LCMSubscriber
                     points.get(bucket).add(LinAlg.transform(T, vs.xyz));
                 }
             }
-            vb.addBuffered(new MyVisObject());
-            vb.switchBuffer();
+            vb.addBack(new MyVisObject());
+            vb.swap();
         }
     }
 

@@ -58,8 +58,8 @@ public class ViewLaser implements ViewObject, LCMSubscriber
 
         if (pose != null) {
             VisWorld.Buffer vb = viewer.getVisWorld().getBuffer("LASER: " + channel);
-            vb.addBuffered(new VisChain(pose.orientation, pose.pos, squat, spos, new VisData(points, new VisDataPointStyle(color, 4))));
-            vb.switchBuffer();
+            vb.addBack(new VisChain(pose.orientation, pose.pos, squat, spos, new VisData(points, new VisDataPointStyle(color, 4))));
+            vb.swap();
         }
     }
 }

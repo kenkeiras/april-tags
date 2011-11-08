@@ -152,11 +152,11 @@ public class ScanMatcherTest implements LCMSubscriber, ParameterListener
 
             if (true) {
                 VisWorld.Buffer vb = vw.getBuffer("lastscan");
-                vb.addBuffered(new VisChain(LinAlg.xytToMatrix(scanMatcher.getPosition()),
+                vb.addBack(new VisChain(LinAlg.xytToMatrix(scanMatcher.getPosition()),
                                             new VisRobot(Color.red),
                                             new VisData(new VisDataPointStyle(Color.red, 2),
                                                         bodyPoints)));
-                vb.switchBuffer();
+                vb.swap();
             }
 
             if (true) {
@@ -165,9 +165,9 @@ public class ScanMatcherTest implements LCMSubscriber, ParameterListener
                 GridMap gm = scanMatcher.getGridMap();
                 if (gm != null) {
                     BufferedImage im = gm.makeBufferedImage();
-                    vb.addBuffered(new VisImage(new VisTexture(im), gm.getXY0(), gm.getXY1()));
+                    vb.addBack(new VisImage(new VisTexture(im), gm.getXY0(), gm.getXY1()));
                 }
-                vb.switchBuffer();
+                vb.swap();
             }
 
             if (true) {
@@ -177,17 +177,17 @@ public class ScanMatcherTest implements LCMSubscriber, ParameterListener
 
                 for (GNode gn : g.nodes) {
                     ArrayList<double[]> p = (ArrayList<double[]>) gn.getAttribute("points");
-                    vb.addBuffered(new VisChain(LinAlg.xytToMatrix(gn.state),
+                    vb.addBack(new VisChain(LinAlg.xytToMatrix(gn.state),
                                                 new VisRobot(Color.blue)));
 
                     if (pg.gb("showallscans")) {
-                        vb.addBuffered(new VisChain(LinAlg.xytToMatrix(gn.state),
+                        vb.addBack(new VisChain(LinAlg.xytToMatrix(gn.state),
                                                     new VisData(new VisDataPointStyle(Color.blue, 1),
                                                                 p)));
                     }
                 }
 
-                vb.switchBuffer();
+                vb.swap();
             }
         }
 

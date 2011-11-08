@@ -296,8 +296,8 @@ public class Wavefront
             jf = new JFrame("Wavefront Test");
 
             VisWorld.Buffer vb = vw.getBuffer("image");
-            vb.addBuffered(new VisImage(new VisTexture(gm.makeBufferedImage()), gm.getXY0(), gm.getXY1()));
-            vb.switchBuffer();
+            vb.addBack(new VisImage(new VisTexture(gm.makeBufferedImage()), gm.getXY0(), gm.getXY1()));
+            vb.swap();
 
             vc.addEventHandler(this);
             vc.getViewManager().viewGoal.fit2D(gm.getXY0(), gm.getXY1());
@@ -354,10 +354,10 @@ public class Wavefront
             if (true) {
                 VisWorld.Buffer vb = vw.getBuffer("sourcesink");
                 vb.setDrawOrder(50);
-                vb.addBuffered(new VisData(sinks, new VisDataPointStyle(Color.blue, 5)));
+                vb.addBack(new VisData(sinks, new VisDataPointStyle(Color.blue, 5)));
                 if (source != null)
-                    vb.addBuffered(new VisData(source, new VisDataPointStyle(Color.red, 8)));
-                vb.switchBuffer();
+                    vb.addBack(new VisData(source, new VisDataPointStyle(Color.red, 8)));
+                vb.swap();
             }
 
             if (sinks.size() == 0 || source == null)
@@ -372,21 +372,21 @@ public class Wavefront
             if (true) {
                 VisWorld.Buffer vb = vw.getBuffer("time");
                 vb.setDrawOrder(100);
-                vb.addBuffered(new VisText(VisText.ANCHOR.BOTTOM_RIGHT, String.format("%.2f ms\n", dt*1000)));
-                vb.switchBuffer();
+                vb.addBack(new VisText(VisText.ANCHOR.BOTTOM_RIGHT, String.format("%.2f ms\n", dt*1000)));
+                vb.swap();
             }
 
             if (true) {
                 VisWorld.Buffer vb = vw.getBuffer("path");
                 vb.setDrawOrder(100);
-                vb.addBuffered(new VisData(path, new VisDataLineStyle(Color.yellow, 1)));
-                vb.switchBuffer();
+                vb.addBack(new VisData(path, new VisDataLineStyle(Color.yellow, 1)));
+                vb.swap();
             }
 
             if (true) {
                 VisWorld.Buffer vb = vw.getBuffer("wavefront");
-                vb.addBuffered(new VisImage(new VisTexture(wf.makeBufferedImage()), gm.getXY0(), gm.getXY1()));
-                vb.switchBuffer();
+                vb.addBack(new VisImage(new VisTexture(wf.makeBufferedImage()), gm.getXY0(), gm.getXY1()));
+                vb.swap();
             }
         }
     }
