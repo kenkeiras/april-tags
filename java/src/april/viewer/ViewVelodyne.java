@@ -21,9 +21,6 @@ import april.lcmtypes.*;
 import april.jmat.*;
 import april.vis.*;
 
-import javax.media.opengl.*;
-import javax.media.opengl.glu.*;
-import com.sun.opengl.util.*;
 
 /** Views velodyne data. **/
 public class ViewVelodyne implements ViewObject, LCMSubscriber

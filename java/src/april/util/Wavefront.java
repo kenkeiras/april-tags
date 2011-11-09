@@ -273,7 +273,7 @@ public class Wavefront
 
     //////////////////////////////////////////////////////////////////////////////
     // Test code below
-    static class WavefrontTest extends VisCanvasEventAdapter implements ParameterListener
+    static class WavefrontTest extends VisEventAdapter implements ParameterListener
     {
         GridMap gm;
 
@@ -320,12 +320,7 @@ public class Wavefront
             redraw();
         }
 
-        public String getName()
-        {
-            return "Wavefront Test";
-        }
-
-        public boolean mousePressed(VisCanvas vc,  GRay3D ray, MouseEvent e)
+        public boolean mousePressed(VisCanvas vc,  VisLayer vl, GRay3D ray, MouseEvent e)
         {
             int mods=e.getModifiersEx();
             boolean shift=(mods&MouseEvent.SHIFT_DOWN_MASK)>0;

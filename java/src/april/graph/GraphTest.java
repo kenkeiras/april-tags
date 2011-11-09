@@ -143,13 +143,13 @@ public class GraphTest implements ParameterListener
 
         for (GEdge ge : g.edges) {
 
-            VisData vd = new VisData(new VisDataLineStyle(Color.green, 1));
+            VisVertexData vd = new VisVertexData();
             for (int i = 0; i < ge.nodes.length; i++) {
                 GNode gn = g.nodes.get(ge.nodes[i]);
                 vd.add(gn.toXyzRpy(gn.state));
             }
 
-            vb.addBack(vd);
+            vb.addBack(new VisLines(vd, new VisConstantColor(Color.green),1,VisLines.TYPE.LINE_STRIP));
         }
 
         for (GNode gn : g.nodes) {
@@ -157,17 +157,19 @@ public class GraphTest implements ParameterListener
             VisObject vo = new VisRobot();
             if (gn instanceof GXYNode)
                 vo = new VisStar();
-            vb.addBack(new VisChain(gn.toXyzRpy(gn.state), vo));
+            vb.addBack(new VisChain(LinAlg.xyzrpyToMatrix(gn.toXyzRpy(gn.state)), vo));
             ArrayList<double[]> points = (ArrayList<double[]>) gn.getAttribute("points");
 
             if (points != null)
-                vb.addBack(new VisChain(gn.toXyzRpy(gn.state), new VisData(new VisDataPointStyle(Color.gray, 1), points)));
+                vb.addBack(new VisChain(LinAlg.xyzrpyToMatrix(gn.toXyzRpy(gn.state)),
+                                        new VisPoints(new VisVertexData(points),new VisConstantColor(Color.gray),1)));
         }
 
         Graph.ErrorStats estats = g.getErrorStats();
-        vb.addBack(new VisText(VisText.ANCHOR.BOTTOM_LEFT, VisText.JUSTIFICATION.LEFT,
-                                   String.format("<<mono-normal>>chi^2:   %15f\nchi^2/s: %15f\nMSE(xy): %15f",
-                                                 estats.chi2, estats.chi2normalized, estats.meanSquaredDistanceError)));
+        vb.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.BOTTOM_LEFT,
+                                           new VisText(VisText.ANCHOR.BOTTOM_LEFT,
+                                                       String.format("<<monospaced-12>>chi^2:   %15f\nchi^2/s: %15f\nMSE(xy): %15f",
+                                                                     estats.chi2, estats.chi2normalized, estats.meanSquaredDistanceError))));
         vb.swap();
     }
 

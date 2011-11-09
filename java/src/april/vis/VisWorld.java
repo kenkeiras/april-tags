@@ -70,7 +70,7 @@ public class VisWorld implements VisSerializable
             if (vo == null)
                 return;
 
-            temporaries.add(new TemporaryObject(vo, System.currentTimeMillis() + 1000.0*dt));
+            temporaries.add(new TemporaryObject(vo, (long)(System.currentTimeMillis() + 1000.0*dt)));
         }
 
         public void removeTemporary(VisObject vo)
@@ -96,6 +96,7 @@ public class VisWorld implements VisSerializable
                                  {
                                      back.clear();
                                      front.clear();
+                                     temporaries.clear();
                                  }
 
         public synchronized void addFront(VisObject vo)

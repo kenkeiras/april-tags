@@ -14,11 +14,7 @@ import april.image.Corner;
 import april.jmat.LinAlg;
 import april.lcmtypes.laser_t;
 import april.lcmtypes.pose_t;
-import april.vis.VisCanvas;
-import april.vis.VisData;
-import april.vis.VisDataPointStyle;
-import april.vis.VisView;
-import april.vis.VisWorld;
+import april.vis.*;
 
 public class LaserExample implements LCMSubscriber
 {
@@ -26,8 +22,8 @@ public class LaserExample implements LCMSubscriber
 
     JFrame       jf;
     VisWorld     vw = new VisWorld();
-    VisCanvas    vc = new VisCanvas(vw);
-    VisView      view = vc.getViewManager().viewGoal;
+    VisLayer     vl = new VisLayer(vw);
+    VisCanvas    vc = new VisCanvas(vl);
 
     LaserHarris  lh=new LaserHarris();
 
@@ -102,22 +98,29 @@ public class LaserExample implements LCMSubscriber
         {
             allFeature.add(LinAlg.transform(currentPose, new double[]{c.x,c.y}));
         }
-        vbMap.addBack(new VisData(allFeature,new VisDataPointStyle(Color.red,4)));
+        vbMap.addBack(new VisPoints(new VisVertexData(allFeature),
+                                    new VisConstantColor(Color.red),4));
         ArrayList<double[]>points=LaserHarris.laserToPoints(l, 10000, 0);
         allPoint.add(LinAlg.transform(currentPose, points));
         for (ArrayList<double[]>pointSet:allPoint)
-            vbMap.addBack(new VisData(pointSet,new VisDataPointStyle(Color.yellow,1)));
+            vbMap.addBack(new VisPoints(new VisVertexData(pointSet),
+                                        new VisConstantColor(Color.yellow),1));
         vbMap.swap();
         vbFeature.swap();
     }
 
+    static VisCameraManager.CameraPosition view = new VisCameraManager.CameraPosition();
+    static {
+        view.perspective_fovy_degrees = 45;
+        view.eye =    new double[] { 0, 0, 100};
+        view.lookat = new double[] { 0, 0, 0};
+        view.up =     new double[] { 0, 1, 0};
+    }
 
     private void setCamera()
     {
-        view.perspective_fovy_degrees = 45;
-        view.eye =    new double[] { 0, 0, 100};
-        view.lookAt = new double[] { 0, 0, 0};
-        view.up =     new double[] { 0, 1, 0};
+        vl.cameraManager.goBookmark(view);
+
     }
 
     public static void main(String arg[])

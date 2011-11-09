@@ -17,8 +17,10 @@ public class VisVertexData implements VisAbstractVertexData, VisSerializable
         int dim;
     }
 
-    public VisVertexData()
+    public VisVertexData(double[]  ... points)
     {
+        if (points.length > 0)
+            add(points);
     }
 
     public VisVertexData(ArrayList<double[]> d)
@@ -55,6 +57,33 @@ public class VisVertexData implements VisAbstractVertexData, VisSerializable
         Block b = new Block();
         b.vd = v;
         b.nv = nv;
+        b.dim = dim;
+
+        blocks.add(b);
+    }
+
+    /** Add multiple vertices **/
+    public synchronized void add(double[] ... points)
+    {
+        int dim = 2;
+        for (double p[] : points) {
+            if (p.length >= 3)
+                dim = 3;
+        }
+
+        Block b = new Block();
+        b.vd = new double[points.length*dim];
+
+        for (int i = 0; i < points.length; i++) {
+            double p[] = points[i];
+
+            b.vd[i*dim+0] = points[i][0];
+            b.vd[i*dim+1] = points[i][1];
+            if (p.length > 2)
+                b.vd[i*dim+2] = points[i][2];
+        }
+
+        b.nv = points.length;
         b.dim = dim;
 
         blocks.add(b);

@@ -22,7 +22,8 @@ public class ScanMatcherTest implements LCMSubscriber, ParameterListener
 
     JFrame jf;
     VisWorld vw = new VisWorld();
-    VisCanvas vc = new VisCanvas(vw);
+    VisLayer vl = new VisLayer(vw);
+    VisCanvas vc = new VisCanvas(vc);
 
     LCM lcm = LCM.getSingleton();
     ParameterGUI pg = new ParameterGUI();
@@ -67,7 +68,10 @@ public class ScanMatcherTest implements LCMSubscriber, ParameterListener
     {
         if (name.equals("clear")) {
             scanMatcher = new ScanMatcher(config.getChild("scanmatcher"));
-            vw.clear();
+            vw.getBuffer("lastscan").swap();
+            vw.getBuffer("raster").clear();
+            vw.getBuffer("graph").clear();
+
         }
     }
 
@@ -153,9 +157,9 @@ public class ScanMatcherTest implements LCMSubscriber, ParameterListener
             if (true) {
                 VisWorld.Buffer vb = vw.getBuffer("lastscan");
                 vb.addBack(new VisChain(LinAlg.xytToMatrix(scanMatcher.getPosition()),
-                                            new VisRobot(Color.red),
-                                            new VisData(new VisDataPointStyle(Color.red, 2),
-                                                        bodyPoints)));
+                                        new VisRobot(Color.red),
+                                        new VisPoints(new VisVertexData(bodyPoints),
+                                                      new VisConstantColor(Color.red),2)));
                 vb.swap();
             }
 
@@ -165,7 +169,7 @@ public class ScanMatcherTest implements LCMSubscriber, ParameterListener
                 GridMap gm = scanMatcher.getGridMap();
                 if (gm != null) {
                     BufferedImage im = gm.makeBufferedImage();
-                    vb.addBack(new VisImage(new VisTexture(im), gm.getXY0(), gm.getXY1()));
+                    vb.addBack(new VisImage(new VisTexture(im, false), gm.getXY0(), gm.getXY1(), Color.red));
                 }
                 vb.swap();
             }
@@ -178,12 +182,12 @@ public class ScanMatcherTest implements LCMSubscriber, ParameterListener
                 for (GNode gn : g.nodes) {
                     ArrayList<double[]> p = (ArrayList<double[]>) gn.getAttribute("points");
                     vb.addBack(new VisChain(LinAlg.xytToMatrix(gn.state),
-                                                new VisRobot(Color.blue)));
+                                            new VisRobot(Color.blue)));
 
                     if (pg.gb("showallscans")) {
                         vb.addBack(new VisChain(LinAlg.xytToMatrix(gn.state),
-                                                    new VisData(new VisDataPointStyle(Color.blue, 1),
-                                                                p)));
+                                                new VisPoints(new VisVertexData(p),
+                                                              new VisConstantColor(Color.blue),1)));
                     }
                 }
 

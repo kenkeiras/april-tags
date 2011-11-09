@@ -508,16 +508,17 @@ public class TagDetector
                 double notch = Math.max(2, 0.1*seg.length);
 
                 debugSegments.addBack(new VisChain(LinAlg.translate(0, height, 0),
-                                                       LinAlg.scale(1, -1, 1),
-                                                       new VisData(new VisDataLineStyle(Color.yellow, 1),
-                                                                   new double[] { seg.x0, seg.y0},
-                                                                   new double[] { seg.x1, seg.y1}),
-                                                       new VisData(new VisDataLineStyle(Color.yellow, 1),
-                                                                   new double[] { cx,  cy },
-                                                                   new double[] { cx + notch*Math.sin(seg.theta),
-                                                                                  cy - notch*Math.cos(seg.theta) }),
-                                                       new VisData(new VisDataPointStyle(Color.red, 4),
-                                                                   new double[] { seg.x0, seg.y0 })));
+                                                   LinAlg.scale(1, -1, 1),
+                                                   new VisLines(new VisVertexData(new double[] { seg.x0, seg.y0},
+                                                                                  new double[] { seg.x1, seg.y1}),
+                                                                new VisConstantColor(Color.yellow),1, VisLines.TYPE.LINE_STRIP),
+                                                   new VisLines(new VisVertexData(new double[] { cx,  cy },
+                                                                                  new double[] { cx + notch*Math.sin(seg.theta),
+                                                                                                 cy - notch*Math.cos(seg.theta) }),
+                                                                new VisConstantColor(Color.yellow),1, VisLines.TYPE.LINE_STRIP),
+                                                   new VisPoints(new VisVertexData(new double[] { seg.x0, seg.y0 }),
+                                                                 new VisConstantColor(Color.red),4)
+                                          ));
             }
         }
 
@@ -587,8 +588,8 @@ public class TagDetector
             for (Quad q : quads) {
                 debugQuads.addBack(new VisChain(LinAlg.translate(0, height, 0),
                                                     LinAlg.scale(1, -1, 1),
-                                                    new VisData(new VisDataLineStyle(Color.orange, 2),
-                                                                q.p[0], q.p[1], q.p[2], q.p[3], q.p[0])));
+                                                new VisLines(new VisVertexData(q.p[0], q.p[1], q.p[2], q.p[3], q.p[0]),
+                                                             new VisConstantColor(Color.orange),2,VisLines.TYPE.LINE_STRIP)));
             }
         }
 
@@ -604,14 +605,14 @@ public class TagDetector
             GrayModel blackModel = new GrayModel();
             GrayModel whiteModel = new GrayModel();
 
-            VisData vdblack = null;
-            VisData vdwhite = null;
-            VisData vdsamp = null;
+            VisVertexData vdblack = null;
+            VisVertexData vdwhite = null;
+            VisVertexData vdsamp = null;
 
             if (debug && debugSamples != null) {
-                vdblack = new VisData(new VisDataPointStyle(Color.black, 3));
-                vdwhite = new VisData(new VisDataPointStyle(Color.lightGray, 3));
-                vdsamp = new VisData(new VisDataPointStyle(Color.orange, 4));
+                vdblack = new VisVertexData();
+                vdwhite = new VisVertexData();
+                vdsamp = new VisVertexData();
             }
 
             // sample points around the black and white border in
@@ -684,10 +685,13 @@ public class TagDetector
 
             if (debug && debugSamples != null) {
                 debugSamples.addBack(new VisChain(LinAlg.translate(0, height, 0),
-                                                      LinAlg.scale(1, -1, 1),
-                                                      vdwhite,
-                                                      vdblack,
-                                                      vdsamp));
+                                                  LinAlg.scale(1, -1, 1),
+                                                  new VisPoints(vdwhite,
+                                                                new VisConstantColor(Color.white),3),
+                                                  new VisPoints(vdblack,
+                                                                new VisConstantColor(Color.black),3),
+                                                  new VisPoints(vdsamp,
+                                                                new VisConstantColor(Color.orange),4)));
             }
 
             if (!bad) {
