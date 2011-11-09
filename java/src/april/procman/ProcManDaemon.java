@@ -29,9 +29,14 @@ public class ProcManDaemon implements Runnable
 
     HashMap<Integer, ProcRecordD> records = new HashMap<Integer, ProcRecordD>();
 
-    String host = System.getenv("PROCMAN_HOST");
+    // host defaulted to System.getenv("PROCMAN_HOST");
+    String host;
 
     procman_process_list_t next_proc_list;
+
+    public boolean verbose;
+
+    boolean persistent;
 
     class ProcRecordD extends ProcRecord
     {
@@ -98,10 +103,19 @@ public class ProcManDaemon implements Runnable
 
     public ProcManDaemon()
     {
-        if (host == null) {
+        this(System.getenv("PROCMAN_HOST"), false);
+    }
+
+    public ProcManDaemon(String host, boolean _persistent)
+    {
+        persistent = _persistent;
+        if (host == null || host.equals("")) {
             host = "localhost";
             System.out.println("NFO: PROCMAN_HOST not defined. Using "+host+" instead");
-        }
+        } else
+            System.out.println("NFO: using host: " + host);
+
+        this.host = host;
 
         // Runtime.getRuntime().addShutdownHook(new ShutdownHandler());
         lcm.subscribe("PROCMAN_PROCESS_LIST", new MySubscriber());
@@ -132,7 +146,7 @@ public class ProcManDaemon implements Runnable
             // XXX Currently, we exit when the controller exits. This
             // is because we cannot run the daemon as an upstart
             // service because the classpaths are not set correctly.
-            if (orig_list != null && orig_list.exit && records.size() == 0) {
+            if (!persistent && orig_list != null && orig_list.exit && records.size() == 0) {
                 System.out.println("NFO: All processes exited, ProcManDaemon exiting.");
                 System.exit(0);
             }
@@ -194,6 +208,7 @@ public class ProcManDaemon implements Runnable
                 }
 
                 pr.cmdline = p.cmdline;
+                pr.name = p.name;
                 pr.restartDelayMS = p.restart_delay_ms;
                 pr.visited = true;
             }
@@ -225,7 +240,8 @@ public class ProcManDaemon implements Runnable
             procman_process_t p = proc_list.processes[i];
 
             if (!p.host.equals(host)) {
-                System.out.println("NFO: Host mismatch. Expected "+host+" got "+p.host);
+                if (verbose)
+                    System.out.println("NFO: Host mismatch. Expected "+host+" got "+p.host);
                 continue;
             }
 
@@ -400,6 +416,9 @@ public class ProcManDaemon implements Runnable
     {
         GetOpt opts  = new GetOpt();
 
+        opts.addString('n',"hostname",System.getenv("PROCMAN_HOST"),
+                       "Hostname wle uses env($PROCMAN_HOST)");
+        opts.addBoolean('p',"persistent",false,"Don't exist when the controller quits");
         opts.addBoolean('h',"help",false,"See this help screen");
 
         if (!opts.parse(args))
@@ -413,7 +432,7 @@ public class ProcManDaemon implements Runnable
             System.exit(1);
         }
 
-        ProcManDaemon pm = new ProcManDaemon();
+        ProcManDaemon pm = new ProcManDaemon(opts.getString("hostname"), opts.getBoolean("persistent"));
         pm.run();
     }
 }

@@ -6,6 +6,7 @@ struct procman_process_t
     // changes to cmdline and host.
     int32_t procid;
 
+    string  name;
     string  cmdline;
     string  host;
 

@@ -7,6 +7,10 @@ public class VisChain implements VisObject, VisSerializable
 {
     ArrayList<Object> ops = new ArrayList<Object>();
 
+    int displayListId;
+    GL displayListGL;
+    boolean lock;
+
     public VisChain()
     {
     }
@@ -14,6 +18,21 @@ public class VisChain implements VisObject, VisSerializable
     public VisChain(Object ... os)
     {
         add(os);
+    }
+
+
+    public synchronized void lock()
+    {
+        lock = true;
+    }
+
+    public synchronized void unlock()
+    {
+        if (displayListGL != null) {
+            displayListGL.glDeleteLists(displayListId, 1);
+            displayListGL = null;
+            displayListId = -1;
+        }
     }
 
     // this method must be added to disabiguate between a

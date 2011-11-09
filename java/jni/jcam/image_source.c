@@ -11,6 +11,7 @@ image_source_t *image_source_open(const char *url)
 {
     image_source_t *isrc = NULL;
 
+    // get feature key/value pairs
     url_parser_t *urlp = url_parser_create(url);
     if (urlp == NULL) // bad URL format
         return NULL;
@@ -18,6 +19,7 @@ image_source_t *image_source_open(const char *url)
     const char *protocol = url_parser_get_protocol(urlp);
     const char *location = url_parser_get_location(urlp);
 
+    // open device
     if (!strcmp(protocol, "v4l2://"))
         isrc = image_source_v4l2_open(location);
     else if (!strcmp(protocol, "dc1394://")) {
@@ -26,46 +28,62 @@ image_source_t *image_source_open(const char *url)
         isrc = image_source_islog_open(urlp);
     }
 
+    // handle parameters
     if (isrc != NULL) {
+        int found[url_parser_num_parameters(urlp)];
 
-        // handle parameters
-        for (int idx = 0; idx < url_parser_num_parameters(urlp); idx++) {
-            const char *key = url_parser_get_parameter_name(urlp, idx);
-            const char *value = url_parser_get_parameter_value(urlp, idx);
-
-//            printf("%s => %s\n", key, value);
+        for (int param_idx = 0; param_idx < url_parser_num_parameters(urlp); param_idx++) {
+            const char *key = url_parser_get_parameter_name(urlp, param_idx);
+            const char *value = url_parser_get_parameter_value(urlp, param_idx);
 
             if (!strcmp(key, "fidx")) {
+                printf("image_source_dc1394.c: set feature %30s = %15s\n", key, value);
                 int fidx = atoi(url_parser_get_parameter(urlp, "fidx", "0"));
                 isrc->set_format(isrc, fidx);
+                found[param_idx] = 1;
                 continue;
             }
 
             if (!strcmp(key, "format")) {
+                printf("image_source_dc1394.c: set feature %30s = %15s\n", key, value);
                 isrc->set_named_format(isrc, value);
+                found[param_idx] = 1;
                 continue;
             }
 
             // pass through a device-specific parameter.
-            int found = 0;
-            for (int idx = 0; idx < isrc->num_features(isrc); idx++) {
+            for (int feature_idx = 0; feature_idx < isrc->num_features(isrc); feature_idx++) {
 
-                if (!strcmp(isrc->get_feature_name(isrc, idx), key)) {
+                if (!strcmp(isrc->get_feature_name(isrc, feature_idx), key)) {
                     char *endptr = NULL;
                     double dv = strtod(value, &endptr);
                     if (endptr != value + strlen(value)) {
                         printf("Parameter for key '%s' is invalid. Must be a number.\n",
-                               isrc->get_feature_name(isrc, idx));
+                               isrc->get_feature_name(isrc, feature_idx));
                         goto cleanup;
                     }
-                    int res = isrc->set_feature_value(isrc, idx, dv);
-                    found = 1;
+
+                    int res = isrc->set_feature_value(isrc, feature_idx, dv);
+                    if (res != 0)
+                        printf("Error setting feature: key %s value %s, error code %d\n",
+                               key, value, res);
+
+                    double setvalue = isrc->get_feature_value(isrc, feature_idx);
+                    printf("image_source_dc1394.c: set feature %30s = %15s. Actually set to %8.3f\n", key, value, setvalue);
+
+                    found[param_idx] = 1;
                     break;
                 }
             }
+        }
 
-            if (!found)
-                printf("Unhandled parameter %s\n", key);
+        for (int param_idx = 0; param_idx < url_parser_num_parameters(urlp); param_idx++) {
+            if (found[param_idx] != 1) {
+                const char *key = url_parser_get_parameter_name(urlp, param_idx);
+                const char *value = url_parser_get_parameter_value(urlp, param_idx);
+
+                printf("Parameter not found. Key: %s Value: %s\n", key, value);
+            }
         }
     }
 

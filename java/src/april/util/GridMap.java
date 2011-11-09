@@ -144,7 +144,7 @@ public final class GridMap
                           (int) (height / metersPerPixel), roundUpDimensions);
     }
 
-    protected GridMap cropPixels(int xmin, int ymin, int _width, int _height, boolean roundUpDimensions)
+    public GridMap cropPixels(int xmin, int ymin, int _width, int _height, boolean roundUpDimensions)
     {
         xmin = Math.max(0, xmin);
         ymin = Math.max(0, ymin);
@@ -152,33 +152,7 @@ public final class GridMap
         _width = Math.max(0, _width);
         _height = Math.max(0, _height);
 
-        GridMap gm = new GridMap();
-
-        gm.x0 = x0 + xmin * metersPerPixel;
-        gm.y0 = y0 + ymin * metersPerPixel;
-        gm.width = _width;
-        gm.height = _height;
-        gm.metersPerPixel = metersPerPixel;
-        gm.defaultFill = (byte) defaultFill;
-
-        if (roundUpDimensions) {
-            // round up to multiple of four (necessary for OpenGL happiness)
-            gm.width += 4 - (gm.width%4);
-            gm.height += 4 - (gm.height%4);
-        }
-
-        gm.data = new byte[gm.width*gm.height];
-
-        for (int y = 0; y < gm.height; y++) {
-            for (int x = 0; x < gm.width; x++) {
-                if (y+ymin < height && x + xmin < width)
-                    gm.data[y*gm.width+x] = data[(y+ymin)*width + (x+xmin)];
-                else
-                    gm.data[y*gm.width+x] = defaultFill;
-            }
-        }
-
-        return gm;
+        return resizePixels(xmin,ymin, _width, _height, roundUpDimensions);
     }
 
     // Return a gridmap that contains all of the non-zero pixels, but
@@ -208,7 +182,60 @@ public final class GridMap
             ymax = 0;
         }
 
-        return cropPixels(xmin, ymin, xmax-xmin+1, ymax-ymin+1, roundUpDimensions);
+        return resizePixels(xmin, ymin, xmax-xmin+1, ymax-ymin+1, roundUpDimensions);
+
+    }
+    // Returns a new grid map 'grid-aligned' with 'this', given the new bounds
+    //  Eventually we should have crop reference this function
+    public GridMap resizeMeters(double x0_m, double y0_m, double width_m, double height_m, boolean roundUpDimensions)
+    {
+        // Compute the number of pixels to offset by
+        int xmin = (int)Math.floor((x0_m -x0) /metersPerPixel);
+        int ymin = (int)Math.floor((y0_m -y0) /metersPerPixel);
+
+        // We may need to shift x0_m since we are constrained to 'this''s grid spacing
+        double x0_round = x0 + xmin * metersPerPixel;
+        double y0_round = y0 + ymin * metersPerPixel;
+
+        int width = (int)Math.ceil((width_m + x0_m - x0_round)/metersPerPixel);
+        int height = (int)Math.ceil((height_m + y0_m - y0_round)/metersPerPixel);
+
+
+        return resizePixels(xmin, ymin, width, height, roundUpDimensions);
+
+    }
+
+    public GridMap resizePixels(int xmin, int ymin, int _width, int _height, boolean roundUpDimensions)
+    {
+        GridMap gm = new GridMap();
+
+        gm.x0 = x0 + xmin * metersPerPixel;
+        gm.y0 = y0 + ymin * metersPerPixel;
+        gm.width =  _width;
+        gm.height = _height;
+        gm.metersPerPixel = metersPerPixel;
+        gm.defaultFill = (byte) defaultFill;
+
+        if (roundUpDimensions) {
+            // round up to multiple of four (necessary for OpenGL happiness)
+            gm.width += (4 - (gm.width % 4)) % 4; // final mod ensures we don't add 4 needlessly
+            gm.height += (4 - (gm.height% 4)) % 4;
+        }
+
+        gm.data = new byte[gm.width*gm.height];
+
+        // crawl the new gm and insert old values where applicable
+        for (int y = 0; y < gm.height; y++) {
+            for (int x = 0; x < gm.width; x++) {
+                if (y + ymin >= 0 && y + ymin < height &&
+                    x + xmin >= 0 && x + xmin < width)
+                    gm.data[y*gm.width+x] = data[(y+ymin)*width + (x+xmin)];
+                else
+                    gm.data[y*gm.width+x] = gm.defaultFill;
+            }
+        }
+
+        return gm;
     }
 
     protected GridMap()
@@ -1081,10 +1108,115 @@ public final class GridMap
         return v;
     }
 
+    public GridMap maxConvolution(int k)
+    {
+        GridMap gm = copy();
+
+        // first, do rows.
+        for (int y = 0; y < height; y++)
+            maxConvolution(data, y*width, width, k, gm.data, y*width);
+
+        byte tmp[] = new byte[height];
+        byte tmp2[] = new byte[height];
+        for (int x = 0; x < width; x++) {
+
+            // copy column into 1D array for locality
+            for (int y = 0; y < height; y++)
+                tmp[y] = gm.data[y*width+x];
+
+            maxConvolution(tmp, 0, height, k, tmp2, 0);
+
+            // copy back
+            for (int y = 0; y < height; y++)
+                gm.data[y*width+x] = tmp2[y];
+        }
+
+        return gm;
+    }
+
+    static final void maxConvolution(byte in[], int in_offset, int width, int k, byte out[], int out_offset)
+    {
+        int runlength = 0;
+        int runvalue = 0;
+
+        for (int x = 0; x < width; x++) {
+            int v = 0;
+            int cnt = Math.min(k, width - x);
+
+            // if the last convolution step was all zeros, and the
+            // right-most position is a zero, then we know the result
+            // for this pixel will be zero.
+            int right = in[in_offset+x+cnt-1] & 0xff; // right-most value
+            if (right == runvalue) {
+                runlength++;
+            } else {
+                runlength = 1;
+                runvalue = right;
+            }
+
+            if (runlength >= k) {
+                out[out_offset + x] = (byte) runvalue;
+                continue;
+            }
+
+            // do the dumb convolution.
+            for (int i = 0;  i < cnt; i++) {
+                v = Math.max(v, in[in_offset + x + i] & 0xff);
+                if (v == 255)
+                    break;
+            }
+
+            out[out_offset + x] = (byte) v;
+        }
+    }
+
+    static final void maxConvolution(byte in[], int in_offset, int width, int k, byte out[], int out_offset, int hist[])
+    {
+        // clear histogram
+        for (int i = 0; i < hist.length; i++)
+            hist[i] = 0;
+
+        int upperbound = 0;
+
+        // warm up histogram with first k-1 values
+        for (int x = 0; x < k; x++) {
+            int v = in[in_offset + x] & 0xff;
+            hist[v]++;
+            upperbound = Math.max(upperbound, v);
+        }
+
+        // compute convolution by adding right most element, removing
+        // left most element, then finding max.
+
+        for (int x = k; x < width + k; x++) {
+
+            // tighten upper bound (possible because the old max might
+            // have been removed on a previous iteration)
+            while (upperbound > 0 && hist[upperbound]==0)
+                upperbound--;
+
+            // produce output; our upperbound is now the actual max.
+            out[out_offset + x - k] = (byte) upperbound;
+
+            // add right most
+            if (x < width) {
+                int v = in[in_offset + x] & 0xff;
+                hist[v]++;
+
+                if (v > upperbound)
+                    upperbound = v;
+            }
+
+            // remove left most
+            int v = in[in_offset + x - k] & 0xff;
+            hist[v]--;
+        }
+    }
+
     public GridMap decimateMax(int factor)
     {
-        int newwidth = width / factor;
-        int newheight = height / factor;
+        int newwidth = (width + factor - 1) / factor;
+        int newheight = (height + factor - 1) / factor + 1;
 
         GridMap gm = GridMap.makePixels(x0, y0, newwidth, newheight, metersPerPixel*factor, (byte) 0, true);
         gm.defaultFill = defaultFill;
@@ -1094,14 +1226,18 @@ public final class GridMap
             // which output row should this affect?
             int oy = iy/factor;
 
-            // loop over output columns
-            for (int ox = 0; ox < gm.width; ox++) {
-                // loop over input columns for the current output column.
+            // loop over input columns
+            for (int ix = 0; ix < width; ix+= factor) {
+                // destination column?
+                int ox = ix/factor;
+
                 int maxv = 0;
                 int maxdx = Math.min(factor, width - ox*factor);
-                for (int dx = 0; dx < maxdx; dx++) {
+
+                // loop over the input pixels that all map to (ox,oy)
+                for (int dx = 0; dx < maxdx; dx++)
                     maxv = Math.max(maxv, data[iy*width + ox*factor + dx]&0xff);
-                }
+
                 // update output column
                 gm.data[oy*gm.width + ox] = (byte) Math.max(gm.data[oy*gm.width + ox]&0xff, maxv);
             }
@@ -1124,15 +1260,25 @@ public final class GridMap
                                           data[(iy+1)*width+ix+1]&0xff));
                 gm.data[iy*width+ix] = (byte) v;
             }
-            gm.data[iy*width + width-1] = (byte) Math.max(data[(iy)*width + width-1]&0xff,
-                                                          data[(iy+1)*width + width-1]&0xff);
+
+            // fix up right most pixel, which is a function of just
+            // itself and the pixel below it.
+            if (iy + 1 < height) {
+                int ix = width - 1;
+                gm.data[iy*width+ix] = (byte) Math.max(data[iy*width+ix]&0xff,
+                                                       data[(iy+1)*width+ix]&0xff);
+            }
         }
 
+        // fix up bottom row, where each pixel is just a function of
+        // itself and the pixel to its right.
         for (int ix = 0; ix + 1 < width; ix++) {
-            gm.data[(height-1)*width + ix] = (byte) Math.max(data[(height-1)*width + ix]&0xff,
-                                                             data[(height-1)*width + ix+1]&0xff);
-        }
+            int iy = height - 1;
 
+            gm.data[iy*width+ix] = (byte) Math.max(data[iy*width+ix]&0xff,
+                                                   data[iy*width+ix+1]&0xff);
+
+        }
         return gm;
     }
 
@@ -1168,13 +1314,13 @@ public final class GridMap
         return score;
     }
 
-    public int score(ArrayList<double[]> points,
+    public double score(ArrayList<double[]> points,
                      double tx, double ty, double theta, double prior[], double pinv[][])
     {
         double ct = Math.cos(theta), st = Math.sin(theta);
         double pixelsPerMeter = 1.0 / metersPerPixel;
 
-        int score = 0;
+        double score = 0;
 
         for (int pidx = 0; pidx < points.size(); pidx++) {
 
@@ -1203,7 +1349,7 @@ public final class GridMap
                 ey*ey*pinv[1][1] + 2*ey*et*pinv[1][2] +
                 et*et*pinv[2][2];
 
-            score -= (int) cost;
+            score -= cost;
         }
 
         return score;
@@ -1496,5 +1642,15 @@ public final class GridMap
             else
                 data[i] = vfalse;
         }
+    }
+
+    public static void main(String args[])
+    {
+        byte a[] = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 7, 6, 5, 4, 3, 2, 1 };
+        byte b[] = new byte[a.length];
+
+        maxConvolution(a, 0, a.length, 4, b, 0);
+        for (int i = 0; i < a.length; i++)
+            System.out.printf("%d %d\n", a[i]&0xff, b[i]&0xff);
     }
 }

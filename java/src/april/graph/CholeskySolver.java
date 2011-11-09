@@ -14,6 +14,12 @@ public class CholeskySolver implements GraphSolver
 
     Matrix L;
 
+    // Consistency Constructor Solver(Graph g)
+    public CholeskySolver(Graph g)
+    {
+        this(g, new MinimumDegreeOrdering());
+    }
+
     public CholeskySolver(Graph g, Ordering ordering)
     {
         this.g = g;
@@ -81,18 +87,27 @@ public class CholeskySolver implements GraphSolver
 
             // characteristic weight of J'WJ. Should be between lambda_max
             // and lambda_min
-            double W0 = 1; 	    // XXX FIXME
+            double W0 = 1000; 	    // XXX FIXME
 
-            for (int i = 0; i < A.getRowDimension(); i++) {
-                if (A.get(i,i)==0)
-                    A.set(i,i, W0);
+            boolean rooted = false;
+
+            for (GEdge ge : g.edges) {
+                if (ge instanceof GXYTPosEdge) {
+                    rooted = true;
+                    break;
+                }
             }
 
-            // Add an extra constraint to pose 0.
-            GNode gn = g.nodes.get(0);
-            int idx = g.getStateIndex(0);
-            for (int i = 0; i < gn.getDOF(); i++)
-                A.set(idx+i, idx+i, A.get(idx+i, idx+i)+W0);
+            if (!rooted) {
+                // Add an extra constraint to pose 0.
+                GNode gn = g.nodes.get(0);
+                int idx = g.getStateIndex(0);
+                for (int i = 0; i < gn.getDOF(); i++)
+                    A.set(idx+i, idx+i, A.get(idx+i, idx+i)+W0);
+
+                if (verbose)
+                    System.out.printf("Adding a virtual edge to pose zero\n");
+            }
         }
 
         Matrix x = null;
@@ -130,8 +145,37 @@ public class CholeskySolver implements GraphSolver
             Matrix PB = B.copy();
             PB.permuteRows(perm);
 
-            for (int i = 0; i < PAP.getRowDimension(); i++)
-                assert(PAP.get(i,i) > 0); //System.out.printf("%10d %15f\n", i, PAP.get(i,i));
+            if (true) {
+                double acc = 0;
+                int count = 0;
+                boolean underconstrained = false;
+
+                for (int i = 0; i < PAP.getRowDimension(); i++) {
+                    if (PAP.get(i,i) == 0) {
+                        underconstrained = true;
+                    } else {
+                        acc += PAP.get(i,i);
+                        count ++;
+                    }
+                }
+
+                if (underconstrained) {
+                    System.out.println("CholeskySolver: underconstrained graph. Trying to fix it (hack!)");
+
+                    if (count == 0) {
+                        acc = 1;
+                        count = 1;
+                    }
+
+                    for (int i = 0; i < PAP.getRowDimension(); i++) {
+                        if (PAP.get(i,i) == 0) {
+                            PAP.set(i,i, acc / count);
+                        }
+
+                        assert(PAP.get(i,i) > 0); //System.out.printf("%10d %15f\n", i, PAP.get(i,i));
+                    }
+                }
+            }
 
             if (verbose)
                 System.out.printf("P'AP size: %d    nz: %d   (%%): %f\n",

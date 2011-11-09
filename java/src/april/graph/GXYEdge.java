@@ -35,6 +35,9 @@ public class GXYEdge extends GEdge
             e.truth = LinAlg.copy(truth);
         e.P = LinAlg.copy(P);
 
+        if (attributes != null)
+            e.attributes = attributes.copy();
+
         return e;
     }
 
@@ -54,10 +57,11 @@ public class GXYEdge extends GEdge
 
         double xa = gna.state[0], ya = gna.state[1], ta = 0;
         double xb = gnb.state[0], yb = gnb.state[1], tb = 0;
-        double sa = Math.sin(ta), ca = Math.cos(ta);
 
         if (gna instanceof GXYTNode)
             ta = gna.state[2];
+
+        double sa = Math.sin(ta), ca = Math.cos(ta);
 
 
         double zpred[] = LinAlg.resize(LinAlg.xytInvMul31(new double[] {xa, ya, ta},
@@ -91,6 +95,7 @@ public class GXYEdge extends GEdge
         outs.writeDoubles(truth);
         outs.writeComment("Covariance");
         outs.writeMatrix(P);
+        Attributes.write(attributes, outs);
     }
 
     public void read(StructureReader ins) throws IOException
@@ -102,6 +107,7 @@ public class GXYEdge extends GEdge
         z = ins.readDoubles();
         truth = ins.readDoubles();
         P = ins.readMatrix();
+        attributes = Attributes.read(ins);
     }
 
     public Linearization linearize(Graph g, Linearization lin)

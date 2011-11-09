@@ -19,12 +19,14 @@ import lcm.util.*;
 public class Simulator implements VisConsole.Listener
 {
     JFrame jf;
-    VisWorld vw = new VisWorld();
+
+    public VisWorld vw = new VisWorld();
     VisLayer vl = new VisLayer(vw);
     VisCanvas vc = new VisCanvas(vl);
+
     VisConsole console = new VisConsole(vc, vw);
 
-    SimWorld world;
+    public SimWorld world;
     String worldFilePath = "/tmp/world.world";
 
     static final double MIN_SIZE = 0.25;
@@ -63,6 +65,7 @@ public class Simulator implements VisConsole.Listener
 
         jf.setSize(800,600);
         jf.setVisible(true);
+        jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         vl.addEventHandler(new MyEventHandler());
 
@@ -75,6 +78,8 @@ public class Simulator implements VisConsole.Listener
         }
 
         console.addListener(this);
+        console.addShortcut(VisConsole.Shortcut.makeCode("start", KeyEvent.VK_F1, 0));
+        console.addShortcut(VisConsole.Shortcut.makeCode("stop", KeyEvent.VK_F2, 0));
         draw();
 
         if (gopt.getBoolean("start")) {
@@ -215,13 +220,15 @@ public class Simulator implements VisConsole.Listener
             VisWorld.Buffer vb = vw.getBuffer("collide-info");
             boolean collide = false;
 
-            if (selectedObject != null) {
+            SimObject curSelectedObject = selectedObject;
+            if (curSelectedObject != null) {
                 // does this object now collide with anything else?
-
                 synchronized(world) {
                     for (SimObject so : world.objects) {
-                        if (so != selectedObject && Collisions.collision(so.getShape(), so.getPose(),
-                                                                         selectedObject.getShape(), selectedObject.getPose())) {
+                        if (so != curSelectedObject && Collisions.collision(so.getShape(),
+                                                                            so.getPose(),
+                                                                            curSelectedObject.getShape(),
+                                                                            curSelectedObject.getPose())) {
                             collide = true;
                             break;
                         }
@@ -250,6 +257,31 @@ public class Simulator implements VisConsole.Listener
             return "World Editor";
         }
 
+        public void doHelp(HelpOutput houts)
+        {
+            houts.beginMouseCommands(this);
+            houts.addMouseCommand(this, HelpOutput.LEFT | HelpOutput.DRAG,
+								  "Move selected object (xy plane)");
+            houts.addMouseCommand(this, HelpOutput.LEFT | HelpOutput.CTRL | HelpOutput.DRAG,
+								  "Create or resize selected SimBox");
+            houts.addMouseCommand(this, HelpOutput.LEFT | HelpOutput.SHIFT | HelpOutput.DRAG,
+								  "Rotate selected object (xy plane)");
+            houts.addMouseCommand(this, HelpOutput.LEFT | HelpOutput.SHIFT | HelpOutput.ALT | HelpOutput.DRAG,
+								  "Rotate selected object (yz plane)");
+            houts.addMouseCommand(this, HelpOutput.RIGHT | HelpOutput.SHIFT | HelpOutput.DRAG,
+								  "Rotate selected object (zx plane)");
+
+            houts.beginKeyboardCommands(this);
+            houts.addKeyboardCommand(this, "r", 0, "Set color to Red");
+            houts.addKeyboardCommand(this, "g", 0, "Set color to Gray");
+            houts.addKeyboardCommand(this, "b", 0, "Set color to Blue");
+            houts.addKeyboardCommand(this, "m", 0, "Set color to Magenta");
+            houts.addKeyboardCommand(this, "c", 0, "Set color to Cyan");
+            houts.addKeyboardCommand(this, "[1-9]", 0, "Set selected SimBox size");
+            houts.addKeyboardCommand(this, "delete", 0, "Delete selected object");
+            houts.addKeyboardCommand(this, "backspace", 0, "Delete selected object");
+        }
+
         public boolean mouseReleased(VisCanvas vc, GRay3D ray, MouseEvent e)
         {
             lastxy = null;
@@ -268,13 +300,14 @@ public class Simulator implements VisConsole.Listener
                 return false;
 
             int mods = e.getModifiersEx();
-            boolean shift = (mods&MouseEvent.SHIFT_DOWN_MASK)>0;
-            boolean ctrl = (mods&MouseEvent.CTRL_DOWN_MASK)>0;
-            if ((mods & InputEvent.BUTTON1_DOWN_MASK) == 0)
-                return false;
+            boolean shift = (mods & MouseEvent.SHIFT_DOWN_MASK) > 0;
+            boolean ctrl = (mods & MouseEvent.CTRL_DOWN_MASK) > 0;
+            boolean alt = (mods & MouseEvent.ALT_DOWN_MASK) > 0;
 
             double xy[] = ray.intersectPlaneXY();
             if (ctrl) {
+                if ((mods & InputEvent.BUTTON1_DOWN_MASK) == 0)
+                    return false;
                 double T[][] = selectedObject.getPose();
 
                 if (selectedObject instanceof SimBox) {
@@ -319,14 +352,26 @@ public class Simulator implements VisConsole.Listener
             } else if (shift) {
                 // rotate
                 double T[][] = selectedObject.getPose();
+                double rpy[] = LinAlg.matrixToRollPitchYaw(T);
                 double t = Math.atan2(xy[1] - T[1][3], xy[0] - T[0][3]);
-                double R[][] = LinAlg.rotateZ(t);
-                for (int i = 0; i < 3; i++)
-                    for (int j = 0; j < 3; j++)
-                        T[i][j] = R[i][j];
+
+				if ((mods & InputEvent.BUTTON1_DOWN_MASK) == InputEvent.BUTTON1_DOWN_MASK) {
+                    if (alt)
+                        rpy[0] = -t;
+                    else
+                        rpy[2] = t;
+                } else if ((mods & InputEvent.BUTTON3_DOWN_MASK) == InputEvent.BUTTON3_DOWN_MASK) {
+                    rpy[1] = t;
+                } else
+                    return false;
+
+                T = LinAlg.xyzrpyToMatrix(new double[]{T[0][3], T[1][3], T[2][3],
+                                                       rpy[0], rpy[1], rpy[2]});
                 selectedObject.setPose(T);
             } else {
                 // translate
+                if ((mods & InputEvent.BUTTON1_DOWN_MASK) == 0)
+                    return false;
                 double T[][] = selectedObject.getPose();
                 T[0][3] += xy[0] - lastxy[0];
                 T[1][3] += xy[1] - lastxy[1];
@@ -397,12 +442,12 @@ public class Simulator implements VisConsole.Listener
             int mods = e.getModifiersEx();
             boolean shift = (mods&MouseEvent.SHIFT_DOWN_MASK)>0;
             boolean ctrl = (mods&MouseEvent.CTRL_DOWN_MASK)>0;
-            if ((mods & InputEvent.BUTTON1_DOWN_MASK) == 0)
-                return false;
 
             double xy[] = ray.intersectPlaneXY();
 
             if (ctrl) {
+                if ((mods & InputEvent.BUTTON1_DOWN_MASK) == 0)
+                    return false;
                 // create a new object
                 selectedObject = SimWorld.createObject(world, simObjectClass);
 

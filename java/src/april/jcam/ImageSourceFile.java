@@ -200,4 +200,17 @@ public class ImageSourceFile extends ImageSource
         fps = v;
         return 0;
     }
+
+    public void printInfo()
+    {
+        System.out.printf("========================================\n");
+        System.out.printf(" ImageSourceFile Info\n");
+        System.out.printf("========================================\n");
+        System.out.printf("\tFirst path: %s\n", paths.get(0));
+        System.out.printf("\tLoop: %s\n", loop ? "true" : "false");
+        if (fps != Double.MAX_VALUE)
+            System.out.printf("\tFPS: %f\n", fps);
+        System.out.printf("\tWidth: %d\n", ifmt.width);
+        System.out.printf("\tHeight: %d\n", ifmt.height);
+    }
 }

@@ -111,7 +111,7 @@ JNIEXPORT jobject JNICALL Java_april_jcam_ImageSourceNative_image_1source_1enume
     jobject arrayList = (*jenv)->NewObject(jenv, arrayListClass, initMethodId);
 
     jmethodID addMethodId = (*jenv)->GetMethodID(jenv, arrayListClass, "add", "(Ljava/lang/Object;)Z");
-    assert(initMethodId != NULL);
+    assert(addMethodId != NULL);
 
     char **urls = image_source_enumerate();
 
@@ -290,4 +290,17 @@ JNIEXPORT jint JNICALL Java_april_jcam_ImageSourceNative_image_1source_1set_1fea
     image_source_t *isrc = isrcs[srcid];
 
     return isrc->set_feature_value(isrc, idx, v);
+}
+
+/*
+ * Class:     april_jcam_ImageSourceNative
+ * Method:    image_source_print_info
+ * Signature: (I)V
+ */
+JNIEXPORT void JNICALL Java_april_jcam_ImageSourceNative_image_1source_1print_1info
+  (JNIEnv *jenv, jclass jcls, jint srcid)
+{
+    image_source_t *isrc = isrcs[srcid];
+
+    isrc->printInfo(isrc);
 }

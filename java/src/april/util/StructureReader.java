@@ -7,6 +7,8 @@ import java.util.*;
 public interface StructureReader
 {
     public int readInt() throws IOException;
+    public int[] readInts() throws IOException;
+
     public long readLong() throws IOException;
 
     public float readFloat() throws IOException;

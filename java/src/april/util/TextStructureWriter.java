@@ -72,7 +72,24 @@ public class TextStructureWriter implements StructureWriter
     public void writeFloat(float v) throws IOException
     {
         doIndent();
-        outs.write(String.format("%g\n", v));
+        outs.write(String.format("%.8g\n", v));
+    }
+
+    public void writeInts(int v[]) throws IOException
+    {
+        doIndent();
+
+        if (v==null) {
+            outs.write("ivec -1\n");
+            return;
+        }
+
+        outs.write("ivec "+v.length+"\n");
+
+        doIndent();
+        for (int i = 0; i < v.length; i++)
+            outs.write(String.format("%d ", v[i]));
+        outs.write("\n");
     }
 
     public void writeFloats(float v[]) throws IOException
@@ -88,14 +105,14 @@ public class TextStructureWriter implements StructureWriter
 
         doIndent();
         for (int i = 0; i < v.length; i++)
-            outs.write(String.format("%g ", v[i]));
+            outs.write(String.format("%.8g ", v[i]));
         outs.write("\n");
     }
 
     public void writeDouble(double v) throws IOException
     {
         doIndent();
-        outs.write(String.format("%g\n", v));
+        outs.write(String.format("%.15g\n", v));
     }
 
     public void writeDoubles(double v[]) throws IOException
@@ -111,7 +128,7 @@ public class TextStructureWriter implements StructureWriter
 
         doIndent();
         for (int i = 0; i < v.length; i++)
-            outs.write(String.format("%g ", v[i]));
+            outs.write(String.format("%.15g ", v[i]));
         outs.write("\n");
     }
 
@@ -129,7 +146,7 @@ public class TextStructureWriter implements StructureWriter
         for (int i = 0; i < v.length; i++) {
             doIndent();
             for (int j = 0; j < v[i].length; j++)
-                outs.write(String.format("%g ", v[i][j]));
+                outs.write(String.format("%.15g ", v[i][j]));
             outs.write("\n");
         }
     }

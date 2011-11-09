@@ -191,7 +191,7 @@ static int set_named_format(image_source_t *isrc, const char *desired_format)
 
 static int num_features(image_source_t *isrc)
 {
-    return 1;
+    return 2;
 }
 
 static const char* get_feature_name(image_source_t *isrc, int idx)
@@ -345,6 +345,19 @@ static int my_close(image_source_t *isrc)
     return 0;
 }
 
+static void printInfo(image_source_t *isrc)
+{
+    impl_islog_t *impl = (impl_islog_t *) isrc->impl;
+
+    printf("========================================\n");
+    printf(" ISLog Info\n");
+    printf("========================================\n");
+    printf("\tFPS: %f\n", impl->fps);
+    printf("\tLoop: %d\n", impl->loop);
+    printf("\tWidth: %d\n", impl->fmt->width);
+    printf("\tHeight: %d\n", impl->fmt->height);
+}
+
 image_source_t *image_source_islog_open(url_parser_t *urlp)
 {
     const char *location = url_parser_get_location(urlp);
@@ -372,6 +385,8 @@ image_source_t *image_source_islog_open(url_parser_t *urlp)
     isrc->release_frame = release_frame;
     isrc->stop = stop;
     isrc->close = my_close;
+
+    isrc->printInfo = printInfo;
 
     impl->loop = 1;
 

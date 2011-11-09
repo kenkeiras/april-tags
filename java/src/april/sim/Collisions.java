@@ -13,6 +13,16 @@ public class Collisions
 
     public static boolean collision(Shape _sa, double Ta[][], Shape _sb, double Tb[][])
     {
+        // do fast check first (must check scale on T also)
+        double scaleA = Math.sqrt(LinAlg.sq(Ta[0][0]) + LinAlg.sq(Ta[1][0]) + LinAlg.sq(Ta[2][0]));
+        double scaleB = Math.sqrt(LinAlg.sq(Tb[0][0]) + LinAlg.sq(Tb[1][0]) + LinAlg.sq(Tb[2][0]));
+        double minDist2 = LinAlg.sq(scaleA * _sa.getBoundingRadius() + scaleB * _sb.getBoundingRadius());
+        if (minDist2 < (LinAlg.sq(Ta[0][3]-Tb[0][3]) +
+                        LinAlg.sq(Ta[1][3]-Tb[1][3]) +
+                        LinAlg.sq(Ta[2][3]-Tb[2][3]))) {
+            return false;
+        }
+
         if (_sa instanceof CompoundShape) {
             return collision((CompoundShape) _sa, Ta, _sb, Tb);
         }
@@ -76,8 +86,6 @@ public class Collisions
 
     public static boolean collision(BoxShape sa, double Ta[][], SphereShape sb, double Tb[][])
     {
-        // TODO: fast check first?
-
         // p_g = Ta p_a
         // p_g = Tb p_b
         // Ta p_a = Tb p_b
@@ -116,15 +124,33 @@ public class Collisions
 
     public static boolean collision(BoxShape sa, double Ta[][], BoxShape sb, double Tb[][])
     {
-        // TODO: fast check first?
-
         BoxShape sa2 = sa.transform(Ta);
         BoxShape sb2 = sb.transform(Tb);
 
-        if (LinAlg.faceBelowPoints(sa2.planes, sb2.vertices) ||
-            LinAlg.faceBelowPoints(sb2.planes, sa2.vertices))
-            return false;
+        // check the easy cases (handles 2D case) use planes as separators
+        for (double [] plane : sa2.planes)
+            if (LinAlg.pointsAbovePlane(sb2.vertices, plane))
+                return false;
+        for (double [] plane : sb2.planes)
+            if (LinAlg.pointsAbovePlane(sa2.vertices, plane))
+                return false;
 
+        // must check for other separators by using cross-products of all edges between shapes
+        for(BoxShape.Edge edgeA : sa2.getEdges()){
+            for(BoxShape.Edge edgeB : sb2.getEdges()){
+                double[] cross = LinAlg.crossProduct(edgeA.getVector(), edgeB.getVector());
+
+                int sideA = LinAlg.pointsOnWhichSideOfPlane(sa2.vertices, cross, edgeA.v1);
+                if (sideA == 0)
+                    continue;
+
+                int sideB = LinAlg.pointsOnWhichSideOfPlane(sb2.vertices, cross, edgeA.v1);
+                if (sideB == 0)
+                    continue;
+                if (sideA * sideB < 0)
+                    return false;
+            }
+        }
         return true;
     }
 

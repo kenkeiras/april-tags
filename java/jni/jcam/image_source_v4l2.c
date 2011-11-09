@@ -364,6 +364,26 @@ int my_close(image_source_t *isrc)
     return close(impl->fd);
 }
 
+static void printInfo(image_source_t *isrc)
+{
+    impl_v4l2_t *impl = (impl_v4l2_t*) isrc->impl;
+
+    printf("========================================\n");
+    printf(" V4L2 Info\n");
+    printf("========================================\n");
+    printf("\tPath: %s\n", impl->path);
+    printf("\t#Formats: %d\n", impl->nformats);
+    printf("\tCurrent format: %d\n", impl->current_format_idx);
+    for (int i=0; i < impl->nformats; i++) {
+        image_source_format_t *format = impl->formats[i];
+
+        printf("\tFormat %d:\n", i);
+        printf("\t\tWidth: %d\n", format->width);
+        printf("\t\tHeight: %d\n", format->height);
+        printf("\t\tFormat: %s\n", format->format);
+    }
+}
+
 image_source_t *image_source_v4l2_open(const char *path)
 {
     image_source_t *isrc = calloc(1, sizeof(image_source_t));
@@ -387,6 +407,8 @@ image_source_t *image_source_v4l2_open(const char *path)
     isrc->release_frame = release_frame;
     isrc->stop = stop;
     isrc->close = my_close;
+
+    isrc->printInfo = printInfo;
 
     impl->path = strdup(path);
 

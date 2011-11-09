@@ -171,11 +171,29 @@ public final class LinAlg
         return Math.sqrt(mag);
     }
 
+    /** average of elements in a vector **/
+    public static float average(float a[])
+    {
+        float sum = 0;
+        for (int i=0; i < a.length; i++)
+            sum += a[i];
+        return sum / a.length;
+    }
+
+    /** average of elements in a vector **/
+    public static double average(double a[])
+    {
+        double sum = 0;
+        for (int i=0; i < a.length; i++)
+            sum += a[i];
+        return sum / a.length;
+    }
+
     public static float normL1(float a[])
     {
         float mag = 0;
         for (int i = 0; i < a.length; i++)
-            mag += a[i];
+            mag += Math.abs(a[i]);
         return mag;
     }
 
@@ -183,7 +201,7 @@ public final class LinAlg
     {
         double mag = 0;
         for (int i = 0; i < a.length; i++)
-            mag += a[i];
+            mag += Math.abs(a[i]);
         return mag;
     }
 
@@ -2197,6 +2215,16 @@ public final class LinAlg
         return matrixToXyzrpy(AB);
     }
 
+    public static double trace(double M[][])
+    {
+        double t = 0;
+
+        for (int i = 0; i < Math.min(M.length, M[0].length); i++)
+            t += M[i][i];
+
+        return t;
+    }
+
     public static double det(double M[][])
     {
         int n = M.length, m = M[0].length;
@@ -2433,32 +2461,146 @@ public final class LinAlg
      * of the expression is negative on the inside of the hull and
      * positive on the other side.
      *
-     * The planes are transformed by T prior to the test.
+     * The plane and points must be in the same coordinate frame
+     * @see #transformPlane(double[][], double[])
+
      *
      * We then test each of the points; if they are all on the
      * positive side of the plane, we return true.
      *
      * This is half of a convex hull collision test: for a full test,
-     * you must try this in both directions.  **/
-    public static boolean faceBelowPoints(ArrayList<double[]> planes, ArrayList<double[]> points)
+     * you must try this in both directions.
+     *
+     * This method is a simplified version of
+     * pointsOnWhichSideOfFace() method in order to speed up (by
+     * returning early) when checking the planes of one hull to the
+     * points of another.  In these cases, we know that any negative
+     * value is a violation.
+     * @param points an arraylist of 3D points (in coord frame A)
+     * @param plane vector {A, B, C, D} (also in coord frame A)
+     * @return boolean as true if all points are above plane.
+     **/
+    public static boolean pointsAbovePlane(ArrayList<double[]> points, double[] plane)
     {
-        for (double plane[] : planes) {
+        for (double p[] : points) {
+            double v = plane[0] * p[0] + plane[1] * p[1] + plane[2] * p[2] + plane[3];
+            if (v <= 0)
+                return false;
+        }
+        return true;
+    }
 
-            boolean separates = true;
+    /** This function analyzes which side of a plane a set of points
+     * resides where the plane is defined by the plane equation:
+     *
+     * Ax + By + Cz + D = 0
+     *
+     * The most common use case is for implementing part of a convex
+     * hull collision test, where each face of the hull is described
+     * in terms of a plane equation.
+     *
+     * An absence of a collision is defined as the presence of a plane
+     * such that all the points of one hull are above the plane and
+     * the points of the other hull are below this plane.  First check
+     * the planes of the hull, with the simplified pointsAbovePlane()
+     * function, but the full convex hull collision test requires also
+     * checking additional planes (namely those with normals equal to
+     * the cross-product of 2 edges, one from each hull).
+     *
+     * This function is a more general formulation of the
+     * pointsAbovePlane() function, required for 6DOF hulls, and
+     * returns one of three values {-1, 0, 1} depending on what side
+     * of the face all the points are on.
+     *
+     * @param points an arraylist of 3D points (in coord frame A)
+     * @param plane vector {A, B, C, D} (also in coord frame A)
+     * @return {-1, 0, 1}: '1' when all points are above plane, '-1'
+     * when all points are below the plane and '0' when points are
+     * both above and below the plane.
+    **/
+    public static int pointsOnWhichSideOfPlane(ArrayList<double[]> points, double[] plane)
+    {
+        boolean pos = false;
+        boolean neg = false;
 
-            for (double p[] : points) {
-                double v = plane[0] * p[0] + plane[1] * p[1] + plane[2] * p[2] + plane[3];
+        for (double p[] : points) {
+            double v = plane[0] * p[0] + plane[1] * p[1] + plane[2] * p[2] + plane[3];
 
-                if (v <= 0) {
-                    separates = false;
-                    break;
-                }
-            }
-
-            if (separates)
-                return true;
+            if (v > 0)
+                pos = true;
+            else if (v < 0)
+                neg = true;
+            if (pos && neg)
+                return 0;
         }
 
-        return false;
+        return (pos ? 1 : -1);
     }
+
+    /** This function analyzes which side of a plane a set of points
+     * resides, where the plane is defined by its normal and a point
+     * on the plane.
+     *
+     * @see #pointsOnWhichSideOfPlane(ArrayList<double[]>, double[]),
+     * description* where the plane is defined by plane equation, for
+     * descriptiona * full description.
+     *
+     * @param points an arraylist of 3D points (in coord. frame A)
+     * @param normal vector for a surface (need not be unit length)
+     * @param p is any point on the same surface as normal vector
+     * comes from (in coord. frame A)
+     * @return {-1, 0, 1}: '1' when all points are above plane, '-1'
+     * when all points are below the plane and '0' when points are
+     * both above and below the plane.
+    **/
+    public static int pointsOnWhichSideOfPlane(ArrayList<double[]> points,
+                                              double[] normal, double[] p)
+    {
+        boolean pos = false;
+        boolean neg = false;
+
+        for (double [] point : points) {
+            double v = dotProduct(subtract(point, p), normal);
+            if (v > 0)
+                pos = true;
+            else if (v < 0)
+                neg = true;
+            if (pos && neg)
+                return 0;
+        }
+        return (pos ? 1 : -1);
+    }
+
+    // factor 2x2 symmetric matrix S into L, such that S=L'L
+    public static double[][] cholesky22(double S[][])
+    {
+        double a = S[0][0];
+        double b = S[0][1];
+        double c = S[1][1];
+
+        double sa = Math.sqrt(a);
+
+        return new double[][] { { sa, b/sa },
+                                { 0, Math.sqrt(c - b*b/a) } };
+    }
+
+    // compute determinant of small matrix. For large matrices an
+    // alright method is to take product of diagonals of L and U
+    public static double det33(double A[][])
+    {
+        assert(A.length == 3 && A[0].length == 3);
+
+        return -A[0][2]*A[1][1]*A[2][0] + A[0][1]*A[1][2]*A[2][0] + A[0][2]*A[1][0]*A[2][1]
+            - A[0][0]*A[1][2]*A[2][1] - A[0][1]*A[1][0]*A[2][2] + A[0][0]*A[1][1]*A[2][2];
+    }
+
+    public static double det22(double A[][])
+    {
+        assert(A.length == 2 && A[0].length == 2);
+
+        return A[0][0]*A[1][1] - A[1][0] *A[0][1];
+    }
+
 }
+
+

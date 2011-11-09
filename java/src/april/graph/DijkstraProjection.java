@@ -56,7 +56,7 @@ public class DijkstraProjection
         ///////////////////////////////////////////////////////////
         // Build a table of edges for each node.
         // We'll use this for the breadth-first search
-        nodeEdges = new ArrayList<ArrayList<GXYTEdge>>();
+        nodeEdges = new ArrayList<ArrayList<GXYTEdge>>(g.nodes.size());
         while (nodeEdges.size() < g.nodes.size())
             nodeEdges.add(new ArrayList<GXYTEdge>());
 
@@ -84,6 +84,7 @@ public class DijkstraProjection
 
         ///////////////////////////////////////////////////////////
         // allocate the projection datastructure
+
         projection = new ArrayList<GXYTEdge>();
         while (projection.size() < nodeEdges.size())
             projection.add(null);

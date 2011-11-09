@@ -85,5 +85,7 @@ public abstract class ImageSource
         return -1;
     }
 
+    public abstract void printInfo();
+
     public abstract int close();
 }

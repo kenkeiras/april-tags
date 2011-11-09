@@ -2,6 +2,10 @@ package april.sim;
 
 public interface Shape
 {
+    /** Return max possible distance from center to facilitate
+     * fast-checking collisions**/
+    public double getBoundingRadius();
+
     /** If starting at a vector p and traveling in unit direction
      * dir, when will the first collision occur? Return MAX_VALUE if
      * no collision.

@@ -13,7 +13,7 @@ import java.util.*;
 public class JImageAlbum extends JPanel
 {
     JList jlist;
-    JImage jim;
+    public JImage jim;
     MyListModel model;
 
     class ImageRecord

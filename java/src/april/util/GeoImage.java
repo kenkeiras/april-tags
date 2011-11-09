@@ -13,10 +13,22 @@ import april.jmat.*;
  * in a GeoTIFF: a list of tiepoints. Each tiepoint is listed on a
  * line by itself, and has six fields:
  *
- * pixelx pixely pixelz latitude longitude altitude
+ * pixelx pixely pixelz longitude latitude altitude
  *
- * The pixelz and altitude fields are ignored and are typically zero.
+ * The pixelz and altitude fields are ignored and are typically
+ * zero. GPS positions correspond to pixel *centers*.
  *
+ *
+ *  How to create your own GeoImage:
+ *
+ * Download the NASA Worldwind applet for saving geotiff images from
+ *     http://worldwind.arc.nasa.gov/java/demos/SectorSelectAndSave.jnlp
+ *  1) Select and save the area you are trying to grab. Be sure to cycle through the layers
+ *     to find the best imagery (MS is usually good) for your location
+ *  2) convert foo.tif foo.png  (this may complain about some unknown fields, but ignore)
+ *  3) java magic.util.TIFF > foo.pngw
+ *
+ * now pass the path for foo.png to an instance of this class
  **/
 public class GeoImage
 {
@@ -140,6 +152,18 @@ public class GeoImage
     public BufferedImage getImage()
     {
         return im;
+    }
+
+    /** get a 4x4 matrix that scales and rotates the image properly. **/
+    public double[][] getMatrix()
+    {
+        double T[][] = LinAlg.identity(4);
+        for (int i = 0; i < 2; i++)
+            for (int j = 0; j < 2; j++)
+                T[i][j] = im2xy_P[i][j];
+        T[0][3] = im2xy_offset[0];
+        T[1][3] = im2xy_offset[1];
+        return T;
     }
 
     /** Convert pixel coordinates to meters **/

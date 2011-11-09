@@ -31,6 +31,8 @@ public class Graph
      * updated on demand by indexOf. **/
     HashMap<GNode, Integer> nodeIndices = new HashMap<GNode, Integer>();
 
+    public Attributes attributes;
+
     /** Chi^2 error and other error statistics. **/
     public static class ErrorStats
     {
@@ -61,6 +63,27 @@ public class Graph
         }
 
         return (int) stateIndices.get(nodeIndex);
+    }
+
+    public void setAttribute(String s, Object o, StructureCoder coder)
+    {
+        if (attributes == null)
+            attributes = new Attributes();
+        attributes.setAttribute(s,o,coder);
+    }
+
+    public void setAttribute(String s, Object o)
+    {
+        if (attributes == null)
+            attributes = new Attributes();
+        attributes.setAttribute(s,o);
+    }
+
+    public Object getAttribute(String s)
+    {
+        if (attributes == null)
+            return null;
+        return attributes.getAttribute(s);
     }
 
     public int indexOf(GNode gn)
@@ -192,6 +215,8 @@ public class Graph
     {
         StructureWriter outs = new TextStructureWriter(_outs);
 
+        Attributes.write(attributes, outs);
+
         for (int i = 0; i < nodes.size(); i++) {
             GNode gn = nodes.get(i);
 
@@ -251,6 +276,8 @@ public class Graph
     {
         StructureReader ins = new TextStructureReader(new BufferedReader(new FileReader(path)));
 
+        attributes = Attributes.read(ins);
+
         while (true) {
             String classname = ins.readString();
 
@@ -302,6 +329,7 @@ public class Graph
             g.edges.clear();
             g.stateIndices.clear();
         }
+        g.attributes = attributes.copy();
 
         for (GEdge edge : edges)
             g.edges.add(edge.copy());

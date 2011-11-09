@@ -34,6 +34,9 @@ public class GXYTPosEdge extends GEdge
             e.truth = LinAlg.copy(truth);
         e.P = LinAlg.copy(P);
 
+        if (attributes != null)
+            e.attributes = attributes.copy();
+
         return e;
     }
 
@@ -77,6 +80,7 @@ public class GXYTPosEdge extends GEdge
         outs.writeDoubles(truth);
         outs.writeComment("Covariance");
         outs.writeMatrix(P);
+        Attributes.write(attributes, outs);
     }
 
     public void read(StructureReader ins) throws IOException
@@ -87,6 +91,7 @@ public class GXYTPosEdge extends GEdge
         z = ins.readDoubles();
         truth = ins.readDoubles();
         P = ins.readMatrix();
+        attributes = Attributes.read(ins);
     }
 
     public Linearization linearize(Graph g, Linearization lin)

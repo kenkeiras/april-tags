@@ -37,10 +37,15 @@ public class JCamView
     JPanel leftPanel;
 
     RecordPanel recordPanel = new RecordPanel();
+    PrintPanel printPanel = new PrintPanel();
+    TriggerPanel triggerPanel = new TriggerPanel();
 
-    public JCamView(ArrayList<String> urls)
+    boolean verbose = false;
+
+    public JCamView(ArrayList<String> urls, boolean verbose)
     {
         this.urls = urls;
+        this.verbose = verbose;
 
         jf = new JFrame("JCamView");
         jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -78,13 +83,19 @@ public class JCamView
         leftPanel = new JPanel();
         int vspace = 15;
         leftPanel.setLayout(new VFlowLayout());
+        cameraList.setFixedCellWidth(40); // prevent long camera urls from
+                                          // screwing up the panel width
         leftPanel.add(makeChoicePanel("Cameras", cameraList));
         leftPanel.add(Box.createVerticalStrut(vspace));
         leftPanel.add(makeChoicePanel("Formats", formatList));
         leftPanel.add(Box.createVerticalStrut(vspace));
+        leftPanel.add(makeChoicePanel("Software trigger thread", triggerPanel));
+        leftPanel.add(Box.createVerticalStrut(vspace));
         leftPanel.add(makeChoicePanel("Controls", featurePanel));
         leftPanel.add(Box.createVerticalStrut(vspace));
         leftPanel.add(makeChoicePanel("Record", recordPanel));
+        leftPanel.add(Box.createVerticalStrut(vspace));
+        leftPanel.add(makeChoicePanel("Camera Info", printPanel));
 
         JPanel bottomPanel = new JPanel();
         bottomPanel.setLayout(new FlowLayout());
@@ -97,7 +108,9 @@ public class JCamView
 
         jf.add(jsp, BorderLayout.CENTER);
 
-        jf.setSize(800,600);
+        int width = Math.min(1000,
+                             800 + (int) leftPanel.getPreferredSize().getWidth() + 30);
+        jf.setSize(width,600);
         jf.setVisible(true);
     }
 
@@ -119,6 +132,116 @@ public class JCamView
         return jp;
     }
 
+    class TriggerPanel extends JPanel implements ActionListener, ChangeListener
+    {
+        JButton toggleButton = new JButton("Start thread");
+        JSlider fpsSlider = new JSlider(1, 100, 30);
+        JLabel valueLabel = new JLabel(fpsSlider.getValue()+" FPS");
+
+        TriggerThread tThread = null;
+
+        public TriggerPanel()
+        {
+            setLayout(new BorderLayout());
+
+            add(fpsSlider, BorderLayout.CENTER);
+            add(valueLabel, BorderLayout.EAST);
+            add(toggleButton, BorderLayout.SOUTH);
+
+            fpsSlider.addChangeListener(this);
+            toggleButton.addActionListener(this);
+        }
+
+        void updateLabel()
+        {
+            valueLabel.setText(fpsSlider.getValue()+" FPS");
+        }
+
+        int computeDelay()
+        {
+            return (int) Math.round(1000.0/fpsSlider.getValue());
+        }
+
+        public synchronized void actionPerformed(ActionEvent e)
+        {
+            if (e.getSource() == toggleButton) {
+                if (tThread == null) {
+                    tThread = new TriggerThread(computeDelay());
+                    tThread.start();
+                    toggleButton.setText("Stop thread");
+                } else {
+                    tThread.stopRequest();
+                    tThread = null;
+                    toggleButton.setText("Start thread");
+                }
+            }
+        }
+
+        public synchronized void stateChanged(ChangeEvent e)
+        {
+            if (e.getSource() == fpsSlider) {
+                if (tThread != null)
+                    tThread.setDelay(computeDelay());
+
+                updateLabel();
+            }
+        }
+    }
+    class PrintPanel extends JPanel implements ActionListener
+    {
+        JButton printButton = new JButton("Print details");
+        JButton printURLButton = new JButton("Print camera URL");
+        JCheckBox jcb;
+
+        public PrintPanel()
+        {
+            setLayout(new VFlowLayout());
+
+            jcb = new JCheckBox("Verbose UI", verbose);
+
+            add(printButton);
+            add(printURLButton);
+            add(jcb);
+
+            jcb.addActionListener(this);
+            printButton.addActionListener(this);
+            printURLButton.addActionListener(this);
+        }
+
+        public synchronized void actionPerformed(ActionEvent e)
+        {
+            if (e.getSource() == jcb) {
+                verbose = jcb.isSelected();
+                System.out.printf("Verbose is now %s\n", verbose ? "true" : "false");
+            } else if (e.getSource() == printButton) {
+                isrc.printInfo();
+            } else if (e.getSource() == printURLButton) {
+                ImageSourceFormat fmt = isrc.getCurrentFormat();
+
+                String camera = urls.get(cameraList.getSelectedIndex());
+                String format = fmt.format;
+
+                String url = String.format("\"%s?format=%s", camera, format);
+
+                for (int i=0; i < isrc.getNumFeatures(); i++) {
+                    String key = isrc.getFeatureName(i);
+                    double value = isrc.getFeatureValue(i);
+
+                    if (value == (int) value)
+                        url = String.format("%s&%s=%.0f", url,
+                                            key, value);
+                    else
+                        url = String.format("%s&%s=%.2f", url,
+                                            key, value);
+                }
+                url = url + "\"";
+
+                System.out.println("Camera url:");
+                System.out.println(url);
+            }
+        }
+    }
+
     class RecordPanel extends JPanel implements ActionListener, ChangeListener
     {
         JTextField pathBox = new JTextField("/tmp/jcam-capture/camera.islog");
@@ -137,7 +260,7 @@ public class JCamView
 
         JComboBox formatComboBox = new JComboBox(new String[] { "Log file" , "Individual PNGs" });
 
-        ISLogWriter logWriter;
+        ISLog logWriter;
 
         public RecordPanel()
         {
@@ -185,7 +308,7 @@ public class JCamView
 
                     // log format
                     try {
-                        logWriter = new ISLogWriter(new FileOutputStream(pathBox.getText()));
+                        logWriter = new ISLog(pathBox.getText(), "rw");
                     } catch (IOException ex) {
                         recording = false;
                         System.out.println("ex: "+ex);
@@ -286,6 +409,9 @@ public class JCamView
             max = isrc.getFeatureMax(idx);
             value = isrc.getFeatureValue(idx);
 
+            if (verbose)
+                System.out.printf("Feature %2d : %30s (%10.4f, %10.4f, %10.4f)\n", idx, isrc.getFeatureName(idx), min, max, value);
+
             setLayout(new BorderLayout());
 
             if (min==0 && max==1) {
@@ -293,7 +419,10 @@ public class JCamView
                 jcb.addActionListener(this);
                 add(jcb, BorderLayout.CENTER);
             } else {
-                js = new JSlider((int) (min*scale), (int) (max*scale), (int) (value*scale));
+                double safeValue = Math.min(Math.max(value, min), max);
+                js = new JSlider((int) (min*scale), (int) (max*scale), (int) (safeValue*scale));
+                updateSlider();
+
                 js.addChangeListener(this);
                 add(new JLabel(isrc.getFeatureName(idx)), BorderLayout.NORTH);
                 add(js, BorderLayout.CENTER);
@@ -310,22 +439,62 @@ public class JCamView
                 valueLabel.setText(""+value);
             else
                 valueLabel.setText(String.format("%.2f", value));
+            valueLabel.setVerticalAlignment(SwingConstants.NORTH);
         }
 
         public void actionPerformed(ActionEvent e)
         {
             if (jcb != null) {
+                if (verbose)
+                    System.out.printf("isSelected: %s\n", jcb.isSelected() ? "yes" : "no");
                 int res = isrc.setFeatureValue(idx, jcb.isSelected() ? 1 : 0);
+                jcb.setSelected(isrc.getFeatureValue(idx) == 1 ? true : false);
                 if (res != 0)
                     System.out.println("Error setting feature");
             }
             updateLabel();
         }
 
+        private void updateSlider()
+        {
+            // extents
+            js.setMinimum((int) (min*scale));
+            js.setMaximum((int) (max*scale));
+
+            // label table
+            Hashtable labelTable = new Hashtable();
+
+            JLabel minLabel = new JLabel(String.format("%.2f", min));
+            JLabel maxLabel = new JLabel(String.format("%.2f", max));
+
+            Font f = minLabel.getFont();
+            f = new Font( f.getName(), f.getStyle(), f.getSize() - 3);
+            minLabel.setFont(f);
+            maxLabel.setFont(f);
+
+            labelTable.put(new Integer((int) (min*scale)), minLabel);
+            labelTable.put(new Integer((int) (max*scale)), maxLabel);
+
+            js.setLabelTable(labelTable);
+            js.setPaintLabels(true);
+        }
+
         public void stateChanged(ChangeEvent e)
         {
             if (js != null) {
                 int res = isrc.setFeatureValue(idx, js.getValue()/scale);
+
+                min = isrc.getFeatureMin(idx);
+                max = isrc.getFeatureMax(idx);
+
+                updateSlider();
+
+                if (verbose)
+                    System.out.printf("%s: value: desired %f actual %f min/max: (%f, %f)\n",
+                                      isrc.getFeatureName(idx),
+                                      js.getValue()/scale,
+                                      isrc.getFeatureValue(idx),
+                                      min, max);
                 if (res != 0)
                     System.out.println("Error setting feature");
             }
@@ -357,8 +526,6 @@ public class JCamView
             featurePanel.setLayout(new GridLayout(nfeatures, 1));
 
             for (int i = 0; i < nfeatures; i++) {
-//                System.out.printf("Feature %d : %s (%f, %f, %f)\n", i, isrc.getFeatureName(i), isrc.getFeatureMin(i), isrc.getFeatureMax(i), isrc.getFeatureValue(i));
-
                 featurePanel.add(new FeatureControl(isrc, i));
             }
         }
@@ -401,6 +568,54 @@ public class JCamView
                 System.out.println("ex: "+ex);
             }
             runThread = null;
+        }
+    }
+
+    class TriggerThread extends Thread
+    {
+        int delay;
+        int idx = -1;
+        boolean stop = false;
+
+        public TriggerThread(int delay)
+        {
+            this.delay = delay;
+
+            for (int i=0; i < isrc.getNumFeatures(); i++) {
+                if (isrc.getFeatureName(i).equals("software-trigger"))
+                    idx = i;
+            }
+
+            if (idx == -1)
+                System.out.println("Software trigger not supported for image source");
+        }
+
+        public void setDelay(int delay)
+        {
+            this.delay = delay;
+        }
+
+        public void stopRequest()
+        {
+            stop = true;
+        }
+
+        public void run()
+        {
+            if (idx == -1)
+                return;
+
+            long t0, t1;
+            t0 = TimeUtil.utime();
+            t1 = TimeUtil.utime();
+            while (!stop) {
+                t1 = TimeUtil.utime();
+                int ms = (int) (delay - (t1 - t0)/1e3);
+                TimeUtil.sleep(ms);
+
+                t0 = TimeUtil.utime();
+                int res = isrc.setFeatureValue(idx, 1);
+            }
         }
     }
 
@@ -453,7 +668,10 @@ public class JCamView
                         rgb = im.getRGB(mouseListener.imx, mouseListener.imy) & 0xffffff;
 
                     if (frame_mtime - last_info_mtime > 100) {
-                        infoLabel.setText(String.format("fps: %6.2f, RGB: %02x %02x %02x", 1.0/(spf+0.00001), (rgb>>16)&0xff, (rgb>>8)&0xff, rgb&0xff));
+                        infoLabel.setText(String.format("fps: %6.2f, RGB: %02x %02x %02x (%3d, %3d, %3d)",
+                                                        1.0/(spf+0.00001),
+                                                        (rgb>>16)&0xff, (rgb>>8)&0xff, rgb&0xff,
+                                                        (rgb>>16)&0xff, (rgb>>8)&0xff, rgb&0xff));
                         last_info_mtime = frame_mtime;
                     }
 
@@ -478,8 +696,15 @@ public class JCamView
 
         ArrayList<String> urls = new ArrayList<String>();
 
-        for (String arg : args)
+        boolean verbose = false;
+        for (String arg : args) {
+            if (arg.equals("-v") || arg.equals("--verbose")) {
+                verbose = true;
+                continue;
+            }
+
             urls.add(arg);
+        }
 
         if (urls.size()==0) {
             System.out.println("Found cameras: ");
@@ -494,6 +719,6 @@ public class JCamView
             return;
         }
 
-        new JCamView(urls);
+        new JCamView(urls, verbose);
     }
 }

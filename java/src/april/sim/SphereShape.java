@@ -14,4 +14,14 @@ public class SphereShape implements Shape
     {
         this.r = r;
     }
+
+    public double getRadius()
+    {
+        return r;
+    }
+
+    public double getBoundingRadius()
+    {
+        return r;
+    }
 }

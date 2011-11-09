@@ -5,7 +5,10 @@ import java.util.*;
 
 /** Like java.util.Timer, except allows multiple threads to process
  * tasks, and supports pausing execution (without shutting down the
- * timer. **/
+ * timer.
+ *
+ * At creation, it is in the non-running state.
+ **/
 public class PeriodicTasks
 {
     PriorityBlockingQueue<Record> queue = new PriorityBlockingQueue<Record>();
@@ -69,6 +72,11 @@ public class PeriodicTasks
         r.fixedRate = false;
 
         queue.put(r);
+    }
+
+    public synchronized boolean isRunning()
+    {
+        return workers.size() > 0;
     }
 
     public synchronized void setRunning(boolean b)
