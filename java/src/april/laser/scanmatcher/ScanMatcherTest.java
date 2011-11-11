@@ -23,7 +23,7 @@ public class ScanMatcherTest implements LCMSubscriber, ParameterListener
     JFrame jf;
     VisWorld vw = new VisWorld();
     VisLayer vl = new VisLayer(vw);
-    VisCanvas vc = new VisCanvas(vc);
+    VisCanvas vc = new VisCanvas(vl);
 
     LCM lcm = LCM.getSingleton();
     ParameterGUI pg = new ParameterGUI();
@@ -169,7 +169,12 @@ public class ScanMatcherTest implements LCMSubscriber, ParameterListener
                 GridMap gm = scanMatcher.getGridMap();
                 if (gm != null) {
                     BufferedImage im = gm.makeBufferedImage();
-                    vb.addBack(new VisImage(new VisTexture(im, false), gm.getXY0(), gm.getXY1(), Color.red));
+                    double vertices [][] = {gm.getXY0(), {gm.getXY1()[0],gm.getXY0()[1]},
+                                            gm.getXY1(), {gm.getXY0()[0],gm.getXY1()[1]}};
+                    double texcoords [][] = {{0,0}, {0,im.getHeight()},
+                                             {im.getWidth(),im.getHeight()}, {im.getWidth(),0}};
+
+                    vb.addBack(new VisImage(new VisTexture(im, false), vertices, texcoords, Color.red));
                 }
                 vb.swap();
             }

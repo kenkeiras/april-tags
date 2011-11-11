@@ -118,6 +118,11 @@ public class Viewer
         return vc;
     }
 
+    public VisLayer getVisLayer()
+    {
+        return vl;
+    }
+
     public void addParamPanel(JComponent c)
     {
         paramsPanel.add(c);

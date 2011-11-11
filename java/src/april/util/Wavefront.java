@@ -279,7 +279,8 @@ public class Wavefront
 
         JFrame jf;
         VisWorld vw = new VisWorld();
-        VisCanvas vc = new VisCanvas(vw);
+        VisLayer vl = new VisLayer(vw);
+        VisCanvas vc = new VisCanvas(vl);
 
         ArrayList<double[]> sinks = new ArrayList<double[]>();
         double source[];
@@ -296,11 +297,18 @@ public class Wavefront
             jf = new JFrame("Wavefront Test");
 
             VisWorld.Buffer vb = vw.getBuffer("image");
-            vb.addBack(new VisImage(new VisTexture(gm.makeBufferedImage()), gm.getXY0(), gm.getXY1()));
+
+            BufferedImage im = gm.makeBufferedImage();
+            double vertices [][] = {gm.getXY0(), {gm.getXY1()[0],gm.getXY0()[1]},
+                                    gm.getXY1(), {gm.getXY0()[0],gm.getXY1()[1]}};
+            double texcoords [][] = {{0,0}, {0,im.getHeight()},
+                                     {im.getWidth(),im.getHeight()}, {im.getWidth(),0}};
+            vb.addBack(new VisImage(new VisTexture(im, false), vertices, texcoords, null));
+
             vb.swap();
 
-            vc.addEventHandler(this);
-            vc.getViewManager().viewGoal.fit2D(gm.getXY0(), gm.getXY1());
+            vl.addEventHandler(this);
+            vl.cameraManager.fit2D(gm.getXY0(), gm.getXY1(),true);
 
             pg.addListener(this);
 
@@ -349,9 +357,11 @@ public class Wavefront
             if (true) {
                 VisWorld.Buffer vb = vw.getBuffer("sourcesink");
                 vb.setDrawOrder(50);
-                vb.addBack(new VisData(sinks, new VisDataPointStyle(Color.blue, 5)));
+                vb.addBack(new VisPoints(new VisVertexData(sinks),
+                                         new VisConstantColor(Color.blue), 5));
                 if (source != null)
-                    vb.addBack(new VisData(source, new VisDataPointStyle(Color.red, 8)));
+                    vb.addBack(new VisPoints(new VisVertexData(source),
+                                             new VisConstantColor(Color.red), 8));
                 vb.swap();
             }
 
@@ -367,20 +377,27 @@ public class Wavefront
             if (true) {
                 VisWorld.Buffer vb = vw.getBuffer("time");
                 vb.setDrawOrder(100);
-                vb.addBack(new VisText(VisText.ANCHOR.BOTTOM_RIGHT, String.format("%.2f ms\n", dt*1000)));
+                vb.addBack(new VisPixelCoordinates(VisPixelCoordinates.ANCHOR.BOTTOM_RIGHT,
+                                                    new VisText(VisText.ANCHOR.BOTTOM_RIGHT,
+                                                                String.format("%.2f ms\n", dt*1000))));
                 vb.swap();
             }
 
             if (true) {
                 VisWorld.Buffer vb = vw.getBuffer("path");
                 vb.setDrawOrder(100);
-                vb.addBack(new VisData(path, new VisDataLineStyle(Color.yellow, 1)));
+                vb.addBack(new VisLines(new VisVertexData(path), new VisConstantColor(Color.yellow), 1, VisLines.TYPE.LINE_STRIP));
                 vb.swap();
             }
 
             if (true) {
                 VisWorld.Buffer vb = vw.getBuffer("wavefront");
-                vb.addBack(new VisImage(new VisTexture(wf.makeBufferedImage()), gm.getXY0(), gm.getXY1()));
+                BufferedImage im = wf.makeBufferedImage();
+                double vertices [][] = {gm.getXY0(), {gm.getXY1()[0],gm.getXY0()[1]},
+                                        gm.getXY1(), {gm.getXY0()[0],gm.getXY1()[1]}};
+                double texcoords [][] = {{0,0}, {0,im.getHeight()},
+                                         {im.getWidth(),im.getHeight()}, {im.getWidth(),0}};
+                vb.addBack(new VisImage(new VisTexture(im, false), vertices, texcoords, null));
                 vb.swap();
             }
         }

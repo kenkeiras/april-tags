@@ -22,7 +22,7 @@ public class TagTransmit implements ParameterListener
 {
     JFrame jf;
     VisWorld  vw = new VisWorld();
-    VisLayer vl = new VisLayer(vl);
+    VisLayer vl = new VisLayer(vw);
     VisCanvas vc = new VisCanvas(vl);
 
     ImageSource is;
@@ -152,16 +152,16 @@ public class TagTransmit implements ParameterListener
 
                 if (detector.debugInput!=null)
                     vbInput.addBack(new VisDepthTest(false, new VisLighting(false, new VisImage(new VisTexture(detector.debugInput, false),
-                                                                                                new double[][]{{0,0},{fmt.width,fmt.height}}, new double[][]{{0,0},{fmt.width,fmt.height}}, Color.blue))));
+                                                                                                new double[][]{{0,0},{fmt.width,fmt.height}}, new double[][]{{0,0},{fmt.width,fmt.height}}))));
                 vbInput.swap();
 
                 if (detector.debugSegmentation!=null)
                     vbSegmentation.addBack(new VisLighting(false, new VisImage(new VisTexture(detector.debugSegmentation, false),
-                                                                               new double[][]{{0,0},{fmt.width,fmt.height}}, new double[][]{{0,0},{fmt.width,fmt.height}}, Color.blue)));
+                                                                               new double[][]{{0,0},{fmt.width,fmt.height}}, new double[][]{{0,0},{fmt.width,fmt.height}})));
                 vbSegmentation.swap();
 
                 vbOriginal.addBack(new VisDepthTest(false, new VisLighting(false, new VisImage(new VisTexture(im, false),
-                                                                                               new double[][]{{0,0},{fmt.width,fmt.height}}, new double[][]{{0,0},{fmt.width,fmt.height}}, Color.blue))));
+                                                                                               new double[][]{{0,0},{fmt.width,fmt.height}}, new double[][]{{0,0},{fmt.width,fmt.height}}))));
                 vbOriginal.swap();
 
                 vbClock.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.BOTTOM_RIGHT,

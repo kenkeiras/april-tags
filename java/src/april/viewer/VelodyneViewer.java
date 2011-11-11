@@ -22,23 +22,25 @@ import april.jmat.*;
 import april.vis.*;
 
 /** Views velodyne data. **/
-public class VelodyneViewer implements LCMSubscriber
+public class VelodyneViewer implements ViewObject, LCMSubscriber
 {
     Config                         config;
     double                         spos[], squat[];
     PoseTracker                    pt         = PoseTracker.getSingleton();
     String                         channel;
-    VisCanvas                      vc;
+    VisCanvas                      vl;
+    VisCanvas                      vw;
     LCM                            lcm        = LCM.getSingleton();
     VelodyneCalibration            calib      = VelodyneCalibration.makeMITCalibration();
     int                            lastbucket = 0;
     ArrayList<ArrayList<double[]>> points = new ArrayList<ArrayList<double[]>>();
     ArrayList<VisPoints> visPoints = new ArrayList<VisPoints>();
 
-    public VelodyneViewer(Config config, String channel, VisCanvas vc)
+    public VelodyneViewer(Viewer viewer, Config config, String channel)
     {
         this.channel = channel;
-        this.vc = vc;
+        this.vw = viewer.getVisWorld();
+        this.vl = viewer.getVisLayer();
         // sensor position in robot frame
         this.spos = ConfigUtil.getPosition(config, channel);
         this.squat = ConfigUtil.getQuaternion(config, channel);
@@ -70,7 +72,7 @@ public class VelodyneViewer implements LCMSubscriber
             pose_t pose = pt.get(vdata.utime);
             if (pose == null)
                 return;
-            VisWorld.Buffer vb = vc.getWorld().getBuffer(this.channel);
+            VisWorld.Buffer vb = vw.getBuffer(this.channel);
             Velodyne v = new Velodyne(calib, vdata.data);
             Velodyne.Sample vs = new Velodyne.Sample();
             // ArrayList<double[]> points = new ArrayList<double[]>();

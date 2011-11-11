@@ -167,26 +167,26 @@ public class TagTest implements ParameterListener
 
                 if (detector.debugInput!=null)
                     vbInput.addBack(new VisDepthTest(false, new VisLighting(false, new VisImage(new VisTexture(detector.debugInput, false),
-                                                                                                new double[][]{{0,0},{width,height}}, new double[][]{{0,0},{width,height}}, Color.blue))));
+                                                                                                new double[][]{{0,0},{width,height}}, new double[][]{{0,0},{width,height}}))));
                 vbInput.swap();
 
                 if (detector.debugSegmentation!=null)
                     vbSegmentation.addBack(new VisLighting(false, new VisImage(new VisTexture(detector.debugSegmentation, false),
-                                                                               new double[][]{{0,0},{width,height}}, new double[][]{{0,0},{width,height}}, Color.blue)));
+                                                                               new double[][]{{0,0},{width,height}}, new double[][]{{0,0},{width,height}})));
                 vbSegmentation.swap();
 
                 vbOriginal.addBack(new VisDepthTest(false, new VisLighting(false, new VisImage(new VisTexture(im, false),
-                                                                                               new double[][]{{0,0},{width,height}}, new double[][]{{0,0},{width,height}}, Color.blue))));
+                                                                                               new double[][]{{0,0},{width,height}}, new double[][]{{0,0},{width,height}}))));
                 vbOriginal.swap();
 
                 if (detector.debugTheta != null)
                     vbThetas.addBack(new VisDepthTest(false, new VisLighting(false, new VisImage(new VisTexture(detector.debugTheta, false),
-                                                                                                 new double[][]{{0,0},{width,height}}, new double[][]{{0,0},{width,height}}, Color.blue))));
+                                                                                                 new double[][]{{0,0},{width,height}}, new double[][]{{0,0},{width,height}}))));
                 vbThetas.swap();
 
                 if (detector.debugMag != null)
                     vbMag.addBack(new VisDepthTest(false, new VisLighting(false, new VisImage(new VisTexture(detector.debugMag, false),
-                                                                                              new double[][]{{0,0},{width,height}}, new double[][]{{0,0},{width,height}}, Color.blue))));
+                                                                                              new double[][]{{0,0},{width,height}}, new double[][]{{0,0},{width,height}}))));
                 vbMag.swap();
 
                 vbClock.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.BOTTOM_RIGHT,
@@ -225,7 +225,7 @@ public class TagTest implements ParameterListener
                                                  new VisImage(new VisTexture(tf.makeImage(d.id), false),
                                                               new double[][] {{-tagsize_m/2, -tagsize_m/2},
                                                                               {tagsize_m/2, tagsize_m/2}},
-                                                              new double[][]{{0,height},{width,0}}, Color.blue)));
+                                                              new double[][]{{0,height},{width,0}})));
                  }
 
                 vbTag3D.addBack(new VisChain(LinAlg.rotateX(Math.PI/2),

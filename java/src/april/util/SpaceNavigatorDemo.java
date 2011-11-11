@@ -14,6 +14,7 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
 
     VisWorld.Buffer vb;
     VisWorld vw;
+    VisLayer vl;
     VisCanvas vc;
 
     ParameterGUI pg;
@@ -33,13 +34,14 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
         pg = new ParameterGUI();
 
         vw = new VisWorld();
+        vl = new VisLayer(vw);
         vc = new VisCanvas(vw);
-        vc.getViewManager().setInterfaceMode(3);
+        //vis2 defaults to 3.0 vc.getViewManager().setInterfaceMode(3);
 
         vb = vw.getBuffer("main");
         vw.getBuffer("grid").addFront(new VisGrid());
         vw.getBuffer("axes").addFront(new VisAxes());
-        vc.getViewManager().setBufferEnabled("grid", false);
+        vw.getBuffer("grid").setEnabled(false);
 
         jf = new JFrame("SpaceNavigator Demo");
         jf.setLayout(new BorderLayout());
@@ -86,30 +88,35 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
         double dt = (now - last) / 1.0E6;
         last = now;
         VisWorld.Buffer vb = vw.getBuffer("FPS");
-        vb.addBuffered(new VisText(VisText.ANCHOR.TOP_LEFT, String.format("FPS: %3.1f", 1.0/dt)));
-        vb.switchBuffer();
+        vb.addBack(new VisScreenCoordinates(VisScreenCoordinates.ANCHOR.TOP_LEFT,
+                                            new VisText(VisText.ANCHOR.TOP_LEFT, String.format("FPS: %3.1f", 1.0/dt))));
+        vb.swap();
 
 
         String str = String.format("Last Event:\n<<mono-normal>>" +
                                    "%4d :x\n%4d :y\n%4d :z\n%4d :r\n%4d :p\n%4d :t",
                                    me.x, me.y, me.z, me.roll, me.pitch, me.yaw);
         vb = vw.getBuffer("MOTION_EVENT");
-        vb.addBuffered(new VisText(VisText.ANCHOR.TOP_RIGHT, VisText.JUSTIFICATION.RIGHT, str));
-        vb.switchBuffer();
+        vb.addBack(new VisScreenCoordinates(VisScreenCoordinates.ANCHOR.TOP_RIGHT,
+                                            new VisText(VisText.ANCHOR.TOP_RIGHT, str)));
+        vb.swap();
 
 
         // display cross at center of rotation (eye) in 2 colors to ensure
         vb = vw.getBuffer("CENTER");
-        vb.addBuffered(new VisText(VisText.ANCHOR.CENTER, VisText.JUSTIFICATION.LEFT,
-                                   "<<large, blue>>|", 0.0));
-        vb.addBuffered(new VisText(VisText.ANCHOR.CENTER, VisText.JUSTIFICATION.LEFT,
-                                   "<<large, blue>>--", 0.0));
-        vb.switchBuffer();
+        vb.addBack(new VisScreenCoordinates(VisScreenCoordinates.ANCHOR.CENTER,
+                                            new VisText(VisText.ANCHOR.LEFT,
+                                                        "<<large, blue>>|", 0.0)));
+        vb.addBack(new VisScreenCoordinates(VisScreenCoordinates.ANCHOR.CENTER,
+                                            new VisText(VisText.ANCHOR.LEFT,
+                                                        "<<large, blue>>--", 0.0)));
+        vb.swap();
 
         vb = vw.getBuffer("CENTER2");
-        vb.addBuffered(new VisText(VisText.ANCHOR.CENTER, VisText.JUSTIFICATION.RIGHT,
-                                   "<<large, black>>+", 0.0));
-        vb.switchBuffer();
+        vb.addBack(new VisScreenCoordinates(VisScreenCoordinates.ANCHOR.CENTER,
+                                            new VisText(VisText.ANCHOR.RIGHT,
+                                                        "<<large, black>>+", 0.0)));
+        vb.swap();
 
         VisView vg = vc.getViewManager().viewGoal;
 
@@ -171,25 +178,25 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
 
     public void redraw()
     {
-        vb.addBuffered(new VisChain(LinAlg.translate(0, 0, -1),
-                                    new VisBox(100, 100, 2, new VisDataFillStyle(Color.gray))));
+        vb.addBack(new VisChain(LinAlg.translate(0, 0, -1),
+                                    new VisBox(100, 100, 2, new VisConstantColor(Color.gray))));
 
-        vb.addBuffered(new VisChain(LinAlg.translate(4, -5, 1),
-                                    new VisBox(3, 3, 2, new VisDataFillStyle(getColor(0)))));
+        vb.addBack(new VisChain(LinAlg.translate(4, -5, 1),
+                                    new VisBox(3, 3, 2, new VisConstantColor(getColor(0)))));
 
-        vb.addBuffered(new VisChain(LinAlg.translate(4, 0, 1),
-                                    new VisBox(3, 3, 4, new VisDataFillStyle(getColor(1)))));
+        vb.addBack(new VisChain(LinAlg.translate(4, 0, 1),
+                                    new VisBox(3, 3, 4, new VisConstantColor(getColor(1)))));
 
-        vb.addBuffered(new VisChain(LinAlg.translate(4, 5, 1),
-                                    new VisBox(3, 2, 2, new VisDataFillStyle(getColor(2)))));
+        vb.addBack(new VisChain(LinAlg.translate(4, 5, 1),
+                                    new VisBox(3, 2, 2, new VisConstantColor(getColor(2)))));
 
-        vb.addBuffered(new VisChain(LinAlg.translate(4, 12, 1),
-                                    new VisBox(4, 4, 2, new VisDataFillStyle(getColor(3)))));
+        vb.addBack(new VisChain(LinAlg.translate(4, 12, 1),
+                                    new VisBox(4, 4, 2, new VisConstantColor(getColor(3)))));
 
-        vb.addBuffered(new VisChain(LinAlg.translate(4, 17, 1),
-                                    new VisBox(4, 4, 2, new VisDataFillStyle(getColor(4)))));
+        vb.addBack(new VisChain(LinAlg.translate(4, 17, 1),
+                                    new VisBox(4, 4, 2, new VisConstantColor(getColor(4)))));
 
-        vb.switchBuffer();
+        vb.swap();
     }
 
     public Color getColor(int offset)

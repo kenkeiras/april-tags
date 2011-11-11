@@ -1,8 +1,5 @@
 package april.vis;
 
-import javax.media.opengl.*;
-import javax.media.opengl.glu.*;
-
 import java.awt.*;
 import java.awt.image.*;
 import java.util.*;
@@ -23,11 +20,6 @@ public class VisGeoImageSet implements VisObject, VisSerializable
     {
         VisImage vim;
         double M[][];
-    }
-
-    // only for unserialize
-    public VisGeoImageSet()
-    {
     }
 
     public VisGeoImageSet(String dirpath, GPSLinearization gpslin, boolean asyncLoad) throws IOException
@@ -57,13 +49,13 @@ public class VisGeoImageSet implements VisObject, VisSerializable
         return gpslin;
     }
 
-    public void render(VisContext vc, GL gl, GLU glu)
+    public void render(VisCanvas vc, VisLayer vl, GL gl, GLU glu)
     {
         synchronized(tiles) {
             for (Tile tile : tiles) {
                 gl.glPushMatrix();
-                VisUtil.multiplyMatrix(gl, tile.M);
-                tile.vim.modulateColor = modulateColor;
+                gl.glMultMatrix(tile.M);
+                tile.vim.c = modulateColor;
                 tile.vim.render(vc, gl, glu);
                 gl.glPopMatrix();
             }
@@ -104,9 +96,10 @@ public class VisGeoImageSet implements VisObject, VisSerializable
                 GeoImage geoim = new GeoImage(file.getPath(), gpslin);
 
                 BufferedImage im = geoim.getImage();
-                VisTexture vt = new VisTexture(im);
-                vt.lock();
-                VisImage vim = new VisImage(vt, new double[2], new double[] { im.getWidth(), im.getHeight() });
+                VisTexture vt = new VisTexture(im,false);
+                //vis2 vt.lock();
+                double xy12[][]={{0,0},{im.getWidth(), im.getHeight()}};
+                VisImage vim = new VisImage(vt, xy12,xy12, modulateColor);
 
                 Tile tile = new Tile();
                 tile.vim = vim;
@@ -119,17 +112,23 @@ public class VisGeoImageSet implements VisObject, VisSerializable
         }
     }
 
-    public void serialize(LCMDataOutputStream out) throws IOException
+    // only for VisSerializable
+    public VisGeoImageSet(ObjectReader in)
     {
-        out.writeStringZ(dirpath);
+    }
+
+
+    public void writeObject(ObjectWriter out) throws IOException
+    {
+        out.writeUTF(dirpath);
         out.writeDouble(gpslin.getOriginLL()[0]);
         out.writeDouble(gpslin.getOriginLL()[1]);
         out.writeInt(modulateColor.getRGB());
     }
 
-    public void unserialize(LCMDataInputStream in) throws IOException
+    public void readObject(ObjectReader in) throws IOException
     {
-        String _dirpath = in.readStringZ();
+        String _dirpath = in.readUTF();
         double ll[] = new double[] { in.readDouble(), in.readDouble() };
         GPSLinearization _gpslin = new GPSLinearization(ll);
 

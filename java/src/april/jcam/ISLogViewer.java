@@ -20,6 +20,7 @@ public class ISLogViewer implements LCMSubscriber
 {
     JFrame jf;
     VisWorld vw;
+    VisLayer vl;
     VisCanvas vc;
 
     VisWorld.Buffer vbim;
@@ -101,10 +102,11 @@ public class ISLogViewer implements LCMSubscriber
     private void setupVis()
     {
         vw = new VisWorld();
-        vc = new VisCanvas(vw);
+        vl = new VisLayer(vw);
+        vc = new VisCanvas(vl);
 
-        vc.getViewManager().viewGoal.perspectiveness = 0;
-        vc.setBackground(Color.black);
+        //vis2 vl.cameraManager.perspectiveness1 = 0;
+        vl.backgroundColor = Color.black;
 
         vbim  = vw.getBuffer("images");
         vbhud = vw.getBuffer("hud");
@@ -112,7 +114,7 @@ public class ISLogViewer implements LCMSubscriber
 
     private void setupGUI()
     {
-        paramsPanel = new EnabledBuffersPanel(vc);
+        paramsPanel = new JPanel();//vis2 new EnabledBuffersPanel(vc);
 
         jf = new JFrame("ISLogViewer");
         jf.setLayout(new BorderLayout());
@@ -215,12 +217,8 @@ public class ISLogViewer implements LCMSubscriber
         // Image
         BufferedImage im = ImageConvert.convertToImage(e.ifmt.format, e.ifmt.width,
                                                        e.ifmt.height, e.buf);
-        double XY0[] = new double[] {0, 0};
-        double XY1[] = new double[] {im.getWidth(), im.getHeight()};
 
-        vbim.addBuffered(new VisLighting(false, new VisImage(new VisTexture(im),
-                                                             XY0, XY1,
-                                                             true)));
+        vbim.addBack(new VisLighting(false, new VisChain(LinAlg.scale(1,-1,1), new VisImage(im))));
 
         // HUD
         String str =    "" +
@@ -234,20 +232,21 @@ public class ISLogViewer implements LCMSubscriber
             position = log.getPositionFraction();
         } catch (IOException ex) {}
 
-        vbhud.addBuffered(new VisText(VisText.ANCHOR.TOP_LEFT,
-                                      String.format(str,
-                                                    (e.utime - log_t0)*1e-6,
-                                                    100*position,
-                                                    e.utime,
-                                                    e.byteOffset)));
+        vbhud.addBack(new VisPixelCoordinates(VisPixelCoordinates.ANCHOR.TOP_LEFT,
+                                              new VisText(VisText.ANCHOR.TOP_LEFT,
+                                                          String.format(str,
+                                                                        (e.utime - log_t0)*1e-6,
+                                                                        100*position,
+                                                                        e.utime,
+                                                                        e.byteOffset))));
 
         if (once) {
             once = false;
-            vc.getViewManager().viewGoal.fit2D(XY0, XY1);
+            vl.cameraManager.fit2D(sc_xy12[0], sc_xy12[1]);
         }
 
         // switch
-        vbim.switchBuffer();
-        vbhud.switchBuffer();
+        vbim.swap();
+        vbhud.swap();
     }
 }

@@ -20,7 +20,7 @@ import lcm.lcm.*;
 import april.lcmtypes.*;
 
 /** VisCanvasEventAdapter that draws a robot and allows teleportation. **/
-public class ViewRobot extends VisCanvasEventAdapter implements ViewObject, LCMSubscriber
+public class ViewRobot extends VisEventAdapter implements ViewObject, LCMSubscriber
 {
     Viewer              viewer;
     String              name;
@@ -44,7 +44,7 @@ public class ViewRobot extends VisCanvasEventAdapter implements ViewObject, LCMS
         this.viewer = viewer;
         this.name = name;
         this.config = config;
-        viewer.getVisCanvas().addEventHandler(this, 0);
+        viewer.getVisLayer().addEventHandler(this);//vis2 addEventHandler(this, 0);
         vrobot.color = Color.cyan;
 
         enableTeleport = config.getBoolean("enable_teleport", false);
@@ -56,7 +56,7 @@ public class ViewRobot extends VisCanvasEventAdapter implements ViewObject, LCMS
                     double T[][] = ConfigUtil.getRigidBodyTransform(config, "avatar");
                     double scale = config.getDouble("avatar.scale", 1);
                     T = LinAlg.multiplyMany(T, LinAlg.scale(scale, scale, scale));
-                    RWX rwx = new RWX(path);
+                    RWXObject rwx = new RWXObject(path);
                     vavatar = new VisChain(T, rwx);
                 } catch (IOException ex) {
                     System.out.println("Problem loading avatar model: "+ex);
@@ -112,8 +112,8 @@ public class ViewRobot extends VisCanvasEventAdapter implements ViewObject, LCMS
             redraw();
 
             if (followMode > 0) {
-                VisViewManager viewManager = viewer.getVisCanvas().getViewManager();
-                viewManager.follow(lastRobotPos, lastRobotQuat, pose.pos, pose.orientation, followMode == 2);
+                VisCameraManager camManager = viewer.getVisLayer().cameraManager;
+                //vis2 camManager.follow(lastRobotPos, lastRobotQuat, pose.pos, pose.orientation, followMode == 2);
             }
 
             lastRobotPos = LinAlg.copy(pose.pos);
@@ -121,10 +121,8 @@ public class ViewRobot extends VisCanvasEventAdapter implements ViewObject, LCMS
         }
     }
 
-    public boolean mouseDragged(VisCanvas vc, GRay3D ray, MouseEvent e)
+    public boolean mouseDragged(VisCanvas vc, VisLayer vl, VisCanvas.RenderInfo rinfo, GRay3D ray, MouseEvent e)
     {
-        if (!vc.isPicking(this))
-            return false;
         if (pose == null)
             return false;
         int mods = e.getModifiersEx();
@@ -194,16 +192,13 @@ public class ViewRobot extends VisCanvasEventAdapter implements ViewObject, LCMS
         }
     }
 
-    public boolean mousePressed(VisCanvas vc, GRay3D ray, MouseEvent e)
+    public boolean mousePressed(VisCanvas vc, VisLayer vl, VisCanvas.RenderInfo rinfo,  GRay3D ray, MouseEvent e)
     {
         return false;
     }
 
-    public boolean mouseReleased(VisCanvas vc, GRay3D ray, MouseEvent e)
+    public boolean mouseReleased(VisCanvas vc, VisLayer vl, VisCanvas.RenderInfo rinfo,  GRay3D ray, MouseEvent e)
     {
-        if (!vc.isPicking(this))
-            return false;
-
         if (leadTimer != null) {
             leadTimer.cancel();
             leadTimer = null;
@@ -213,48 +208,11 @@ public class ViewRobot extends VisCanvasEventAdapter implements ViewObject, LCMS
         return true;
     }
 
-    public double pickQuery(VisCanvas vc, GRay3D ray)
-    {
-        return queryDistance(vc, ray);
-    }
-
-    public void pickNotify(boolean winner)
-    {
-        vrobot.setSelectedState(winner ? 2 : 0);
-    }
-
-    public double hoverQuery(VisCanvas vc, GRay3D ray)
-    {
-        return queryDistance(vc, ray);
-    }
-
-    public void hoverNotify(boolean winner)
-    {
-        vrobot.setSelectedState(winner ? 1 : 0);
-    }
-
-    protected double queryDistance(VisCanvas vc, GRay3D ray)
-    {
-        if (pose == null)
-            return -1;
-        if (!enableTeleport)
-            return -1;
-
-        double pos[] = ray.intersectPlaneXY();
-        double dist = Math.sqrt(LinAlg.sq(pos[0] - pose.pos[0]) + LinAlg.sq(pos[1] - pose.pos[1]));
-        return dist < 1 ? dist : -1;
-    }
-
-    public String getName()
-    {
-        return "Robot Position";
-    }
-
     VisObject lastFollowTemporary;
     int       findCount;
     boolean   lastCharT = false;
 
-    public synchronized boolean keyTyped(VisCanvas vc, KeyEvent e)
+    public synchronized boolean keyTyped(VisCanvas vc, VisLayer vl, VisCanvas.RenderInfo rinfo, KeyEvent e)
     {
         if (e.getKeyChar() == 'f') {
             // Follow mode
@@ -302,13 +260,14 @@ public class ViewRobot extends VisCanvasEventAdapter implements ViewObject, LCMS
         return false;
     }
 
-    public void doHelp(HelpOutput houts)
-    {
-        houts.beginMouseCommands(this);
-        houts.addMouseCommand(this, HelpOutput.LEFT | HelpOutput.DRAG, "Teleport (translate)");
-        houts.addMouseCommand(this, HelpOutput.LEFT | HelpOutput.DRAG | HelpOutput.SHIFT, "Teleport (rotate)");
-        houts.beginKeyboardCommands(this);
-        houts.addKeyboardCommand(this, "f", HelpOutput.CTRL, "Cycle through follow modes");
-        houts.addKeyboardCommand(this, "F", HelpOutput.CTRL, "Find robot");
-    }
+    //vis2
+    // public void doHelp(HelpOutput houts)
+    // {
+    //     houts.beginMouseCommands(this);
+    //     houts.addMouseCommand(this, HelpOutput.LEFT | HelpOutput.DRAG, "Teleport (translate)");
+    //     houts.addMouseCommand(this, HelpOutput.LEFT | HelpOutput.DRAG | HelpOutput.SHIFT, "Teleport (rotate)");
+    //     houts.beginKeyboardCommands(this);
+    //     houts.addKeyboardCommand(this, "f", HelpOutput.CTRL, "Cycle through follow modes");
+    //     houts.addKeyboardCommand(this, "F", HelpOutput.CTRL, "Find robot");
+    // }
 }

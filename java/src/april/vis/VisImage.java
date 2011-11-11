@@ -10,19 +10,36 @@ public class VisImage implements VisObject
     VisTexture texture;
     double vertices[][];
     double texcoords[][];
-    Color c;
+    Color c = Color.grey;
 
+    // Convenience constructor. Maps pixels directly to images, so camera images will appear upside down
+    // suggested usage for rightsideup images:
+    //  vb.addBack(new VisChain(LinAlg.scale(1,-1,1),new VisImage(cameraImage)));
+    public VisImage(BufferedImage im)
+    {
+        this.texture = new VisTexture(im,false);
+        this.vertices = new double[][]{{0,0},{im.getWidth(),0},
+                                       {im.getWidth(),im.getHeight()},{0,im.getHeight()}};
+        this.texcoords = LinAlg.copy(vertices);
+        this.c = null;
+    }
+
+    // Can pass 'null' for color if texture is not alpha mask
     public VisImage(VisTexture texture, double vertices[][], double texcoords[][], Color c)
     {
         this.texture = texture;
         this.vertices = LinAlg.copy(vertices);
         this.texcoords = LinAlg.copy(texcoords);
         this.c = c;
+
+        assert(vertices.length == 4);
+        assert(texcoords.length == 4);
     }
 
     public void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl)
     {
-        gl.glColor(c);
+        if (c != null)
+            gl.glColor(c);
 
         texture.bind(gl);
 
