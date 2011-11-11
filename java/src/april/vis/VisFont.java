@@ -117,7 +117,7 @@ public class VisFont
         return vf;
     }
 
-    /** You probably want VisText instead. **/
+    /** You probably want VzText instead. **/
     public VisFont.Text makeText(String s, Color color)
     {
         return new Text(s, color);

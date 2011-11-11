@@ -9,7 +9,7 @@ import april.jmat.*;
 
 /** VisObject representing a RWX 3D model format, including quite a
  * few of the ActiveWorlds extensions. Textures are not supported. **/
-public class RWXObject implements VisObject, VisSerializable
+public class VzRWX implements VisObject, VisSerializable
 {
     public HashMap<String, Proto> protos = new HashMap<String, Proto>();
     public ArrayList<RenderOp> renderOps = new ArrayList<RenderOp>();
@@ -22,7 +22,7 @@ public class RWXObject implements VisObject, VisSerializable
 
     static RenderOp GL_PUSH = new GLPushOp(), GL_POP = new GLPopOp();
 
-    public RWXObject(String path) throws IOException
+    public VzRWX(String path) throws IOException
     {
         BufferedReader ins = new BufferedReader(new FileReader(path));
 
@@ -79,7 +79,7 @@ public class RWXObject implements VisObject, VisSerializable
 
     abstract static class RenderOp implements VisSerializable
     {
-        abstract void renderGL(RWXObject rwx, GL gl, int pass);
+        abstract void renderGL(VzRWX rwx, GL gl, int pass);
     }
 
     static class GLPushOp extends RenderOp
@@ -88,7 +88,7 @@ public class RWXObject implements VisObject, VisSerializable
         {
         }
 
-        void renderGL(RWXObject rwx, GL gl, int pass)
+        void renderGL(VzRWX rwx, GL gl, int pass)
         {
             gl.glPushMatrix();
         }
@@ -114,7 +114,7 @@ public class RWXObject implements VisObject, VisSerializable
         {
         }
 
-        void renderGL(RWXObject rwx, GL gl, int pass)
+        void renderGL(VzRWX rwx, GL gl, int pass)
         {
             gl.glPopMatrix();
         }
@@ -145,7 +145,7 @@ public class RWXObject implements VisObject, VisSerializable
             z = Float.parseFloat(toks[3]);
         }
 
-        void renderGL(RWXObject rwx, GL gl, int pass)
+        void renderGL(VzRWX rwx, GL gl, int pass)
         {
             gl.glTranslated(x,y,z);
         }
@@ -180,7 +180,7 @@ public class RWXObject implements VisObject, VisSerializable
                 m[i] = Double.parseDouble(toks[1+i]);
         }
 
-        void renderGL(RWXObject rwx, GL gl, int pass)
+        void renderGL(VzRWX rwx, GL gl, int pass)
         {
             // ActiveWorld spec says that Transform is relative to
             // global coordinate frame, but models look funny that
@@ -216,7 +216,7 @@ public class RWXObject implements VisObject, VisSerializable
             sz = Float.parseFloat(toks[3]);
         }
 
-        void renderGL(RWXObject rwx, GL gl, int pass)
+        void renderGL(VzRWX rwx, GL gl, int pass)
         {
             gl.glScaled(sx,sy,sz);
         }
@@ -249,7 +249,7 @@ public class RWXObject implements VisObject, VisSerializable
             name = toks[1];
         }
 
-        void renderGL(RWXObject rwx, GL gl, int pass)
+        void renderGL(VzRWX rwx, GL gl, int pass)
         {
             Proto p = rwx.protos.get(name);
             p.renderGL(rwx, gl, pass);
@@ -274,7 +274,7 @@ public class RWXObject implements VisObject, VisSerializable
     {
         String name;
 
-        Proto(RWXObject rwx, BufferedReader ins, String toks[])
+        Proto(VzRWX rwx, BufferedReader ins, String toks[])
         {
             super(rwx, ins, toks, "PROTOBEGIN", "PROTOEND");
             this.name = toks[1];
@@ -300,7 +300,7 @@ public class RWXObject implements VisObject, VisSerializable
 
     static class Clump extends ClumpLike
     {
-        Clump(RWXObject rwx, BufferedReader ins, String toks[])
+        Clump(VzRWX rwx, BufferedReader ins, String toks[])
         {
             super(rwx, ins, toks, "CLUMPBEGIN", "CLUMPEND");
         }
@@ -385,7 +385,7 @@ public class RWXObject implements VisObject, VisSerializable
             }
         }
 
-        public ClumpLike(RWXObject rwx, BufferedReader ins, String toks[], String starttok, String endtok)
+        public ClumpLike(VzRWX rwx, BufferedReader ins, String toks[], String starttok, String endtok)
         {
             assert(toks[0].equals(starttok));
 
@@ -542,7 +542,7 @@ public class RWXObject implements VisObject, VisSerializable
             triangles = null;
         }
 
-        void renderGL(RWXObject rwx, GL gl, int pass)
+        void renderGL(VzRWX rwx, GL gl, int pass)
         {
             for (RenderOp rop: renderOps)
                 rop.renderGL(rwx,gl, pass);
@@ -636,7 +636,7 @@ public class RWXObject implements VisObject, VisSerializable
 
     public static void main(String args[])
     {
-        JFrame f = new JFrame("RWXObject "+args[0]);
+        JFrame f = new JFrame("VzRWX "+args[0]);
         f.setLayout(new BorderLayout());
 
         VisWorld vw = new VisWorld();
@@ -644,7 +644,7 @@ public class RWXObject implements VisObject, VisSerializable
         VisCanvas vc = new VisCanvas(vl);
 
         try {
-            RWXObject rwx = new RWXObject(args[0]);
+            VzRWX rwx = new VzRWX(args[0]);
 
             System.out.printf("Loaded RWX model with %d vertices and %d triangles\n", rwx.vertexArray.size()/3, rwx.indexArray.size()/3);
 
@@ -672,7 +672,7 @@ public class RWXObject implements VisObject, VisSerializable
 
     }
 
-    public RWXObject(ObjectReader ins)
+    public VzRWX(ObjectReader ins)
     {
     }
 

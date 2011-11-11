@@ -74,8 +74,8 @@ public interface VisCameraManager
                                                   layerViewport);
 
             double rayEnd[] = VisUtil.unProject(new double[] { winx, winy, 1 },
-                                                  getModelViewMatrix(), getProjectionMatrix(),
-                                                  layerViewport);
+                                                getModelViewMatrix(), getProjectionMatrix(),
+                                                layerViewport);
 
             return new GRay3D(rayStart, LinAlg.subtract(rayEnd, rayStart));
         }

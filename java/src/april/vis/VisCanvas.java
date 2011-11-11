@@ -181,7 +181,7 @@ public class VisCanvas extends JComponent implements VisSerializable
 
             lastResizeObject = new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.CENTER_ROUND,
                                                        new VisDepthTest(false,
-                                                                        new VisText(VisText.ANCHOR.CENTER_ROUND,
+                                                                        new VzText(VzText.ANCHOR.CENTER_ROUND,
                                                                                     "<<sansserif-12>>"+
                                                                                     String.format("%d x %d", getWidth(), getHeight()))));
             vb.addTemporary(lastResizeObject, 0.750);
@@ -293,7 +293,7 @@ public class VisCanvas extends JComponent implements VisSerializable
   gl.glHint(GL.GL_POINT_SMOOTH_HINT, GL.GL_NICEST);
 */
 
-            // VisGrid benefits tremendously from this
+            // VzGrid benefits tremendously from this
             gl.glEnable(GL.GL_LINE_SMOOTH);
             gl.glHint(GL.GL_LINE_SMOOTH_HINT, GL.GL_NICEST);
 /*
@@ -317,7 +317,7 @@ public class VisCanvas extends JComponent implements VisSerializable
                 VisWorld.Buffer vb = privateWorld.getBuffer("FPS Rate");
                 vb.addBack(new VisDepthTest(false,
                                             new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.BOTTOM_LEFT,
-                                                                    new VisText(VisText.ANCHOR.BOTTOM_LEFT_ROUND,
+                                                                    new VzText(VzText.ANCHOR.BOTTOM_LEFT_ROUND,
                                                                                 "<<white,monospaced-12>>"+
                                                                                 String.format("%5.1f fps %c",
                                                                                               getMeasuredFPS(),
@@ -377,10 +377,10 @@ public class VisCanvas extends JComponent implements VisSerializable
 
                 // position the camera
                 VisCameraManager.CameraPosition cameraPosition = layer.cameraManager.getCameraPosition(VisCanvas.this,
-                                                                                                       viewport,
-                                                                                                       layerPosition,
-                                                                                                       layer,
-                                                                                                       mtime);
+                                                                                                      viewport,
+                                                                                                      layerPosition,
+                                                                                                      layer,
+                                                                                                      mtime);
                 rinfo.cameraPositions.put(layer, cameraPosition);
 
                 gl.glMatrixMode(GL.GL_PROJECTION);
@@ -768,95 +768,95 @@ public class VisCanvas extends JComponent implements VisSerializable
         if (true) {
             JMenuItem jmi = new JMenuItem("Save screenshot (.png)");
             jmi.addActionListener(new ActionListener() {
-                public void actionPerformed(ActionEvent e) {
+                    public void actionPerformed(ActionEvent e) {
 
-                    Calendar c = new GregorianCalendar();
+                        Calendar c = new GregorianCalendar();
 
-                    String s = String.format("%4d%02d%02d_%02d%02d%02d_%03d", c.get(Calendar.YEAR),
-                                             c.get(Calendar.MONTH)+1,
-                                             c.get(Calendar.DAY_OF_MONTH),
-                                             c.get(Calendar.HOUR_OF_DAY),
-                                             c.get(Calendar.MINUTE),
-                                             c.get(Calendar.SECOND),
-                                             c.get(Calendar.MILLISECOND)
-                        );
+                        String s = String.format("%4d%02d%02d_%02d%02d%02d_%03d", c.get(Calendar.YEAR),
+                                                 c.get(Calendar.MONTH)+1,
+                                                 c.get(Calendar.DAY_OF_MONTH),
+                                                 c.get(Calendar.HOUR_OF_DAY),
+                                                 c.get(Calendar.MINUTE),
+                                                 c.get(Calendar.SECOND),
+                                                 c.get(Calendar.MILLISECOND)
+                            );
 
-                    String path = "p"+s+".png";
+                        String path = "p"+s+".png";
 
-                    writeScreenShot(new File(path), "png");
-                }
-            });
+                        writeScreenShot(new File(path), "png");
+                    }
+                });
             jmenu.add(jmi);
         }
 
         if (true) {
             JMenuItem jmi = new JMenuItem("Save scene (.vsc)");
             jmi.addActionListener(new ActionListener() {
-                public void actionPerformed(ActionEvent e) {
+                    public void actionPerformed(ActionEvent e) {
 
-                    Calendar c = new GregorianCalendar();
+                        Calendar c = new GregorianCalendar();
 
-                    String s = String.format("%4d%02d%02d_%02d%02d%02d_%03d", c.get(Calendar.YEAR),
-                                             c.get(Calendar.MONTH)+1,
-                                             c.get(Calendar.DAY_OF_MONTH),
-                                             c.get(Calendar.HOUR_OF_DAY),
-                                             c.get(Calendar.MINUTE),
-                                             c.get(Calendar.SECOND),
-                                             c.get(Calendar.MILLISECOND)
-                        );
+                        String s = String.format("%4d%02d%02d_%02d%02d%02d_%03d", c.get(Calendar.YEAR),
+                                                 c.get(Calendar.MONTH)+1,
+                                                 c.get(Calendar.DAY_OF_MONTH),
+                                                 c.get(Calendar.HOUR_OF_DAY),
+                                                 c.get(Calendar.MINUTE),
+                                                 c.get(Calendar.SECOND),
+                                                 c.get(Calendar.MILLISECOND)
+                            );
 
-                    String path = "v"+s+".vsc";
+                        String path = "v"+s+".vsc";
 
-                    try {
-                        DataOutputStream outs = new DataOutputStream(new GZIPOutputStream(new BufferedOutputStream(new FileOutputStream(path))));
-                        ObjectWriter ow = new ObjectWriter(outs);
-                        ow.writeObject(VisCanvas.this);
-                        outs.flush();
-                        outs.close();
-                        System.out.println("wrote "+path);
+                        try {
+                            DataOutputStream outs = new DataOutputStream(new GZIPOutputStream(new BufferedOutputStream(new FileOutputStream(path))));
+                            ObjectWriter ow = new ObjectWriter(outs);
+                            ow.writeObject(VisCanvas.this);
+                            outs.flush();
+                            outs.close();
+                            System.out.println("wrote "+path);
 
-                    } catch (IOException ex) {
-                        System.out.println("ex: "+ex);
+                        } catch (IOException ex) {
+                            System.out.println("ex: "+ex);
+                        }
                     }
-                }
-            });
+                });
             jmenu.add(jmi);
         }
 
         if (popupMovie == null) {
             JMenuItem jmi = new JMenuItem("Record Movie");
             jmi.addActionListener(new ActionListener() {
-                public void actionPerformed(ActionEvent e) {
-                    Calendar c = new GregorianCalendar();
-                    String s = String.format("%4d%02d%02d_%02d%02d%02d_%03d.ppms.gz", c.get(Calendar.YEAR),
-                                             c.get(Calendar.MONTH)+1,
-                                             c.get(Calendar.DAY_OF_MONTH),
-                                             c.get(Calendar.HOUR_OF_DAY),
-                                             c.get(Calendar.MINUTE),
-                                             c.get(Calendar.SECOND),
-                                             c.get(Calendar.MILLISECOND)
-                        );
+                    public void actionPerformed(ActionEvent e) {
+                        Calendar c = new GregorianCalendar();
+                        String s = String.format("%4d%02d%02d_%02d%02d%02d_%03d.ppms.gz", c.get(Calendar.YEAR),
+                                                 c.get(Calendar.MONTH)+1,
+                                                 c.get(Calendar.DAY_OF_MONTH),
+                                                 c.get(Calendar.HOUR_OF_DAY),
+                                                 c.get(Calendar.MINUTE),
+                                                 c.get(Calendar.SECOND),
+                                                 c.get(Calendar.MILLISECOND)
+                            );
 
-                    try {
-                        popupMovie = movieCreate(s, true);
-                    } catch (IOException ex) {
-                        System.out.println("ex: "+ex);
+                        try {
+                            popupMovie = movieCreate(s, true);
+                        } catch (IOException ex) {
+                            System.out.println("ex: "+ex);
+                        }
                     }
-                }
-            });
+                });
             jmenu.add(jmi);
         } else {
             JMenuItem jmi = new JMenuItem("Stop Recording Movie");
             jmi.addActionListener(new ActionListener() {
-                public void actionPerformed(ActionEvent e) {
-                    try {
-                        popupMovie.close();
+                    public void actionPerformed(ActionEvent e) {
+                        try {
+                            popupMovie.close();
 
-                    } catch (IOException ex) {
-                        System.out.println("ex: "+ex);
+                        } catch (IOException ex) {
+                            System.out.println("ex: "+ex);
+                        }
                     }
-                }
-            });
+                });
             jmenu.add(jmi);
         }
 
@@ -872,11 +872,11 @@ public class VisCanvas extends JComponent implements VisSerializable
                 jm.add(jmis[i]);
 
                 jmis[i].addActionListener(new ActionListener() {
-                    public void actionPerformed(ActionEvent e) {
-                        JRadioButtonMenuItem jmi = (JRadioButtonMenuItem) e.getSource();
-                        VisCanvas.this.targetFrameRate = Integer.parseInt(jmi.getText());
-                    }
-                });
+                        public void actionPerformed(ActionEvent e) {
+                            JRadioButtonMenuItem jmi = (JRadioButtonMenuItem) e.getSource();
+                            VisCanvas.this.targetFrameRate = Integer.parseInt(jmi.getText());
+                        }
+                    });
             }
 
             int bestIndex = 0;

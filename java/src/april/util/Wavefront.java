@@ -129,7 +129,7 @@ public class Wavefront
             if (earlyExit && ix == goal_ix && iy == goal_iy)
                 break;
 
-//            System.out.printf("%3d %3d %15f\n", ix, iy, cost);
+            //            System.out.printf("%3d %3d %15f\n", ix, iy, cost);
 
             // pre-fetch cells around us. Our current position is c55, so left is c45, up is c54.
             int c44 = gm.getValueIndexSafe(ix - 1, iy - 1, 255);
@@ -303,7 +303,7 @@ public class Wavefront
                                     gm.getXY1(), {gm.getXY0()[0],gm.getXY1()[1]}};
             double texcoords [][] = {{0,0}, {0,im.getHeight()},
                                      {im.getWidth(),im.getHeight()}, {im.getWidth(),0}};
-            vb.addBack(new VisImage(new VisTexture(im, false), vertices, texcoords, null));
+            vb.addBack(new VzImage(new VisTexture(im, false), vertices, texcoords, null));
 
             vb.swap();
 
@@ -378,8 +378,8 @@ public class Wavefront
                 VisWorld.Buffer vb = vw.getBuffer("time");
                 vb.setDrawOrder(100);
                 vb.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.BOTTOM_RIGHT,
-                                                    new VisText(VisText.ANCHOR.BOTTOM_RIGHT,
-                                                                String.format("%.2f ms\n", dt*1000))));
+                                                   new VzText(VzText.ANCHOR.BOTTOM_RIGHT,
+                                                               String.format("%.2f ms\n", dt*1000))));
                 vb.swap();
             }
 
@@ -397,7 +397,7 @@ public class Wavefront
                                         gm.getXY1(), {gm.getXY0()[0],gm.getXY1()[1]}};
                 double texcoords [][] = {{0,0}, {0,im.getHeight()},
                                          {im.getWidth(),im.getHeight()}, {im.getWidth(),0}};
-                vb.addBack(new VisImage(new VisTexture(im, false), vertices, texcoords, null));
+                vb.addBack(new VzImage(new VisTexture(im, false), vertices, texcoords, null));
                 vb.swap();
             }
         }

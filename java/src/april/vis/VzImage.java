@@ -5,7 +5,7 @@ import java.awt.image.*;
 
 import april.jmat.*;
 
-public class VisImage implements VisObject
+public class VzImage implements VisObject
 {
     VisTexture texture;
     double vertices[][];
@@ -14,8 +14,8 @@ public class VisImage implements VisObject
 
     // Convenience constructor. Maps pixels directly to images, so camera images will appear upside down
     // suggested usage for rightsideup images:
-    //  vb.addBack(new VisChain(LinAlg.scale(1,-1,1),new VisImage(cameraImage)));
-    public VisImage(BufferedImage im)
+    //  vb.addBack(new VisChain(LinAlg.scale(1,-1,1),new VzImage(cameraImage)));
+    public VzImage(BufferedImage im)
     {
         this.texture = new VisTexture(im,false);
         this.vertices = new double[][]{{0,0},{im.getWidth(),0},
@@ -25,7 +25,7 @@ public class VisImage implements VisObject
     }
 
     // Can pass 'null' for color if texture is not alpha mask
-    public VisImage(VisTexture texture, double vertices[][], double texcoords[][], Color c)
+    public VzImage(VisTexture texture, double vertices[][], double texcoords[][], Color c)
     {
         this.texture = texture;
         this.vertices = LinAlg.copy(vertices);

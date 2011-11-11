@@ -1,4 +1,4 @@
- package april.vis;
+package april.vis;
 
 import april.jmat.*;
 
@@ -272,28 +272,28 @@ public class DefaultCameraManager implements VisCameraManager, VisSerializable
         if (true) {
             JMenuItem jmi = new JMenuItem("Default Camera Position");
             jmi.addActionListener(new ActionListener() {
-                public void actionPerformed(ActionEvent e) {
-                    uiDefault();
-                }
-            });
+                    public void actionPerformed(ActionEvent e) {
+                        uiDefault();
+                    }
+                });
             jmenu.add(jmi);
         }
 
         if (true) {
             JMenuItem jmi = new JMenuItem("Snap to nearest axis");
             jmi.addActionListener(new ActionListener() {
-                public void actionPerformed(ActionEvent e) {
-                    double lookvec[] = LinAlg.subtract(lookat1, eye1);
-                    double lookdist = LinAlg.distance(lookat1, eye1);
+                    public void actionPerformed(ActionEvent e) {
+                        double lookvec[] = LinAlg.subtract(lookat1, eye1);
+                        double lookdist = LinAlg.distance(lookat1, eye1);
 
-                    lookvec = vectorSnapTo(lookvec);
+                        lookvec = vectorSnapTo(lookvec);
 
-                    uiLookAt(LinAlg.subtract(lookat1, LinAlg.scale(lookvec, lookdist)),
-                             lookat1,
-                             vectorSnapTo(up1),
-                             false);
-                }
-            });
+                        uiLookAt(LinAlg.subtract(lookat1, LinAlg.scale(lookvec, lookdist)),
+                                 lookat1,
+                                 vectorSnapTo(up1),
+                                 false);
+                    }
+                });
             jmenu.add(jmi);
         }
 
@@ -303,11 +303,11 @@ public class DefaultCameraManager implements VisCameraManager, VisSerializable
                 jmi.setSelected(true);
 
             jmi.addActionListener(new ActionListener() {
-                public void actionPerformed(ActionEvent e) {
-                    perspectiveness1 = 1 - perspectiveness1;
-                    mtime1 = System.currentTimeMillis() + UI_ANIMATE_MS;
-                }
-            });
+                    public void actionPerformed(ActionEvent e) {
+                        perspectiveness1 = 1 - perspectiveness1;
+                        mtime1 = System.currentTimeMillis() + UI_ANIMATE_MS;
+                    }
+                });
 
             jmenu.add(jmi);
         }
@@ -323,11 +323,11 @@ public class DefaultCameraManager implements VisCameraManager, VisSerializable
                 jm.add(jmis[i]);
 
                 jmis[i].addActionListener(new ActionListener() {
-                    public void actionPerformed(ActionEvent e) {
-                        JRadioButtonMenuItem jmi = (JRadioButtonMenuItem) e.getSource();
-                        DefaultCameraManager.this.UI_ANIMATE_MS = Integer.parseInt(jmi.getText());
-                    }
-                });
+                        public void actionPerformed(ActionEvent e) {
+                            JRadioButtonMenuItem jmi = (JRadioButtonMenuItem) e.getSource();
+                            DefaultCameraManager.this.UI_ANIMATE_MS = Integer.parseInt(jmi.getText());
+                        }
+                    });
             }
 
             int bestIndex = 0;
@@ -352,11 +352,11 @@ public class DefaultCameraManager implements VisCameraManager, VisSerializable
                 jm.add(jmis[i]);
 
                 jmis[i].addActionListener(new ActionListener() {
-                    public void actionPerformed(ActionEvent e) {
-                        JRadioButtonMenuItem jmi = (JRadioButtonMenuItem) e.getSource();
-                        DefaultCameraManager.this.interfaceMode = Double.parseDouble(jmi.getText());
-                    }
-                });
+                        public void actionPerformed(ActionEvent e) {
+                            JRadioButtonMenuItem jmi = (JRadioButtonMenuItem) e.getSource();
+                            DefaultCameraManager.this.interfaceMode = Double.parseDouble(jmi.getText());
+                        }
+                    });
             }
 
             int bestIndex = 0;

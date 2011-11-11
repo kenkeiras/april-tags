@@ -2,10 +2,10 @@ package april.vis;
 
 import java.awt.*;
 
-public class VisSphere implements VisObject
+public class VzSphere implements VisObject
 {
 
-    public VisSphere(double r, Color fill)
+    public VzSphere(double r, Color fill)
     {
 
     }

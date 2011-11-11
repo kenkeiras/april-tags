@@ -2,23 +2,23 @@ package april.vis;
 
 import java.awt.*;
 
-public class VisStar implements VisObject
+public class VzStar implements VisObject
 {
     final static Color defaultFill;
     final static Color defaultBorder;
 
-    public VisStar()
+    public VzStar()
     {
         this(defaultFill, defaultBorder);
     }
 
 
-    public VisStar(Color fill)
+    public VzStar(Color fill)
     {
         this(fill, defaultBorder);
     }
 
-    public VisStar(Color fill, Color border)
+    public VzStar(Color fill, Color border)
     {
 
     }

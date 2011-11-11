@@ -2,16 +2,16 @@ package april.vis;
 
 import java.awt.*;
 
-public class VisCamera implements VisObject
+public class VzCamera implements VisObject
 {
     static Color defaultFill;
 
-    public VisCamera()
+    public VzCamera()
     {
         this(defaultFill);
     }
 
-    public VisCamera(Color fill)
+    public VzCamera(Color fill)
     {
 
     }

@@ -2,17 +2,17 @@ package april.vis;
 
 import java.awt.*;
 
-public class VisBox implements VisObject
+public class VzBox implements VisObject
 {
 
-    public VisBox(double sx, double sy, double sz,
-                  Color fill)
+    public VzBox(double sx, double sy, double sz,
+                 Color fill)
     {
         this(sx,sy,sz,fill, null);
     }
 
-    public VisBox(double sx, double sy, double sz,
-                  Color fill, Color border)
+    public VzBox(double sx, double sy, double sz,
+                 Color fill, Color border)
     {
 
     }

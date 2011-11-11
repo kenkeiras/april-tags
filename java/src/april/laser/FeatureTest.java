@@ -155,8 +155,8 @@ public class FeatureTest implements ParameterListener
                 points.add(p.pos);
             vb.addBack(new VisPoints(new VisVertexData(points),
                                      new VisConstantColor(Color.gray),1));
-            vb.addBack(new VisChain(LinAlg.quatPosToMatrix(posea.orientation, posea.pos), new VisRobot(Color.blue)));
-            vb.addBack(new VisChain(LinAlg.quatPosToMatrix(poseb.orientation, poseb.pos), new VisRobot(Color.red)));
+            vb.addBack(new VisChain(LinAlg.quatPosToMatrix(posea.orientation, posea.pos), new VzRobot(Color.blue)));
+            vb.addBack(new VisChain(LinAlg.quatPosToMatrix(poseb.orientation, poseb.pos), new VzRobot(Color.red)));
             vb.swap();
         }
 

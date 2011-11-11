@@ -1,8 +1,8 @@
 package april.vis;
 
-public class VisAxes implements VisObject
+public class VzAxes implements VisObject
 {
-    public VisAxes()
+    public VzAxes()
     {
     }
 

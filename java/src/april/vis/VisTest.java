@@ -24,17 +24,17 @@ public class VisTest
 
         MyLayer(double pos[], Color c)
         {
-            VisGrid.addGrid(vw);
+            VzGrid.addGrid(vw);
 
             vl.backgroundColor = c;
             vl.layerManager = new DefaultLayerManager(vl, pos);
 
             VisWorld.Buffer vb = vw.getBuffer("foo");
             vb.addBack(new VisChain(LinAlg.scale(10, 10, 10),
-                                        new Square(Color.blue),
-                                        LinAlg.translate(-0.1, -0.1, .1),
-                                        new Square(Color.green)
-                               ));
+                                    new Square(Color.blue),
+                                    LinAlg.translate(-0.1, -0.1, .1),
+                                    new Square(Color.green)
+                           ));
             vb.swap();
         }
     }
@@ -57,7 +57,7 @@ public class VisTest
             vl.backgroundColor = Color.red;
 
 
-            VisGrid vg = VisGrid.addGrid(vw);
+            VzGrid vg = VzGrid.addGrid(vw);
             VisWorld.Buffer vb = vw.getBuffer("plot");
 
             VisColorData cd = new VisColorData();
@@ -75,7 +75,7 @@ public class VisTest
 
     public VisTest()
     {
-        VisGrid.addGrid(vw);
+        VzGrid.addGrid(vw);
 
         jf = new JFrame("VisTest");
         jf.setLayout(new BorderLayout());
@@ -98,7 +98,7 @@ public class VisTest
             VisWorld.Buffer vb = vw.getBuffer("vistext");
 
             vb.addBack(new VisChain(LinAlg.scale(.1, .1, 1),
-                                    new VisText(VisText.ANCHOR.BOTTOM_LEFT,
+                                    new VzText(VzText.ANCHOR.BOTTOM_LEFT,
                                                 "<<dropshadow=#33330088>>"+
                                                 "<<sansserif-bold-16,green,right>>right\n" +
                                                 "<<center>><<red>>R<<green>>G<<blue>>B\n" +
@@ -110,14 +110,14 @@ public class VisTest
 
             vb.addBack(new VisDepthTest(false,
                                         new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.BOTTOM_RIGHT,
-                                                                new VisText(VisText.ANCHOR.BOTTOM_RIGHT,
+                                                                new VzText(VzText.ANCHOR.BOTTOM_RIGHT,
                                                                             "<<margin=15>>" +
                                                                             "<<cyan,serif-italic-32>>cyan 32\n"))));
 
 
             vb.addBack(new VisDepthTest(false,
                                         new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.TOP_LEFT,
-                                                                new VisText(VisText.ANCHOR.TOP_LEFT,
+                                                                new VzText(VzText.ANCHOR.TOP_LEFT,
                                                                             "<<margin=15>>" +
                                                                             "<<white,sansserif-bold-16,width=100>>abc<<yellow>>42\n"+
                                                                             "<<cyan,sansserif-bold-16,width=100>>leftie<<yellow>>1.35\n"))));

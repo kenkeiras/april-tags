@@ -9,7 +9,7 @@ import april.util.*;
 
 import lcm.lcm.*;
 
-public class VisGeoImageSet implements VisObject, VisSerializable
+public class VzGeoImageSet implements VisObject, VisSerializable
 {
     GPSLinearization gpslin;
     ArrayList<Tile> tiles = new ArrayList<Tile>();
@@ -18,11 +18,11 @@ public class VisGeoImageSet implements VisObject, VisSerializable
 
     static class Tile
     {
-        VisImage vim;
+        VzImage vim;
         double M[][];
     }
 
-    public VisGeoImageSet(String dirpath, GPSLinearization gpslin, boolean asyncLoad) throws IOException
+    public VzGeoImageSet(String dirpath, GPSLinearization gpslin, boolean asyncLoad) throws IOException
     {
         init(dirpath, gpslin, asyncLoad);
     }
@@ -99,7 +99,7 @@ public class VisGeoImageSet implements VisObject, VisSerializable
                 VisTexture vt = new VisTexture(im,false);
                 //vis2 vt.lock();
                 double xy12[][]={{0,0},{im.getWidth(), im.getHeight()}};
-                VisImage vim = new VisImage(vt, xy12,xy12, modulateColor);
+                VzImage vim = new VzImage(vt, xy12,xy12, modulateColor);
 
                 Tile tile = new Tile();
                 tile.vim = vim;
@@ -113,7 +113,7 @@ public class VisGeoImageSet implements VisObject, VisSerializable
     }
 
     // only for VisSerializable
-    public VisGeoImageSet(ObjectReader in)
+    public VzGeoImageSet(ObjectReader in)
     {
     }
 

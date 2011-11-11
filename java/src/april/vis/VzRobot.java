@@ -2,23 +2,23 @@ package april.vis;
 
 import java.awt.*;
 
-public class VisRobot implements VisObject
+public class VzRobot implements VisObject
 {
     final static Color defaultFill;
     final static Color defaultBorder;
 
-    public VisRobot()
+    public VzRobot()
     {
         this(defaultFill, defaultBorder);
     }
 
 
-    public VisRobot(Color fill)
+    public VzRobot(Color fill)
     {
         this(fill, defaultBorder);
     }
 
-    public VisRobot(Color fill, Color border)
+    public VzRobot(Color fill, Color border)
     {
 
     }

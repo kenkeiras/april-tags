@@ -34,7 +34,7 @@ public class SimBox implements SimObject
 
     public VisObject getVisObject()
     {
-        return new VisBox(sxyz[0], sxyz[1], sxyz[2], color);
+        return new VzBox(sxyz[0], sxyz[1], sxyz[2], color);
     }
 
     /** Restore state that was previously written **/

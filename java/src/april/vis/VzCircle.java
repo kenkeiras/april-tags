@@ -2,13 +2,13 @@ package april.vis;
 
 import java.awt.*;
 
-public class VisCircle extends VisLines
+public class VzCircle extends VisLines
 {
     static VisVertexData vvd;
 
 
-    public VisCircle(double r, Color fill,
-                     Color border)
+    public VzCircle(double r, Color fill,
+                    Color border)
     {
         super(vvd, new VisConstantColor(border), 1, VisLines.TYPE.LINE_LOOP);
 

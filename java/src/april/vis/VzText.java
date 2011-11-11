@@ -15,7 +15,7 @@ import april.jmat.*;
 
 /** All formatting, with the exception of anchoring is specified using
  * markup. **/
-public class VisText implements VisObject, VisSerializable
+public class VzText implements VisObject, VisSerializable
 {
     /** The _ROUND variants are identical to the non-ROUND variants
         except that the final position is rounded to an integer
@@ -42,14 +42,14 @@ public class VisText implements VisObject, VisSerializable
     ArrayList<Line> lines;
 
     /** Global state: these properties affect the rendering of the
-     * whole VisText and can be specified by properties in text
+     * whole VzText and can be specified by properties in text
      * markup. If specified multiple times, the last markup will
      * dictate the behavior. **/
     boolean dropShadow = true;
     double dropShadowMarginPixels = 3.0;
     Color dropShadowColor = null; // if not set, mirrors color of VisLayer background.
 
-    double pixelMargin = 3.0; // around entire VisText
+    double pixelMargin = 3.0; // around entire VzText
 
     enum JUSTIFICATION { LEFT, CENTER, RIGHT };
 
@@ -150,12 +150,12 @@ public class VisText implements VisObject, VisSerializable
         }
     }
 
-    public VisText(String text)
+    public VzText(String text)
     {
         this(ANCHOR.BOTTOM_LEFT, text);
     }
 
-    public VisText(ANCHOR anchor, String text)
+    public VzText(ANCHOR anchor, String text)
     {
         this.anchor = anchor;
 
@@ -186,7 +186,7 @@ public class VisText implements VisObject, VisSerializable
                              Integer.parseInt(s.substring(5,7), 16),
                              Integer.parseInt(s.substring(7,9), 16),
                              Integer.parseInt(s.substring(1,3), 16));
-        System.out.println("VisText: Badly formatted color "+s);
+        System.out.println("VzText: Badly formatted color "+s);
         return null;
 
     }
@@ -259,7 +259,7 @@ public class VisText implements VisObject, VisSerializable
                                 dropShadow = true;
                                 dropShadowColor = stringToColor(arg);
                             } else {
-                                System.out.println("VisText: Don't understand "+toks[i]);
+                                System.out.println("VzText: Don't understand "+toks[i]);
                             }
                         } else {
                             dropShadow = true;
@@ -377,7 +377,7 @@ public class VisText implements VisObject, VisSerializable
                         continue;
                     }
 
-                    System.out.println("VisText: Unknown format specifier: "+toks[i]);
+                    System.out.println("VzText: Unknown format specifier: "+toks[i]);
                 }
 
                 // skip to the end of the format specifier.
@@ -534,7 +534,7 @@ public class VisText implements VisObject, VisSerializable
         }
     }
 
-    public VisText(ObjectReader r)
+    public VzText(ObjectReader r)
     {
     }
 

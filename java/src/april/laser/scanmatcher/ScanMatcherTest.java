@@ -62,7 +62,7 @@ public class ScanMatcherTest implements LCMSubscriber, ParameterListener
 
         lcm.subscribe("POSE", this);
         lcm.subscribe(channel, this);
-      }
+    }
 
     public void parameterChanged(ParameterGUI pg, String name)
     {
@@ -102,7 +102,7 @@ public class ScanMatcherTest implements LCMSubscriber, ParameterListener
             return;
         }
 
-       ///////////////////////////////////////////////////////////
+        ///////////////////////////////////////////////////////////
         if (channel.equals(this.channel)) {
             laser_t ldata = new laser_t(ins);
 
@@ -157,7 +157,7 @@ public class ScanMatcherTest implements LCMSubscriber, ParameterListener
             if (true) {
                 VisWorld.Buffer vb = vw.getBuffer("lastscan");
                 vb.addBack(new VisChain(LinAlg.xytToMatrix(scanMatcher.getPosition()),
-                                        new VisRobot(Color.red),
+                                        new VzRobot(Color.red),
                                         new VisPoints(new VisVertexData(bodyPoints),
                                                       new VisConstantColor(Color.red),2)));
                 vb.swap();
@@ -174,7 +174,7 @@ public class ScanMatcherTest implements LCMSubscriber, ParameterListener
                     double texcoords [][] = {{0,0}, {0,im.getHeight()},
                                              {im.getWidth(),im.getHeight()}, {im.getWidth(),0}};
 
-                    vb.addBack(new VisImage(new VisTexture(im, false), vertices, texcoords, Color.red));
+                    vb.addBack(new VzImage(new VisTexture(im, false), vertices, texcoords, Color.red));
                 }
                 vb.swap();
             }
@@ -187,7 +187,7 @@ public class ScanMatcherTest implements LCMSubscriber, ParameterListener
                 for (GNode gn : g.nodes) {
                     ArrayList<double[]> p = (ArrayList<double[]>) gn.getAttribute("points");
                     vb.addBack(new VisChain(LinAlg.xytToMatrix(gn.state),
-                                            new VisRobot(Color.blue)));
+                                            new VzRobot(Color.blue)));
 
                     if (pg.gb("showallscans")) {
                         vb.addBack(new VisChain(LinAlg.xytToMatrix(gn.state),
@@ -208,4 +208,4 @@ public class ScanMatcherTest implements LCMSubscriber, ParameterListener
         double rpy[] = LinAlg.quatToRollPitchYaw(p.orientation);
         return new double[] { p.pos[0], p.pos[1], rpy[2] };
     }
- }
+}

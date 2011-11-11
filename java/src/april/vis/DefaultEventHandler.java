@@ -35,8 +35,8 @@ public class DefaultEventHandler implements VisEventHandler, VisSerializable
         winx, winy are in opengl screen coordinates (0,0) in bottom left
     **/
     double[] windowSpacePanTo(double xyz[], double winx, double winy,
-                          double P[][], int viewport[],
-                          double eye[], double lookat[], double up[])
+                              double P[][], int viewport[],
+                              double eye[], double lookat[], double up[])
     {
         double mv[] = new double[3];
 
@@ -308,8 +308,8 @@ public class DefaultEventHandler implements VisEventHandler, VisSerializable
         double dist = LinAlg.distance(cameraPosition.eye, cameraPosition.lookat);
         double newdist = dist * factor;
 /*
-        newdist = Math.min(cameraPosition.zclip_far / 5.0, newdist);
-        newdist = Math.max(cameraPosition.zclip_near * 5.0, newdist);
+  newdist = Math.min(cameraPosition.zclip_far / 5.0, newdist);
+  newdist = Math.max(cameraPosition.zclip_near * 5.0, newdist);
 */
         double eye[] = LinAlg.subtract(cameraPosition.lookat, LinAlg.scale(lookdir, newdist));
         double lookat[] = cameraPosition.lookat;

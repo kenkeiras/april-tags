@@ -39,8 +39,8 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
         //vis2 defaults to 3.0 vc.getViewManager().setInterfaceMode(3);
 
         vb = vw.getBuffer("main");
-        vw.getBuffer("grid").addFront(new VisGrid());
-        vw.getBuffer("axes").addFront(new VisAxes());
+        vw.getBuffer("grid").addFront(new VzGrid());
+        vw.getBuffer("axes").addFront(new VzAxes());
         vw.getBuffer("grid").setEnabled(false);
 
         jf = new JFrame("SpaceNavigator Demo");
@@ -65,7 +65,7 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
     public double scale_t(double i)
     {
         return 5.0E-4 * Math.pow(i, 1) +
-               1.0E-8 * Math.pow(i, 3);
+            1.0E-8 * Math.pow(i, 3);
     }
 
     public double[] rotationScaled(SpaceNavigator.MotionEvent me, double mag_t)
@@ -89,7 +89,7 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
         last = now;
         VisWorld.Buffer vb = vw.getBuffer("FPS");
         vb.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.TOP_LEFT,
-                                            new VisText(VisText.ANCHOR.TOP_LEFT, String.format("FPS: %3.1f", 1.0/dt))));
+                                           new VzText(VzText.ANCHOR.TOP_LEFT, String.format("FPS: %3.1f", 1.0/dt))));
         vb.swap();
 
 
@@ -98,25 +98,25 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
                                    me.x, me.y, me.z, me.roll, me.pitch, me.yaw);
         vb = vw.getBuffer("MOTION_EVENT");
         vb.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.TOP_RIGHT,
-                                            new VisText(VisText.ANCHOR.TOP_RIGHT, str)));
+                                           new VzText(VzText.ANCHOR.TOP_RIGHT, str)));
         vb.swap();
 
 
         // display cross at center of rotation (eye) in 2 colors to ensure
-        //vis2: These VisTexts originally specified a transparent background?? (alpha=0.0), not supported in vis2
+        //vis2: These VzTexts originally specified a transparent background?? (alpha=0.0), not supported in vis2
         vb = vw.getBuffer("CENTER");
         vb.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.CENTER,
-                                            new VisText(VisText.ANCHOR.LEFT,
-                                                        "<<large, blue>>|")));
+                                           new VzText(VzText.ANCHOR.LEFT,
+                                                       "<<large, blue>>|")));
         vb.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.CENTER,
-                                            new VisText(VisText.ANCHOR.LEFT,
-                                                        "<<large, blue>>--")));
+                                           new VzText(VzText.ANCHOR.LEFT,
+                                                       "<<large, blue>>--")));
         vb.swap();
 
         vb = vw.getBuffer("CENTER2");
         vb.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.CENTER,
-                                            new VisText(VisText.ANCHOR.RIGHT,
-                                                        "<<large, black>>+")));
+                                           new VzText(VzText.ANCHOR.RIGHT,
+                                                       "<<large, black>>+")));
         vb.swap();
 
         //vis2  SpaceNavigatorDemo needs to be reimplemented as custom CameraManager
@@ -155,9 +155,9 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
         // rotate view_0 and up_0 with scaled r/p/y from the SpaceNavigator *in the
         // coordinate frame designated by view_0 and up_0
         double R[][] = LinAlg.rollPitchYawToMatrix(rotationScaled(me,
-                                                      LinAlg.magnitude(new double[] {me.x,
-                                                                                     me.y,
-                                                                                     me.z})));
+                                                                  LinAlg.magnitude(new double[] {me.x,
+                                                                                                 me.y,
+                                                                                                 me.z})));
 
         double B[][] = LinAlg.matrixAB(A, LinAlg.select(R, 0, 2, 0, 2));
 
@@ -186,22 +186,22 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
     public void redraw()
     {
         vb.addBack(new VisChain(LinAlg.translate(0, 0, -1),
-                                    new VisBox(100, 100, 2, Color.gray)));
+                                new VzBox(100, 100, 2, Color.gray)));
 
         vb.addBack(new VisChain(LinAlg.translate(4, -5, 1),
-                                    new VisBox(3, 3, 2, getColor(0))));
+                                new VzBox(3, 3, 2, getColor(0))));
 
         vb.addBack(new VisChain(LinAlg.translate(4, 0, 1),
-                                    new VisBox(3, 3, 4, getColor(1))));
+                                new VzBox(3, 3, 4, getColor(1))));
 
         vb.addBack(new VisChain(LinAlg.translate(4, 5, 1),
-                                    new VisBox(3, 2, 2, getColor(2))));
+                                new VzBox(3, 2, 2, getColor(2))));
 
         vb.addBack(new VisChain(LinAlg.translate(4, 12, 1),
-                                    new VisBox(4, 4, 2, getColor(3))));
+                                new VzBox(4, 4, 2, getColor(3))));
 
         vb.addBack(new VisChain(LinAlg.translate(4, 17, 1),
-                                    new VisBox(4, 4, 2, getColor(4))));
+                                new VzBox(4, 4, 2, getColor(4))));
 
         vb.swap();
     }

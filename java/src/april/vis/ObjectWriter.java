@@ -139,7 +139,7 @@ public class ObjectWriter
 
     public void writeObject(Object obj) throws IOException
     {
-        // write the class name, e.g., april.vis.VisBox
+        // write the class name, e.g., april.vis.VzBox
         outs.writeUTF(obj.getClass().getName());
 
         // have we already written this object? (if so, provide a pointer)

@@ -6,7 +6,7 @@ import javax.swing.*;
 
 import april.jmat.*;
 
-public class VisGrid implements VisObject, VisSerializable
+public class VzGrid implements VisObject, VisSerializable
 {
     static int sz = 100; // number of lines to use when rendering grid.
     static float gridVertices[];
@@ -22,12 +22,12 @@ public class VisGrid implements VisObject, VisSerializable
 
     Color gridColor, groundColor;
 
-    public VisGrid()
+    public VzGrid()
     {
         this(new Color(128,128,128), new Color(32,32,32));
     }
 
-    public VisGrid(Color gridColor, Color groundColor)
+    public VzGrid(Color gridColor, Color groundColor)
     {
         this.gridColor = gridColor;
         this.groundColor = groundColor;
@@ -126,10 +126,10 @@ public class VisGrid implements VisObject, VisSerializable
         return v;
     }
 
-    /** Create a VisGrid with the default properties and a text overlay. **/
-    public static VisGrid addGrid(VisWorld vw)
+    /** Create a VzGrid with the default properties and a text overlay. **/
+    public static VzGrid addGrid(VisWorld vw)
     {
-        VisGrid vg = new VisGrid();
+        VzGrid vg = new VzGrid();
 
         if (true) {
             VisWorld.Buffer vb = vw.getBuffer("grid");
@@ -144,14 +144,14 @@ public class VisGrid implements VisObject, VisSerializable
                                                 new VisDepthTest(false,
                                                                  // translate so we don't draw on top of canvas dimensions.
                                                                  LinAlg.translate(0, -30, 0),
-                                                                 new VisGridText(vg, VisText.ANCHOR.CENTER_ROUND,
-                                                                                 "<<sansserif-12>>grid %.2f m"))));
+                                                                 new VzGridText(vg, VzText.ANCHOR.CENTER_ROUND,
+                                                                                "<<sansserif-12>>grid %.2f m"))));
         }
 
         return vg;
     }
 
-    public VisGrid(ObjectReader r)
+    public VzGrid(ObjectReader r)
     {
     }
 

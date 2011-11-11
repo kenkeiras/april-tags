@@ -69,7 +69,7 @@ public class Simulator implements VisConsole.Listener
 
         vl.addEventHandler(new MyEventHandler());
 
-        vw.getBuffer("grid").addFront(new VisGrid());
+        vw.getBuffer("grid").addFront(new VzGrid());
 
         if (true) {
             VisWorld.Buffer vb = vw.getBuffer("SimWorld");
@@ -110,12 +110,12 @@ public class Simulator implements VisConsole.Listener
 
             VisTexture tex = new VisTexture(im, false);
 /*            tex.setMagFilter(true);
-            vb.addBack(new VisChain(new VisDepthTest(false,
-                                                         new VisImage(tex,
-                                                                      world.geoimage.image2xy(new double[] {0,0}),
-                                                                      world.geoimage.image2xy(new double[] {im.getWidth()-1,
-                                                                                                            im.getHeight()-1})))));
-            vb.addBack(new VisData(new double[3], new VisDataPointStyle(Color.gray, 3)));
+              vb.addBack(new VisChain(new VisDepthTest(false,
+              new VzImage(tex,
+              world.geoimage.image2xy(new double[] {0,0}),
+              world.geoimage.image2xy(new double[] {im.getWidth()-1,
+              im.getHeight()-1})))));
+              vb.addBack(new VisData(new double[3], new VisDataPointStyle(Color.gray, 3)));
 */
             vb.swap();
         }
@@ -237,7 +237,7 @@ public class Simulator implements VisConsole.Listener
                 }
             }
             if (collide)
-                vb.addBack(new VisText(VisText.ANCHOR.BOTTOM_RIGHT, "<<blue>>Collision"));
+                vb.addBack(new VzText(VzText.ANCHOR.BOTTOM_RIGHT, "<<blue>>Collision"));
 
             vb.swap();
         }

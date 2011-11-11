@@ -154,9 +154,9 @@ public class GraphTest implements ParameterListener
 
         for (GNode gn : g.nodes) {
 
-            VisObject vo = new VisRobot();
+            VisObject vo = new VzRobot();
             if (gn instanceof GXYNode)
-                vo = new VisStar();
+                vo = new VzStar();
             vb.addBack(new VisChain(LinAlg.xyzrpyToMatrix(gn.toXyzRpy(gn.state)), vo));
             ArrayList<double[]> points = (ArrayList<double[]>) gn.getAttribute("points");
 
@@ -167,7 +167,7 @@ public class GraphTest implements ParameterListener
 
         Graph.ErrorStats estats = g.getErrorStats();
         vb.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.BOTTOM_LEFT,
-                                           new VisText(VisText.ANCHOR.BOTTOM_LEFT,
+                                           new VzText(VzText.ANCHOR.BOTTOM_LEFT,
                                                        String.format("<<monospaced-12>>chi^2:   %15f\nchi^2/s: %15f\nMSE(xy): %15f",
                                                                      estats.chi2, estats.chi2normalized, estats.meanSquaredDistanceError))));
         vb.swap();

@@ -26,7 +26,7 @@ public class ViewRobot extends VisEventAdapter implements ViewObject, LCMSubscri
     String              name;
     Config              config;
     LCM                 lcm             = LCM.getSingleton();
-    VisRobot            vrobot          = new VisRobot(Color.cyan);
+    VzRobot            vrobot          = new VzRobot(Color.cyan);
     VisObject           vavatar;
     java.util.Timer     leadTimer;
     LeadTask            leadTask        = new LeadTask();
@@ -55,7 +55,7 @@ public class ViewRobot extends VisEventAdapter implements ViewObject, LCMSubscri
                     double T[][] = ConfigUtil.getRigidBodyTransform(config, "avatar");
                     double scale = config.getDouble("avatar.scale", 1);
                     T = LinAlg.multiplyMany(T, LinAlg.scale(scale, scale, scale));
-                    RWXObject rwx = new RWXObject(path);
+                    VzRWX rwx = new VzRWX(path);
                     vavatar = new VisChain(T, rwx);
                 } catch (IOException ex) {
                     System.out.println("Problem loading avatar model: "+ex);
@@ -215,7 +215,7 @@ public class ViewRobot extends VisEventAdapter implements ViewObject, LCMSubscri
             // Follow mode
             followMode = (followMode + 1) % 3;
             viewer.vw.getBuffer("follow").removeTemporary(lastFollowTemporary);
-            lastFollowTemporary = new VisText(VisText.ANCHOR.CENTER, followString[followMode]);
+            lastFollowTemporary = new VzText(VzText.ANCHOR.CENTER, followString[followMode]);
             viewer.vw.getBuffer("follow").addTemporary(lastFollowTemporary, 1.0);
             return true;
         }

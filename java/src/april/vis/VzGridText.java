@@ -6,20 +6,20 @@ import javax.swing.*;
 
 import april.jmat.*;
 
-public class VisGridText implements VisObject, VisSerializable
+public class VzGridText implements VisObject, VisSerializable
 {
-    VisText vt;
+    VzText vt;
     double displayTime = 1.5;
     double spacing[];
 
-    VisGrid grid;
+    VzGrid grid;
 
-    VisText.ANCHOR anchor;
+    VzText.ANCHOR anchor;
     String format;
 
     long lastUpdateTime;
 
-    public VisGridText(VisGrid grid, VisText.ANCHOR anchor, String format)
+    public VzGridText(VzGrid grid, VzText.ANCHOR anchor, String format)
     {
         this.grid = grid;
         this.anchor = anchor;
@@ -40,14 +40,14 @@ public class VisGridText implements VisObject, VisSerializable
 
             spacing = LinAlg.copy(lastspacing);
 
-            vt = new VisText(anchor, String.format(format, spacing[0], spacing[1]));
+            vt = new VzText(anchor, String.format(format, spacing[0], spacing[1]));
             lastUpdateTime = System.currentTimeMillis();
         }
 
         vt.render(vc, layer, rinfo, gl);
     }
 
-    public VisGridText(ObjectReader r)
+    public VzGridText(ObjectReader r)
     {
     }
 
@@ -62,8 +62,8 @@ public class VisGridText implements VisObject, VisSerializable
     public void readObject(ObjectReader ins) throws IOException
     {
         displayTime = ins.readDouble();
-        grid = (VisGrid) ins.readObject();
-        anchor = VisText.ANCHOR.valueOf(ins.readUTF());
+        grid = (VzGrid) ins.readObject();
+        anchor = VzText.ANCHOR.valueOf(ins.readUTF());
         format = ins.readUTF();
     }
 }

@@ -55,7 +55,7 @@ public class ColorUtil
     }
 
     /**
-     * Converts a color to its hexadecimal string representation for VisText and
+     * Converts a color to its hexadecimal string representation for VzText and
      * HTML, e.g. #RRGGBBAA
      * @param Color
      */
@@ -80,7 +80,7 @@ public class ColorUtil
     }
 
     /**
-     * Converts a color to its hexadecimal string representation for VisText and
+     * Converts a color to its hexadecimal string representation for VzText and
      * HTML, e.g. #RRGGBBAA
      * @param int color in aarrggbb format (as from getRGB())
      */

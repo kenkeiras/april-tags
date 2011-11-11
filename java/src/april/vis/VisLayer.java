@@ -101,11 +101,11 @@ public class VisLayer implements Comparable<VisLayer>, VisSerializable
                 jm.add(jmis[i]);
 
                 jmis[i].addActionListener(new ActionListener() {
-                    public void actionPerformed(ActionEvent e) {
-                        JRadioButtonMenuItem jmi = (JRadioButtonMenuItem) e.getSource();
-                        backgroundColor = new Color(Integer.parseInt(jmi.getText(), 16));
-                    }
-                });
+                        public void actionPerformed(ActionEvent e) {
+                            JRadioButtonMenuItem jmi = (JRadioButtonMenuItem) e.getSource();
+                            backgroundColor = new Color(Integer.parseInt(jmi.getText(), 16));
+                        }
+                    });
             }
 
             int bestIndex = 0;
@@ -135,14 +135,14 @@ public class VisLayer implements Comparable<VisLayer>, VisSerializable
                     jmis[i].setSelected(vb.isEnabled());
 
                     jmis[i].addActionListener(new ActionListener() {
-                        public void actionPerformed(ActionEvent e) {
-                            JCheckBoxMenuItem jmi = (JCheckBoxMenuItem) e.getSource();
-                            String bufferName = jmi.getText();
+                            public void actionPerformed(ActionEvent e) {
+                                JCheckBoxMenuItem jmi = (JCheckBoxMenuItem) e.getSource();
+                                String bufferName = jmi.getText();
 
-                            VisWorld.Buffer vb = world.getBuffer(bufferName);
-                            vb.setEnabled(!vb.isEnabled());
-                        }
-                    });
+                                VisWorld.Buffer vb = world.getBuffer(bufferName);
+                                vb.setEnabled(!vb.isEnabled());
+                            }
+                        });
 
                     jm.add(jmis[i]);
                 }

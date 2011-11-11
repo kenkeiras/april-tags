@@ -44,14 +44,14 @@ public class Viewer
      *
      * @param _config     file containing configuration information
      * @param _jf     JFrame from parent application (window)
-    public Viewer(Config _config, JFrame _jf)
-    {
-        vw = new VisWorld();
-        vc = new VisCanvas(vw);
-        jf = _jf;
+     public Viewer(Config _config, JFrame _jf)
+     {
+     vw = new VisWorld();
+     vc = new VisCanvas(vw);
+     jf = _jf;
 
-        initialize(_config);
-    }
+     initialize(_config);
+     }
     */
 
     /**
@@ -88,7 +88,7 @@ public class Viewer
     {
         this.config = _config.getChild("viewer");
 
-        vw.getBuffer("grid").addFront(new VisGrid());
+        vw.getBuffer("grid").addFront(new VzGrid());
 
         String viewobjects[] = config.requireStrings("viewobjects");
 
