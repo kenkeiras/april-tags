@@ -30,11 +30,11 @@ public class VisConsole
     // how long to display stuff
     public int DISPLAY_MS = 5000;
 
-    static final String INPUT_STYLE = "<<blue, mono-large, left>>";
-    static final String INPUT_CURSOR_STYLE = "<<#ff3333, mono-large>>";
-    static final String OLD_INPUT_STYLE = "<<gray, mono-large,left>>";
-    static final String OUTPUT_STYLE = "<<black, mono-large>>";
-    static final String COMPLETION_STYLE = "<<#000077, mono-large>>";
+    static final String INPUT_STYLE = "<<blue, monospaced-14, left>>";
+    static final String INPUT_CURSOR_STYLE = "<<#ff3333, monospaced-14>>";
+    static final String OLD_INPUT_STYLE = "<<gray, monospaced-14,left>>";
+    static final String OUTPUT_STYLE = "<<black, monospaced-14>>";
+    static final String COMPLETION_STYLE = "<<#000077, monospaced-14>>";
 
     public static class Shortcut
     {
