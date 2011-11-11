@@ -98,9 +98,9 @@ public class TagTest implements ParameterListener
         jf.add(jsp, BorderLayout.CENTER);
         jf.add(pg, BorderLayout.SOUTH);
 
-        vl2.cameraManager.lookAt(new double[] {0, -2, 1.65},
-                               new double[] {0, 2, 0},
-                               new double[] {0, .37, 0.927}, true);
+        vl2.cameraManager.uiLookAt(new double[] {0, -2, 1.65},
+                                   new double[] {0, 2, 0},
+                                   new double[] {0, .37, 0.927}, true);
         jf.setSize(800,600);
         jf.setVisible(true);
 
@@ -162,31 +162,29 @@ public class TagTest implements ParameterListener
                 ArrayList<TagDetection> detections = detector.process(im, new double[] {im.getWidth()/2.0, im.getHeight()/2.0});
                 double dt = tic.toc();
 
-                double width = fmt.width;
-                double height = fmt.height;
-
                 if (detector.debugInput!=null)
-                    vbInput.addBack(new VisDepthTest(false, new VisLighting(false, new VisImage(new VisTexture(detector.debugInput, false),
-                                                                                                new double[][]{{0,0},{width,height}}, new double[][]{{0,0},{width,height}}))));
+                    vbInput.addBack(new VisDepthTest(false, new VisLighting(false, new VisChain(LinAlg.scale(1,-1,1),
+                                                                                                new VisImage(detector.debugInput)))));
                 vbInput.swap();
 
                 if (detector.debugSegmentation!=null)
-                    vbSegmentation.addBack(new VisLighting(false, new VisImage(new VisTexture(detector.debugSegmentation, false),
-                                                                               new double[][]{{0,0},{width,height}}, new double[][]{{0,0},{width,height}})));
+                    vbSegmentation.addBack(new VisDepthTest(false, new VisLighting(false, new VisChain(LinAlg.scale(1,-1,1),
+                                                                                                       new VisImage(detector.debugSegmentation)))));
                 vbSegmentation.swap();
 
-                vbOriginal.addBack(new VisDepthTest(false, new VisLighting(false, new VisImage(new VisTexture(im, false),
-                                                                                               new double[][]{{0,0},{width,height}}, new double[][]{{0,0},{width,height}}))));
+
+                vbOriginal.addBack(new VisDepthTest(false, new VisLighting(false, new VisChain(LinAlg.scale(1,-1,1),
+                                                                                               new VisImage(im)))));
                 vbOriginal.swap();
 
                 if (detector.debugTheta != null)
-                    vbThetas.addBack(new VisDepthTest(false, new VisLighting(false, new VisImage(new VisTexture(detector.debugTheta, false),
-                                                                                                 new double[][]{{0,0},{width,height}}, new double[][]{{0,0},{width,height}}))));
+                    vbThetas.addBack(new VisDepthTest(false, new VisLighting(false, new VisChain(LinAlg.scale(1,-1,1),
+                                                                                                new VisImage(detector.debugTheta)))));
                 vbThetas.swap();
 
                 if (detector.debugMag != null)
-                    vbMag.addBack(new VisDepthTest(false, new VisLighting(false, new VisImage(new VisTexture(detector.debugMag, false),
-                                                                                              new double[][]{{0,0},{width,height}}, new double[][]{{0,0},{width,height}}))));
+                    vbMag.addBack(new VisDepthTest(false, new VisLighting(false, new VisChain(LinAlg.scale(1,-1,1),
+                                                                                              new VisImage(detector.debugMag)))));
                 vbMag.swap();
 
                 vbClock.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.BOTTOM_RIGHT,
@@ -220,13 +218,21 @@ public class TagTest implements ParameterListener
                     double aspect = 752.0 / 480.0;
                     double M[][] = CameraUtil.homographyToPose(f, f, tagsize_m, d.homography);
 
+                    BufferedImage tfimg = tf.makeImage(d.id);
+                    double vertices[][] = {{-tagsize_m/2, -tagsize_m/2},
+                                           { tagsize_m/2, -tagsize_m/2},
+                                           { tagsize_m/2,  tagsize_m/2},
+                                           { -tagsize_m/2,  tagsize_m/2}};
+
+
+                    double texcoords [][] = {{0,0}, {0,tfimg.getHeight()},
+                                             {tfimg.getWidth(),tfimg.getHeight()}, {tfimg.getWidth(),0}};
+
                     vbTag3D.addBack(new VisChain(LinAlg.rotateX(Math.PI/2),
                                                  M,
-                                                 new VisImage(new VisTexture(tf.makeImage(d.id), false),
-                                                              new double[][] {{-tagsize_m/2, -tagsize_m/2},
-                                                                              {tagsize_m/2, tagsize_m/2}},
-                                                              new double[][]{{0,height},{width,0}})));
-                 }
+                                                 new VisImage(new VisTexture(tfimg, false),
+                                                              vertices,texcoords,null)));
+                }
 
                 vbTag3D.addBack(new VisChain(LinAlg.rotateX(Math.PI/2),
                                              new VisCamera()));

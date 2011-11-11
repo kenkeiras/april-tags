@@ -10,7 +10,7 @@ public class VisImage implements VisObject
     VisTexture texture;
     double vertices[][];
     double texcoords[][];
-    Color c = Color.grey;
+    Color c = Color.gray;
 
     // Convenience constructor. Maps pixels directly to images, so camera images will appear upside down
     // suggested usage for rightsideup images:

@@ -507,7 +507,7 @@ public class MultiResolutionMatcher
                 vb.swap();
 
                 vb = vw.getBuffer("score");
-                vb.addBack(new VisScreenCoordinates(VisScreenCoordinates.ANCHOR.BOTTOM_LEFT,
+                vb.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.BOTTOM_LEFT,
                                                     new VisText(VisText.ANCHOR.BOTTOM_LEFT,
                                                                 String.format("<<yellow>>score %15f (%15f + %15f), npts %d\nswidth=%5d, sheight=%5d",
                                                                               Math.min(1E10,dbg.n.score), dbg.n.match_score, dbg.n.chi2_score,
@@ -538,7 +538,7 @@ public class MultiResolutionMatcher
                 double score = dbg.gm.score(search.points, matcher.gms[0].metersPerPixel*(tx+.5), matcher.gms[0].metersPerPixel*(ty+.5), search.t0 + search.tres*tt, search.prior, search.priorinv);
 
                 vb = vw.getBuffer("userscore");
-                vb.addBack(new VisScreenCoordinates(VisScreenCoordinates.ANCHOR.BOTTOM_RIGHT,
+                vb.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.BOTTOM_RIGHT,
                                                     new VisText(VisText.ANCHOR.BOTTOM_RIGHT,
                                                                 String.format("<<red>>score %15f",
                                                                               Math.min(1E10,score)))));

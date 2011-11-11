@@ -35,7 +35,7 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
 
         vw = new VisWorld();
         vl = new VisLayer(vw);
-        vc = new VisCanvas(vw);
+        vc = new VisCanvas(vl);
         //vis2 defaults to 3.0 vc.getViewManager().setInterfaceMode(3);
 
         vb = vw.getBuffer("main");
@@ -88,7 +88,7 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
         double dt = (now - last) / 1.0E6;
         last = now;
         VisWorld.Buffer vb = vw.getBuffer("FPS");
-        vb.addBack(new VisScreenCoordinates(VisScreenCoordinates.ANCHOR.TOP_LEFT,
+        vb.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.TOP_LEFT,
                                             new VisText(VisText.ANCHOR.TOP_LEFT, String.format("FPS: %3.1f", 1.0/dt))));
         vb.swap();
 
@@ -97,37 +97,44 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
                                    "%4d :x\n%4d :y\n%4d :z\n%4d :r\n%4d :p\n%4d :t",
                                    me.x, me.y, me.z, me.roll, me.pitch, me.yaw);
         vb = vw.getBuffer("MOTION_EVENT");
-        vb.addBack(new VisScreenCoordinates(VisScreenCoordinates.ANCHOR.TOP_RIGHT,
+        vb.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.TOP_RIGHT,
                                             new VisText(VisText.ANCHOR.TOP_RIGHT, str)));
         vb.swap();
 
 
         // display cross at center of rotation (eye) in 2 colors to ensure
+        //vis2: These VisTexts originally specified a transparent background?? (alpha=0.0), not supported in vis2
         vb = vw.getBuffer("CENTER");
-        vb.addBack(new VisScreenCoordinates(VisScreenCoordinates.ANCHOR.CENTER,
+        vb.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.CENTER,
                                             new VisText(VisText.ANCHOR.LEFT,
-                                                        "<<large, blue>>|", 0.0)));
-        vb.addBack(new VisScreenCoordinates(VisScreenCoordinates.ANCHOR.CENTER,
+                                                        "<<large, blue>>|")));
+        vb.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.CENTER,
                                             new VisText(VisText.ANCHOR.LEFT,
-                                                        "<<large, blue>>--", 0.0)));
+                                                        "<<large, blue>>--")));
         vb.swap();
 
         vb = vw.getBuffer("CENTER2");
-        vb.addBack(new VisScreenCoordinates(VisScreenCoordinates.ANCHOR.CENTER,
+        vb.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.CENTER,
                                             new VisText(VisText.ANCHOR.RIGHT,
-                                                        "<<large, black>>+", 0.0)));
+                                                        "<<large, black>>+")));
         vb.swap();
 
-        VisView vg = vc.getViewManager().viewGoal;
+        //vis2  SpaceNavigatorDemo needs to be reimplemented as custom CameraManager
+        DefaultCameraManager dcm = (DefaultCameraManager)vl.cameraManager;
 
         // get positions of camera and focus point
-        double eye[]    = LinAlg.copy(vg.eye);
-        double lookAt[] = LinAlg.copy(vg.lookAt);
-        double up[]     = LinAlg.copy(vg.up);
+        // double eye[]    = LinAlg.copy(dcm.eye1);
+        // double lookAt[] = LinAlg.copy(dcm.lookat1);
+        // double up[]     = LinAlg.copy(dcm.up1);
 
-        vg.lookAt(eye,
-                  lookAt,
-                  vg.up);
+        double eye[]    = null;
+        double lookAt[] = null;
+        double up[]     = null;
+
+        //vis2: Not sure why there are two immediately consecutive calls to lookAt()?
+        vl.cameraManager.uiLookAt(eye,
+                                  lookAt,
+                                  up, false);
 
         // compute view_0
         double view0[] = LinAlg.subtract(lookAt, eye);
@@ -162,7 +169,7 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
         double lookAt1[] = LinAlg.add(eye1, view1);
 
         // set view parameters
-        vg.lookAt(eye1, lookAt1, up1);
+        vl.cameraManager.uiLookAt(eye1, lookAt1, up1,false);
 
         // draw lookat sphere
 
@@ -179,22 +186,22 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
     public void redraw()
     {
         vb.addBack(new VisChain(LinAlg.translate(0, 0, -1),
-                                    new VisBox(100, 100, 2, new VisConstantColor(Color.gray))));
+                                    new VisBox(100, 100, 2, Color.gray)));
 
         vb.addBack(new VisChain(LinAlg.translate(4, -5, 1),
-                                    new VisBox(3, 3, 2, new VisConstantColor(getColor(0)))));
+                                    new VisBox(3, 3, 2, getColor(0))));
 
         vb.addBack(new VisChain(LinAlg.translate(4, 0, 1),
-                                    new VisBox(3, 3, 4, new VisConstantColor(getColor(1)))));
+                                    new VisBox(3, 3, 4, getColor(1))));
 
         vb.addBack(new VisChain(LinAlg.translate(4, 5, 1),
-                                    new VisBox(3, 2, 2, new VisConstantColor(getColor(2)))));
+                                    new VisBox(3, 2, 2, getColor(2))));
 
         vb.addBack(new VisChain(LinAlg.translate(4, 12, 1),
-                                    new VisBox(4, 4, 2, new VisConstantColor(getColor(3)))));
+                                    new VisBox(4, 4, 2, getColor(3))));
 
         vb.addBack(new VisChain(LinAlg.translate(4, 17, 1),
-                                    new VisBox(4, 4, 2, new VisConstantColor(getColor(4)))));
+                                    new VisBox(4, 4, 2, getColor(4))));
 
         vb.swap();
     }

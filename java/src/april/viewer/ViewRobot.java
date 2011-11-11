@@ -26,7 +26,7 @@ public class ViewRobot extends VisEventAdapter implements ViewObject, LCMSubscri
     String              name;
     Config              config;
     LCM                 lcm             = LCM.getSingleton();
-    VisRobot            vrobot          = new VisRobot();
+    VisRobot            vrobot          = new VisRobot(Color.cyan);
     VisObject           vavatar;
     java.util.Timer     leadTimer;
     LeadTask            leadTask        = new LeadTask();
@@ -45,7 +45,6 @@ public class ViewRobot extends VisEventAdapter implements ViewObject, LCMSubscri
         this.name = name;
         this.config = config;
         viewer.getVisLayer().addEventHandler(this);//vis2 addEventHandler(this, 0);
-        vrobot.color = Color.cyan;
 
         enableTeleport = config.getBoolean("enable_teleport", false);
 
@@ -93,9 +92,9 @@ public class ViewRobot extends VisEventAdapter implements ViewObject, LCMSubscri
                                 VisLines.TYPE.LINE_STRIP));
 
 //        vb.addBack(new VisData(new VisDataLineStyle(Color.blue, 1), trajectory));
-        vb.addBack(new VisChain(pose.orientation, pose.pos, vrobot));
+        vb.addBack(new VisChain(LinAlg.quatPosToMatrix(pose.orientation, pose.pos), vrobot));
         if (vavatar != null)
-            vb.addBack(new VisChain(pose.orientation, pose.pos, vavatar));
+            vb.addBack(new VisChain(LinAlg.quatPosToMatrix(pose.orientation, pose.pos), vavatar));
         vb.swap();
     }
 
@@ -203,8 +202,6 @@ public class ViewRobot extends VisEventAdapter implements ViewObject, LCMSubscri
             leadTimer.cancel();
             leadTimer = null;
         }
-
-        vc.releasePick();
         return true;
     }
 

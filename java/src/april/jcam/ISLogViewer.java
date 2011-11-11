@@ -232,7 +232,7 @@ public class ISLogViewer implements LCMSubscriber
             position = log.getPositionFraction();
         } catch (IOException ex) {}
 
-        vbhud.addBack(new VisPixelCoordinates(VisPixelCoordinates.ANCHOR.TOP_LEFT,
+        vbhud.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.TOP_LEFT,
                                               new VisText(VisText.ANCHOR.TOP_LEFT,
                                                           String.format(str,
                                                                         (e.utime - log_t0)*1e-6,
@@ -242,7 +242,7 @@ public class ISLogViewer implements LCMSubscriber
 
         if (once) {
             once = false;
-            vl.cameraManager.fit2D(sc_xy12[0], sc_xy12[1]);
+            vl.cameraManager.fit2D(new double[2], new double[]{e.ifmt.width,e.ifmt.height}, true);
         }
 
         // switch

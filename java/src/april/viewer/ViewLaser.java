@@ -4,6 +4,7 @@ import lcm.lcm.*;
 import april.lcmtypes.*;
 import april.util.*;
 import april.config.*;
+import april.jmat.*;
 import april.vis.*;
 
 import java.io.*;

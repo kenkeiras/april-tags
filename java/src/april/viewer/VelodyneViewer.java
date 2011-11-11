@@ -28,8 +28,8 @@ public class VelodyneViewer implements ViewObject, LCMSubscriber
     double                         spos[], squat[];
     PoseTracker                    pt         = PoseTracker.getSingleton();
     String                         channel;
-    VisCanvas                      vl;
-    VisCanvas                      vw;
+    VisLayer                       vl;
+    VisWorld                       vw;
     LCM                            lcm        = LCM.getSingleton();
     VelodyneCalibration            calib      = VelodyneCalibration.makeMITCalibration();
     int                            lastbucket = 0;

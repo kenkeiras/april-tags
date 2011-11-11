@@ -151,18 +151,20 @@ public class TagTransmit implements ParameterListener
                 double dt = tic.toc();
 
                 if (detector.debugInput!=null)
-                    vbInput.addBack(new VisDepthTest(false, new VisLighting(false, new VisImage(new VisTexture(detector.debugInput, false),
-                                                                                                new double[][]{{0,0},{fmt.width,fmt.height}}, new double[][]{{0,0},{fmt.width,fmt.height}}))));
+                    vbInput.addBack(new VisDepthTest(false, new VisLighting(false, new VisChain(LinAlg.scale(1,-1,1),
+                                                                                                new VisImage(detector.debugInput)))));
                 vbInput.swap();
 
                 if (detector.debugSegmentation!=null)
-                    vbSegmentation.addBack(new VisLighting(false, new VisImage(new VisTexture(detector.debugSegmentation, false),
-                                                                               new double[][]{{0,0},{fmt.width,fmt.height}}, new double[][]{{0,0},{fmt.width,fmt.height}})));
+                    vbInput.addBack(new VisDepthTest(false, new VisLighting(false, new VisChain(LinAlg.scale(1,-1,1),
+                                                                                                new VisImage(detector.debugSegmentation)))));
                 vbSegmentation.swap();
 
-                vbOriginal.addBack(new VisDepthTest(false, new VisLighting(false, new VisImage(new VisTexture(im, false),
-                                                                                               new double[][]{{0,0},{fmt.width,fmt.height}}, new double[][]{{0,0},{fmt.width,fmt.height}}))));
+
+                vbOriginal.addBack(new VisDepthTest(false, new VisLighting(false, new VisChain(LinAlg.scale(1,-1,1),
+                                                                                            new VisImage(im)))));
                 vbOriginal.swap();
+
 
                 vbClock.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.BOTTOM_RIGHT,
                                                         new VisText(VisText.ANCHOR.BOTTOM_RIGHT,

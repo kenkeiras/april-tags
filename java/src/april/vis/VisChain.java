@@ -20,21 +20,6 @@ public class VisChain implements VisObject, VisSerializable
         add(os);
     }
 
-
-    public synchronized void lock()
-    {
-        lock = true;
-    }
-
-    public synchronized void unlock()
-    {
-        if (displayListGL != null) {
-            displayListGL.glDeleteLists(displayListId, 1);
-            displayListGL = null;
-            displayListId = -1;
-        }
-    }
-
     // this method must be added to disabiguate between a
     // two-dimensional array being interpreted as a varargs call
     // consisting of several one-dimensional doubles.

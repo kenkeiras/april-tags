@@ -49,14 +49,14 @@ public class VisGeoImageSet implements VisObject, VisSerializable
         return gpslin;
     }
 
-    public void render(VisCanvas vc, VisLayer vl, GL gl, GLU glu)
+    public void render(VisCanvas vc, VisLayer vl, VisCanvas.RenderInfo rinfo, GL gl)
     {
         synchronized(tiles) {
             for (Tile tile : tiles) {
                 gl.glPushMatrix();
                 gl.glMultMatrix(tile.M);
                 tile.vim.c = modulateColor;
-                tile.vim.render(vc, gl, glu);
+                tile.vim.render(vc, vl, rinfo, gl);
                 gl.glPopMatrix();
             }
         }

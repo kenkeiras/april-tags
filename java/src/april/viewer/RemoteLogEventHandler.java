@@ -10,21 +10,21 @@ import april.vis.*;
 /** Allows VisCanvas to send events directly to a lcm-logplayer-gui **/
 public class RemoteLogEventHandler extends VisEventAdapter implements ViewObject
 {
-    VisCanvas vc;
+    VisLayer vl;
     String name;
     Config config;
 
-    public RemoteLogEventHandler(VisCanvas vc, String name, Config config)
+    public RemoteLogEventHandler(VisLayer vl, String name, Config config)
     {
-        this.vc = vc;
+        this.vl = vl;
         this.name = name;
         this.config = config;
-        vc.addEventHandler(this, 0);
+        vl.addEventHandler(this);//vis2, 0);
     }
 
     public RemoteLogEventHandler(Viewer viewer, String name, Config config)
     {
-        this(viewer.getVisCanvas(), name, config);
+        this(viewer.getVisLayer(), name, config);
     }
 
     static void udpSendString(String addr, int port, String s)
