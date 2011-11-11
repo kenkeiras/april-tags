@@ -51,7 +51,7 @@ public class VzText implements VisObject, VisSerializable
 
     double pixelMargin = 3.0; // around entire VzText
 
-    enum JUSTIFICATION { LEFT, CENTER, RIGHT };
+    private enum JUSTIFICATION { LEFT, CENTER, RIGHT };
 
     int DEFAULT_FONT_SIZE = 24;
 

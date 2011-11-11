@@ -24,7 +24,7 @@ public class Simulator implements VisConsole.Listener
     VisLayer vl = new VisLayer(vw);
     VisCanvas vc = new VisCanvas(vl);
 
-    VisConsole console = new VisConsole(vc, vw);
+    VisConsole console = new VisConsole(vl, vc, vw);
 
     public SimWorld world;
     String worldFilePath = "/tmp/world.world";
@@ -291,7 +291,7 @@ public class Simulator implements VisConsole.Listener
             return true;
         }
 
-        public boolean mouseDragged(VisCanvas vc,  GRay3D ray, MouseEvent e)
+        public boolean mouseDragged(VisCanvas vc, VisLayer vl, VisCanvas.RenderInfo rinfo, GRay3D ray, MouseEvent e)
         {
             if (selectedObject == null)
                 return false;
@@ -380,7 +380,7 @@ public class Simulator implements VisConsole.Listener
             return true;
         }
 
-        public boolean keyPressed(VisCanvas vc, KeyEvent e)
+        public boolean keyPressed(VisCanvas vc, VisLayer vl, VisCanvas.RenderInfo rinfo, KeyEvent e)
         {
             if (e.getKeyChar() >= '1' && e.getKeyChar() <= '9') {
                 sz = Double.parseDouble(""+e.getKeyChar());
@@ -434,7 +434,7 @@ public class Simulator implements VisConsole.Listener
             return false;
         }
 
-        public boolean mousePressed(VisCanvas vc,  GRay3D ray, MouseEvent e)
+        public boolean mousePressed(VisCanvas vc, VisLayer vl, VisCanvas.RenderInfo rinfo, GRay3D ray, MouseEvent e)
         {
             int mods = e.getModifiersEx();
             boolean shift = (mods&MouseEvent.SHIFT_DOWN_MASK)>0;

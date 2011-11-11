@@ -19,7 +19,7 @@ import april.util.*;
 import lcm.lcm.*;
 import april.lcmtypes.*;
 
-/** VisCanvasEventAdapter that draws a robot and allows teleportation. **/
+/** VisEventAdaper that draws a robot and allows teleportation. **/
 public class ViewRobot extends VisEventAdapter implements ViewObject, LCMSubscriber
 {
     Viewer              viewer;

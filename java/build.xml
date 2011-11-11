@@ -53,6 +53,7 @@
 
   <!-- Build Jar -->
   <target name="build-jar">
+    <mkdir dir="build"/>
     <jar destfile="april.jar" compress="false">
 
       <fileset dir="build">

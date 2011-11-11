@@ -4,8 +4,8 @@ import java.awt.*;
 
 public class VzStar implements VisObject
 {
-    final static Color defaultFill;
-    final static Color defaultBorder;
+    final static Color defaultFill=Color.yellow;
+    final static Color defaultBorder=Color.white;
 
     public VzStar()
     {
