@@ -36,16 +36,16 @@ public class JCamView
     JPanel mainPanel;
     JPanel leftPanel;
 
-    RecordPanel recordPanel = new RecordPanel();
-    PrintPanel printPanel = new PrintPanel();
-    TriggerPanel triggerPanel = new TriggerPanel();
+    RecordPanel  recordPanel = new RecordPanel();
+    PrintPanel   printPanel = new PrintPanel();
+    JPanel     triggerPanel = makeChoicePanel("Software trigger thread", new TriggerPanel());
 
-    boolean verbose = false;
+    GetOpt gopt;
 
-    public JCamView(ArrayList<String> urls, boolean verbose)
+    public JCamView(ArrayList<String> urls, GetOpt gopt)
     {
         this.urls = urls;
-        this.verbose = verbose;
+        this.gopt = gopt;
 
         jf = new JFrame("JCamView");
         jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -89,13 +89,15 @@ public class JCamView
         leftPanel.add(Box.createVerticalStrut(vspace));
         leftPanel.add(makeChoicePanel("Formats", formatList));
         leftPanel.add(Box.createVerticalStrut(vspace));
-        leftPanel.add(makeChoicePanel("Software trigger thread", triggerPanel));
+
         leftPanel.add(Box.createVerticalStrut(vspace));
         leftPanel.add(makeChoicePanel("Controls", featurePanel));
         leftPanel.add(Box.createVerticalStrut(vspace));
         leftPanel.add(makeChoicePanel("Record", recordPanel));
         leftPanel.add(Box.createVerticalStrut(vspace));
         leftPanel.add(makeChoicePanel("Camera Info", printPanel));
+
+        leftPanel.add(triggerPanel);
 
         JPanel bottomPanel = new JPanel();
         bottomPanel.setLayout(new FlowLayout());
@@ -187,58 +189,44 @@ public class JCamView
             }
         }
     }
-    class PrintPanel extends JPanel implements ActionListener
+    class PrintPanel extends JPanel
     {
         JButton printButton = new JButton("Print details");
         JButton printURLButton = new JButton("Print camera URL");
-        JCheckBox jcb;
 
         public PrintPanel()
         {
             setLayout(new VFlowLayout());
 
-            jcb = new JCheckBox("Verbose UI", verbose);
-
             add(printButton);
             add(printURLButton);
-            add(jcb);
 
-            jcb.addActionListener(this);
-            printButton.addActionListener(this);
-            printURLButton.addActionListener(this);
-        }
+            printButton.addActionListener(new ActionListener() {
+                public void actionPerformed(ActionEvent e) {
+                    isrc.printInfo();
+                }});
 
-        public synchronized void actionPerformed(ActionEvent e)
-        {
-            if (e.getSource() == jcb) {
-                verbose = jcb.isSelected();
-                System.out.printf("Verbose is now %s\n", verbose ? "true" : "false");
-            } else if (e.getSource() == printButton) {
-                isrc.printInfo();
-            } else if (e.getSource() == printURLButton) {
-                ImageSourceFormat fmt = isrc.getCurrentFormat();
+            printURLButton.addActionListener(new ActionListener() {
+                public void actionPerformed(ActionEvent e) {
 
-                String camera = urls.get(cameraList.getSelectedIndex());
-                String format = fmt.format;
+                    String camera = urls.get(cameraList.getSelectedIndex());
 
-                String url = String.format("\"%s?format=%s", camera, format);
+                    String url = String.format("%s?fidx=%d", camera, isrc.getCurrentFormatIndex());
 
-                for (int i=0; i < isrc.getNumFeatures(); i++) {
-                    String key = isrc.getFeatureName(i);
-                    double value = isrc.getFeatureValue(i);
+                    for (int i=0; i < isrc.getNumFeatures(); i++) {
+                        String key = isrc.getFeatureName(i);
+                        double value = isrc.getFeatureValue(i);
 
-                    if (value == (int) value)
-                        url = String.format("%s&%s=%.0f", url,
-                                            key, value);
-                    else
-                        url = String.format("%s&%s=%.2f", url,
-                                            key, value);
-                }
-                url = url + "\"";
+                        if (value == (int) value)
+                            url = String.format("%s&%s=%.0f", url,
+                                                key, value);
+                        else
+                            url = String.format("%s&%s=%.2f", url,
+                                                key, value);
+                    }
 
-                System.out.println("Camera url:");
-                System.out.println(url);
-            }
+                    System.out.printf("Camera url: \"%s\"\n", url);
+                }});
         }
     }
 
@@ -409,7 +397,7 @@ public class JCamView
             max = isrc.getFeatureMax(idx);
             value = isrc.getFeatureValue(idx);
 
-            if (verbose)
+            if (gopt.getBoolean("verbose"))
                 System.out.printf("Feature %2d : %30s (%10.4f, %10.4f, %10.4f)\n", idx, isrc.getFeatureName(idx), min, max, value);
 
             setLayout(new BorderLayout());
@@ -445,7 +433,7 @@ public class JCamView
         public void actionPerformed(ActionEvent e)
         {
             if (jcb != null) {
-                if (verbose)
+                if (gopt.getBoolean("verbose"))
                     System.out.printf("isSelected: %s\n", jcb.isSelected() ? "yes" : "no");
                 int res = isrc.setFeatureValue(idx, jcb.isSelected() ? 1 : 0);
                 jcb.setSelected(isrc.getFeatureValue(idx) == 1 ? true : false);
@@ -489,7 +477,7 @@ public class JCamView
 
                 updateSlider();
 
-                if (verbose)
+                if (gopt.getBoolean("verbose"))
                     System.out.printf("%s: value: desired %f actual %f min/max: (%f, %f)\n",
                                       isrc.getFeatureName(idx),
                                       js.getValue()/scale,
@@ -528,6 +516,19 @@ public class JCamView
             for (int i = 0; i < nfeatures; i++) {
                 featurePanel.add(new FeatureControl(isrc, i));
             }
+
+            if (nfeatures == 0)
+                featurePanel.add(new JLabel("No features available"));
+
+
+            // show the trigger panel iff the camera supports software triggering.
+            boolean triggering = false;
+            for (int i = 0; i < nfeatures; i++) {
+                if (isrc.getFeatureName(i).equals("software-trigger"))
+                    triggering = true;
+            }
+
+            triggerPanel.setVisible(triggering);
         }
 
         // update the list of formats.
@@ -548,7 +549,9 @@ public class JCamView
 
         int idx = formatList.getSelectedIndex();
 
-        System.out.println("set format "+idx);
+        if (gopt.getBoolean("verbose"))
+            System.out.println("set format "+idx);
+
         if (idx < 0)
             return;
 
@@ -692,26 +695,32 @@ public class JCamView
 
     public static void main(String args[])
     {
-        System.out.println("java.library.path: "+System.getProperty("java.library.path"));
+        GetOpt gopt = new GetOpt();
 
-        ArrayList<String> urls = new ArrayList<String>();
+        gopt.addBoolean('v', "verbose", false, "Be verbose");
+        gopt.addBoolean('h', "help", false, "Show this help");
 
-        boolean verbose = false;
-        for (String arg : args) {
-            if (arg.equals("-v") || arg.equals("--verbose")) {
-                verbose = true;
-                continue;
-            }
-
-            urls.add(arg);
+        if (!gopt.parse(args) || gopt.getBoolean("help")) {
+            System.out.println("Usage: [options] [camera-url]");
+            gopt.doHelp();
+            System.exit(0);
         }
 
-        if (urls.size()==0) {
-            System.out.println("Found cameras: ");
-            for (String s : ImageSource.getCameraURLs()) {
-                System.out.println("  "+s);
+        if (gopt.getBoolean("verbose"))
+            System.out.println("java.library.path: "+System.getProperty("java.library.path"));
+
+        // make a list of URLs that are available.
+        ArrayList<String> urls = new ArrayList<String>();
+
+        // Any manually specified URLs get added to the list of available URLs.
+        for (String url : gopt.getExtraArgs()) {
+            urls.add(url);
+        }
+
+        // Search for other camera devices that might be available and add them.
+        for (String s : ImageSource.getCameraURLs()) {
+            if (!urls.contains(s))
                 urls.add(s);
-            }
         }
 
         if (urls.size() == 0) {
@@ -719,6 +728,6 @@ public class JCamView
             return;
         }
 
-        new JCamView(urls, verbose);
+        new JCamView(urls, gopt);
     }
 }
