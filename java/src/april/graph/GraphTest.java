@@ -45,18 +45,21 @@ public class GraphTest implements ParameterListener
     public GraphTest(Graph g)
     {
         this.g = g;
+
         pg.addButtons("init", "init", "truth", "truth");
         pg.addChoice("method", "Method", new String[] { "Sparse Cholesky", "Gauss Seidel" }, 0);
         pg.addInt("drawevery", "Draw Every N iterations", 10);
         pg.addButtons("iterate", "iterate", "startstop", "start/stop");
         pg.addListener(this);
         parameterChanged(pg, "method");
+
         jf = new JFrame("GraphTest");
         jf.setLayout(new BorderLayout());
         jf.add(vc, BorderLayout.CENTER);
         jf.add(pg.getPanel(), BorderLayout.SOUTH);
         jf.setSize(800, 600);
         jf.setVisible(true);
+
         ArrayList<double[]> bounds = g.getBounds();
         double xyz0[] = bounds.get(0);
         double xyz1[] = bounds.get(1);
@@ -141,15 +144,18 @@ public class GraphTest implements ParameterListener
     {
         VisWorld.Buffer vb = vw.getBuffer("graph");
 
-        for (GEdge ge : g.edges) {
-
+        if (true) {
             VisVertexData vd = new VisVertexData();
-            for (int i = 0; i < ge.nodes.length; i++) {
-                GNode gn = g.nodes.get(ge.nodes[i]);
-                vd.add(gn.toXyzRpy(gn.state));
+
+            for (GEdge ge : g.edges) {
+
+                for (int i = 0; i < ge.nodes.length; i++) {
+                    GNode gn = g.nodes.get(ge.nodes[i]);
+                    vd.add(gn.toXyzRpy(gn.state));
+                }
             }
 
-            vb.addBack(new VisLines(vd, new VisConstantColor(Color.green),1,VisLines.TYPE.LINE_STRIP));
+            vb.addBack(new VisLines(vd, new VisConstantColor(Color.green),1,VisLines.TYPE.LINES));
         }
 
         for (GNode gn : g.nodes) {
@@ -166,8 +172,8 @@ public class GraphTest implements ParameterListener
         }
 
         Graph.ErrorStats estats = g.getErrorStats();
-        vb.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.BOTTOM_LEFT,
-                                           new VzText(VzText.ANCHOR.BOTTOM_LEFT,
+        vb.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.TOP_LEFT,
+                                           new VzText(VzText.ANCHOR.TOP_LEFT,
                                                        String.format("<<monospaced-12>>chi^2:   %15f\nchi^2/s: %15f\nMSE(xy): %15f",
                                                                      estats.chi2, estats.chi2normalized, estats.meanSquaredDistanceError))));
         vb.swap();

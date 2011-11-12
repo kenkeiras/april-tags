@@ -23,6 +23,12 @@ public class VisVertexData implements VisAbstractVertexData, VisSerializable
             add(points);
     }
 
+    public VisVertexData(float[]  ... points)
+    {
+        if (points.length > 0)
+            add(points);
+    }
+
     public VisVertexData(ArrayList<double[]> d)
     {
         add(d);
@@ -81,6 +87,32 @@ public class VisVertexData implements VisAbstractVertexData, VisSerializable
             b.vd[i*dim+1] = points[i][1];
             if (p.length > 2)
                 b.vd[i*dim+2] = points[i][2];
+        }
+
+        b.nv = points.length;
+        b.dim = dim;
+
+        blocks.add(b);
+    }
+
+    public synchronized void add(float[] ... points)
+    {
+        int dim = 2;
+        for (float p[] : points) {
+            if (p.length >= 3)
+                dim = 3;
+        }
+
+        Block b = new Block();
+        b.vf = new float[points.length*dim];
+
+        for (int i = 0; i < points.length; i++) {
+            float p[] = points[i];
+
+            b.vf[i*dim+0] = points[i][0];
+            b.vf[i*dim+1] = points[i][1];
+            if (p.length > 2)
+                b.vf[i*dim+2] = points[i][2];
         }
 
         b.nv = points.length;
@@ -151,16 +183,17 @@ public class VisVertexData implements VisAbstractVertexData, VisSerializable
             int pos = 0;
 
             for (Block b : blocks) {
+
                 if (b.vf != null) {
                     for (int i = 0; i < b.nv; i++) {
-                        for (int j = 0; j < b.dim; j++) {
+                        for (int j = 0; j < Math.min(dim, b.dim); j++) {
                             vd[pos*dim+j] = b.vf[i*b.dim+j];
                         }
                         pos++;
                     }
                 } else {
                     for (int i = 0; i < b.nv; i++) {
-                        for (int j = 0; j < b.dim; j++) {
+                        for (int j = 0; j < Math.min(dim, b.dim); j++) {
                             vd[pos*dim+j] = b.vd[i*b.dim+j];
                         }
                         pos++;
