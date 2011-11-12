@@ -84,7 +84,7 @@ public class VisColorData implements VisAbstractColorData, VisSerializable
         return blocks.get(0).length;
     }
 
-    public synchronized void bind(GL gl)
+    public synchronized void bindColor(GL gl)
     {
         combine();
 
@@ -99,7 +99,7 @@ public class VisColorData implements VisAbstractColorData, VisSerializable
         gl.gldBind(GL.VBO_TYPE_COLOR, id, b.length, 4, b);
     }
 
-    public synchronized void unbind(GL gl)
+    public synchronized void unbindColor(GL gl)
     {
         int b[] = blocks.get(0);
 

@@ -17,14 +17,24 @@ public class VzImage implements VisObject
     //  vb.addBack(new VisChain(LinAlg.scale(1,-1,1),new VzImage(cameraImage)));
     public VzImage(BufferedImage im)
     {
-        this.texture = new VisTexture(im,false);
-        this.vertices = new double[][]{{0,0},{im.getWidth(),0},
-                                       {im.getWidth(),im.getHeight()},{0,im.getHeight()}};
-        this.texcoords = LinAlg.copy(vertices);
+        this.texture = new VisTexture(im, false);
+        this.vertices = new double[][] { {0, 0, 0},
+                                         {im.getWidth(), 0, 0},
+                                         {im.getWidth(), im.getHeight(), 0},
+                                         {0, im.getHeight(), 0} };
+
+        this.texcoords = new double[][] { { 0, 0 },
+                                          { 1, 0 },
+                                          { 1, 1 },
+                                          { 0, 1 } };
         this.c = null;
     }
 
-    // Can pass 'null' for color if texture is not alpha mask
+    /** Display an image. Can pass 'null' for color if texture is not alpha mask
+     *  @param vertices A list of four 2D or 3D vertices.
+     *  @param texcoords A list of four 2D texture coordinates, normalized between 0 and 1.
+     *  @param c a color to modulate the texture with. Use white to make image appear normally.
+     **/
     public VzImage(VisTexture texture, double vertices[][], double texcoords[][], Color c)
     {
         this.texture = texture;
@@ -34,12 +44,20 @@ public class VzImage implements VisObject
 
         assert(vertices.length == 4);
         assert(texcoords.length == 4);
+
+        for (int i = 0; i < 4; i++) {
+            if (vertices[i].length < 3) {
+                vertices[i] = new double[] { vertices[i][0], vertices[i][1], 0 };
+            }
+        }
     }
 
     public void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl)
     {
         if (c != null)
             gl.glColor(c);
+        else
+            gl.glColor(Color.white);
 
         texture.bind(gl);
 

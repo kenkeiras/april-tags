@@ -23,8 +23,8 @@ public class VisLines implements VisObject
 
     public synchronized void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl)
     {
-        vd.bind(gl);
-        cd.bind(gl);
+        vd.bindVertex(gl);
+        cd.bindColor(gl);
 
         gl.glNormal3f(0, 0, 1);
         gl.glLineWidth((float) lineWidth);
@@ -36,7 +36,7 @@ public class VisLines implements VisObject
         else if (type == TYPE.LINE_LOOP)
             gl.glDrawArrays(GL.GL_LINE_LOOP, 0, vd.size());
 
-        cd.unbind(gl);
-        vd.unbind(gl);
+        cd.unbindColor(gl);
+        vd.unbindVertex(gl);
     }
 }

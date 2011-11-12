@@ -17,6 +17,10 @@ public class VisVertexData implements VisAbstractVertexData, VisSerializable
         int dim;
     }
 
+    public VisVertexData()
+    {
+    }
+
     public VisVertexData(double[]  ... points)
     {
         if (points.length > 0)
@@ -233,7 +237,7 @@ public class VisVertexData implements VisAbstractVertexData, VisSerializable
         id = -1;
     }
 
-    public synchronized void bind(GL gl)
+    public synchronized void bindVertex(GL gl)
     {
         combine();
 
@@ -248,7 +252,7 @@ public class VisVertexData implements VisAbstractVertexData, VisSerializable
             gl.gldBind(GL.VBO_TYPE_VERTEX, id, b.nv, b.dim, b.vd);
     }
 
-    public synchronized void unbind(GL gl)
+    public synchronized void unbindVertex(GL gl)
     {
         gl.gldUnbind(GL.VBO_TYPE_VERTEX, id);
     }

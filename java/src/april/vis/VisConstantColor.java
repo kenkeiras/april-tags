@@ -4,7 +4,7 @@ import java.util.*;
 import java.awt.*;
 import java.io.*;
 
-public class VisConstantColor implements VisAbstractColorData, VisSerializable
+public class VisConstantColor implements VisAbstractColorData, VisAbstractFillStyle, VisSerializable
 {
     Color c;
 
@@ -18,12 +18,22 @@ public class VisConstantColor implements VisAbstractColorData, VisSerializable
         return -1;
     }
 
-    public synchronized void bind(GL gl)
+    public synchronized void bindColor(GL gl)
     {
         gl.glColor(c);
     }
 
-    public synchronized void unbind(GL gl)
+    public synchronized void unbindColor(GL gl)
+    {
+        // nop
+    }
+
+    public synchronized void bindFill(GL gl)
+    {
+        gl.glColor(c);
+    }
+
+    public synchronized void unbindFill(GL gl)
     {
         // nop
     }

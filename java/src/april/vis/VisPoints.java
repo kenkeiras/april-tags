@@ -19,16 +19,16 @@ public class VisPoints implements VisObject, VisSerializable
 
     public synchronized void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl)
     {
-        vd.bind(gl);
-        cd.bind(gl);
+        vd.bindVertex(gl);
+        cd.bindColor(gl);
 
         gl.glNormal3f(0, 0, 1);
 
         gl.glPointSize((float) pointSize);
         gl.glDrawArrays(GL.GL_POINTS, 0, vd.size());
 
-        cd.unbind(gl);
-        vd.unbind(gl);
+        cd.unbindColor(gl);
+        vd.unbindVertex(gl);
     }
 
     public VisPoints(ObjectReader ins)

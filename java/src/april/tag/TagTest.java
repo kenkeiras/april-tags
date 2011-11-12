@@ -219,19 +219,21 @@ public class TagTest implements ParameterListener
                     double M[][] = CameraUtil.homographyToPose(f, f, tagsize_m, d.homography);
 
                     BufferedImage tfimg = tf.makeImage(d.id);
-                    double vertices[][] = {{-tagsize_m/2, -tagsize_m/2},
-                                           { tagsize_m/2, -tagsize_m/2},
-                                           { tagsize_m/2,  tagsize_m/2},
-                                           { -tagsize_m/2,  tagsize_m/2}};
+                    double vertices[][] = {{ -tagsize_m/2, -tagsize_m/2, 0},
+                                           { tagsize_m/2, -tagsize_m/2, 0},
+                                           { tagsize_m/2,  tagsize_m/2, 0},
+                                           { -tagsize_m/2,  tagsize_m/2, 0}};
 
 
-                    double texcoords [][] = {{0,0}, {0,tfimg.getHeight()},
-                                             {tfimg.getWidth(),tfimg.getHeight()}, {tfimg.getWidth(),0}};
+                    double texcoords [][] = { { 0, 0},
+                                              { 0, 1},
+                                              { 1, 1},
+                                              { 1, 0 } };
 
                     vbTag3D.addBack(new VisChain(LinAlg.rotateX(Math.PI/2),
                                                  M,
                                                  new VzImage(new VisTexture(tfimg, false),
-                                                             vertices,texcoords,null)));
+                                                             vertices, texcoords, null)));
                 }
 
                 vbTag3D.addBack(new VisChain(LinAlg.rotateX(Math.PI/2),
