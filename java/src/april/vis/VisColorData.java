@@ -31,7 +31,7 @@ public class VisColorData implements VisAbstractColorData, VisSerializable
         }
     }
 
-    /** Add a single color. Sequential calls to this are optimized. **/
+    /** Add a single color, AABBGGRR. Sequential calls to this are optimized. **/
     public synchronized void add(int c)
     {
         if (tmp == null) {

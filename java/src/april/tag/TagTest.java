@@ -237,6 +237,9 @@ public class TagTest implements ParameterListener
                 }
 
                 vbTag3D.addBack(new VisChain(LinAlg.rotateX(Math.PI/2),
+                                             new VzAxes()));
+                vbTag3D.addBack(new VisChain(LinAlg.rotateZ(Math.PI/2),
+                                             LinAlg.scale(.25, .25, .25),
                                              new VzCamera()));
                 vbTag3D.swap();
 

@@ -2,6 +2,11 @@ package april.vis;
 
 import java.awt.*;
 
+import april.jmat.*;
+
+/** A camera formed by a box and a pyramid, with a focal point (the
+ * apex of the pyramid) pointing down the +x axis.
+ **/
 public class VzCamera implements VisObject
 {
     static Color defaultFill = Color.gray;
@@ -20,35 +25,13 @@ public class VzCamera implements VisObject
 
     public void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl)
     {
-        double s = 0.25;
-        gl.glColor(color);
+        VisChain c = new VisChain(new VisChain(LinAlg.scale(1, .5, .5),
+                                               LinAlg.translate(1, 0, 0),
+                                               LinAlg.rotateY(-Math.PI/2),
+                                               new VzSquarePyramid(new VisFillStyle(color), false)),
+                                  new VzBox(new VisFillStyle(color)));
 
-        gl.glPushMatrix();
-        gl.glScaled(s, s, s);
-        gl.glTranslated(0, 0, -1.0);
-        VzSquarePyramid vp = new VzSquarePyramid(new VisFillStyle(color), true);
-        vp.render(vc, layer, rinfo, gl);
-        gl.glPopMatrix();
-
-        gl.glPushMatrix();
-        gl.glScaled(s, s, s);
-        gl.glTranslated(0, 0, 0.25);
-        VzBox vb = new VzBox(s, s, s, new VisFillStyle(color));
-        vb.render(vc, layer, rinfo, gl);
-        gl.glPopMatrix();
-/*
-        gl.glBegin(GL.GL_LINES);
-        gl.glVertex3d(0, -.2, 0);
-        gl.glVertex3d(0, .4, 0);
-
-        for (int i = 0; i < 3; i++) {
-            gl.glVertex3d(0, .4, 0);
-            double theta = i*2.0*Math.PI/3;
-            gl.glVertex3d(.05*Math.sin(theta), .3, .05*Math.cos(theta));
-        }
-
-        gl.glEnd();
-*/
+        c.render(vc, layer, rinfo, gl);
     }
 
 }
