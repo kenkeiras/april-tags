@@ -4,13 +4,13 @@ import java.util.*;
 import java.awt.*;
 import java.io.*;
 
-public class VisPoints implements VisObject, VisSerializable
+public class VzPoints implements VisObject, VisSerializable
 {
     VisAbstractVertexData vd;
     VisAbstractColorData cd;
     double pointSize;
 
-    public VisPoints(VisAbstractVertexData vd, VisAbstractColorData cd, double pointSize)
+    public VzPoints(VisAbstractVertexData vd, VisAbstractColorData cd, double pointSize)
     {
         this.vd = vd;
         this.cd = cd;
@@ -31,7 +31,7 @@ public class VisPoints implements VisObject, VisSerializable
         vd.unbindVertex(gl);
     }
 
-    public VisPoints(ObjectReader ins)
+    public VzPoints(ObjectReader ins)
     {
     }
 

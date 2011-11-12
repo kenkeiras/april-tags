@@ -28,14 +28,12 @@ public class VzGridText implements VisObject, VisSerializable
 
     public void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl)
     {
-        long now = System.currentTimeMillis();
-        double dt = (now - lastUpdateTime) / 1000.0;
-        if (dt > displayTime)
+        if (grid.lastspacing == null)
             return;
 
         double lastspacing[] = grid.lastspacing;
 
-        if (grid.lastspacing == null || spacing == null ||
+        if (vt == null || grid.lastspacing == null || spacing == null ||
             grid.lastspacing[0] != spacing[0] || grid.lastspacing[1] != spacing[1] || vt == null) {
 
             spacing = LinAlg.copy(lastspacing);
@@ -44,7 +42,11 @@ public class VzGridText implements VisObject, VisSerializable
             lastUpdateTime = System.currentTimeMillis();
         }
 
-        vt.render(vc, layer, rinfo, gl);
+        long now = System.currentTimeMillis();
+        double dt = (now - lastUpdateTime) / 1000.0;
+
+        if (dt < displayTime)
+            vt.render(vc, layer, rinfo, gl);
     }
 
     public VzGridText(ObjectReader r)

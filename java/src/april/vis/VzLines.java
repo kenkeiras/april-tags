@@ -2,8 +2,9 @@ package april.vis;
 
 import java.util.*;
 import java.awt.*;
+import java.io.*;
 
-public class VisLines implements VisObject
+public class VzLines implements VisObject
 {
     VisAbstractVertexData vd;
     VisAbstractColorData cd;
@@ -13,7 +14,7 @@ public class VisLines implements VisObject
 
     TYPE type;
 
-    public VisLines(VisAbstractVertexData vd, VisAbstractColorData cd, double lineWidth, TYPE type)
+    public VzLines(VisAbstractVertexData vd, VisAbstractColorData cd, double lineWidth, TYPE type)
     {
         this.vd = vd;
         this.cd = cd;
@@ -38,5 +39,21 @@ public class VisLines implements VisObject
 
         cd.unbindColor(gl);
         vd.unbindVertex(gl);
+    }
+
+    public void writeObject(ObjectWriter outs) throws IOException
+    {
+        outs.writeObject(vd);
+        outs.writeObject(cd);
+        outs.writeDouble(lineWidth);
+        outs.writeUTF(type.name());
+    }
+
+    public void readObject(ObjectReader ins) throws IOException
+    {
+        vd = (VisAbstractVertexData) ins.readObject();
+        cd = (VisAbstractColorData) ins.readObject();
+        lineWidth = ins.readDouble();
+        this.type = TYPE.valueOf(ins.readUTF());
     }
 }

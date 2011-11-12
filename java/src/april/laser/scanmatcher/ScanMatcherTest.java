@@ -158,7 +158,7 @@ public class ScanMatcherTest implements LCMSubscriber, ParameterListener
                 VisWorld.Buffer vb = vw.getBuffer("lastscan");
                 vb.addBack(new VisChain(LinAlg.xytToMatrix(scanMatcher.getPosition()),
                                         new VzRobot(Color.red),
-                                        new VisPoints(new VisVertexData(bodyPoints),
+                                        new VzPoints(new VisVertexData(bodyPoints),
                                                       new VisConstantColor(Color.red),2)));
                 vb.swap();
             }
@@ -191,7 +191,7 @@ public class ScanMatcherTest implements LCMSubscriber, ParameterListener
 
                     if (pg.gb("showallscans")) {
                         vb.addBack(new VisChain(LinAlg.xytToMatrix(gn.state),
-                                                new VisPoints(new VisVertexData(p),
+                                                new VzPoints(new VisVertexData(p),
                                                               new VisConstantColor(Color.blue),1)));
                     }
                 }

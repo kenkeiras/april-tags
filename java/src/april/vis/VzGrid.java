@@ -24,7 +24,7 @@ public class VzGrid implements VisObject, VisSerializable
 
     public VzGrid()
     {
-        this(new Color(128,128,128), new Color(32,32,32));
+        this(new Color(128,128,128), new Color(32,32,32,128));
     }
 
     public VzGrid(Color gridColor, Color groundColor)
@@ -133,19 +133,20 @@ public class VzGrid implements VisObject, VisSerializable
 
         if (true) {
             VisWorld.Buffer vb = vw.getBuffer("grid");
+            vb.setDrawOrder(10000);
             vb.addFront(vg);
         }
 
         if (true) {
             VisWorld.Buffer vb = vw.getBuffer("grid-overlay");
-            vb.setDrawOrder(10000);
+            vb.setDrawOrder(10001);
 
             vb.addFront(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.CENTER_ROUND,
                                                 new VisDepthTest(false,
                                                                  // translate so we don't draw on top of canvas dimensions.
                                                                  LinAlg.translate(0, -30, 0),
                                                                  new VzGridText(vg, VzText.ANCHOR.CENTER_ROUND,
-                                                                                "<<sansserif-12>>grid %.2f m"))));
+                                                                                "<<sansserif-12,white>>grid %.2f m"))));
         }
 
         return vg;

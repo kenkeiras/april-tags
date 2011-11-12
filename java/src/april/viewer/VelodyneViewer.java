@@ -34,7 +34,7 @@ public class VelodyneViewer implements ViewObject, LCMSubscriber
     VelodyneCalibration            calib      = VelodyneCalibration.makeMITCalibration();
     int                            lastbucket = 0;
     ArrayList<ArrayList<double[]>> points = new ArrayList<ArrayList<double[]>>();
-    ArrayList<VisPoints> visPoints = new ArrayList<VisPoints>();
+    ArrayList<VzPoints> visPoints = new ArrayList<VzPoints>();
 
     public VelodyneViewer(Viewer viewer, Config config, String channel)
     {
@@ -101,7 +101,7 @@ public class VelodyneViewer implements ViewObject, LCMSubscriber
             ColorMapper cm = ColorMapper.makeJetWhite(-1, +3);
             for (int i = 0; i < visPoints.size(); i++) {
                 if (visPoints.get(i) == null) {
-                    VisPoints  vp = new VisPoints(new VisVertexData(points.get(i)),
+                    VzPoints  vp = new VzPoints(new VisVertexData(points.get(i)),
                                                   cm.makeColorData(points.get(i),2),1);
 
                     visPoints.set(i,vp);

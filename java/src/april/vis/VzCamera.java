@@ -4,7 +4,7 @@ import java.awt.*;
 
 public class VzCamera implements VisObject
 {
-    static Color defaultFill;
+    static Color defaultFill = Color.gray;
 
     Color color;
 
@@ -22,19 +22,21 @@ public class VzCamera implements VisObject
     {
         double s = 0.25;
         gl.glColor(color);
-/*
+
         gl.glPushMatrix();
         gl.glScaled(s, s, s);
         gl.glTranslated(0, 0, -1.0);
-        GLUtil.pyramidFilled(gl, false);
+        VzSquarePyramid vp = new VzSquarePyramid(new VisFillStyle(color), true);
+        vp.render(vc, layer, rinfo, gl);
         gl.glPopMatrix();
 
         gl.glPushMatrix();
         gl.glScaled(s, s, s);
         gl.glTranslated(0, 0, 0.25);
-        GLUtil.cubeFilled(gl);
+        VzBox vb = new VzBox(s, s, s, new VisFillStyle(color));
+        vb.render(vc, layer, rinfo, gl);
         gl.glPopMatrix();
-
+/*
         gl.glBegin(GL.GL_LINES);
         gl.glVertex3d(0, -.2, 0);
         gl.glVertex3d(0, .4, 0);

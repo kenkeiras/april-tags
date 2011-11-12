@@ -37,13 +37,13 @@ public class VzRobot implements VisObject
     {
         gl.glLineWidth(1f);
 
-        vd.bind(gl);
+        vd.bindVertex(gl);
         gl.glColor(fillColor);
         gl.glDrawArrays(GL.GL_LINE_LOOP, 0, vd.size());
 
         gl.glColor(borderColor);
         gl.glDrawArrays(GL.GL_TRIANGLES, 0, vd.size());
 
-        vd.unbind(gl);
+        vd.unbindVertex(gl);
     }
 }
