@@ -41,7 +41,7 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
         vb = vw.getBuffer("main");
         vw.getBuffer("grid").addFront(new VzGrid());
         vw.getBuffer("axes").addFront(new VzAxes());
-        vw.getBuffer("grid").setEnabled(false);
+        vl.setBufferEnabled("grid", false);
 
         jf = new JFrame("SpaceNavigator Demo");
         jf.setLayout(new BorderLayout());

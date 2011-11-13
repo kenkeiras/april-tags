@@ -143,7 +143,7 @@ public class VisLayer implements Comparable<VisLayer>, VisSerializable
 
                                 VisWorld.Buffer vb = world.getBuffer(bufferName);
 
-                                setBufferEnabled(vb, !isBufferEnabled(vb));
+                                setBufferEnabled(vb.name, !isBufferEnabled(vb.name));
                             }
                         });
 
@@ -163,17 +163,17 @@ public class VisLayer implements Comparable<VisLayer>, VisSerializable
         }
     }
 
-    public void setBufferEnabled(VisWorld.Buffer vb, boolean v)
+    public void setBufferEnabled(String name, boolean v)
     {
         if (v)
-            disabledBuffers.remove(vb.name);
+            disabledBuffers.remove(name);
         else
-            disabledBuffers.add(vb.name);
+            disabledBuffers.add(name);
     }
 
-    public boolean isBufferEnabled(VisWorld.Buffer b)
+    public boolean isBufferEnabled(String name)
     {
-        return !disabledBuffers.contains(b.name);
+        return !disabledBuffers.contains(name);
     }
 
     /** For use only be serialization **/

@@ -111,6 +111,11 @@ public class VzBox implements VisObject
         this(1, 1, 1, fillStyle);
     }
 
+    public VzBox(double sx, double sy, double sz, Color color)
+    {
+        this(sx, sy, sz, new VisFillStyle(color));
+    }
+
     /** A box that extends from -sx/2 to sx/2, -sy/2 to sy/2, -sz/2 to sz/2 **/
     public VzBox(double sx, double sy, double sz, VisAbstractFillStyle fillStyle)
     {
