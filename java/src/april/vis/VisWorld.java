@@ -158,7 +158,7 @@ public class VisWorld implements VisSerializable
 
             for (Buffer b : buffers) {
 
-                if (!layer.isBufferEnabled(b))
+                if (!layer.isBufferEnabled(b.name))
                     continue;
 
                 synchronized(b) {

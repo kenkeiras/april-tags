@@ -23,6 +23,9 @@ public class DragPanel extends JComponent implements MouseListener, MouseMotionL
         // a constant value for the item.
         public int getHeight();
 
+        // get preferred width (but you can draw to infinity)
+        public int getWidth();
+
         // Draw the item at y=0, x=0, respecting the getHeight. Do not clear the background.
         public void paint(DragPanel dp, Graphics2D g, boolean selected);
     }
@@ -44,7 +47,7 @@ public class DragPanel extends JComponent implements MouseListener, MouseMotionL
         g.setColor(Color.white);
         g.fillRect(0, 0, getWidth(), getHeight());
 
-        int y = 0;
+        int ys[] = getYs();
 
         g.setColor(new Color(200,200,200));
         for (int i = 0; i < items.size(); i++) {
@@ -53,11 +56,9 @@ public class DragPanel extends JComponent implements MouseListener, MouseMotionL
             if (item == selectedItem)
                 continue;
 
-            g.translate(0, y);
+            g.translate(0, ys[i]);
             item.paint(this, g, false);
-            g.translate(0, -y);
-
-            y += item.getHeight();
+            g.translate(0, -ys[i]);
         }
 
         if (selectedItem != null) {
@@ -65,6 +66,58 @@ public class DragPanel extends JComponent implements MouseListener, MouseMotionL
             selectedItem.paint(this, g, true);
             g.translate(-(selectedMouseX - selectedOffsetX), -(selectedMouseY - selectedOffsetY));
         }
+    }
+
+    static class Pos implements Comparable<Pos>
+    {
+        Item item;
+        int  ymid;
+
+        public int compareTo(Pos p)
+        {
+            return ymid - p.ymid;
+        }
+    }
+
+    int[] getYs()
+    {
+        ArrayList<Pos> poses = new ArrayList<Pos>();
+
+        // what is the y coordinate of the origin of the selected item?
+        int sy = selectedMouseY - selectedOffsetY;
+
+        int y0 = 0;
+
+        for (int i = 0; i < items.size(); i++) {
+            Item item = items.get(i);
+
+            int ymid = y0+item.getHeight() / 2;
+
+            Pos p = new Pos();
+            p.item = item;
+            p.ymid = ymid;
+
+            if (item == selectedItem)
+                p.ymid = sy + selectedItem.getHeight() / 2;
+
+            y0 += item.getHeight();
+
+            poses.add(p);
+        }
+
+        Collections.sort(poses);
+
+        int ys[] = new int[items.size()];
+        y0 = 0;
+
+        for (int i = 0; i < poses.size(); i++) {
+            Pos p = poses.get(i);
+            items.set(i, p.item);
+            ys[i] = y0;
+            y0 += p.item.getHeight();
+        }
+
+        return ys;
     }
 
     public void mouseClicked(MouseEvent e)
@@ -120,6 +173,19 @@ public class DragPanel extends JComponent implements MouseListener, MouseMotionL
         repaint();
     }
 
+    public Dimension getPreferredSize()
+    {
+        int y = 0;
+        int x = 0;
+
+        for (int i = 0; i < items.size(); i++) {
+            Item item = items.get(i);
+            y += item.getHeight();
+            x = Math.max(x, item.getWidth());
+        }
+        return new Dimension(x, y);
+    }
+
     static class TextItem implements DragPanel.Item
     {
         String name;
@@ -134,15 +200,20 @@ public class DragPanel extends JComponent implements MouseListener, MouseMotionL
             return 25;
         }
 
+        public int getWidth()
+        {
+            return 100;
+        }
+
         public void paint(DragPanel dp, Graphics2D g, boolean selected)
         {
             if (selected)
                 g.setColor(Color.blue);
             else
                 g.setColor(Color.gray);
-            g.fillRoundRect(0, 0, dp.getWidth(), getHeight(), 3, 3);
+            g.fillRoundRect(0, 0, dp.getWidth(), getHeight(), 8, 8);
             g.setColor(Color.lightGray);
-            g.drawRoundRect(0, 0, dp.getWidth(), getHeight(), 3, 3);
+            g.drawRoundRect(0, 0, dp.getWidth(), getHeight(), 8, 8);
 
             g.setColor(Color.black);
             g.drawString(name, 10, 20);
@@ -159,7 +230,11 @@ public class DragPanel extends JComponent implements MouseListener, MouseMotionL
         dp.add(new TextItem("def"));
         dp.add(new TextItem("ghi"));
         dp.add(new TextItem("jkl"));
-        jf.add(dp, BorderLayout.CENTER);
+        dp.add(new TextItem("mno"));
+        dp.add(new TextItem("pqr"));
+        dp.add(new TextItem("stu"));
+        dp.add(new TextItem("vwx"));
+        jf.add(new JScrollPane(dp), BorderLayout.CENTER);
 
         jf.setSize(600,400);
         jf.setVisible(true);
