@@ -8,10 +8,18 @@ import java.util.*;
 public class WLabel extends WComponent
 {
     String value;
+    Color textColor;
 
     public WLabel(String value)
     {
+        this(value, Color.black, null);
+    }
+
+    public WLabel(String value, Color textColor, Color backgroundColor)
+    {
         this.value = value;
+        this.textColor = textColor;
+        this.backgroundColor = backgroundColor;
     }
 
     public int getHeight()
@@ -26,13 +34,12 @@ public class WLabel extends WComponent
 
     public void paint(Graphics2D g, int width, int height)
     {
-        g.setColor(Color.gray);
+        paintBackground(g, width, height);
 
-        g.fillRoundRect(0, 0, width, height, 8, 8);
-        g.setColor(Color.lightGray);
-        g.drawRoundRect(0, 0, width, height, 8, 8);
+        g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
+                           RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
-        g.setColor(Color.black);
+        g.setColor(textColor);
         g.drawString(value, 10, 20);
     }
 }

@@ -10,13 +10,21 @@ public class WInset extends WComponent
     WComponent comp;
     int north, east, south, west;
 
-    public WInset(WComponent comp, int north, int east, int south, int west)
+    public WInset(WComponent comp, int north, int east, int south, int west, Color backgroundColor)
     {
         this.comp = comp;
         this.north = north;
         this.east = east;
         this.south = south;
         this.west = west;
+        this.backgroundColor = backgroundColor;
+
+        comp.parent = this;
+    }
+
+    public WInset(WComponent comp, int north, int east, int south, int west)
+    {
+        this(comp, north, east, south, west, null);
     }
 
     public boolean mouseClicked(WAdapter wadapter, MouseEvent e, int mx, int my)
@@ -66,6 +74,8 @@ public class WInset extends WComponent
 
     public void paint(Graphics2D g, int width, int height)
     {
+        paintBackground(g, width, height);
+
         g.translate(west, north);
 
         comp.paint(g, width - east - west, height - north - south);
