@@ -47,6 +47,8 @@ public class VisLayer implements Comparable<VisLayer>, VisSerializable
 
     public int popupBackgroundColors[] = new int[] { 0x000000, 0x808080, 0xffffff };
 
+    HashSet<String> disabledBuffers = new HashSet<String>();
+
     public VisLayer(VisWorld vw)
     {
         this.world = vw;
@@ -132,7 +134,7 @@ public class VisLayer implements Comparable<VisLayer>, VisSerializable
                     VisWorld.Buffer vb = world.buffers.get(i);
 
                     jmis[i] = new JCheckBoxMenuItem(vb.getName());
-                    jmis[i].setSelected(vb.isEnabled());
+                    jmis[i].setSelected(!disabledBuffers.contains(vb.name));
 
                     jmis[i].addActionListener(new ActionListener() {
                             public void actionPerformed(ActionEvent e) {
@@ -140,7 +142,8 @@ public class VisLayer implements Comparable<VisLayer>, VisSerializable
                                 String bufferName = jmi.getText();
 
                                 VisWorld.Buffer vb = world.getBuffer(bufferName);
-                                vb.setEnabled(!vb.isEnabled());
+
+                                setBufferEnabled(vb, !isBufferEnabled(vb));
                             }
                         });
 
@@ -158,6 +161,19 @@ public class VisLayer implements Comparable<VisLayer>, VisSerializable
 
             jmenu.add(jm);
         }
+    }
+
+    public void setBufferEnabled(VisWorld.Buffer vb, boolean v)
+    {
+        if (v)
+            disabledBuffers.remove(vb.name);
+        else
+            disabledBuffers.add(vb.name);
+    }
+
+    public boolean isBufferEnabled(VisWorld.Buffer b)
+    {
+        return !disabledBuffers.contains(b.name);
     }
 
     /** For use only be serialization **/

@@ -189,7 +189,7 @@ public class TagTest implements ParameterListener
 
                 vbClock.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.BOTTOM_RIGHT,
                                                         new VzText(VzText.ANCHOR.BOTTOM_RIGHT,
-                                                                    String.format("<<blue>>%8.2f ms", dt*1000))));
+                                                                    String.format("<<cyan>>%8.2f ms", dt*1000))));
                 vbClock.swap();
 
                 for (TagDetection d : detections) {

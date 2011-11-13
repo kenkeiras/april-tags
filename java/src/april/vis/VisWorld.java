@@ -43,6 +43,13 @@ public class VisWorld implements VisSerializable
         }
     }
 
+/*
+    public interface Listener
+    {
+        public void bufferAdded(VisWorld world, VisWorld.Buffer vb);
+    }
+*/
+
     public class Buffer implements Comparable<Buffer>
     {
         // contents of 'front' and 'back' are protected by synchronizing on the buffer.
@@ -53,7 +60,6 @@ public class VisWorld implements VisSerializable
 
         int drawOrder = -1;
         String name;
-        boolean enabled = true;
 
         Buffer(String name)
         {
@@ -121,16 +127,6 @@ public class VisWorld implements VisSerializable
         {
             this.drawOrder = order;
         }
-
-        public void setEnabled(boolean b)
-        {
-            enabled = b;
-        }
-
-        public boolean isEnabled()
-        {
-            return enabled;
-        }
     }
 
     public VisWorld()
@@ -161,7 +157,8 @@ public class VisWorld implements VisSerializable
             Collections.sort(buffers);
 
             for (Buffer b : buffers) {
-                if (!b.isEnabled())
+
+                if (!layer.isBufferEnabled(b))
                     continue;
 
                 synchronized(b) {
@@ -197,7 +194,6 @@ public class VisWorld implements VisSerializable
 
                 outs.writeUTF(vb.name);
                 outs.writeInt(vb.drawOrder);
-                outs.writeBoolean(vb.enabled);
 
                 outs.writeInt(vb.front.size());
                 for (int i = 0; i < vb.front.size(); i++)
@@ -220,7 +216,6 @@ public class VisWorld implements VisSerializable
 
                 VisWorld.Buffer vb = getBuffer(name);
                 vb.drawOrder = ins.readInt();
-                vb.enabled = ins.readBoolean();
 
                 int n = ins.readInt();
                 for (int i = 0; i < n; i++)
