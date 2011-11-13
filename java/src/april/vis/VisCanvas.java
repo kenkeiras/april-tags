@@ -891,6 +891,19 @@ public class VisCanvas extends JComponent implements VisSerializable
         }
 
         if (true) {
+            JMenuItem jmi = new JMenuItem("Show Layer/Buffer Manager");
+            jmi.addActionListener(new ActionListener() {
+                public void actionPerformed(ActionEvent e)
+                {
+                    JFrame jf = new JFrame("Layer/Buffer Manager");
+                    jf.setLayout(new BorderLayout());
+                    jf.add(new LayerBufferPanel(VisCanvas.this), BorderLayout.CENTER);
+                    jf.setSize(400, 600);
+                    jf.setVisible(true);
+                }
+            });
+
+            jmenu.add(jmi);
         }
     }
 

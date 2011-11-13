@@ -5,7 +5,7 @@ import java.awt.event.*;
 import javax.swing.*;
 import java.util.*;
 
-public class DragPanel extends JComponent implements MouseListener, MouseMotionListener
+public class DragPanel implements MouseListener, MouseMotionListener
 {
     ArrayList<Item> items = new ArrayList<Item>();
 
@@ -27,25 +27,22 @@ public class DragPanel extends JComponent implements MouseListener, MouseMotionL
         public int getWidth();
 
         // Draw the item at y=0, x=0, respecting the getHeight. Do not clear the background.
-        public void paint(DragPanel dp, Graphics2D g, boolean selected);
+        public void paint(DragPanel dp, Graphics2D g, int width, int height, boolean selected);
     }
 
     public DragPanel()
     {
-        addMouseListener(this);
-        addMouseMotionListener(this);
     }
 
-    public void add(Item item)
+    public void addItem(Item item)
     {
         items.add(item);
     }
 
-    public void paint(Graphics _g)
+    public void paint(Graphics2D g, int width, int height)
     {
-        Graphics2D g = (Graphics2D) _g;
         g.setColor(Color.white);
-        g.fillRect(0, 0, getWidth(), getHeight());
+        g.fillRect(0, 0, width, height);
 
         int ys[] = getYs();
 
@@ -57,13 +54,13 @@ public class DragPanel extends JComponent implements MouseListener, MouseMotionL
                 continue;
 
             g.translate(0, ys[i]);
-            item.paint(this, g, false);
+            item.paint(this, g, width, item.getHeight(), false);
             g.translate(0, -ys[i]);
         }
 
         if (selectedItem != null) {
             g.translate(selectedMouseX - selectedOffsetX, selectedMouseY - selectedOffsetY);
-            selectedItem.paint(this, g, true);
+            selectedItem.paint(this, g, width, selectedItem.getHeight(), true);
             g.translate(-(selectedMouseX - selectedOffsetX), -(selectedMouseY - selectedOffsetY));
         }
     }
@@ -142,8 +139,6 @@ public class DragPanel extends JComponent implements MouseListener, MouseMotionL
             selectedMouseX = e.getX();
             selectedMouseY = e.getY();
         }
-
-        repaint();
     }
 
     public void mousePressed(MouseEvent e)
@@ -164,13 +159,11 @@ public class DragPanel extends JComponent implements MouseListener, MouseMotionL
 
             y0 = y1;
         }
-        repaint();
     }
 
     public void mouseReleased(MouseEvent e)
     {
         selectedItem = null;
-        repaint();
     }
 
     public Dimension getPreferredSize()
@@ -205,15 +198,15 @@ public class DragPanel extends JComponent implements MouseListener, MouseMotionL
             return 100;
         }
 
-        public void paint(DragPanel dp, Graphics2D g, boolean selected)
+        public void paint(DragPanel dp, Graphics2D g, int width, int height, boolean selected)
         {
             if (selected)
                 g.setColor(Color.blue);
             else
                 g.setColor(Color.gray);
-            g.fillRoundRect(0, 0, dp.getWidth(), getHeight(), 8, 8);
+            g.fillRoundRect(0, 0, width, height, 8, 8);
             g.setColor(Color.lightGray);
-            g.drawRoundRect(0, 0, dp.getWidth(), getHeight(), 8, 8);
+            g.drawRoundRect(0, 0, width, height, 8, 8);
 
             g.setColor(Color.black);
             g.drawString(name, 10, 20);
@@ -226,15 +219,16 @@ public class DragPanel extends JComponent implements MouseListener, MouseMotionL
         jf.setLayout(new BorderLayout());
 
         DragPanel dp = new DragPanel();
-        dp.add(new TextItem("abc"));
-        dp.add(new TextItem("def"));
-        dp.add(new TextItem("ghi"));
-        dp.add(new TextItem("jkl"));
-        dp.add(new TextItem("mno"));
-        dp.add(new TextItem("pqr"));
-        dp.add(new TextItem("stu"));
-        dp.add(new TextItem("vwx"));
-        jf.add(new JScrollPane(dp), BorderLayout.CENTER);
+        dp.addItem(new TextItem("abc"));
+        dp.addItem(new TextItem("def"));
+        dp.addItem(new TextItem("ghi"));
+        dp.addItem(new TextItem("jkl"));
+        dp.addItem(new TextItem("mno"));
+        dp.addItem(new TextItem("pqr"));
+        dp.addItem(new TextItem("stu"));
+        dp.addItem(new TextItem("vwx"));
+
+//        jf.add(new JScrollPane(dp), BorderLayout.CENTER);
 
         jf.setSize(600,400);
         jf.setVisible(true);
