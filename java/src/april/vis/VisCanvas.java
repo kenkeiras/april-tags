@@ -927,9 +927,9 @@ public class VisCanvas extends JComponent implements VisSerializable
                         layerBufferPanel = new LayerBufferPanel(VisCanvas.this);
                         layerBufferManager.add(layerBufferPanel, BorderLayout.CENTER);
                         layerBufferManager.setSize(400, 600);
+                    } else {
+                        layerBufferPanel.rebuild();
                     }
-
-                    layerBufferPanel.rebuild();
                     layerBufferManager.setVisible(true);
                 }
             });

@@ -11,6 +11,9 @@ public class LayerBufferPanel extends JPanel
     WAdapter wadapter;
     WDragPanel layerPanel = new WDragPanel();
 
+    HashMap<WComponent, VisLayer> layerMap;
+    HashMap<WComponent, VisWorld.Buffer> bufferMap;
+
     public LayerBufferPanel(VisCanvas vc)
     {
         this.vc = vc;
@@ -37,7 +40,8 @@ public class LayerBufferPanel extends JPanel
         layerPanel.backgroundColor = Color.white;
         layerPanel.grabColor = layerBorder;
 
-        HashMap<WComponent, VisLayer> layerMap = new HashMap<WComponent, VisLayer>();
+        layerMap = new HashMap<WComponent, VisLayer>();
+        bufferMap = new HashMap<WComponent, VisWorld.Buffer>();
 
         synchronized(vc.layers) {
 
@@ -64,7 +68,6 @@ public class LayerBufferPanel extends JPanel
                 bufferPanel.grabColor = bufferBorder;
 
                 synchronized(layer.world.buffers) {
-                    HashMap<WComponent, VisWorld.Buffer> bufferMap = new HashMap<WComponent, VisWorld.Buffer>();
 
                     for (VisWorld.Buffer buffer : layer.world.buffers) {
                         WHorizontalPanel hp = new WHorizontalPanel();
@@ -78,13 +81,13 @@ public class LayerBufferPanel extends JPanel
                         bufferPanel.add(bufferObject);
                     }
 
-                    bufferPanel.addListener(new BufferDragPanelListener(bufferMap));
+                    bufferPanel.addListener(new BufferDragPanelListener());
                 }
 
                 vp.add(new WInset(bufferPanel, 4, 4, 4, 40));
                 WComponent layerObject = new WInset(vp, 2, 1, 2, 1, bufferBorder);
                 layerMap.put(layerObject, layer);
-                layerPanel.addListener(new LayerDragPanelListener(layerMap));
+                layerPanel.addListener(new LayerDragPanelListener());
 
                 layerPanel.add(layerObject);
             }
@@ -123,38 +126,34 @@ public class LayerBufferPanel extends JPanel
         }
     }
 
-    static class LayerDragPanelListener implements WDragPanel.Listener
+    class LayerDragPanelListener implements WDragPanel.Listener
     {
-        HashMap<WComponent, VisLayer> layerMap;
-
-        LayerDragPanelListener(HashMap<WComponent, VisLayer> layerMap)
+        LayerDragPanelListener()
         {
-            this.layerMap = layerMap;
         }
 
         public void orderChanged(WDragPanel dp, WComponent order[])
         {
             for (int i = 0; i < order.length; i++) {
                 VisLayer layer = layerMap.get(order[i]);
-                layer.drawOrder = i;
+                if (layer != null)
+                    layer.drawOrder = i;
             }
         }
     }
 
-    static class BufferDragPanelListener implements WDragPanel.Listener
+    class BufferDragPanelListener implements WDragPanel.Listener
     {
-        HashMap<WComponent, VisWorld.Buffer> bufferMap;
-
-        BufferDragPanelListener(HashMap<WComponent, VisWorld.Buffer> bufferMap)
+        BufferDragPanelListener()
         {
-            this.bufferMap = bufferMap;
         }
 
         public void orderChanged(WDragPanel dp, WComponent order[])
         {
             for (int i = 0; i < order.length; i++) {
                 VisWorld.Buffer vb = bufferMap.get(order[i]);
-                vb.setDrawOrder(i);
+                if (vb != null)
+                    vb.setDrawOrder(i);
             }
         }
     }
