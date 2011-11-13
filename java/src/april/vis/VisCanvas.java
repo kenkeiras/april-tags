@@ -47,6 +47,11 @@ public class VisCanvas extends JComponent implements VisSerializable
     // initialized with a good guess.
     double fpsDt = 1.000 / targetFrameRate;
 
+    JFrame layerBufferManager;
+    LayerBufferPanel layerBufferPanel;
+
+    boolean showFPS = false;
+
     public class Movie
     {
         boolean autoframes;
@@ -313,15 +318,16 @@ public class VisCanvas extends JComponent implements VisSerializable
             }
 
             if (true) {
-
                 VisWorld.Buffer vb = privateWorld.getBuffer("FPS Rate");
-                vb.addBack(new VisDepthTest(false,
-                                            new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.BOTTOM_LEFT,
-                                                                    new VzText(VzText.ANCHOR.BOTTOM_LEFT_ROUND,
-                                                                                "<<white,monospaced-12>>"+
-                                                                                String.format("%5.1f fps %c",
-                                                                                              getMeasuredFPS(),
-                                                                                              (frameCounter&1) > 0 ? '.' : ' ')))));
+
+                if (showFPS)
+                    vb.addBack(new VisDepthTest(false,
+                                                new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.BOTTOM_LEFT,
+                                                                        new VzText(VzText.ANCHOR.BOTTOM_LEFT_ROUND,
+                                                                                   "<<white,monospaced-12>>"+
+                                                                                   String.format("%5.1f fps %c",
+                                                                                                 getMeasuredFPS(),
+                                                                                                 (frameCounter&1) > 0 ? '.' : ' ')))));
                 vb.swap();
             }
 
@@ -869,6 +875,19 @@ public class VisCanvas extends JComponent implements VisSerializable
 
 
         if (true) {
+            JCheckBoxMenuItem jmi = new JCheckBoxMenuItem("Show FPS counter");
+            jmi.setSelected(showFPS);
+
+            jmi.addActionListener(new ActionListener() {
+                    public void actionPerformed(ActionEvent e) {
+                        showFPS ^= true;
+                    }
+                });
+
+            jmenu.add(jmi);
+        }
+
+        if (true) {
             JMenu jm = new JMenu("Max Frame Rate");
             JRadioButtonMenuItem jmis[] = new JRadioButtonMenuItem[popupFrameRates.length];
             ButtonGroup group = new ButtonGroup();
@@ -902,11 +921,16 @@ public class VisCanvas extends JComponent implements VisSerializable
             jmi.addActionListener(new ActionListener() {
                 public void actionPerformed(ActionEvent e)
                 {
-                    JFrame jf = new JFrame("Layer/Buffer Manager");
-                    jf.setLayout(new BorderLayout());
-                    jf.add(new LayerBufferPanel(VisCanvas.this), BorderLayout.CENTER);
-                    jf.setSize(400, 600);
-                    jf.setVisible(true);
+                    if (layerBufferManager == null) {
+                        layerBufferManager = new JFrame("Layer/Buffer Manager");
+                        layerBufferManager.setLayout(new BorderLayout());
+                        layerBufferPanel = new LayerBufferPanel(VisCanvas.this);
+                        layerBufferManager.add(layerBufferPanel, BorderLayout.CENTER);
+                        layerBufferManager.setSize(400, 600);
+                    }
+
+                    layerBufferPanel.rebuild();
+                    layerBufferManager.setVisible(true);
                 }
             });
 

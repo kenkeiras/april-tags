@@ -40,6 +40,9 @@ public class LayerBufferPanel extends JPanel
         HashMap<WComponent, VisLayer> layerMap = new HashMap<WComponent, VisLayer>();
 
         synchronized(vc.layers) {
+
+            Collections.sort(vc.layers);
+
             for (VisLayer layer : vc.layers) {
 
                 WVerticalPanel vp = new WVerticalPanel();
