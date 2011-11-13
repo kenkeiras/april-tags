@@ -7,103 +7,153 @@ import java.util.*;
 
 public class LayerBufferPanel extends JPanel
 {
-/*
-    DragPanel layerDrags = new DragPanel();
+    VisCanvas vc;
+    WAdapter wadapter;
+    WDragPanel layerPanel = new WDragPanel();
 
     public LayerBufferPanel(VisCanvas vc)
     {
-        synchronized(vc.layers) {
-            for (VisLayer layer : vc.layers) {
-                System.out.println("add layer");
-                LayerItem layerItem = new LayerItem(layer);
-                layerDrags.addItem(layerItem);
-            }
-        }
+        this.vc = vc;
+        rebuild();
+
+        wadapter = new WAdapter(layerPanel);
 
         setLayout(new BorderLayout());
-//        add(new JScrollPane(layerDrags), BorderLayout.CENTER);
+        add(new JScrollPane(wadapter), BorderLayout.CENTER);
+
+        repaint();
     }
 
-    static class LayerItem implements DragPanel.Item
+    void rebuild()
     {
-        VisLayer layer;
-        DragPanel bufferDrags = new DragPanel();
+        layerPanel.clear();
 
-        LayerItem(VisLayer layer)
-        {
-            this.layer = layer;
+        Color layerBorder = new Color(220, 220, 220);
+        Color layerBackground = new Color(240, 240, 240);
 
-            synchronized(layer.world.buffers) {
-                for (VisWorld.Buffer buffer : layer.world.buffers) {
-                    System.out.println("  add buffer");
-                    BufferItem bufferItem = new BufferItem(buffer);
-                    bufferDrags.addItem(bufferItem);
+        Color bufferBorder = new Color(200, 200, 200);
+        Color bufferBackground = new Color(220, 220, 220);
+
+        layerPanel.backgroundColor = Color.white;
+        layerPanel.grabColor = layerBorder;
+
+        HashMap<WComponent, VisLayer> layerMap = new HashMap<WComponent, VisLayer>();
+
+        synchronized(vc.layers) {
+            for (VisLayer layer : vc.layers) {
+
+                WVerticalPanel vp = new WVerticalPanel();
+                vp.backgroundColor = layerBackground;
+
+                if (true) {
+                    WHorizontalPanel hp = new WHorizontalPanel();
+
+                    WCheckbox cb = new WCheckbox(layer.isEnabled());
+                    cb.addListener(new LayerCheckboxListener(layer));
+                    hp.add(new WInset(cb, 2, 2, 2, 2, layerBackground));
+                    hp.add(new WLabel(layer.name, Color.black, layerBackground));
+
+                    vp.add(new WInset(hp, 1, 1, 1, 1, layerBackground));
                 }
+
+                WDragPanel bufferPanel = new WDragPanel();
+                bufferPanel.backgroundColor = bufferBackground;
+                bufferPanel.grabColor = bufferBorder;
+
+                synchronized(layer.world.buffers) {
+                    HashMap<WComponent, VisWorld.Buffer> bufferMap = new HashMap<WComponent, VisWorld.Buffer>();
+
+                    for (VisWorld.Buffer buffer : layer.world.buffers) {
+                        WHorizontalPanel hp = new WHorizontalPanel();
+                        WCheckbox cb = new WCheckbox(layer.isBufferEnabled(buffer.name));
+                        cb.addListener(new BufferCheckboxListener(layer, buffer.name));
+                        hp.add(new WInset(cb, 2, 2, 2, 2));
+                        hp.add(new WLabel(buffer.name, Color.black, bufferPanel.backgroundColor));
+
+                        WComponent bufferObject = new WInset(hp, 1, 1, 1, 1, bufferPanel.grabColor);
+                        bufferMap.put(bufferObject, buffer);
+                        bufferPanel.add(bufferObject);
+                    }
+
+                    bufferPanel.addListener(new BufferDragPanelListener(bufferMap));
+                }
+
+                vp.add(new WInset(bufferPanel, 4, 4, 4, 40));
+                WComponent layerObject = new WInset(vp, 2, 1, 2, 1, bufferBorder);
+                layerMap.put(layerObject, layer);
+                layerPanel.addListener(new LayerDragPanelListener(layerMap));
+
+                layerPanel.add(layerObject);
             }
         }
-
-        public int getHeight()
-        {
-            return 30 + (int) bufferDrags.getPreferredSize().getHeight();
-        }
-
-        public int getWidth()
-        {
-            return (int) bufferDrags.getPreferredSize().getWidth();
-        }
-
-        public void paint(DragPanel dp, Graphics2D g, boolean selected)
-        {
-            System.out.println("paint layer");
-
-            if (selected)
-                g.setColor(Color.blue);
-            else
-                g.setColor(Color.gray);
-//            g.fillRoundRect(0, 0, dp.getWidth(), getHeight(), 8, 8);
-            g.setColor(Color.lightGray);
-            g.drawRoundRect(0, 0, dp.getWidth(), getHeight(), 8, 8);
-
-            g.setColor(Color.black);
-            g.drawString("Layer", 0, 20);
-
-            g.translate(0, 30);
-            bufferDrags.paint(g);
-            g.translate(0, -30);
-        }
     }
 
-    static class BufferItem implements DragPanel.Item
+    static class BufferCheckboxListener implements WCheckbox.Listener
     {
-        VisWorld.Buffer buffer;
+        VisLayer layer;
+        String name;
 
-        BufferItem(VisWorld.Buffer buffer)
+        BufferCheckboxListener(VisLayer layer, String name)
         {
-            this.buffer = buffer;
+            this.layer = layer;
+            this.name = name;
         }
 
-        public int getHeight()
+        public void stateChanged(WCheckbox wcb, boolean v)
         {
-            return 20;
-        }
-
-        public int getWidth()
-        {
-            return 50;
-        }
-
-        public void paint(DragPanel dp, Graphics2D g, boolean selected)
-        {
-            System.out.printf("  paint buffer %d %d\n", dp.getWidth(), getHeight());
-
-            if (selected)
-                g.setColor(Color.cyan);
-            else
-                g.setColor(Color.green);
-            g.fillRoundRect(20, 0, dp.getWidth(), getHeight(), 8, 8);
-            g.setColor(Color.black);
-            g.drawRoundRect(20, 0, dp.getWidth(), getHeight(), 8, 8);
+            layer.setBufferEnabled(name, v);
         }
     }
-*/
+
+    static class LayerCheckboxListener implements WCheckbox.Listener
+    {
+        VisLayer layer;
+
+        LayerCheckboxListener(VisLayer layer)
+        {
+            this.layer = layer;
+        }
+
+        public void stateChanged(WCheckbox wcb, boolean v)
+        {
+            layer.setEnabled(v);
+        }
+    }
+
+    static class LayerDragPanelListener implements WDragPanel.Listener
+    {
+        HashMap<WComponent, VisLayer> layerMap;
+
+        LayerDragPanelListener(HashMap<WComponent, VisLayer> layerMap)
+        {
+            this.layerMap = layerMap;
+        }
+
+        public void orderChanged(WDragPanel dp, WComponent order[])
+        {
+            for (int i = 0; i < order.length; i++) {
+                VisLayer layer = layerMap.get(order[i]);
+                layer.drawOrder = i;
+            }
+        }
+    }
+
+    static class BufferDragPanelListener implements WDragPanel.Listener
+    {
+        HashMap<WComponent, VisWorld.Buffer> bufferMap;
+
+        BufferDragPanelListener(HashMap<WComponent, VisWorld.Buffer> bufferMap)
+        {
+            this.bufferMap = bufferMap;
+        }
+
+        public void orderChanged(WDragPanel dp, WComponent order[])
+        {
+            for (int i = 0; i < order.length; i++) {
+                VisWorld.Buffer vb = bufferMap.get(order[i]);
+                vb.setDrawOrder(i);
+            }
+        }
+    }
+
 }

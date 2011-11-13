@@ -13,7 +13,9 @@ import lcm.lcm.*;
  **/
 public class VisLayer implements Comparable<VisLayer>, VisSerializable
 {
-    public boolean enabled = true;
+    boolean enabled = true;
+
+    public String name;
 
     public boolean clearDepth = true;
 
@@ -51,7 +53,13 @@ public class VisLayer implements Comparable<VisLayer>, VisSerializable
 
     public VisLayer(VisWorld vw)
     {
+        this("Unnamed Layer", vw);
+    }
+
+    public VisLayer(String name, VisWorld vw)
+    {
         this.world = vw;
+        this.name = name;
 
         lights.add(new VisLight(new float[] { 100f, 150f, 120f, 1.0f },
                                 new float[] { .4f, .4f, .4f, 1.0f},
@@ -66,6 +74,16 @@ public class VisLayer implements Comparable<VisLayer>, VisSerializable
 
         addEventHandler(new DefaultEventHandler());
         addEventHandler(popupMenu);
+    }
+
+    public boolean isEnabled()
+    {
+        return enabled;
+    }
+
+    public void setEnabled(boolean v)
+    {
+        enabled = v;
     }
 
     public void addEventHandler(VisEventHandler eh)
@@ -184,6 +202,7 @@ public class VisLayer implements Comparable<VisLayer>, VisSerializable
     public void writeObject(ObjectWriter outs) throws IOException
     {
         outs.writeBoolean(enabled);
+        outs.writeUTF(name);
         outs.writeBoolean(clearDepth);
         outs.writeObject(world);
         outs.writeInt(drawOrder);
@@ -197,6 +216,10 @@ public class VisLayer implements Comparable<VisLayer>, VisSerializable
         outs.writeObject(layerManager);
         outs.writeObject(manipulationManager);
 
+        outs.writeInt(disabledBuffers.size());
+        for (String s : disabledBuffers)
+            outs.writeUTF(s);
+
         outs.writeInt(eventHandlers.size());
         for (VisEventHandler eh : eventHandlers)
             outs.writeObject(eh);
@@ -209,6 +232,7 @@ public class VisLayer implements Comparable<VisLayer>, VisSerializable
     public void readObject(ObjectReader ins) throws IOException
     {
         enabled = ins.readBoolean();
+        name = ins.readUTF();
         clearDepth = ins.readBoolean();
         world = (VisWorld) ins.readObject();
         drawOrder = ins.readInt();
@@ -221,6 +245,10 @@ public class VisLayer implements Comparable<VisLayer>, VisSerializable
         cameraManager = (VisCameraManager) ins.readObject();
         layerManager = (VisLayerManager) ins.readObject();
         manipulationManager = (VisManipulationManager) ins.readObject();
+
+        n = ins.readInt();
+        for (int i = 0; i < n; i++)
+            disabledBuffers.add(ins.readUTF());
 
         n = ins.readInt();
         for (int i = 0; i < n; i++)

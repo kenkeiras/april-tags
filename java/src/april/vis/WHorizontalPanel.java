@@ -4,21 +4,9 @@ import java.awt.*;
 import java.awt.event.*;
 import java.util.*;
 
-public class WDragPanel extends WComponent
+public class WHorizontalPanel extends WComponent
 {
     ArrayList<WComponent> items = new ArrayList<WComponent>();
-    int ys[];
-
-    WComponent selectedItem;
-
-    // where is the actual mouse pointer?
-    int selectedMouseX = -1, selectedMouseY = -1;
-
-    // where, with respect to the item's origin, is the mouse pointer?
-    int selectedOffsetX = -1, selectedOffsetY = -1;
-
-    // how many pixels wide is the grab region on the right?
-    int grabWidth = 20;
 
     // how big were we when we last painted?
     int paintWidth, paintHeight;
@@ -28,38 +16,24 @@ public class WDragPanel extends WComponent
     // grab bar.)
     WComponent mousePressedItem = null;
 
-    int preferredWidth, preferredHeight;
+    int xs[] = new int[0];
 
-    public Color grabColor = new Color(120, 220, 220);
-
-    ArrayList<Listener> listeners = new ArrayList<Listener>();
-
-    public interface Listener
+    public WHorizontalPanel()
     {
-        public void orderChanged(WDragPanel target, WComponent order[]);
-    }
-
-    public WDragPanel()
-    {
-    }
-
-    public void addListener(Listener listener)
-    {
-        listeners.add(listener);
-    }
-
-    public void clear()
-    {
-        items.clear();
-        recompute();
     }
 
     public void add(WComponent item)
     {
         item.parent = this;
         items.add(item);
-        ys = null;
-        recompute();
+
+        // recompute ys;
+        xs = new int[items.size()];
+        int x = 0;
+        for (int i = 0; i < items.size(); i++) {
+            xs[i] = x;
+            x += items.get(i).getWidth();
+        }
     }
 
     boolean dispatchMouseEvent(WAdapter wadapter, MouseEvent e, int mx, int my)
@@ -73,14 +47,13 @@ public class WDragPanel extends WComponent
             int tx = 0, ty = 0;
             for (int i = 0; i < items.size(); i++) {
                 if (items.get(i) == item) {
-                    tx = mx;
-                    ty = my - ys[i];
+                    tx = mx - xs[i];
+                    ty = my;
                 }
             }
 
             switch (e.getID()) {
                 case MouseEvent.MOUSE_PRESSED:
-                    System.out.println("huh?");
                     handled = item.mousePressed(wadapter, e, tx, ty);
                     break;
                 case MouseEvent.MOUSE_RELEASED:
@@ -118,17 +91,12 @@ public class WDragPanel extends WComponent
         for (int i = 0; i < items.size(); i++) {
             WComponent item = items.get(i);
 
-            if (my >= ys[i] && my <= ys[i] + item.getHeight()) {
+            if (mx >= xs[i] && mx <= xs[i] + item.getWidth()) {
 
                 boolean handled = false;
 
-                int tx = mx;
-                int ty = my - ys[i];
-
-                if (item == selectedItem) {
-                    tx = mx - (selectedMouseX - selectedOffsetX);
-                    ty = my - (selectedMouseY - selectedOffsetY);
-                }
+                int tx = mx - xs[i];
+                int ty = my;
 
                 switch (e.getID()) {
                     case MouseEvent.MOUSE_PRESSED:
@@ -206,14 +174,6 @@ public class WDragPanel extends WComponent
         if (dispatchMouseEvent(wadapter, e, mx, my))
             return true;
 
-        if (selectedItem != null) {
-            selectedMouseX = mx;
-            selectedMouseY = my;
-            recompute();
-            wadapter.repaint();
-            return true;
-        }
-
         return false;
     }
 
@@ -222,25 +182,7 @@ public class WDragPanel extends WComponent
         if (dispatchMouseEvent(wadapter, e, mx, my))
             return true;
 
-        // Find the Item that is being pressed (if any)
-        int y0 = 0;
-        for (int i = 0; i < items.size(); i++) {
-            WComponent item = items.get(i);
-            int y1 = y0 + item.getHeight();
-
-            if (my >= y0 && my <= y1 && mx > (paintWidth - grabWidth) && mx < paintWidth) {
-                selectedItem = item;
-                selectedMouseX = mx;
-                selectedMouseY = my;
-                selectedOffsetX = mx;
-                selectedOffsetY = my - y0;
-            }
-
-            y0 = y1;
-            wadapter.repaint();
-        }
-
-        return selectedItem != null;
+        return false;
     }
 
     public boolean mouseReleased(WAdapter wadapter, MouseEvent e, int mx, int my)
@@ -248,89 +190,25 @@ public class WDragPanel extends WComponent
         if (dispatchMouseEvent(wadapter, e, mx, my))
             return true;
 
-        if (selectedItem != null) {
-            selectedItem = null;
-            wadapter.repaint();
-            return true;
-        }
-
         return false;
     }
 
     public int getWidth()
     {
-        return preferredWidth;
+        int x = 0;
+        for (int i = 0; i < items.size(); i++) {
+            x += items.get(i).getWidth();
+        }
+        return x;
     }
 
     public int getHeight()
     {
-        return preferredHeight;
-    }
-
-    static class Pos implements Comparable<Pos>
-    {
-        WComponent item;
-        int  ymid;
-
-        public int compareTo(Pos p)
-        {
-            return ymid - p.ymid;
-        }
-    }
-
-    // Compute the y coordinate for each item, reordering the items if necessary.
-    void recompute()
-    {
-        if (selectedItem != null) {
-            int sy = selectedMouseY - selectedOffsetY;
-            ArrayList<WComponent> newitems = new ArrayList<WComponent>();
-
-            int y = 0;
-            for (int i = 0; i < items.size(); i++) {
-                WComponent item = items.get(i);
-                if (item == selectedItem)
-                    continue;
-
-                if (y+item.getHeight()/2 < sy) {
-                    newitems.add(item);
-                    y += item.getHeight();
-                } else {
-                    break;
-                }
-            }
-
-            newitems.add(selectedItem);
-
-            for (int i = 0; i < items.size(); i++) {
-                WComponent item = items.get(i);
-
-                if (!newitems.contains(item))
-                    newitems.add(item);
-            }
-
-            items = newitems;
-        }
-
-        ys = new int[items.size()];
-        preferredWidth = 0;
-
         int y = 0;
         for (int i = 0; i < items.size(); i++) {
-            WComponent item = items.get(i);
-            ys[i] = y;
-            y += item.getHeight();
-
-            preferredWidth = Math.max(preferredWidth, item.getWidth());
+            y = Math.max(y, items.get(i).getHeight());
         }
-
-        preferredHeight = y;
-
-        WComponent order[] = new WComponent[items.size()];
-        for (int i = 0; i < items.size(); i++)
-            order[i] = items.get(i);
-
-        for (Listener listener : listeners)
-            listener.orderChanged(this, order);
+        return y;
     }
 
     public void paint(Graphics2D g, int width, int height)
@@ -340,47 +218,12 @@ public class WDragPanel extends WComponent
         paintWidth = width;
         paintHeight = height;
 
-        // draw components
         for (int i = 0; i < items.size(); i++) {
             WComponent item = items.get(i);
 
-            // selected item gets drawn "on top", so skip for now.
-            if (item == selectedItem)
-                continue;
-
-            g.translate(0, ys[i]);
-            item.paint(g, width - grabWidth, item.getHeight());
-
-            drawGrabBar(g, paintWidth - grabWidth, 0, grabWidth, item.getHeight());
-
-            g.translate(0, -ys[i]);
+            g.translate(xs[i], 0);
+            item.paint(g, width, item.getHeight());
+            g.translate(-xs[i], 0);
         }
-
-        if (selectedItem != null) {
-            // draw last/on top.
-            int offsetx = selectedMouseX - selectedOffsetX;
-            int offsety = selectedMouseY - selectedOffsetY;
-
-            // keep the selected item on the screen
-            offsety = Math.max(offsety, -selectedItem.getHeight()/2);
-            offsety = Math.min(offsety, height - selectedItem.getHeight()/2);
-
-            g.translate(offsetx, offsety);
-            selectedItem.paint(g, width - grabWidth, selectedItem.getHeight());
-
-            drawGrabBar(g, paintWidth - grabWidth, 0, grabWidth, selectedItem.getHeight());
-
-            g.translate(-offsetx, -offsety);
-        }
-    }
-
-    void drawGrabBar(Graphics2D g, int x, int y, int width, int height)
-    {
-        g.setColor(grabColor);
-        g.fillRect(x+1, y+1, width-2, height-2);
-
-        g.setColor(grabColor.darker());
-        for (int y0 = y+2; y0 + 2 < y + height; y0 += 4)
-            g.drawLine(x+3, y0, x+width-5, y0);
     }
 }

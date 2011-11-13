@@ -120,7 +120,7 @@ public class VisCanvas extends JComponent implements VisSerializable
     public VisCanvas(VisLayer... layers)
     {
         privateWorld = new VisWorld();
-        privateLayer = new VisLayer(privateWorld);
+        privateLayer = new VisLayer("VisCanvas Private Layer", privateWorld);
         privateLayer.drawOrder = Integer.MAX_VALUE;
         privateLayer.backgroundColor = new Color(0,0,0,0);
         privateLayer.clearDepth = false;
@@ -175,7 +175,7 @@ public class VisCanvas extends JComponent implements VisSerializable
 
         public void componentResized(ComponentEvent e)
         {
-            VisWorld.Buffer vb = privateWorld.getBuffer("foo");
+            VisWorld.Buffer vb = privateWorld.getBuffer("VisCanvas dimensions");
 
             vb.removeTemporary(lastResizeObject);
 
@@ -327,9 +327,16 @@ public class VisCanvas extends JComponent implements VisSerializable
 
             Collections.sort(rinfo.layers);
 
+            if (true) {
+                gl.glClearDepth(1.0);
+                gl.glClearColor(0, 0, 0, 0);
+
+                gl.glClear(GL.GL_DEPTH_BUFFER_BIT | GL.GL_COLOR_BUFFER_BIT);
+            }
+
             for (VisLayer layer : rinfo.layers) {
 
-                if (!layer.enabled)
+                if (!layer.isEnabled())
                     continue;
 
                 int layerPosition[] = layer.layerManager.getLayerPosition(VisCanvas.this, viewport, layer, mtime);
@@ -558,7 +565,7 @@ public class VisCanvas extends JComponent implements VisSerializable
             // these events go to the layer that got the MOUSE_PRESSED
             // event, not the layer under the event.
             if (e.getID() == MouseEvent.MOUSE_DRAGGED || e.getID() == MouseEvent.MOUSE_RELEASED) {
-                if (mousePressedLayer != null)
+                if (mousePressedLayer != null && rinfo.cameraPositions.get(mousePressedLayer) != null)
                     dispatchMouseEventToLayer(VisCanvas.this, mousePressedLayer, rinfo,
                                               rinfo.cameraPositions.get(mousePressedLayer).computeRay(ex, ey), e);
 
@@ -897,7 +904,7 @@ public class VisCanvas extends JComponent implements VisSerializable
                 {
                     JFrame jf = new JFrame("Layer/Buffer Manager");
                     jf.setLayout(new BorderLayout());
-//                    jf.add(new LayerBufferPanel(VisCanvas.this), BorderLayout.CENTER);
+                    jf.add(new LayerBufferPanel(VisCanvas.this), BorderLayout.CENTER);
                     jf.setSize(400, 600);
                     jf.setVisible(true);
                 }
