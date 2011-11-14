@@ -5,7 +5,7 @@ import java.awt.event.*;
 import javax.swing.*;
 import java.util.*;
 
-public class LayerBufferPanel extends JPanel
+public class LayerBufferPanel extends JPanel implements VisWorld.Listener, VisCanvas.Listener
 {
     VisCanvas vc;
     WAdapter wadapter;
@@ -17,14 +17,26 @@ public class LayerBufferPanel extends JPanel
     public LayerBufferPanel(VisCanvas vc)
     {
         this.vc = vc;
-        rebuild();
 
         wadapter = new WAdapter(layerPanel);
 
+        vc.addListener(this);
+
         setLayout(new BorderLayout());
         add(new JScrollPane(wadapter), BorderLayout.CENTER);
+        add(Box.createHorizontalStrut(280), BorderLayout.SOUTH);
 
-        repaint();
+        rebuild();
+    }
+
+    public void bufferAdded(VisWorld vw, String name)
+    {
+        rebuild();
+    }
+
+    public void layerAdded(VisCanvas vc, VisLayer vl)
+    {
+        rebuild();
     }
 
     void rebuild()
@@ -49,6 +61,8 @@ public class LayerBufferPanel extends JPanel
 
             for (VisLayer layer : vc.layers) {
 
+                layer.world.addListener(this);
+
                 WVerticalPanel vp = new WVerticalPanel();
                 vp.backgroundColor = layerBackground;
 
@@ -70,6 +84,7 @@ public class LayerBufferPanel extends JPanel
                 synchronized(layer.world.buffers) {
 
                     for (VisWorld.Buffer buffer : layer.world.buffers) {
+
                         WHorizontalPanel hp = new WHorizontalPanel();
                         WCheckbox cb = new WCheckbox(layer.isBufferEnabled(buffer.name));
                         cb.addListener(new BufferCheckboxListener(layer, buffer.name));
@@ -92,6 +107,9 @@ public class LayerBufferPanel extends JPanel
                 layerPanel.add(layerObject);
             }
         }
+
+        revalidate();
+        wadapter.repaint();
     }
 
     static class BufferCheckboxListener implements WCheckbox.Listener

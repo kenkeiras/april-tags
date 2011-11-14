@@ -52,6 +52,13 @@ public class VisCanvas extends JComponent implements VisSerializable
 
     boolean showFPS = false;
 
+    ArrayList<Listener> listeners = new ArrayList<Listener>();
+
+    public interface Listener
+    {
+        public void layerAdded(VisCanvas vc, VisLayer vl);
+    }
+
     public class Movie
     {
         boolean autoframes;
@@ -149,9 +156,17 @@ public class VisCanvas extends JComponent implements VisSerializable
         new RepaintThread().start();
     }
 
+    public void addListener(Listener listener)
+    {
+        if (!listeners.contains(listener))
+            listeners.add(listener);
+    }
+
     public void addLayer(VisLayer layer)
     {
         layers.add(layer);
+        for (Listener listener : listeners)
+            listener.layerAdded(this, layer);
     }
 
     class RepaintThread extends Thread

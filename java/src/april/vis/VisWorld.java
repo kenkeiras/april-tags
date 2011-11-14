@@ -19,6 +19,13 @@ public class VisWorld implements VisSerializable
     // 'bufferMap' is protected by synchronizing on 'buffers'.
     HashMap<String, Buffer> bufferMap = new HashMap<String, Buffer>();
 
+    ArrayList<Listener> listeners = new ArrayList<Listener>();
+
+    public interface Listener
+    {
+        public void bufferAdded(VisWorld vw, String name);
+    }
+
     static class TemporaryObject implements VisSerializable
     {
         VisObject vo;
@@ -42,13 +49,6 @@ public class VisWorld implements VisSerializable
             this.expireTime = ins.readLong();
         }
     }
-
-/*
-    public interface Listener
-    {
-        public void bufferAdded(VisWorld world, VisWorld.Buffer vb);
-    }
-*/
 
     public class Buffer implements Comparable<Buffer>
     {
@@ -133,6 +133,12 @@ public class VisWorld implements VisSerializable
     {
     }
 
+    public void addListener(Listener listener)
+    {
+        if (!listeners.contains(listener))
+            listeners.add(listener);
+    }
+
     public Buffer getBuffer(String name)
     {
         Buffer b = bufferMap.get(name);
@@ -143,6 +149,8 @@ public class VisWorld implements VisSerializable
                 buffers.add(b);
                 Collections.sort(buffers);
             }
+            for (Listener listener : listeners)
+                listener.bufferAdded(this, name);
         }
 
         return b;
