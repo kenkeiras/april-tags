@@ -24,7 +24,7 @@ public class Simulator implements VisConsole.Listener
     VisLayer vl = new VisLayer(vw);
     VisCanvas vc = new VisCanvas(vl);
 
-    VisConsole console = new VisConsole(vl, vc, vw);
+    VisConsole console = new VisConsole(vw, vl, vc);
 
     public SimWorld world;
     String worldFilePath = "/tmp/world.world";

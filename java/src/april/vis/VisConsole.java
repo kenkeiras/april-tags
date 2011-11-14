@@ -170,12 +170,12 @@ public class VisConsole
         }
     }
 
-    public VisConsole(VisLayer vl, VisCanvas vc, VisWorld vw)
+    public VisConsole(VisWorld vw, VisLayer vl, VisCanvas vc)
     {
-        this(vl, vc, vw, 100000);
+        this(vw, vl, vc, 100000);
     }
 
-    public VisConsole(VisLayer vl, VisCanvas vc, VisWorld vw, int eventpriority)
+    public VisConsole(VisWorld vw, VisLayer vl, VisCanvas vc,  int eventpriority)
     {
         this.vl = vl;
         this.vc = vc;
