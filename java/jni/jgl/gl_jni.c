@@ -566,7 +566,8 @@ JNIEXPORT jint JNICALL Java_april_vis_GL_gldata_1bind__IJII_3S
 
 ////////////////////////////////////////////////////////////////////
 
-static int gldata_tex_bind(JNIEnv *jenv, jclass jcls, jlong id, jint internalfmt, jint width, jint height, jint fmt, jint type, jarray jdata, int bytes_per_element)
+static int gldata_tex_bind(JNIEnv *jenv, jclass jcls, jlong id, jint internalfmt, jint width, jint height,
+                           jint fmt, jint type, jarray jdata, int bytes_per_element, int flags)
 {
     GLuint texture_id;
 
@@ -577,9 +578,9 @@ static int gldata_tex_bind(JNIEnv *jenv, jclass jcls, jlong id, jint internalfmt
     glEnable(GL_TEXTURE_2D);
 
     if (texture_info == NULL) {
-        int min_filter = 1;
-        int mag_filter = 1; // aka mipmap
-        int repeat = 1; // or clamp?
+        int min_filter = (flags & april_vis_GL_TEX_FLAG_MIN_FILTER) ? 1 : 0;
+        int mag_filter = (flags & april_vis_GL_TEX_FLAG_MAG_FILTER) ? 1 : 0; // aka mipmap
+        int repeat     = (flags & april_vis_GL_TEX_FLAG_REPEAT) ? 1 : 0;     // or clamp?
 
         glGenTextures(1, &texture_id);
         glBindTexture(GL_TEXTURE_2D, texture_id);
@@ -632,16 +633,16 @@ static int gldata_tex_bind(JNIEnv *jenv, jclass jcls, jlong id, jint internalfmt
 }
 
 // Textures
-JNIEXPORT jint JNICALL Java_april_vis_GL_gldata_1tex_1bind__JIIIII_3I
-(JNIEnv *jenv, jclass jcls, jlong id, jint internalfmt, jint width, jint height, jint fmt, jint type, jintArray jdata)
+JNIEXPORT jint JNICALL Java_april_vis_GL_gldata_1tex_1bind__JIIIII_3II
+(JNIEnv *jenv, jclass jcls, jlong id, jint internalfmt, jint width, jint height, jint fmt, jint type, jintArray jdata, jint flags)
 {
-    return gldata_tex_bind(jenv, jcls, id, internalfmt, width, height, fmt, type, jdata, 4);
+    return gldata_tex_bind(jenv, jcls, id, internalfmt, width, height, fmt, type, jdata, 4, flags);
 }
 
-JNIEXPORT jint JNICALL Java_april_vis_GL_gldata_1tex_1bind__JIIIII_3B
-(JNIEnv *jenv, jclass jcls, jlong id, jint internalfmt, jint width, jint height, jint fmt, jint type, jbyteArray jdata)
+JNIEXPORT jint JNICALL Java_april_vis_GL_gldata_1tex_1bind__JIIIII_3BI
+(JNIEnv *jenv, jclass jcls, jlong id, jint internalfmt, jint width, jint height, jint fmt, jint type, jbyteArray jdata, jint flags)
 {
-    return gldata_tex_bind(jenv, jcls, id, internalfmt, width, height, fmt, type, jdata, 1);
+    return gldata_tex_bind(jenv, jcls, id, internalfmt, width, height, fmt, type, jdata, 1, flags);
 }
 
 JNIEXPORT jint JNICALL Java_april_vis_GL_gldata_1tex_1unbind

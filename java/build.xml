@@ -54,7 +54,7 @@
   <!-- Build Jar -->
   <target name="build-jar">
     <mkdir dir="build"/>
-    <jar destfile="april.jar" compress="false">
+    <jar destfile="april.jar" compress="false" update="true">
 
       <fileset dir="build">
 	<include name="**/*.class" />

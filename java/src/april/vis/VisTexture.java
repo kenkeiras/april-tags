@@ -24,6 +24,10 @@ public class VisTexture implements VisSerializable
     int idata[];
     byte bdata[];
 
+    public boolean minFilter = true;
+    public boolean magFilter = true;
+    public boolean repeat = false;
+
     /** You may not subsequently modify im or behavior is undefined. **/
     public VisTexture(BufferedImage input, boolean alphaMask)
     {
@@ -97,10 +101,21 @@ public class VisTexture implements VisSerializable
 
     public void bind(GL gl)
     {
+        int flags = 0;
+
+        if (minFilter)
+            flags |= GL.TEX_FLAG_MIN_FILTER;
+
+        if (magFilter)
+            flags |= GL.TEX_FLAG_MAG_FILTER;
+
+        if (repeat)
+            flags |= GL.TEX_FLAG_REPEAT;
+
         if (idata != null)
-            gl.gldBindTexture(id, glinternal, width, height, glformat, gltype, idata);
+            gl.gldBindTexture(id, glinternal, width, height, glformat, gltype, idata, flags);
         else
-            gl.gldBindTexture(id, glinternal, width, height, glformat, gltype, bdata);
+            gl.gldBindTexture(id, glinternal, width, height, glformat, gltype, bdata, flags);
     }
 
     public void unbind(GL gl)

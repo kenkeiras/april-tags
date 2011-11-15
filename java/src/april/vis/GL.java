@@ -33,8 +33,8 @@ public class GL
     private static native int gldata_bind(int vbo_type, long id, int nvertices, int vertdim, short data[]);
     private static native int gldata_unbind(int vbo_type, long id);
 
-    private static native int gldata_tex_bind(long id, int internalfmt, int width, int height, int fmt, int type, int data[]);
-    private static native int gldata_tex_bind(long id, int internalfmt, int width, int height, int fmt, int type, byte data[]);
+    private static native int gldata_tex_bind(long id, int internalfmt, int width, int height, int fmt, int type, int data[], int flags);
+    private static native int gldata_tex_bind(long id, int internalfmt, int width, int height, int fmt, int type, byte data[], int flags);
     private static native int gldata_tex_unbind(long id);
 
     // call this function before rendering the objects that are part
@@ -104,6 +104,8 @@ public class GL
 
     public static final int GL_ALPHA_TEST = 0x0BC0;
     public static final int GL_GREATER = 0x0204, GL_GEQUAL = 0x0206, GL_ALWAYS = 0x0207;
+
+    public static final int TEX_FLAG_MIN_FILTER = 1, TEX_FLAG_MAG_FILTER = 2, TEX_FLAG_REPEAT = 4;
 
     /** While "public", this method should only be called once and
      * only called on the thread that will do all subsequent GL
@@ -538,16 +540,16 @@ public class GL
         gldata_unbind(vbo_type, id);
     }
 
-    public void gldBindTexture(long id, int internalfmt, int width, int height, int fmt, int type, int data[])
+    public void gldBindTexture(long id, int internalfmt, int width, int height, int fmt, int type, int data[], int flags)
     {
         flush();
-        gldata_tex_bind(id, internalfmt, width, height, fmt, type, data);
+        gldata_tex_bind(id, internalfmt, width, height, fmt, type, data, flags);
     }
 
-    public void gldBindTexture(long id, int internalfmt, int width, int height, int fmt, int type, byte data[])
+    public void gldBindTexture(long id, int internalfmt, int width, int height, int fmt, int type, byte data[], int flags)
     {
         flush();
-        gldata_tex_bind(id, internalfmt, width, height, fmt, type, data);
+        gldata_tex_bind(id, internalfmt, width, height, fmt, type, data, flags);
     }
 
     public void gldUnbindTexture(long id)

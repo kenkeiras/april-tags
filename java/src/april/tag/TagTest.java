@@ -104,7 +104,11 @@ public class TagTest implements ParameterListener
         jf.setSize(800,600);
         jf.setVisible(true);
 
-        vl.cameraManager.fit2D(new double[] {0,0}, new double[] { 752, 480}, true);
+        ImageSourceFormat ifmt = is.getCurrentFormat();
+        vl.cameraManager.fit2D(new double[] {0,0}, new double[] { ifmt.width, ifmt.height}, true);
+        ((DefaultCameraManager) vl.cameraManager).interfaceMode = 2.0;
+        vl.backgroundColor = new Color(128,128,128);
+
         new RunThread().start();
 
         VzGrid.addGrid(vw2);
@@ -163,27 +167,32 @@ public class TagTest implements ParameterListener
                 double dt = tic.toc();
 
                 if (detector.debugInput!=null)
-                    vbInput.addBack(new VisDepthTest(false, new VisLighting(false, new VisChain(LinAlg.scale(1,-1,1),
+                    vbInput.addBack(new VisDepthTest(false, new VisLighting(false, new VisChain(LinAlg.translate(0, detector.debugInput.getHeight(), 0),
+                                                                                                LinAlg.scale(1,-1,1),
                                                                                                 new VzImage(detector.debugInput)))));
                 vbInput.swap();
 
                 if (detector.debugSegmentation!=null)
-                    vbSegmentation.addBack(new VisDepthTest(false, new VisLighting(false, new VisChain(LinAlg.scale(1,-1,1),
+                    vbSegmentation.addBack(new VisDepthTest(false, new VisLighting(false, new VisChain(LinAlg.translate(0, detector.debugSegmentation.getHeight(), 0),
+                                                                                                       LinAlg.scale(1,-1,1),
                                                                                                        new VzImage(detector.debugSegmentation)))));
                 vbSegmentation.swap();
 
 
-                vbOriginal.addBack(new VisDepthTest(false, new VisLighting(false, new VisChain(LinAlg.scale(1,-1,1),
+                vbOriginal.addBack(new VisDepthTest(false, new VisLighting(false, new VisChain(LinAlg.translate(0, im.getHeight(), 0),
+                                                                                               LinAlg.scale(1,-1,1),
                                                                                                new VzImage(im)))));
                 vbOriginal.swap();
 
                 if (detector.debugTheta != null)
-                    vbThetas.addBack(new VisDepthTest(false, new VisLighting(false, new VisChain(LinAlg.scale(1,-1,1),
+                    vbThetas.addBack(new VisDepthTest(false, new VisLighting(false, new VisChain(LinAlg.translate(0, detector.debugTheta.getHeight(), 0),
+                                                                                                 LinAlg.scale(1,-1,1),
                                                                                                  new VzImage(detector.debugTheta)))));
                 vbThetas.swap();
 
                 if (detector.debugMag != null)
-                    vbMag.addBack(new VisDepthTest(false, new VisLighting(false, new VisChain(LinAlg.scale(1,-1,1),
+                    vbMag.addBack(new VisDepthTest(false, new VisLighting(false, new VisChain(LinAlg.translate(0, detector.debugMag.getHeight(), 0),
+                                                                                              LinAlg.scale(1,-1,1),
                                                                                               new VzImage(detector.debugMag)))));
                 vbMag.swap();
 
@@ -200,15 +209,16 @@ public class TagTest implements ParameterListener
 
                     vbDetections.addBack(new VisChain(LinAlg.translate(0, im.getHeight(), 0),
                                                       LinAlg.scale(1, -1, 1),
-                                                      new VisChain(LinAlg.translate(d.cxy[0],d.cxy[1],0),
-                                                                   new VzText(VzText.ANCHOR.CENTER,
-                                                                               String.format("<<center,blue>>id %3d\n(err=%d)\n", d.id, d.hammingDistance))),
                                                       new VzLines(new VisVertexData(p0, p1, p2, p3, p0),
                                                                    new VisConstantColor(Color.blue),4, VzLines.TYPE.LINE_STRIP),
                                                       new VzLines(new VisVertexData(p0,p1),
                                                                    new VisConstantColor(Color.green),4, VzLines.TYPE.LINE_STRIP), // x axis
                                                       new VzLines(new VisVertexData(p0, p3),
-                                                                   new VisConstantColor(Color.red),4, VzLines.TYPE.LINE_STRIP))); // y axis
+                                                                  new VisConstantColor(Color.red),4, VzLines.TYPE.LINE_STRIP), // y axis
+                                                      new VisChain(LinAlg.translate(d.cxy[0],d.cxy[1],0),
+                                                                   LinAlg.scale(1, -1, 1),
+                                                                   new VzText(VzText.ANCHOR.CENTER,
+                                                                              String.format("<<sansserif-12, center,yellow>>id %3d\n(err=%d)\n", d.id, d.hammingDistance)))));
 
                     // You need to adjust the tag size (measured
                     // across the whole tag in meters and the focal
@@ -225,14 +235,18 @@ public class TagTest implements ParameterListener
                                            { -tagsize_m/2,  tagsize_m/2, 0}};
 
 
-                    double texcoords [][] = { { 0, 0},
-                                              { 0, 1},
+                    // same order as in vertices, but remember y flip.
+                    double texcoords [][] = { { 0, 1},
                                               { 1, 1},
-                                              { 1, 0 } };
+                                              { 1, 0},
+                                              { 0, 0 } };
+
+                    VisTexture vtex = new VisTexture(tfimg, false);
+                    vtex.minFilter = false;
 
                     vbTag3D.addBack(new VisChain(LinAlg.rotateX(Math.PI/2),
                                                  M,
-                                                 new VzImage(new VisTexture(tfimg, false),
+                                                 new VzImage(vtex,
                                                              vertices, texcoords, null)));
                 }
 
