@@ -124,10 +124,12 @@ public class VisUtil
                                     2*winxyz[2] - 1,
                                     1 };
 
-        double objxyz[] = LinAlg.matrixAB(invPM, v);
-        objxyz[0] /= objxyz[3];
-        objxyz[1] /= objxyz[3];
-        objxyz[2] /= objxyz[3];
+        double objxyzh[] = LinAlg.matrixAB(invPM, v);
+
+        double objxyz[] = new double[3];
+        objxyz[0] = objxyzh[0] / objxyzh[3];
+        objxyz[1] = objxyzh[1] / objxyzh[3];
+        objxyz[2] = objxyzh[2] / objxyzh[3];
 
         return objxyz;
     }
