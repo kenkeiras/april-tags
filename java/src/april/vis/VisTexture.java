@@ -26,9 +26,13 @@ public class VisTexture implements VisSerializable
 
     boolean minFilter = true;
     boolean magFilter = true;
-    boolean repeat = false;
+    boolean repeat = true;
 
-    public static final int NO_MIN_FILTER = 1, NO_MAG_FILTER = 2, REPEAT = 4, CLAMP = 0, ALPHA_MASK = 8;
+    public static final int
+        NO_MIN_FILTER = 1,  MIN_FILTER = 2,
+        NO_MAG_FILTER = 4,  MAG_FILTER = 8,
+        NO_REPEAT     = 16, REPEAT = 32,
+        NO_ALPHA_MASK = 64, ALPHA_MASK = 128;
 
     /** You may not subsequently modify im or behavior is undefined. **/
     public VisTexture(BufferedImage input)
@@ -38,10 +42,25 @@ public class VisTexture implements VisSerializable
 
     public VisTexture(BufferedImage input, int flags)
     {
-        alphaMask = ((flags & ALPHA_MASK) > 0);
-        minFilter = !((flags & NO_MIN_FILTER) > 0);
-        magFilter = !((flags & NO_MAG_FILTER) > 0);
-        repeat = ((flags & REPEAT) > 0);
+        if ((flags & NO_ALPHA_MASK) != 0)
+            alphaMask = false;
+        if ((flags & ALPHA_MASK) != 0)
+            alphaMask = true;
+
+        if ((flags & NO_MIN_FILTER) != 0)
+            minFilter = false;
+        if ((flags & MIN_FILTER) != 0)
+            minFilter = true;
+
+        if ((flags & NO_MAG_FILTER) != 0)
+            magFilter = false;
+        if ((flags & MAG_FILTER) != 0)
+            magFilter = true;
+
+        if ((flags & NO_REPEAT) != 0)
+            repeat = false;
+        if ((flags & REPEAT) != 0)
+            repeat = true;
 
         BufferedImage im = null;
 

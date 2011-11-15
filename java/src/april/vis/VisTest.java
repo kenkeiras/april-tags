@@ -5,7 +5,7 @@ import java.awt.image.*;
 import javax.swing.*;
 import java.util.*;
 import java.io.*;
-
+import javax.imageio.*;
 import april.jmat.*;
 
 public class VisTest
@@ -92,6 +92,19 @@ public class VisTest
                            ));
 
             vb.swap();
+        }
+
+        if (true) {
+            try {
+                VisWorld.Buffer vb = vw.getBuffer("sphere");
+                VzSphere vo = new VzSphere(10, new VisTexture(ImageIO.read(new File("/home/ebolson/earth.png"))));
+//                VzSphere vo = new VzSphere(10, new VisFillStyle(Color.green));
+                vb.addBack(new VisChain(LinAlg.translate(10, 0, 0),
+                                        vo));
+                vb.swap();
+            } catch (Exception ex) {
+                System.out.println("ex: "+ex);
+            }
         }
 
         if (true) {
