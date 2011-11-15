@@ -24,7 +24,7 @@ public class Simulator implements VisConsole.Listener
     VisLayer vl = new VisLayer(vw);
     VisCanvas vc = new VisCanvas(vl);
 
-    VisConsole console = new VisConsole(vl, vc, vw);
+    VisConsole console = new VisConsole(vw, vl, vc);
 
     public SimWorld world;
     String worldFilePath = "/tmp/world.world";
@@ -69,8 +69,8 @@ public class Simulator implements VisConsole.Listener
 
         vl.addEventHandler(new MyEventHandler());
 
-        vw.getBuffer("grid").addFront(new VzGrid());
-
+        VzGrid.addGrid(vw).groundColor = Color.white;//new java.awt.Color(255,255,255,0);
+        vl.backgroundColor = Color.white;
         if (true) {
             VisWorld.Buffer vb = vw.getBuffer("SimWorld");
             vb.addBack(new VisSimWorld());
@@ -237,7 +237,8 @@ public class Simulator implements VisConsole.Listener
                 }
             }
             if (collide)
-                vb.addBack(new VzText(VzText.ANCHOR.BOTTOM_RIGHT, "<<blue>>Collision"));
+                vb.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.BOTTOM_RIGHT,
+                                                   new VzText(VzText.ANCHOR.BOTTOM_RIGHT, "<<blue,monospaced-12>>Collision")));
 
             vb.swap();
         }
@@ -251,6 +252,11 @@ public class Simulator implements VisConsole.Listener
 
         public MyEventHandler()
         {
+        }
+
+        public int getDispatchOrder()
+        {
+            return -10;
         }
 
         //vis2
@@ -279,7 +285,7 @@ public class Simulator implements VisConsole.Listener
         //     houts.addKeyboardCommand(this, "backspace", 0, "Delete selected object");
         // }
 
-        public boolean mouseReleased(VisCanvas vc, GRay3D ray, MouseEvent e)
+        public boolean mouseReleased(VisCanvas vc, VisLayer vl, VisCanvas.RenderInfo rinfo, GRay3D ray, MouseEvent e)
         {
             lastxy = null;
             if (selectedObject == null)

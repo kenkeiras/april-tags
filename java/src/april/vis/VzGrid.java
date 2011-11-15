@@ -20,7 +20,7 @@ public class VzGrid implements VisObject, VisSerializable
     /** The last spacing actually rendered. might be null. **/
     public double lastspacing[];
 
-    Color gridColor, groundColor;
+    public Color gridColor, groundColor;
 
     public VzGrid()
     {
