@@ -5,8 +5,8 @@ import april.jmat.geom.*;
 
 public class VisEventAdapter implements VisEventHandler
 {
-    /** Higher priorities get first dibs on events. **/
-    public int getPriority()
+    /** Handlers with lower dispatch order are called first **/
+    public int getDispatchOrder()
     {
         return 0;
     }

@@ -10,6 +10,8 @@ public class VisConsole
     VisCanvas vc;
     VisWorld vw;
 
+    final int dispatchOrder; // can't change this after instantiation
+
     String command = null;
     int commandPos = 0;
 
@@ -172,21 +174,22 @@ public class VisConsole
 
     public VisConsole(VisWorld vw, VisLayer vl, VisCanvas vc)
     {
-        this(vw, vl, vc, 100000);
+        this(vw, vl, vc, -100000);
     }
 
-    public VisConsole(VisWorld vw, VisLayer vl, VisCanvas vc,  int eventpriority)
+    public VisConsole(VisWorld vw, VisLayer vl, VisCanvas vc,  int dispatchOrder)
     {
         this.vl = vl;
         this.vc = vc;
         this.vw = vw;
+        this.dispatchOrder = dispatchOrder;
 
         NonStupidPipe p = new NonStupidPipe();
         pouts = p.outputStream;
         pins = p.inputStream;
         ppouts = new PrintStream(new BufferedOutputStream(pouts));
 
-        vl.addEventHandler(new MyCommandPromptHandler());//vis2, eventpriority);
+        vl.addEventHandler(new MyCommandPromptHandler());
         new UpdateThread().start();
         new OutputThread().start();
     }
@@ -318,9 +321,9 @@ public class VisConsole
 
     class MyCommandPromptHandler extends VisEventAdapter
     {
-        public String getName()
+        public int getDispatchOrder()
         {
-            return "Command Prompt";
+            return dispatchOrder;
         }
 
         public boolean keyTyped(VisCanvas vc, VisLayer vl, VisCanvas.RenderInfo rinfo, KeyEvent e)

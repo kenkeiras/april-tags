@@ -22,6 +22,11 @@ public class DefaultPopupMenu extends VisEventAdapter implements VisSerializable
         this.layer = layer;
     }
 
+    public int getDistpatchOrder()
+    {
+        return 10;
+    }
+
     public boolean mouseClicked(VisCanvas vc, VisLayer vl, VisCanvas.RenderInfo rinfo, GRay3D ray, MouseEvent e)
     {
         assert(vl == layer);

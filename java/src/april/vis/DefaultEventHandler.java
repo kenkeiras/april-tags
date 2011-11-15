@@ -21,9 +21,9 @@ public class DefaultEventHandler implements VisEventHandler, VisSerializable
     {
     }
 
-    public int getPriority()
+    public int getDispatchOrder()
     {
-        return 0;
+        return 10;
     }
 
     /** Given a coordinate in scene coordinates dq, modify the camera

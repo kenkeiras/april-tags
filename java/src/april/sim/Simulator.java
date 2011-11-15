@@ -254,7 +254,7 @@ public class Simulator implements VisConsole.Listener
         {
         }
 
-        public int getPriority()
+        public int getDispatchOrder()
         {
             return -10;
         }

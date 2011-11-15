@@ -98,7 +98,7 @@ public class VisLayer implements Comparable<VisLayer>, VisSerializable
     {
         public int compare(VisEventHandler a, VisEventHandler b)
         {
-            return a.getPriority() - b.getPriority();
+            return a.getDispatchOrder() - b.getDispatchOrder();
         }
     }
 

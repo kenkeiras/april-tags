@@ -5,8 +5,8 @@ import april.jmat.geom.*;
 
 public interface VisEventHandler
 {
-    /** Higher priorities get first dibs on events. **/
-    public int getPriority();
+    /** Handlers with lower dispatch order are called first **/
+    public int getDispatchOrder();
 
     /** Return true if you've consumed the event. **/
     public boolean mousePressed(VisCanvas vc, VisLayer vl, VisCanvas.RenderInfo rinfo, GRay3D ray, MouseEvent e);
