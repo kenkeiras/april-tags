@@ -108,7 +108,7 @@ public class Simulator implements VisConsole.Listener
                 }
             }
 
-            VisTexture tex = new VisTexture(im, false);
+            VisTexture tex = new VisTexture(im);
 /*            tex.setMagFilter(true);
               vb.addBack(new VisChain(new VisDepthTest(false,
               new VzImage(tex,

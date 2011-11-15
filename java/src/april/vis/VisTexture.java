@@ -24,14 +24,24 @@ public class VisTexture implements VisSerializable
     int idata[];
     byte bdata[];
 
-    public boolean minFilter = true;
-    public boolean magFilter = true;
-    public boolean repeat = false;
+    boolean minFilter = true;
+    boolean magFilter = true;
+    boolean repeat = false;
+
+    public static final int NO_MIN_FILTER = 1, NO_MAG_FILTER = 2, REPEAT = 4, CLAMP = 0, ALPHA_MASK = 8;
 
     /** You may not subsequently modify im or behavior is undefined. **/
-    public VisTexture(BufferedImage input, boolean alphaMask)
+    public VisTexture(BufferedImage input)
     {
-        this.alphaMask = alphaMask;
+        this(input, 0);
+    }
+
+    public VisTexture(BufferedImage input, int flags)
+    {
+        alphaMask = ((flags & ALPHA_MASK) > 0);
+        minFilter = !((flags & NO_MIN_FILTER) > 0);
+        magFilter = !((flags & NO_MAG_FILTER) > 0);
+        repeat = ((flags & REPEAT) > 0);
 
         BufferedImage im = null;
 
@@ -121,6 +131,16 @@ public class VisTexture implements VisSerializable
     public void unbind(GL gl)
     {
         gl.gldUnbindTexture(id);
+    }
+
+    public int getWidth()
+    {
+        return width;
+    }
+
+    public int getHeight()
+    {
+        return height;
     }
 
     public VisTexture(ObjectReader ins)

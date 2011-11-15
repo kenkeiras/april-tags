@@ -303,7 +303,7 @@ public class Wavefront
                                     gm.getXY1(), {gm.getXY0()[0],gm.getXY1()[1]}};
             double texcoords [][] = {{0,0}, {0,im.getHeight()},
                                      {im.getWidth(),im.getHeight()}, {im.getWidth(),0}};
-            vb.addBack(new VzImage(new VisTexture(im, false), vertices, texcoords, null));
+            vb.addBack(new VzImage(new VisTexture(im), vertices, texcoords, null));
 
             vb.swap();
 
@@ -397,7 +397,7 @@ public class Wavefront
                                         gm.getXY1(), {gm.getXY0()[0],gm.getXY1()[1]}};
                 double texcoords [][] = {{0,0}, {0,im.getHeight()},
                                          {im.getWidth(),im.getHeight()}, {im.getWidth(),0}};
-                vb.addBack(new VzImage(new VisTexture(im, false), vertices, texcoords, null));
+                vb.addBack(new VzImage(new VisTexture(im), vertices, texcoords, null));
                 vb.swap();
             }
         }

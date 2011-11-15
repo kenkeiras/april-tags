@@ -96,7 +96,7 @@ public class VzGeoImageSet implements VisObject, VisSerializable
                 GeoImage geoim = new GeoImage(file.getPath(), gpslin);
 
                 BufferedImage im = geoim.getImage();
-                VisTexture vt = new VisTexture(im,false);
+                VisTexture vt = new VisTexture(im);
                 //vis2 vt.lock();
                 double xy12[][]={{0,0},{im.getWidth(), im.getHeight()}};
                 VzImage vim = new VzImage(vt, xy12,xy12, modulateColor);

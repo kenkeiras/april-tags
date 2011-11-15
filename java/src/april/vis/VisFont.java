@@ -96,7 +96,7 @@ public class VisFont
             widths[idx] = maxdx + 1; // not a fudge: width is dx + 1
         }
 
-        texture = new VisTexture(tiles, true);
+        texture = new VisTexture(tiles, VisTexture.ALPHA_MASK);
 
         g.dispose();
         tmpg.dispose();

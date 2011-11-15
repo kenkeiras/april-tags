@@ -12,21 +12,39 @@ public class VzImage implements VisObject
     double texcoords[][];
     Color c = Color.gray;
 
+    public static final int FLIP = 1;
+
     // Convenience constructor. Maps pixels directly to images, so camera images will appear upside down
     // suggested usage for rightsideup images:
     //  vb.addBack(new VisChain(LinAlg.scale(1,-1,1),new VzImage(cameraImage)));
     public VzImage(BufferedImage im)
     {
-        this.texture = new VisTexture(im, false);
+        this(im, 0);
+    }
+
+    public VzImage(BufferedImage im, int flags)
+    {
+        this(new VisTexture(im), flags);
+    }
+
+    public VzImage(VisTexture texture, int flags)
+    {
+        this.texture = texture;
         this.vertices = new double[][] { {0, 0, 0},
-                                         {im.getWidth(), 0, 0},
-                                         {im.getWidth(), im.getHeight(), 0},
-                                         {0, im.getHeight(), 0} };
+                                         {texture.getWidth(), 0, 0},
+                                         {texture.getWidth(), texture.getHeight(), 0},
+                                         {0, texture.getHeight(), 0} };
 
         this.texcoords = new double[][] { { 0, 0 },
                                           { 1, 0 },
                                           { 1, 1 },
                                           { 0, 1 } };
+
+        if ((flags & FLIP) != 0) {
+            for (int i = 0; i < texcoords.length; i++)
+                texcoords[i][1] = 1 - texcoords[i][1];
+        }
+
         this.c = null;
     }
 

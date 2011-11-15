@@ -33,7 +33,7 @@ public class SphereTest implements ParameterListener
         try {
 //            BufferedImage im = ImageIO.read(new File("1_earth_8k.jpg"));
             BufferedImage im = ImageIO.read(new File("earth.png"));
-            tex = new VisTexture(im, false);
+            tex = new VisTexture(im);
         } catch (IOException ex) {
             System.out.println("ex: "+ex);
         }

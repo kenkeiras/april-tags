@@ -174,7 +174,7 @@ public class ScanMatcherTest implements LCMSubscriber, ParameterListener
                     double texcoords [][] = {{0,0}, {0,im.getHeight()},
                                              {im.getWidth(),im.getHeight()}, {im.getWidth(),0}};
 
-                    vb.addBack(new VzImage(new VisTexture(im, false), vertices, texcoords, Color.red));
+                    vb.addBack(new VzImage(new VisTexture(im), vertices, texcoords, Color.red));
                 }
                 vb.swap();
             }
