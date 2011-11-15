@@ -48,13 +48,13 @@ public class WDragPanel extends WComponent
         listeners.add(listener);
     }
 
-    public void clear()
+    public synchronized void clear()
     {
         items.clear();
         recompute();
     }
 
-    public void add(WComponent item)
+    public synchronized void add(WComponent item)
     {
         item.parent = this;
         items.add(item);
@@ -279,7 +279,7 @@ public class WDragPanel extends WComponent
     }
 
     // Compute the y coordinate for each item, reordering the items if necessary.
-    void recompute()
+    synchronized void recompute()
     {
         if (selectedItem != null) {
             int sy = selectedMouseY - selectedOffsetY;
@@ -333,7 +333,7 @@ public class WDragPanel extends WComponent
             listener.orderChanged(this, order);
     }
 
-    public void paint(Graphics2D g, int width, int height)
+    public synchronized void paint(Graphics2D g, int width, int height)
     {
         paintBackground(g, width, height);
 

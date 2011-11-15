@@ -1426,6 +1426,10 @@ static int get_frame(image_source_t *isrc, void **imbuf, int *buflen)
     assert(isrc->impl_type == IMPL_TYPE);
     impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
 
+    if (impl->started == 0) {
+        printf("image_source_dc1394: get_frame called on a source that has not been started. Crash imminent.\n");
+    }
+
     assert(impl->current_frame == NULL);
 
     while (1) {
