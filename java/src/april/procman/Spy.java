@@ -205,6 +205,7 @@ class Spy implements LCMSubscriber
         tcm.getColumn(2).setPreferredWidth(100);
         tcm.getColumn(3).setPreferredWidth(100);
         tcm.getColumn(4).setPreferredWidth(100);
+        tcm.getColumn(5).setPreferredWidth(80);
 
         jf.setSize(WIN_WIDTH, WIN_HEIGHT);
         jf.setVisible(true);
@@ -275,7 +276,15 @@ class Spy implements LCMSubscriber
                 pr.restartCount = ps.restarts;
                 pr.lastStatusUtime = psl.utime;
 
+                // If process returned with exit_code = 0 AND this is
+                // a privileged module, then set send status as running=false
+                if (!ps.running && ps.last_exit_code == 0)
+                    if (proc != null && proc.getRunStatus(pr.procid) && pr.wasDaemonRunning())
+                        proc.setRunStatus(pr.procid, false);
+                pr.setDaemonRunning(ps.running);
+
                 processTableModel.fireTableRowsUpdated(pr.pridx, pr.pridx);
+                updateStartStopText();
             }
 
             ////////// Update Host Statistics
@@ -293,6 +302,7 @@ class Spy implements LCMSubscriber
                 pr.cmdline = p.cmdline;
                 pr.host = p.host;
                 pr.name = p.name;
+                pr.cmdRunning = p.running;
                 processTableModel.fireTableRowsUpdated(pr.pridx, pr.pridx);
             }
         }
@@ -317,7 +327,7 @@ class Spy implements LCMSubscriber
 
     class ProcessTableModel extends AbstractTableModel
     {
-        String columnNames[] = { "ProcID", "Command", "Name", "Host", "Status" };
+        String columnNames[] = { "ProcID", "Command", "Name", "Host", "Status" , "Controller Status" };
 
         public int getColumnCount()
         {
@@ -354,6 +364,8 @@ class Spy implements LCMSubscriber
                         int exitCode = (pr.lastStatus != null) ? pr.lastStatus.last_exit_code : 0;
                         return pr.lastStatus.running ? "Running" : "Stopped ("+exitCode+")";
                     }
+                case 5:
+                    return pr.cmdRunning ? "Running" : "Stopped";
             }
 
             return "??";
@@ -399,6 +411,8 @@ class Spy implements LCMSubscriber
     {
         // XXX need to fire some events here...
         int removedProc  = processes.size();
+        if (removedProc == 0)
+            return;
         processes.clear();
         processesMap.clear();
 
@@ -412,17 +426,17 @@ class Spy implements LCMSubscriber
     synchronized ProcRecordG ensureProcRecord(int procid)
     {
         ProcRecordG pr = processesMap.get(procid);
-        if(pr != null)
+        if (pr != null)
             return pr;
 
         // otherwise, we've got some data to create and fill in
-
         pr = new ProcRecordG();
         pr.procid = procid;
         pr.cmdline = "???";
         pr.host = "???";
         pr.name = "???";
         pr.pridx = processes.size();
+        pr.cmdRunning = false;
 
         processes.add(pr);
         processesMap.put(procid, pr);
@@ -482,9 +496,24 @@ class Spy implements LCMSubscriber
         procman_status_t lastStatus;
         long lastStatusUtime;
 
+        boolean cmdRunning;   // commanded running state from controller (different from status)
+
+        // was process running on last status message.  Used to handle exit code = 0
+        boolean daemonIsRunning;
+
         ProcRecordG()
         {
             output = new ProcGUIDocument();
+        }
+
+        void setDaemonRunning(boolean daemonIsRunning)
+        {
+            this.daemonIsRunning = daemonIsRunning;
+        }
+
+        boolean wasDaemonRunning()
+        {
+            return daemonIsRunning;
         }
     }
 
