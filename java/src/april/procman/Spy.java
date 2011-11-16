@@ -39,7 +39,8 @@ class Spy implements LCMSubscriber
     JTextPane textSelected, textError;
     JScrollPane textSelectedScroll, textErrorScroll;
 
-    JButton   startSelectedButton, stopSelectedButton, clearButton;
+    JButton   startSelectedButton, stopSelectedButton;
+    JButton   clearSelectedButton, clearAllButton, resetButton;
     JCheckBox autoScrollBox;
 
     ProcGUIDocument outputSummary = new ProcGUIDocument();
@@ -102,7 +103,9 @@ class Spy implements LCMSubscriber
         buttonPanel.setLayout(new GridLayout(1,5));
         startSelectedButton = new JButton("Start Selected");
         stopSelectedButton = new JButton("Stop Selected");
-        clearButton = new JButton("Clear Output");
+        clearSelectedButton = new JButton("Clear Selected Output");
+        clearAllButton = new JButton("Clear All Output");
+        resetButton = new JButton("Reset");
         scrollToEnd = true;
         autoScrollBox = new JCheckBox("Auto Scroll", scrollToEnd);
 
@@ -111,7 +114,9 @@ class Spy implements LCMSubscriber
 
         buttonPanel.add(startSelectedButton);
         buttonPanel.add(stopSelectedButton);
-        buttonPanel.add(clearButton);
+        buttonPanel.add(clearSelectedButton);
+        buttonPanel.add(clearAllButton);
+        buttonPanel.add(resetButton);
         buttonPanel.add(autoScrollBox);
 
         if (proc != null) {
@@ -137,11 +142,29 @@ class Spy implements LCMSubscriber
                 });
         }
 
-        clearButton.addActionListener(new ActionListener() {
+        clearSelectedButton.addActionListener(new ActionListener() {
                 public void actionPerformed(ActionEvent e) {
                     synchronized(Spy.this)
                     {
-                        clear();
+                        clearSelected();
+                    }
+                }
+            });
+
+        clearAllButton.addActionListener(new ActionListener() {
+                public void actionPerformed(ActionEvent e) {
+                    synchronized(Spy.this)
+                    {
+                        clearAll();
+                    }
+                }
+            });
+
+        resetButton.addActionListener(new ActionListener() {
+                public void actionPerformed(ActionEvent e) {
+                    synchronized(Spy.this)
+                    {
+                        reset();
                     }
                 }
             });
@@ -407,7 +430,24 @@ class Spy implements LCMSubscriber
         }
     }
 
-    synchronized void clear()
+    synchronized void clearSelected()
+    {
+        int []rows = proctable.getSelectedRows();
+        for (int i = 0; i < rows.length; i++) {
+            rows[i] = proctable.convertRowIndexToModel(rows[i]);
+            processes.get(rows[i]).clearOutput();
+        }
+        updateTableSelection();
+    }
+
+    synchronized void clearAll()
+    {
+        for (ProcRecordG rec : processes)
+            rec.clearOutput();
+        updateTableSelection();
+    }
+
+    synchronized void reset()
     {
         // XXX need to fire some events here...
         int removedProc  = processes.size();
@@ -502,6 +542,11 @@ class Spy implements LCMSubscriber
         boolean daemonIsRunning;
 
         ProcRecordG()
+        {
+            output = new ProcGUIDocument();
+        }
+
+        void clearOutput()
         {
             output = new ProcGUIDocument();
         }
