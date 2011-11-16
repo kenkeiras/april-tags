@@ -330,7 +330,8 @@ class Spy implements LCMSubscriber
                 pr.cmdline = p.cmdline;
                 pr.host = p.host;
                 pr.name = p.name;
-                pr.cmdRunning = p.running;
+                pr.cmdRunning = (p.running ? RunStatus.RUNNING :
+                                 RunStatus.STOPPED);
                 processTableModel.fireTableRowsUpdated(pr.pridx, pr.pridx);
             }
         }
@@ -393,7 +394,14 @@ class Spy implements LCMSubscriber
                         return pr.lastStatus.running ? "Running" : "Stopped ("+exitCode+")";
                     }
                 case 5:
-                    return pr.cmdRunning ? "Running" : "Stopped";
+                    switch(pr.cmdRunning) {
+                        case RUNNING:
+                            return "Running";
+                        case STOPPED:
+                            return "Stopped";
+                        default:
+                            return "Unknown";
+                    }
             }
 
             return "??";
@@ -483,7 +491,7 @@ class Spy implements LCMSubscriber
         pr.host = "???";
         pr.name = "???";
         pr.pridx = processes.size();
-        pr.cmdRunning = false;
+        pr.cmdRunning = RunStatus.UNKNOWN;
 
         processes.add(pr);
         processesMap.put(procid, pr);
@@ -535,6 +543,9 @@ class Spy implements LCMSubscriber
         stopSelectedButton.setEnabled(numStopped < rows.length);
     }
 
+
+    public static enum RunStatus {RUNNING, STOPPED, UNKNOWN};
+
     class ProcRecordG extends ProcRecord
     {
         ProcGUIDocument output;
@@ -543,7 +554,8 @@ class Spy implements LCMSubscriber
         procman_status_t lastStatus;
         long lastStatusUtime;
 
-        boolean cmdRunning;   // commanded running state from controller (different from status)
+
+        RunStatus cmdRunning;   // commanded running state from controller (different from status)
 
         // was process running on last status message.  Used to handle exit code = 0
         boolean daemonIsRunning;
