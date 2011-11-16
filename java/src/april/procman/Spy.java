@@ -461,11 +461,13 @@ class Spy implements LCMSubscriber
         processes.clear();
         processesMap.clear();
 
+
         int removedHost  = hosts.size();
         hosts.clear();
 
         processTableModel.fireTableRowsDeleted(0,removedProc - 1);
-        hostTableModel.fireTableRowsDeleted(0,removedHost - 1);
+        if (removedHost > 0)
+            hostTableModel.fireTableRowsDeleted(0,removedHost - 1);
     }
 
     synchronized ProcRecordG ensureProcRecord(int procid)
