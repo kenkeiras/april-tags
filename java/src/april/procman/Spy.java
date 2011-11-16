@@ -32,7 +32,7 @@ class Spy implements LCMSubscriber
 {
     public static final int WIN_WIDTH = 1024;
     public static final int WIN_HEIGHT = 600;
-    public static final int HOST_WIDTH = 250;
+    public static final int HOST_WIDTH = 200;
 
     JFrame    jf;
     JTable    proctable, hosttable;
@@ -119,6 +119,8 @@ class Spy implements LCMSubscriber
         buttonPanel.add(resetButton);
         buttonPanel.add(autoScrollBox);
 
+        int sizeTopPane = (int)(0.25*WIN_HEIGHT);
+
         if (proc != null) {
             startSelectedButton.addActionListener(new ActionListener() {
                     public void actionPerformed(ActionEvent e) {
@@ -140,6 +142,10 @@ class Spy implements LCMSubscriber
                         updateStartStopText();
                     }
                 });
+
+            // add 1 for title and another for additoinal whitespace below table in pane
+            sizeTopPane = (2 + proc.processes.size()) * (proctable.getRowHeight() +
+                                                         proctable.getRowMargin());
         }
 
         clearSelectedButton.addActionListener(new ActionListener() {
@@ -205,22 +211,24 @@ class Spy implements LCMSubscriber
             });
         JSplitPane textJsp = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
                                             textErrorScroll, textSelectedScroll);
-        JSplitPane leftJsp = new JSplitPane(JSplitPane.VERTICAL_SPLIT, jp, textJsp);
+        JSplitPane mainJsp = new JSplitPane(JSplitPane.VERTICAL_SPLIT, jp, textJsp);
 
-        textJsp.setDividerLocation(0.4);
-        textJsp.setResizeWeight(0.5);
+        jp.setMinimumSize(new Dimension(200, 80));
+        textErrorScroll.setMinimumSize(new Dimension(400, 100));
+        textSelectedScroll.setMinimumSize(new Dimension(300, 100));
 
-        Dimension minimumSize = new Dimension(300, 100);
-        textErrorScroll.setMinimumSize(minimumSize);
-        textSelectedScroll.setMinimumSize(minimumSize);
-
-        leftJsp.setDividerLocation(0.3);
-        leftJsp.setResizeWeight(0.3);
-
-        jf = new JFrame("ProcMan Spy " +
-                        (proc == null ? "(Read Only)" : "(Privileged)"));
+        jf = new JFrame("ProcMan Spy " + (proc == null ? "(Read Only)" : "(Privileged)"));
+        jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        jf.setMinimumSize(new Dimension(800, 400));
         jf.setLayout(new BorderLayout());
-        jf.add(leftJsp, BorderLayout.CENTER);
+        jf.add(mainJsp, BorderLayout.CENTER);
+        jf.setSize(WIN_WIDTH, WIN_HEIGHT);
+        jf.setVisible(true);
+
+        sizeTopPane += buttonPanel.getHeight();// + mainJsp.getDividerSize();;
+
+        textJsp.setDividerLocation(400);
+        mainJsp.setDividerLocation(sizeTopPane);
 
         TableColumnModel tcm = proctable.getColumnModel();
         tcm.getColumn(0).setPreferredWidth(50);
@@ -229,10 +237,6 @@ class Spy implements LCMSubscriber
         tcm.getColumn(3).setPreferredWidth(100);
         tcm.getColumn(4).setPreferredWidth(100);
         tcm.getColumn(5).setPreferredWidth(80);
-
-        jf.setSize(WIN_WIDTH, WIN_HEIGHT);
-        jf.setVisible(true);
-        jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         lcm.subscribe("PROCMAN_STATUS_LIST", this);
         lcm.subscribe("PROCMAN_OUTPUT", this);
