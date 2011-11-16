@@ -227,7 +227,7 @@ class Spy implements LCMSubscriber
 
         sizeTopPane += buttonPanel.getHeight();// + mainJsp.getDividerSize();;
 
-        textJsp.setDividerLocation(400);
+        textJsp.setDividerLocation(500);
         mainJsp.setDividerLocation(sizeTopPane);
 
         TableColumnModel tcm = proctable.getColumnModel();
@@ -283,7 +283,8 @@ class Spy implements LCMSubscriber
                 pr.output.appendDefault(po.data + "\n");
             } else {
                 pr.output.appendError(po.data + "\n");
-                outputSummary.appendError(po.data + "\n");
+                outputSummary.appendError(String.format("[%2d-%8.8s] %s\n",
+                                                        pr.procid, pr.name, po.data));
             }
         }else if (channel.equals("PROCMAN_STATUS_LIST")) {
             procman_status_list_t psl = new procman_status_list_t(ins);
