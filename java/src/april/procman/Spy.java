@@ -208,19 +208,27 @@ class Spy implements LCMSubscriber, AdjustmentListener
         JSplitPane textJsp = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, textErrorScroll, tabPane);
         JSplitPane mainJsp = new JSplitPane(JSplitPane.VERTICAL_SPLIT, jp, textJsp);
 
-        jp.setMinimumSize(new Dimension(200, 80));
-        textErrorScroll.setMinimumSize(new Dimension(400, 100));
-        tabPane.setMinimumSize(new Dimension(300, 100));
+        int MIN_H_BOTTOM = 300;
+        int MIN_H_TOP = 100;
+        int MIN_WIDTH = 600;
+
+        jp.setMinimumSize(new Dimension(MIN_WIDTH, MIN_H_TOP));
+        textErrorScroll.setMinimumSize(new Dimension(MIN_WIDTH / 2, MIN_H_BOTTOM));
+        tabPane.setMinimumSize(new Dimension(MIN_WIDTH / 2, MIN_H_BOTTOM));
 
         jf = new JFrame("ProcMan Spy " + (proc == null ? "(Read Only)" : "(Privileged)"));
         jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        jf.setMinimumSize(new Dimension(800, 400));
+
+        MIN_WIDTH += 100;
+        int MIN_HEIGHT = MIN_H_BOTTOM + MIN_H_TOP + 100;
+        jf.setMinimumSize(new Dimension(MIN_WIDTH, MIN_HEIGHT));
         jf.setLayout(new BorderLayout());
         jf.add(mainJsp, BorderLayout.CENTER);
         jf.setSize(WIN_WIDTH, WIN_HEIGHT);
         jf.setVisible(true);
 
         sizeTopPane += buttonPanel.getHeight();
+        sizeTopPane = Math.min(sizeTopPane, WIN_HEIGHT - MIN_H_BOTTOM);
 
         textJsp.setDividerLocation(500);
         mainJsp.setDividerLocation(sizeTopPane);
