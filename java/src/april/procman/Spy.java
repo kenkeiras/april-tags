@@ -28,16 +28,18 @@ import april.util.*;
  * 2. Document styling changes appear to occur when a buffer becomes
  * the selected one.  -JHS
  */
-class Spy implements LCMSubscriber
+class Spy implements LCMSubscriber, AdjustmentListener
 {
     public static final int WIN_WIDTH = 1024;
-    public static final int WIN_HEIGHT = 600;
+    public static final int WIN_HEIGHT = 800;
     public static final int HOST_WIDTH = 200;
 
     JFrame    jf;
     JTable    proctable, hosttable;
-    JTextPane textSelected, textError;
-    JScrollPane textSelectedScroll, textErrorScroll;
+
+    JTabbedPane tabPane;
+    JTextPane textError;
+    JScrollPane textErrorScroll;
 
     JButton   startSelectedButton, stopSelectedButton;
     JButton   clearSelectedButton, clearAllButton, resetButton;
@@ -76,7 +78,9 @@ class Spy implements LCMSubscriber
         processesMap = new HashMap<Integer, ProcRecordG>();
 
         proctable = new JTable(processTableModel);
-        proctable.setRowSorter(new TableRowSorter(processTableModel));
+        TableRowSorter sorter = new TableRowSorter(processTableModel);
+        proctable.setRowSorter(sorter);
+        sorter.toggleSortOrder(1);
 
         // allow section of processes via mouse or keyboard (up and down) keys
         ListSelectionModel rowSM = proctable.getSelectionModel();
@@ -91,10 +95,6 @@ class Spy implements LCMSubscriber
         hosttable = new JTable(hostTableModel);
         hosttable.setRowSorter(new TableRowSorter(hostTableModel));
 
-        textSelected = new JTextPane();
-        textSelected.setEditable(false);
-        textSelected.setDocument(outputSummary);
-
         textError = new JTextPane();
         textError.setEditable(false);
         textError.setDocument(outputSummary);
@@ -103,7 +103,7 @@ class Spy implements LCMSubscriber
         buttonPanel.setLayout(new GridLayout(1,5));
         startSelectedButton = new JButton("Start Selected");
         stopSelectedButton = new JButton("Stop Selected");
-        clearSelectedButton = new JButton("Clear Selected Output");
+        clearSelectedButton = new JButton("Clear Sel. Output");
         clearAllButton = new JButton("Clear All Output");
         resetButton = new JButton("Reset");
         scrollToEnd = true;
@@ -181,6 +181,7 @@ class Spy implements LCMSubscriber
                 }
             });
 
+
         JSplitPane jsp = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
                                         new JScrollPane(proctable),
                                         new JScrollPane(hosttable));
@@ -192,30 +193,24 @@ class Spy implements LCMSubscriber
         jp.add(jsp, BorderLayout.CENTER);
         jp.add(buttonPanel, BorderLayout.SOUTH);
 
-        textSelectedScroll = new JScrollPane(textSelected);
-        textSelectedScroll.getVerticalScrollBar().addAdjustmentListener(new AdjustmentListener(){
-                public void adjustmentValueChanged(AdjustmentEvent e){
-                    JScrollBar jsb = textSelectedScroll.getVerticalScrollBar();
-                    if (scrollToEnd)
-                        jsb.setValue(jsb.getMaximum());
-                }
-            });
-
         textErrorScroll = new JScrollPane(textError);
         textErrorScroll.getVerticalScrollBar().addAdjustmentListener(new AdjustmentListener(){
                 public void adjustmentValueChanged(AdjustmentEvent e){
-                    JScrollBar jsb = textErrorScroll.getVerticalScrollBar();
-                    if (scrollToEnd)
+                    if (scrollToEnd) {
+                        JScrollBar jsb = textErrorScroll.getVerticalScrollBar();
                         jsb.setValue(jsb.getMaximum());
+                    }
                 }
             });
-        JSplitPane textJsp = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
-                                            textErrorScroll, textSelectedScroll);
+
+        tabPane = new JTabbedPane();
+
+        JSplitPane textJsp = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, textErrorScroll, tabPane);
         JSplitPane mainJsp = new JSplitPane(JSplitPane.VERTICAL_SPLIT, jp, textJsp);
 
         jp.setMinimumSize(new Dimension(200, 80));
         textErrorScroll.setMinimumSize(new Dimension(400, 100));
-        textSelectedScroll.setMinimumSize(new Dimension(300, 100));
+        tabPane.setMinimumSize(new Dimension(300, 100));
 
         jf = new JFrame("ProcMan Spy " + (proc == null ? "(Read Only)" : "(Privileged)"));
         jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -225,17 +220,37 @@ class Spy implements LCMSubscriber
         jf.setSize(WIN_WIDTH, WIN_HEIGHT);
         jf.setVisible(true);
 
-        sizeTopPane += buttonPanel.getHeight();// + mainJsp.getDividerSize();;
+        sizeTopPane += buttonPanel.getHeight();
 
         textJsp.setDividerLocation(500);
         mainJsp.setDividerLocation(sizeTopPane);
 
+        Action deselect = new AbstractAction() {
+                public void actionPerformed(ActionEvent e) {
+                    proctable.clearSelection();
+                }
+            };
+
+        Action selectAll = new AbstractAction() {
+                public void actionPerformed(ActionEvent e) {
+                    proctable.selectAll();
+                }
+            };
+
+        mainJsp.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke("A"),
+                                                                   "selectAll");
+        mainJsp.getActionMap().put("selectAll", selectAll);
+
+        mainJsp.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke("ESCAPE"),
+                                                                   "deselect");
+        mainJsp.getActionMap().put("deselect", deselect);
+
         TableColumnModel tcm = proctable.getColumnModel();
         tcm.getColumn(0).setPreferredWidth(50);
-        tcm.getColumn(1).setPreferredWidth(500);
-        tcm.getColumn(2).setPreferredWidth(100);
+        tcm.getColumn(1).setPreferredWidth(200);
+        tcm.getColumn(2).setPreferredWidth(500);
         tcm.getColumn(3).setPreferredWidth(100);
-        tcm.getColumn(4).setPreferredWidth(100);
+        tcm.getColumn(4).setPreferredWidth(120);
         tcm.getColumn(5).setPreferredWidth(80);
 
         lcm.subscribe("PROCMAN_STATUS_LIST", this);
@@ -247,15 +262,25 @@ class Spy implements LCMSubscriber
     {
         int []rows = proctable.getSelectedRows();
 
-        // currently only display process output if exactly 1 process selected
-        if (rows.length == 1) {
-            int row = rows[0];
-            row = proctable.convertRowIndexToModel(row);
-            textSelected.setDocument(processes.get(row).output);
-            textSelected.setCaretPosition(processes.get(row).output.getLength());
-        } else {
-            textSelected.setDocument(outputSummary);
-            textSelected.setCaretPosition(outputSummary.getLength());
+        // Stay on current tab if in new selection list
+        JScrollPane curPane = (JScrollPane)tabPane.getSelectedComponent();
+
+        tabPane.removeAll();
+        for (int i = 0; i < rows.length; i++) {
+            int row = proctable.convertRowIndexToModel(rows[i]);
+            ProcRecordG pr = processes.get(row);
+            tabPane.add(String.format("%d-%.10s", pr.procid, pr.name), pr.outputPane);
+
+            if (scrollToEnd) {
+                JScrollBar jsb = pr.outputPane.getVerticalScrollBar();
+                jsb.setValue(jsb.getMaximum());
+            }
+
+            if (curPane == pr.outputPane)
+                tabPane.setSelectedComponent(curPane);
+
+            if (i < 9)
+                tabPane.setMnemonicAt(i, KeyEvent.VK_1 + i);
         }
         updateStartStopText();
     }
@@ -356,7 +381,7 @@ class Spy implements LCMSubscriber
 
     class ProcessTableModel extends AbstractTableModel
     {
-        String columnNames[] = { "ProcID", "Command", "Name", "Host", "Status" , "Controller Status" };
+        String columnNames[] = { "ProcID", "Name", "Command", "Host", "Daemon" , "Controller" };
 
         public int getColumnCount()
         {
@@ -381,9 +406,9 @@ class Spy implements LCMSubscriber
                 case 0:
                     return pr.procid;
                 case 1:
-                    return pr.cmdline;
-                case 2:
                     return pr.name;
+                case 2:
+                    return pr.cmdline;
                 case 3:
                     return pr.host;
                 case 4:
@@ -448,7 +473,7 @@ class Spy implements LCMSubscriber
         int []rows = proctable.getSelectedRows();
         for (int i = 0; i < rows.length; i++) {
             rows[i] = proctable.convertRowIndexToModel(rows[i]);
-            processes.get(rows[i]).clearOutput();
+            processes.get(rows[i]).clearOutputPane();
         }
         updateTableSelection();
     }
@@ -456,7 +481,11 @@ class Spy implements LCMSubscriber
     synchronized void clearAll()
     {
         for (ProcRecordG rec : processes)
-            rec.clearOutput();
+            rec.clearOutputPane();
+
+        // insert blank line on summary output pane
+        outputSummary.appendError("\n");
+
         updateTableSelection();
     }
 
@@ -468,7 +497,6 @@ class Spy implements LCMSubscriber
             return;
         processes.clear();
         processesMap.clear();
-
 
         int removedHost  = hosts.size();
         hosts.clear();
@@ -493,6 +521,7 @@ class Spy implements LCMSubscriber
         pr.pridx = processes.size();
         pr.cmdRunning = RunStatus.UNKNOWN;
 
+        // Add process to relevant structures
         processes.add(pr);
         processesMap.put(procid, pr);
         processTableModel.fireTableRowsInserted(processes.size() - 1,
@@ -544,11 +573,21 @@ class Spy implements LCMSubscriber
     }
 
 
+    /** Handle scroll events for tabPane **/
+    public void adjustmentValueChanged(AdjustmentEvent e)
+    {
+        if (scrollToEnd) {
+            JScrollBar jsb = ((JScrollPane)tabPane.getSelectedComponent()).getVerticalScrollBar();
+            jsb.setValue(jsb.getMaximum());
+        }
+    }
+
     public static enum RunStatus {RUNNING, STOPPED, UNKNOWN};
 
     class ProcRecordG extends ProcRecord
     {
         ProcGUIDocument output;
+        JScrollPane outputPane;   // create output pane once and toggle showing in tab
         int pridx;
 
         procman_status_t lastStatus;
@@ -563,11 +602,21 @@ class Spy implements LCMSubscriber
         ProcRecordG()
         {
             output = new ProcGUIDocument();
+
+            // create output scroll pane once
+            JTextPane text = new JTextPane();
+            text.setEditable(false);
+            text.setDocument(output);
+
+            outputPane = new JScrollPane(text);
+            outputPane.getVerticalScrollBar().addAdjustmentListener(Spy.this);
         }
 
-        void clearOutput()
+        void clearOutputPane()
         {
             output = new ProcGUIDocument();
+
+            ((JTextPane)outputPane.getViewport().getView()).setDocument(output);
         }
 
         void setDaemonRunning(boolean daemonIsRunning)
