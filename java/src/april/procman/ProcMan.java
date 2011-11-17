@@ -81,7 +81,7 @@ public class ProcMan// implements Runnable
         }
 
         // Ensures we send messages to the ProcManDaemon to shutdown all the processes
-        Runtime.getRuntime().addShutdownHook(new ShutdownHandler());
+        Runtime.getRuntime().addShutdownHook(new ShutdownAndStatusHandler());
     }
 
     private void loadConfig(String path, String runtimeList)
@@ -154,6 +154,7 @@ public class ProcMan// implements Runnable
         pr.autoRestart = restart;
         pr.restartDelayMS = restartDelay;
         pr.running = autorun;
+        pr.runningOnDaemon = false;
 
         if (verbose)
             System.out.printf("Adding new proc: id=%d host=%s name=%s cmd=%s"+
@@ -227,12 +228,31 @@ public class ProcMan// implements Runnable
         lcm.publish("PROCMAN_PROCESS_LIST", ppl);
     }
 
+    /** When a process exits with code = 0 modify what the running flag in process list **/
+    synchronized void handleProcessExitStatus(procman_status_list_t status)
+    {
+        for (int i = 0; i < status.nprocs; i++) {
+            procman_status_t ps = status.statuses[i];
 
-    public class ShutdownHandler extends Thread implements LCMSubscriber
+            ProcRecord pr = processesMap.get(ps.procid);
+
+            // If process returned with exit_code = 0 AND this is
+            // a privileged module, then set send status as running=false
+            if (!ps.running && ps.last_exit_code == 0)
+                if (pr.runningOnDaemon && getRunStatus(ps.procid))
+                    setRunStatus(pr.procid, false);
+
+            pr.runningOnDaemon = ps.running;
+        }
+    }
+
+    /** Handle shutdown event via notification to/from daemon.  Also
+     * handles status changes due to processes that exit normally. **/
+    public class ShutdownAndStatusHandler extends Thread implements LCMSubscriber
     {
         procman_status_list_t status;
 
-        public ShutdownHandler() {
+        public ShutdownAndStatusHandler() {
             lcm.subscribe("PROCMAN_STATUS_LIST", this);
         }
 
@@ -241,6 +261,7 @@ public class ProcMan// implements Runnable
             try {
                 if (channel.equals("PROCMAN_STATUS_LIST")) {
                     status = new procman_status_list_t(ins);
+                    handleProcessExitStatus(status);
                 }
             } catch (IOException ex) {
                 System.out.println("WRN: LCM ex: "+ex);

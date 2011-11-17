@@ -337,13 +337,6 @@ class Spy implements LCMSubscriber, AdjustmentListener
                 pr.restartCount = ps.restarts;
                 pr.lastStatusUtime = psl.utime;
 
-                // If process returned with exit_code = 0 AND this is
-                // a privileged module, then set send status as running=false
-                if (!ps.running && ps.last_exit_code == 0)
-                    if (proc != null && proc.getRunStatus(pr.procid) && pr.wasDaemonRunning())
-                        proc.setRunStatus(pr.procid, false);
-                pr.setDaemonRunning(ps.running);
-
                 processTableModel.fireTableRowsUpdated(pr.pridx, pr.pridx);
                 updateStartStopText();
             }
@@ -625,16 +618,6 @@ class Spy implements LCMSubscriber, AdjustmentListener
             output = new ProcGUIDocument();
 
             ((JTextPane)outputPane.getViewport().getView()).setDocument(output);
-        }
-
-        void setDaemonRunning(boolean daemonIsRunning)
-        {
-            this.daemonIsRunning = daemonIsRunning;
-        }
-
-        boolean wasDaemonRunning()
-        {
-            return daemonIsRunning;
         }
     }
 
