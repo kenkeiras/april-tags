@@ -4,7 +4,21 @@ LIB_APRIL_JSERIAL_OBJS = serial.o serial_jni.o ioutils.o
 LIB=libjserial.so
 DESTLIB=../../../lib/$(LIB)
 
-all: $(DESTLIB)
+ALL = $(DESTLIB)
+
+#############################################################
+# MacOS X
+ifeq "$(shell uname)" "Darwin"
+
+.phony: 
+	@echo "JSerial is not supported on Darwin/MacOS."
+
+ALL = .phony
+
+endif
+
+#############################################################
+all: $(ALL)
 
 
 $(DESTLIB): $(LIB)
