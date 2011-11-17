@@ -27,22 +27,22 @@ import april.util.*;
  * update the run that time, vs. if the change was due to the user.
  * 2. Document styling changes appear to occur when a buffer becomes
  * the selected one.  -JHS
- * 3. There is a display bug in the buttons when the processes are
- * sorted by name. Investigate the convertRow style functions..
- *
  */
-class Spy implements LCMSubscriber
+class Spy implements LCMSubscriber, AdjustmentListener
 {
     public static final int WIN_WIDTH = 1024;
-    public static final int WIN_HEIGHT = 600;
-    public static final int HOST_WIDTH = 250;
+    public static final int WIN_HEIGHT = 800;
+    public static final int HOST_WIDTH = 200;
 
     JFrame    jf;
     JTable    proctable, hosttable;
-    JTextPane textSelected, textError;
-    JScrollPane textSelectedScroll, textErrorScroll;
 
-    JButton   startStopButton, stopAllButton, startAllButton, clearButton;
+    JTabbedPane tabPane;
+    JTextPane textError;
+    JScrollPane textErrorScroll;
+
+    JButton   startSelectedButton, stopSelectedButton;
+    JButton   clearSelectedButton, clearAllButton, resetButton;
     JCheckBox autoScrollBox;
 
     ProcGUIDocument outputSummary = new ProcGUIDocument();
@@ -74,24 +74,15 @@ class Spy implements LCMSubscriber
 
     public void init()
     {
-
         processes = new ArrayList<ProcRecordG>();
         processesMap = new HashMap<Integer, ProcRecordG>();
 
         proctable = new JTable(processTableModel);
-        proctable.setRowSorter(new TableRowSorter(processTableModel));
+        TableRowSorter sorter = new TableRowSorter(processTableModel);
+        proctable.setRowSorter(sorter);
+        sorter.toggleSortOrder(1);
 
-        // only allow one row to be selected at a time
-        proctable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-
-        // allow section of processes via mouse section
-        proctable.addMouseListener(new MouseAdapter() {
-                public void mouseClicked(MouseEvent e) {
-                    updateTableSelection();
-                }
-            });
-
-        // allow section of processes via keyboard (up and down) keys
+        // allow section of processes via mouse or keyboard (up and down) keys
         ListSelectionModel rowSM = proctable.getSelectionModel();
         rowSM.addListSelectionListener(new ListSelectionListener() {
                 public void valueChanged(ListSelectionEvent e) {
@@ -104,74 +95,82 @@ class Spy implements LCMSubscriber
         hosttable = new JTable(hostTableModel);
         hosttable.setRowSorter(new TableRowSorter(hostTableModel));
 
-        textSelected = new JTextPane();
-        textSelected.setEditable(false);
-        textSelected.setDocument(outputSummary);
-
         textError = new JTextPane();
         textError.setEditable(false);
         textError.setDocument(outputSummary);
 
         JPanel buttonPanel = new JPanel();
         buttonPanel.setLayout(new GridLayout(1,5));
-        startStopButton = new JButton("Start/Stop");
-        startStopButton.setEnabled(false);
-        startAllButton = new JButton("Start All");
-        stopAllButton = new JButton("Stop All");
-        clearButton = new JButton("Clear");
-        autoScrollBox = new JCheckBox("Auto Scroll", true);
+        startSelectedButton = new JButton("Start Selected");
+        stopSelectedButton = new JButton("Stop Selected");
+        clearSelectedButton = new JButton("Clear Sel. Output");
+        clearAllButton = new JButton("Clear All Output");
+        resetButton = new JButton("Reset");
         scrollToEnd = true;
+        autoScrollBox = new JCheckBox("Auto Scroll", scrollToEnd);
 
-        buttonPanel.add(startStopButton);
-        buttonPanel.add(startAllButton);
-        buttonPanel.add(stopAllButton);
-        buttonPanel.add(clearButton);
+        startSelectedButton.setEnabled(false);
+        stopSelectedButton.setEnabled(false);
+
+        buttonPanel.add(startSelectedButton);
+        buttonPanel.add(stopSelectedButton);
+        buttonPanel.add(clearSelectedButton);
+        buttonPanel.add(clearAllButton);
+        buttonPanel.add(resetButton);
         buttonPanel.add(autoScrollBox);
 
-        if (proc == null) {
-            startStopButton.setEnabled(false);
-            startAllButton.setEnabled(false);
-            stopAllButton.setEnabled(false);
-        } else {
-            startStopButton.addActionListener(new ActionListener() {
+        int sizeTopPane = (int)(0.25*WIN_HEIGHT);
+
+        if (proc != null) {
+            startSelectedButton.addActionListener(new ActionListener() {
                     public void actionPerformed(ActionEvent e) {
-                        int row = proctable.getSelectedRow();
-                        if (row >= 0) {
-                            row = proctable.convertRowIndexToModel(row);
-                            proc.toggleRunStatus(processes.get(row).procid);
+                        int []rows = proctable.getSelectedRows();
+                        for (int i = 0; i < rows.length; i++) {
+                            rows[i] = proctable.convertRowIndexToModel(rows[i]);
+                            proc.setRunStatus(processes.get(rows[i]).procid, true);
                         }
-                        updateStartStopText(row);
+                        updateStartStopText();
+                    }
+                });
+            stopSelectedButton.addActionListener(new ActionListener() {
+                    public void actionPerformed(ActionEvent e) {
+                        int []rows = proctable.getSelectedRows();
+                        for (int i = 0; i < rows.length; i++) {
+                            rows[i] = proctable.convertRowIndexToModel(rows[i]);
+                            proc.setRunStatus(processes.get(rows[i]).procid, false);
+                        }
+                        updateStartStopText();
                     }
                 });
 
-            startAllButton.addActionListener(new ActionListener() {
-                    public void actionPerformed(ActionEvent e) {
-                        for (ProcRecordG pr : processes) {
-                            proc.setRunStatus(pr.procid, true);
-                        }
-                        int rc = proctable.getRowCount();
-                        for(int row = 0;  row < rc; row++)
-                            updateStartStopText(row);
-                    }
-                });
-
-            stopAllButton.addActionListener(new ActionListener() {
-                    public void actionPerformed(ActionEvent e) {
-                        for (ProcRecordG pr : processes) {
-                            proc.setRunStatus(pr.procid, false);
-                        }
-                        int rc = proctable.getRowCount();
-                        for(int row = 0;  row < rc; row++)
-                            updateStartStopText(row);
-                    }
-                });
+            // add 1 for title and another for additoinal whitespace below table in pane
+            sizeTopPane = (2 + proc.processes.size()) * (proctable.getRowHeight() +
+                                                         proctable.getRowMargin());
         }
 
-        clearButton.addActionListener(new ActionListener() {
+        clearSelectedButton.addActionListener(new ActionListener() {
                 public void actionPerformed(ActionEvent e) {
                     synchronized(Spy.this)
                     {
-                        clear();
+                        clearSelected();
+                    }
+                }
+            });
+
+        clearAllButton.addActionListener(new ActionListener() {
+                public void actionPerformed(ActionEvent e) {
+                    synchronized(Spy.this)
+                    {
+                        clearAll();
+                    }
+                }
+            });
+
+        resetButton.addActionListener(new ActionListener() {
+                public void actionPerformed(ActionEvent e) {
+                    synchronized(Spy.this)
+                    {
+                        reset();
                     }
                 }
             });
@@ -182,64 +181,85 @@ class Spy implements LCMSubscriber
                 }
             });
 
+
         JSplitPane jsp = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
                                         new JScrollPane(proctable),
                                         new JScrollPane(hosttable));
         jsp.setDividerLocation(WIN_WIDTH - HOST_WIDTH);
         jsp.setResizeWeight(1);
 
-
         JPanel jp = new JPanel();
         jp.setLayout(new BorderLayout());
         jp.add(jsp, BorderLayout.CENTER);
         jp.add(buttonPanel, BorderLayout.SOUTH);
 
-        textSelectedScroll = new JScrollPane(textSelected);
-        textSelectedScroll.getVerticalScrollBar().addAdjustmentListener(new AdjustmentListener(){
-                public void adjustmentValueChanged(AdjustmentEvent e){
-                    JScrollBar jsb = textSelectedScroll.getVerticalScrollBar();
-                    if (scrollToEnd)
-                        jsb.setValue(jsb.getMaximum());
-                }
-            });
-
         textErrorScroll = new JScrollPane(textError);
         textErrorScroll.getVerticalScrollBar().addAdjustmentListener(new AdjustmentListener(){
                 public void adjustmentValueChanged(AdjustmentEvent e){
-                    JScrollBar jsb = textErrorScroll.getVerticalScrollBar();
-                    if (scrollToEnd)
+                    if (scrollToEnd) {
+                        JScrollBar jsb = textErrorScroll.getVerticalScrollBar();
                         jsb.setValue(jsb.getMaximum());
+                    }
                 }
             });
-        JSplitPane textJsp = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
-                                            textErrorScroll, textSelectedScroll);
-        JSplitPane leftJsp = new JSplitPane(JSplitPane.VERTICAL_SPLIT, jp, textJsp);
 
-        textJsp.setDividerLocation(0.4);
-        textJsp.setResizeWeight(0.5);
+        tabPane = new JTabbedPane();
 
-        Dimension minimumSize = new Dimension(300, 100);
-        textErrorScroll.setMinimumSize(minimumSize);
-        textSelectedScroll.setMinimumSize(minimumSize);
+        JSplitPane textJsp = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, textErrorScroll, tabPane);
+        JSplitPane mainJsp = new JSplitPane(JSplitPane.VERTICAL_SPLIT, jp, textJsp);
 
-        leftJsp.setDividerLocation(0.3);
-        leftJsp.setResizeWeight(0.3);
+        int MIN_H_BOTTOM = 300;
+        int MIN_H_TOP = 100;
+        int MIN_WIDTH = 600;
 
-        jf = new JFrame("ProcMan Spy " +
-                        (proc == null ? "(Read Only)" : "(Privileged)"));
+        jp.setMinimumSize(new Dimension(MIN_WIDTH, MIN_H_TOP));
+        textErrorScroll.setMinimumSize(new Dimension(MIN_WIDTH / 2, MIN_H_BOTTOM));
+        tabPane.setMinimumSize(new Dimension(MIN_WIDTH / 2, MIN_H_BOTTOM));
+
+        jf = new JFrame("ProcMan Spy " + (proc == null ? "(Read Only)" : "(Privileged)"));
+        jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        MIN_WIDTH += 100;
+        int MIN_HEIGHT = MIN_H_BOTTOM + MIN_H_TOP + 100;
+        jf.setMinimumSize(new Dimension(MIN_WIDTH, MIN_HEIGHT));
         jf.setLayout(new BorderLayout());
-        jf.add(leftJsp, BorderLayout.CENTER);
+        jf.add(mainJsp, BorderLayout.CENTER);
+        jf.setSize(WIN_WIDTH, WIN_HEIGHT);
+        jf.setVisible(true);
+
+        sizeTopPane += buttonPanel.getHeight();
+        sizeTopPane = Math.min(sizeTopPane, WIN_HEIGHT - MIN_H_BOTTOM);
+
+        textJsp.setDividerLocation(500);
+        mainJsp.setDividerLocation(sizeTopPane);
+
+        Action deselect = new AbstractAction() {
+                public void actionPerformed(ActionEvent e) {
+                    proctable.clearSelection();
+                }
+            };
+
+        Action selectAll = new AbstractAction() {
+                public void actionPerformed(ActionEvent e) {
+                    proctable.selectAll();
+                }
+            };
+
+        mainJsp.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke("A"),
+                                                                   "selectAll");
+        mainJsp.getActionMap().put("selectAll", selectAll);
+
+        mainJsp.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke("ESCAPE"),
+                                                                   "deselect");
+        mainJsp.getActionMap().put("deselect", deselect);
 
         TableColumnModel tcm = proctable.getColumnModel();
         tcm.getColumn(0).setPreferredWidth(50);
-        tcm.getColumn(1).setPreferredWidth(500);
-        tcm.getColumn(2).setPreferredWidth(100);
+        tcm.getColumn(1).setPreferredWidth(200);
+        tcm.getColumn(2).setPreferredWidth(500);
         tcm.getColumn(3).setPreferredWidth(100);
-        tcm.getColumn(4).setPreferredWidth(100);
-
-        jf.setSize(WIN_WIDTH, WIN_HEIGHT);
-        jf.setVisible(true);
-        jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        tcm.getColumn(4).setPreferredWidth(120);
+        tcm.getColumn(5).setPreferredWidth(80);
 
         lcm.subscribe("PROCMAN_STATUS_LIST", this);
         lcm.subscribe("PROCMAN_OUTPUT", this);
@@ -248,17 +268,29 @@ class Spy implements LCMSubscriber
 
     public synchronized void updateTableSelection()
     {
-        int row = proctable.getSelectedRow();
-        if (row >= 0) {
-            row = proctable.convertRowIndexToModel(row);
-            textSelected.setDocument(processes.get(row).output);
-            textSelected.setCaretPosition(processes.get(row).output.getLength());
+        int []rows = proctable.getSelectedRows();
 
-        } else {
-            textSelected.setDocument(outputSummary);
-            textSelected.setCaretPosition(outputSummary.getLength());
+        // Stay on current tab if in new selection list
+        JScrollPane curPane = (JScrollPane)tabPane.getSelectedComponent();
+
+        tabPane.removeAll();
+        for (int i = 0; i < rows.length; i++) {
+            int row = proctable.convertRowIndexToModel(rows[i]);
+            ProcRecordG pr = processes.get(row);
+            tabPane.add(String.format("%d-%.10s", pr.procid, pr.name), pr.outputPane);
+
+            if (scrollToEnd) {
+                JScrollBar jsb = pr.outputPane.getVerticalScrollBar();
+                jsb.setValue(jsb.getMaximum());
+            }
+
+            if (curPane == pr.outputPane)
+                tabPane.setSelectedComponent(curPane);
+
+            if (i < 9)
+                tabPane.setMnemonicAt(i, KeyEvent.VK_1 + i);
         }
-        updateStartStopText(row);
+        updateStartStopText();
     }
 
     public void messageReceived(LCM lcm, String channel, LCMDataInputStream ins)
@@ -284,7 +316,8 @@ class Spy implements LCMSubscriber
                 pr.output.appendDefault(po.data + "\n");
             } else {
                 pr.output.appendError(po.data + "\n");
-                outputSummary.appendError(po.data + "\n");
+                outputSummary.appendError(String.format("[%2d-%8.8s] %s\n",
+                                                        pr.procid, pr.name, po.data));
             }
         }else if (channel.equals("PROCMAN_STATUS_LIST")) {
             procman_status_list_t psl = new procman_status_list_t(ins);
@@ -305,6 +338,7 @@ class Spy implements LCMSubscriber
                 pr.lastStatusUtime = psl.utime;
 
                 processTableModel.fireTableRowsUpdated(pr.pridx, pr.pridx);
+                updateStartStopText();
             }
 
             ////////// Update Host Statistics
@@ -322,6 +356,8 @@ class Spy implements LCMSubscriber
                 pr.cmdline = p.cmdline;
                 pr.host = p.host;
                 pr.name = p.name;
+                pr.cmdRunning = (p.running ? RunStatus.RUNNING :
+                                 RunStatus.STOPPED);
                 processTableModel.fireTableRowsUpdated(pr.pridx, pr.pridx);
             }
         }
@@ -346,7 +382,7 @@ class Spy implements LCMSubscriber
 
     class ProcessTableModel extends AbstractTableModel
     {
-        String columnNames[] = { "ProcID", "Command", "Name", "Host", "Status" };
+        String columnNames[] = { "ProcID", "Name", "Command", "Host", "Daemon" , "Controller" };
 
         public int getColumnCount()
         {
@@ -371,9 +407,9 @@ class Spy implements LCMSubscriber
                 case 0:
                     return pr.procid;
                 case 1:
-                    return pr.cmdline;
-                case 2:
                     return pr.name;
+                case 2:
+                    return pr.cmdline;
                 case 3:
                     return pr.host;
                 case 4:
@@ -382,6 +418,15 @@ class Spy implements LCMSubscriber
                     else {
                         int exitCode = (pr.lastStatus != null) ? pr.lastStatus.last_exit_code : 0;
                         return pr.lastStatus.running ? "Running" : "Stopped ("+exitCode+")";
+                    }
+                case 5:
+                    switch(pr.cmdRunning) {
+                        case RUNNING:
+                            return "Running";
+                        case STOPPED:
+                            return "Stopped";
+                        default:
+                            return "Unknown";
                     }
             }
 
@@ -424,10 +469,33 @@ class Spy implements LCMSubscriber
         }
     }
 
-    synchronized void clear()
+    synchronized void clearSelected()
+    {
+        int []rows = proctable.getSelectedRows();
+        for (int i = 0; i < rows.length; i++) {
+            rows[i] = proctable.convertRowIndexToModel(rows[i]);
+            processes.get(rows[i]).clearOutputPane();
+        }
+        updateTableSelection();
+    }
+
+    synchronized void clearAll()
+    {
+        for (ProcRecordG rec : processes)
+            rec.clearOutputPane();
+
+        // insert blank line on summary output pane
+        outputSummary.appendError("\n");
+
+        updateTableSelection();
+    }
+
+    synchronized void reset()
     {
         // XXX need to fire some events here...
         int removedProc  = processes.size();
+        if (removedProc == 0)
+            return;
         processes.clear();
         processesMap.clear();
 
@@ -435,24 +503,26 @@ class Spy implements LCMSubscriber
         hosts.clear();
 
         processTableModel.fireTableRowsDeleted(0,removedProc - 1);
-        hostTableModel.fireTableRowsDeleted(0,removedHost - 1);
+        if (removedHost > 0)
+            hostTableModel.fireTableRowsDeleted(0,removedHost - 1);
     }
 
     synchronized ProcRecordG ensureProcRecord(int procid)
     {
         ProcRecordG pr = processesMap.get(procid);
-        if(pr != null)
+        if (pr != null)
             return pr;
 
         // otherwise, we've got some data to create and fill in
-
         pr = new ProcRecordG();
         pr.procid = procid;
         pr.cmdline = "???";
         pr.host = "???";
         pr.name = "???";
         pr.pridx = processes.size();
+        pr.cmdRunning = RunStatus.UNKNOWN;
 
+        // Add process to relevant structures
         processes.add(pr);
         processesMap.put(procid, pr);
         processTableModel.fireTableRowsInserted(processes.size() - 1,
@@ -479,37 +549,75 @@ class Spy implements LCMSubscriber
      * This method should ideally be called whenever the GUI state of
      * running is changed for a process in row 'row'
      */
-    void updateStartStopText(int row)
+    void updateStartStopText()
     {
         if (proc == null)
             return;
 
-        if (row < 0) {
-            startStopButton.setText("*");
-            startStopButton.setEnabled(false);
-            return;
-        }
+        // check all selected rows
+        int []rows = proctable.getSelectedRows();
+        int numRunning = 0;
+        int numStopped = 0;
 
-        int row2 = proctable.convertRowIndexToModel(row);
-        int procid  = processes.get(row2).procid;
-        if (proc.getRunStatus(procid))
-            startStopButton.setText("Stop");
-        else
-            startStopButton.setText("Start");
-        startStopButton.setEnabled(true);
+        for (int i = 0; i < rows.length; i++) {
+            int procid =  processes.get(proctable.convertRowIndexToModel(rows[i])).procid;
+            if (proc.getRunStatus(procid))
+                numRunning++;
+            else
+                numStopped++;
+        }
+        // if all selected processes are running then disable setRunning button
+        startSelectedButton.setEnabled(numRunning < rows.length);
+
+        // if all selected processes are stopped then disable setStopped button
+        stopSelectedButton.setEnabled(numStopped < rows.length);
     }
+
+
+    /** Handle scroll events for tabPane **/
+    public void adjustmentValueChanged(AdjustmentEvent e)
+    {
+        if (scrollToEnd) {
+            JScrollBar jsb = ((JScrollPane)tabPane.getSelectedComponent()).getVerticalScrollBar();
+            jsb.setValue(jsb.getMaximum());
+        }
+    }
+
+    public static enum RunStatus {RUNNING, STOPPED, UNKNOWN};
 
     class ProcRecordG extends ProcRecord
     {
         ProcGUIDocument output;
+        JScrollPane outputPane;   // create output pane once and toggle showing in tab
         int pridx;
 
         procman_status_t lastStatus;
         long lastStatusUtime;
 
+
+        RunStatus cmdRunning;   // commanded running state from controller (different from status)
+
+        // was process running on last status message.  Used to handle exit code = 0
+        boolean daemonIsRunning;
+
         ProcRecordG()
         {
             output = new ProcGUIDocument();
+
+            // create output scroll pane once
+            JTextPane text = new JTextPane();
+            text.setEditable(false);
+            text.setDocument(output);
+
+            outputPane = new JScrollPane(text);
+            outputPane.getVerticalScrollBar().addAdjustmentListener(Spy.this);
+        }
+
+        void clearOutputPane()
+        {
+            output = new ProcGUIDocument();
+
+            ((JTextPane)outputPane.getViewport().getView()).setDocument(output);
         }
     }
 
