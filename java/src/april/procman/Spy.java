@@ -30,6 +30,11 @@ import april.util.*;
  */
 class Spy implements LCMSubscriber, AdjustmentListener
 {
+    public static int MIN_H_BOTTOM = 300;
+    public static int MIN_H_TOP = 100;
+    public static int MIN_WIDTH = 600;
+
+
     public static final int WIN_WIDTH = 1024;
     public static final int WIN_HEIGHT = 800;
     public static final int HOST_WIDTH = 200;
@@ -206,11 +211,10 @@ class Spy implements LCMSubscriber, AdjustmentListener
         tabPane = new JTabbedPane();
 
         JSplitPane textJsp = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, textErrorScroll, tabPane);
+        textJsp.setDividerLocation(500); // Size must get set before jf.add()
         JSplitPane mainJsp = new JSplitPane(JSplitPane.VERTICAL_SPLIT, jp, textJsp);
 
-        int MIN_H_BOTTOM = 300;
-        int MIN_H_TOP = 100;
-        int MIN_WIDTH = 600;
+        mainJsp.setDividerLocation(sizeTopPane); // Size must get set before jf.add()
 
         jp.setMinimumSize(new Dimension(MIN_WIDTH, MIN_H_TOP));
         textErrorScroll.setMinimumSize(new Dimension(MIN_WIDTH / 2, MIN_H_BOTTOM));
@@ -230,8 +234,6 @@ class Spy implements LCMSubscriber, AdjustmentListener
         sizeTopPane += buttonPanel.getHeight();
         sizeTopPane = Math.min(sizeTopPane, WIN_HEIGHT - MIN_H_BOTTOM);
 
-        textJsp.setDividerLocation(500);
-        mainJsp.setDividerLocation(sizeTopPane);
 
         Action deselect = new AbstractAction() {
                 public void actionPerformed(ActionEvent e) {
