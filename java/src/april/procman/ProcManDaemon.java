@@ -82,13 +82,13 @@ public class ProcManDaemon implements Runnable
                 // when process ends.
                 String filename = "/tmp/procman_proc"+procid+".log";
                 try {
-                    BufferedWriter fouts = new BufferedWriter(new FileWriter(filename));
-                    stdoutReader = new ReaderThread(this, process.getInputStream(), 0, fouts);
+                    SmartWriter sw = new SmartWriter(new BufferedWriter(new FileWriter(filename)),2);
+                    stdoutReader = new ReaderThread(this, process.getInputStream(), 0, sw);
                     stdoutReader.start();
-                    stderrReader = new ReaderThread(this, process.getErrorStream(), 1, fouts);
+                    stderrReader = new ReaderThread(this, process.getErrorStream(), 1, sw);
                     stderrReader.start();
                 } catch (IOException ex) {
-                    System.out.println("WRN: "+ex);
+                    System.out.println("WRN: start failed "+ex);
                 }
             }
             startedOnce = true;
@@ -327,20 +327,40 @@ public class ProcManDaemon implements Runnable
         }
     }
 
+    static class SmartWriter
+    {
+        private int count;
+        public Writer wout;
+
+        SmartWriter(Writer wout, int count)
+        {
+            this.count = count;
+            this.wout = wout;
+        }
+
+        synchronized void close() throws IOException
+        {
+            count--;
+            if (count == 0) {
+                wout.close();
+            }
+        }
+    }
+
     ////////////////////////////////////////////////////////////////
     class ReaderThread extends Thread
     {
         ProcRecordD     pr;
         BufferedReader ins;
         int            stream;
-        BufferedWriter     fouts;
-
-        ReaderThread(ProcRecordD pr, InputStream _ins, int stream, BufferedWriter _fouts)
+        SmartWriter     sw;
+        Boolean streamClosed;
+        ReaderThread(ProcRecordD pr, InputStream _ins, int stream, SmartWriter _sw)
         {
             this.pr = pr;
             this.ins = new BufferedReader(new InputStreamReader(_ins));
             this.stream = stream;
-            this.fouts = _fouts;
+            this.sw = _sw;
         }
 
         public void run()
@@ -372,9 +392,9 @@ public class ProcManDaemon implements Runnable
             }
 
             try {
-                fouts.close();
+                sw.close();
             } catch (IOException ex) {
-                System.out.println("WRN: "+ex);
+                System.out.println("WRN: Close failed "+ex);
             }
         }
 
@@ -393,12 +413,12 @@ public class ProcManDaemon implements Runnable
         public void writeFile(String s)
         {
             try {
-                synchronized(fouts) {
-                    fouts.write(s+"\n");
-                    fouts.flush();
+                synchronized(sw.wout) {
+                    sw.wout.write(s+"\n");
+                    sw.wout.flush();
                 }
             } catch (IOException ex) {
-                System.out.println("WRN: "+ex);
+                System.out.println("WRN failed to writeFile ("+stream+"): "+ex);
             }
         }
     }
