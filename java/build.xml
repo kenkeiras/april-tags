@@ -52,7 +52,7 @@
   </target>
 
   <!-- Build Jar -->
-  <target name="build-jar">
+  <target name="build-jar" depends="generate-lcmtypes,build-java">
     <mkdir dir="build"/>
     <jar destfile="april.jar" compress="false" update="true">
 
