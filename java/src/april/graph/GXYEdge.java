@@ -115,7 +115,7 @@ public class GXYEdge extends GEdge
         if (lin == null) {
             lin = new Linearization();
             lin.J.add(new double[2][3]);
-            lin.J.add(new double[2][3]);
+            lin.J.add(new double[2][2]);
         }
 
         GNode gna = g.nodes.get(nodes[0]);
@@ -123,10 +123,11 @@ public class GXYEdge extends GEdge
 
         double xa = gna.state[0], ya = gna.state[1], ta = 0;
         double xb = gnb.state[0], yb = gnb.state[1], tb = 0;
-        double sa = Math.sin(ta), ca = Math.cos(ta);
 
         if (gna instanceof GXYTNode)
             ta = gna.state[2];
+
+        double sa = Math.sin(ta), ca = Math.cos(ta);
 
         // Jacobian of the constraint WRT state a
         if (true) {
