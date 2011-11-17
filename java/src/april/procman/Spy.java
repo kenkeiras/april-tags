@@ -211,10 +211,8 @@ class Spy implements LCMSubscriber, AdjustmentListener
         tabPane = new JTabbedPane();
 
         JSplitPane textJsp = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, textErrorScroll, tabPane);
-        textJsp.setDividerLocation(500); // Size must get set before jf.add()
-        JSplitPane mainJsp = new JSplitPane(JSplitPane.VERTICAL_SPLIT, jp, textJsp);
 
-        mainJsp.setDividerLocation(sizeTopPane); // Size must get set before jf.add()
+        JSplitPane mainJsp = new JSplitPane(JSplitPane.VERTICAL_SPLIT, jp, textJsp);
 
         jp.setMinimumSize(new Dimension(MIN_WIDTH, MIN_H_TOP));
         textErrorScroll.setMinimumSize(new Dimension(MIN_WIDTH / 2, MIN_H_BOTTOM));
@@ -231,8 +229,12 @@ class Spy implements LCMSubscriber, AdjustmentListener
         jf.setSize(WIN_WIDTH, WIN_HEIGHT);
         jf.setVisible(true);
 
+
         sizeTopPane += buttonPanel.getHeight();
         sizeTopPane = Math.min(sizeTopPane, WIN_HEIGHT - MIN_H_BOTTOM);
+
+        textJsp.setDividerLocation(500); // Size must get set after setVisible(true)
+        mainJsp.setDividerLocation(sizeTopPane);
 
 
         Action deselect = new AbstractAction() {
