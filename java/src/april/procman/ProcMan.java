@@ -154,7 +154,7 @@ public class ProcMan// implements Runnable
         pr.autoRestart = restart;
         pr.restartDelayMS = restartDelay;
         pr.running = autorun;
-        pr.runningOnDaemon = false;
+        pr.runningOnDaemon = true;
 
         if (verbose)
             System.out.printf("Adding new proc: id=%d host=%s name=%s cmd=%s"+
@@ -239,9 +239,10 @@ public class ProcMan// implements Runnable
             // If process returned with exit_code = 0 AND this is
             // a privileged module, then set send status as running=false
             if (!ps.running && ps.last_exit_code == 0)
-                if (pr.running) // If record is wrong
+                if (pr.runningOnDaemon) // If last time we heard proc was running
                     pr.running = false;
 
+            // for posterity
             pr.runningOnDaemon = ps.running;
         }
     }
