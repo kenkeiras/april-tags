@@ -239,8 +239,8 @@ public class ProcMan// implements Runnable
             // If process returned with exit_code = 0 AND this is
             // a privileged module, then set send status as running=false
             if (!ps.running && ps.last_exit_code == 0)
-                if (pr.runningOnDaemon && getRunStatus(ps.procid))
-                    setRunStatus(pr.procid, false);
+                if (pr.running) // If record is wrong
+                    pr.running = false;
 
             pr.runningOnDaemon = ps.running;
         }
