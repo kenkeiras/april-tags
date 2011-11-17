@@ -55,11 +55,11 @@ public class ColorUtil
     }
 
     /**
-     * Converts a color to its String representation for VisText and
-     * HTML in the #RRGGBBAA format
+     * Converts a color to its hexadecimal string representation for VzText and
+     * HTML, e.g. #RRGGBBAA
      * @param Color
      */
-    public static String toHTMLString(Color c)
+    public static String toHexString(Color c)
     {
         // Either one or two characters long
         String r = Integer.toHexString(c.getRed());
@@ -80,11 +80,11 @@ public class ColorUtil
     }
 
     /**
-     * Converts a color to its String representation for VisText and
-     * HTML in the #RRGGBBAA format
+     * Converts a color to its hexadecimal string representation for VzText and
+     * HTML, e.g. #RRGGBBAA
      * @param int color in aarrggbb format (as from getRGB())
      */
-    public static String toHTMLString(int color)
+    public static String toHexString(int color)
     {
         // Either one or two characters long
         String r = Integer.toHexString((color >> 16) & 0xFF);

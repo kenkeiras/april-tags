@@ -1,12 +1,15 @@
 package april.vis;
 
-import java.awt.*;
+import java.util.List;
+import java.awt.Color;
 import lcm.lcm.*;
 import java.io.*;
 /** Converts scalar values to RGB colors by interpolating from a
- * user-provided look-up table. Implements a colorizer by looking at
- * only the z component. **/
-public class ColorMapper implements Colorizer, VisSerializable
+ *  user-provided look-up table.
+ *  Creates a VisColorData VBO by taking a set of data, and an index in that data to map:
+ *     ColorMapper.makeJet(ymin,ymax).makeColorData(data, 1);
+ */
+public class ColorMapper implements VisSerializable
 {
     /** Minimum/maximum value for mapped range (will be drawn opaquely). **/
     double minval;
@@ -46,14 +49,26 @@ public class ColorMapper implements Colorizer, VisSerializable
         return true;
     }
 
-    public static ColorMapper makeGray(double min, double max) {
+    public VisColorData makeColorData(List<double[]> data, int color_index)
+    {
+        int cols[] = new int[data.size()];
+
+        int idx = 0;
+        for (double[] d: data)
+            cols[idx++]=map(d[color_index]);
+        return new VisColorData(cols);
+    }
+
+    public static ColorMapper makeGray(double min, double max)
+    {
         return new ColorMapper(new int[] {0x000000,
                                           0xffffff},
             min,
             max);
     }
 
-    public static ColorMapper makeJet(double min, double max) {
+    public static ColorMapper makeJet(double min, double max)
+    {
 
         return new ColorMapper(new int[] {0x000000,
                                           0x0000ff,
@@ -65,7 +80,8 @@ public class ColorMapper implements Colorizer, VisSerializable
             max);
     }
 
-    public static ColorMapper makeJetWhite(double min, double max) {
+    public static ColorMapper makeJetWhite(double min, double max)
+    {
 
         return new ColorMapper(new int[] {0xffffff,
                                           0x0000ff,
@@ -82,11 +98,6 @@ public class ColorMapper implements Colorizer, VisSerializable
     {
         int v = map(vin);
         return new Color((v>>16)&0xff, (v>>8)&0xff, (v>>0)&0xff);
-    }
-
-    public int colorize(double p[])
-    {
-        return map(p[2]);
     }
 
     public int map(double v)
@@ -126,11 +137,11 @@ public class ColorMapper implements Colorizer, VisSerializable
     }
 
     // Serialization
-    public ColorMapper()
+    public ColorMapper(ObjectReader none)
     {
     }
 
-    public void serialize(LCMDataOutputStream out) throws IOException
+    public void writeObject(ObjectWriter out) throws IOException
     {
         out.writeDouble(minval);
         out.writeDouble(maxval);
@@ -143,7 +154,7 @@ public class ColorMapper implements Colorizer, VisSerializable
 
     }
 
-    public void unserialize(LCMDataInputStream in) throws IOException
+    public void readObject(ObjectReader in) throws IOException
     {
         minval = in.readDouble();
         maxval = in.readDouble();

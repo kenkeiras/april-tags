@@ -21,33 +21,35 @@ import april.lcmtypes.*;
 import april.jmat.*;
 import april.vis.*;
 
-import javax.media.opengl.*;
-import javax.media.opengl.glu.*;
-import com.sun.opengl.util.*;
-
 /** Views velodyne data. **/
-public class VelodyneViewer implements LCMSubscriber
+public class VelodyneViewer implements ViewObject, LCMSubscriber
 {
     Config                         config;
     double                         spos[], squat[];
     PoseTracker                    pt         = PoseTracker.getSingleton();
     String                         channel;
-    VisCanvas                      vc;
+    VisLayer                       vl;
+    VisWorld                       vw;
     LCM                            lcm        = LCM.getSingleton();
     VelodyneCalibration            calib      = VelodyneCalibration.makeMITCalibration();
     int                            lastbucket = 0;
-    ArrayList<ArrayList<double[]>> points;
+    ArrayList<ArrayList<double[]>> points = new ArrayList<ArrayList<double[]>>();
+    ArrayList<VzPoints> visPoints = new ArrayList<VzPoints>();
 
-    public VelodyneViewer(Config config, String channel, VisCanvas vc)
+    public VelodyneViewer(Viewer viewer, Config config, String channel)
     {
         this.channel = channel;
-        this.vc = vc;
+        this.vw = viewer.getVisWorld();
+        this.vl = viewer.getVisLayer();
         // sensor position in robot frame
         this.spos = ConfigUtil.getPosition(config, channel);
         this.squat = ConfigUtil.getQuaternion(config, channel);
-        points = new ArrayList<ArrayList<double[]>>();
-        for (int i = 0; i < 360; i++)
+
+        for (int i = 0; i < 360; i++) {
             points.add(new ArrayList<double[]>());
+            visPoints.add(null);
+        }
+
         lcm.subscribe(channel, this);
     }
 
@@ -70,73 +72,43 @@ public class VelodyneViewer implements LCMSubscriber
             pose_t pose = pt.get(vdata.utime);
             if (pose == null)
                 return;
-            VisWorld.Buffer vb = vc.getWorld().getBuffer(this.channel);
+            VisWorld.Buffer vb = vw.getBuffer(this.channel);
             Velodyne v = new Velodyne(calib, vdata.data);
             Velodyne.Sample vs = new Velodyne.Sample();
             // ArrayList<double[]> points = new ArrayList<double[]>();
             double B2G[][] = LinAlg.quatPosToMatrix(pose.orientation, pose.pos);
             double S2B[][] = LinAlg.quatPosToMatrix(squat, spos);
             double T[][] = LinAlg.matrixAB(B2G, S2B);
-            synchronized (this)
-            {
-                while (v.next(vs))
-                {
-                    // System.out.printf("%15f\n", vs.ctheta);
-                    int bucket = (int) (vs.ctheta * (360 / (2 * Math.PI)));
-                    if (bucket != lastbucket)
-                    {
-                        points.get(bucket).clear();
-                        lastbucket = bucket;
-                    }
-                    points.get(bucket).add(LinAlg.transform(T, vs.xyz));
-                }
-            }
-            vb.addBuffered(new MyVisObject());
-            vb.switchBuffer();
-        }
-    }
 
-    class MyVisObject implements VisObject
-    {
-        ColorMapper cm = ColorMapper.makeJetWhite(-1, +3);
-
-        public void render(VisContext vc, GL gl, GLU glu)
-        {
-            synchronized (VelodyneViewer.this)
+            // Step 1: Process the points
+            while (v.next(vs))
             {
-                gl.glPointSize(2);
-                gl.glEnableClientState(GL.GL_VERTEX_ARRAY);
-                gl.glEnableClientState(GL.GL_COLOR_ARRAY);
-                for (ArrayList<double[]> ps : points)
+                // System.out.printf("%15f\n", vs.ctheta);
+                int bucket = (int) (vs.ctheta * (360 / (2 * Math.PI)));
+                if (bucket != lastbucket)
                 {
-                    if (ps.size() == 0)
-                        continue;
-                    DoubleBuffer vertbuf = BufferUtil.newDoubleBuffer(3 * ps.size());
-                    DoubleBuffer colorbuf = BufferUtil.newDoubleBuffer(3 * ps.size());
-                    for (int i = 0; i < ps.size(); i++)
-                    {
-                        double p[] = ps.get(i);
-                        vertbuf.put(p[0]);
-                        vertbuf.put(p[1]);
-                        vertbuf.put(p[2]);
-                        int c = cm.map(p[2] - pt.get().pos[2]);
-                        colorbuf.put(((c >> 16) & 0xff) / 255.0);
-                        colorbuf.put(((c >> 8) & 0xff) / 255.0);
-                        colorbuf.put(((c >> 0) & 0xff) / 255.0);
-                    }
-                    vertbuf.rewind();
-                    colorbuf.rewind();
-                    gl.glVertexPointer(3, GL.GL_DOUBLE, 0, vertbuf);
-                    gl.glColorPointer(3, GL.GL_DOUBLE, 0, colorbuf);
-                    gl.glDrawArrays(GL.GL_POINTS, 0, ps.size());
-                    // gl.glFlush();
+                    points.get(bucket).clear();
+                    lastbucket = bucket;
                 }
-                gl.glDisableClientState(GL.GL_VERTEX_ARRAY);
-                gl.glDisableClientState(GL.GL_COLOR_ARRAY);
-                /*
-                 * gl.glColor3f(1, 1, 0); gl.glPointSize(2); gl.glBegin(GL.GL_POINTS); for (ArrayList<double[]> ps : points) { for (double p[] : ps) { VisUtil.setColor(gl, cm.mapColor(p[2] - pt.get().pos[2])); gl.glVertex3dv(p, 0); } } gl.glEnd();
-                 */
+
+                visPoints.set(bucket, null);
+                points.get(bucket).add(LinAlg.transform(T, vs.xyz));
+
             }
+
+            // Step 2: Make VisColorData and VisVertexData for any bucket that has changed
+
+            ColorMapper cm = ColorMapper.makeJetWhite(-1, +3);
+            for (int i = 0; i < visPoints.size(); i++) {
+                if (visPoints.get(i) == null) {
+                    VzPoints  vp = new VzPoints(new VisVertexData(points.get(i)),
+                                                  cm.makeColorData(points.get(i),2),1);
+
+                    visPoints.set(i,vp);
+                }
+                vb.addBack(visPoints.get(i));
+            }
+            vb.swap();
         }
     }
 }

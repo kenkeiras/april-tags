@@ -22,7 +22,8 @@ public class TagTransmit implements ParameterListener
 {
     JFrame jf;
     VisWorld  vw = new VisWorld();
-    VisCanvas vc = new VisCanvas(vw);
+    VisLayer vl = new VisLayer(vw);
+    VisCanvas vc = new VisCanvas(vl);
 
     ImageSource is;
 
@@ -96,7 +97,7 @@ public class TagTransmit implements ParameterListener
         jf.setSize(800,600);
         jf.setVisible(true);
 
-        vc.getViewManager().viewGoal.fit2D(new double[] {0,0}, new double[] { 752, 480});
+        vl.cameraManager.fit2D(new double[] {0,0}, new double[] { 752, 480}, true);
         pg.addListener(this);
 
         new RunThread().start();
@@ -150,20 +151,25 @@ public class TagTransmit implements ParameterListener
                 double dt = tic.toc();
 
                 if (detector.debugInput!=null)
-                    vbInput.addBuffered(new VisDepthTest(false, new VisLighting(false, new VisImage(detector.debugInput))));
-                vbInput.switchBuffer();
+                    vbInput.addBack(new VisDepthTest(false, new VisLighting(false, new VisChain(LinAlg.scale(1,-1,1),
+                                                                                                new VzImage(detector.debugInput)))));
+                vbInput.swap();
 
                 if (detector.debugSegmentation!=null)
-                    vbSegmentation.addBuffered(new VisLighting(false, new VisImage(detector.debugSegmentation)));
-                vbSegmentation.switchBuffer();
+                    vbInput.addBack(new VisDepthTest(false, new VisLighting(false, new VisChain(LinAlg.scale(1,-1,1),
+                                                                                                new VzImage(detector.debugSegmentation)))));
+                vbSegmentation.swap();
 
-                vbOriginal.addBuffered(new VisDepthTest(false, new VisLighting(false, new VisImage(im))));
-                vbOriginal.switchBuffer();
 
-                vbClock.addBuffered(new VisText(VisText.ANCHOR.BOTTOM_RIGHT,
-                                                VisText.JUSTIFICATION.RIGHT,
-                                                String.format("<<blue>>%8.2f ms", dt*1000)));
-                vbClock.switchBuffer();
+                vbOriginal.addBack(new VisDepthTest(false, new VisLighting(false, new VisChain(LinAlg.scale(1,-1,1),
+                                                                                               new VzImage(im)))));
+                vbOriginal.swap();
+
+
+                vbClock.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.BOTTOM_RIGHT,
+                                                        new VzText(VzText.ANCHOR.BOTTOM_RIGHT,
+                                                                    String.format("<<blue>>%8.2f ms", dt*1000))));
+                vbClock.swap();
 
                 for (TagDetection d : detections) {
                     double p0[] = d.interpolate(-1,-1);
@@ -171,17 +177,22 @@ public class TagTransmit implements ParameterListener
                     double p2[] = d.interpolate(1,1);
                     double p3[] = d.interpolate(-1,1);
 
-                    vbDetections.addBuffered(new VisChain(LinAlg.translate(0, im.getHeight(), 0),
-                                                          LinAlg.scale(1, -1, 1),
-                                                          new VisText(d.cxy, VisText.ANCHOR.CENTER,
-                                                                      String.format("<<center,blue>>id %3d\n(err=%d, rot=%d)\n", d.id, d.hammingDistance, d.rotation)),
-                                                          new VisData(new VisDataLineStyle(Color.blue, 4), p0, p1, p2, p3, p0),
-                                                          new VisData(new VisDataLineStyle(Color.green, 4), p0, p1), // x axis
-                                                          new VisData(new VisDataLineStyle(Color.red, 4), p0, p3))); // y axis
+
+                    vbDetections.addBack(new VisChain(LinAlg.translate(0, im.getHeight(), 0),
+                                                      LinAlg.scale(1, -1, 1),
+                                                      new VisChain(LinAlg.translate(d.cxy[0],d.cxy[1],0),
+                                                                   new VzText(VzText.ANCHOR.CENTER,
+                                                                               String.format("<<center,blue>>id %3d\n(err=%d)\n", d.id, d.hammingDistance))),
+                                                      new VzLines(new VisVertexData(p0, p1, p2, p3, p0),
+                                                                   new VisConstantColor(Color.blue),4, VzLines.TYPE.LINE_STRIP),
+                                                      new VzLines(new VisVertexData(p0,p1),
+                                                                   new VisConstantColor(Color.green),4, VzLines.TYPE.LINE_STRIP), // x axis
+                                                      new VzLines(new VisVertexData(p0, p3),
+                                                                   new VisConstantColor(Color.red),4, VzLines.TYPE.LINE_STRIP))); // y axis
 
                     System.out.printf("id %3d err %3d\n", d.id, d.hammingDistance);
                 }
-                vbDetections.switchBuffer();
+                vbDetections.swap();
 
                 tag_detection_list_t dlist = new tag_detection_list_t();
                 dlist.utime = System.nanoTime()/1000;

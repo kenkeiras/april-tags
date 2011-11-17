@@ -1,369 +1,305 @@
 package april.vis;
 
 import java.awt.*;
-import java.awt.geom.*;
 import java.awt.event.*;
 import java.awt.image.*;
 import java.io.*;
 import java.util.*;
 import java.util.zip.*;
-import java.nio.channels.*;
-import java.nio.*;
-
+import javax.swing.*;
 import javax.imageio.*;
 
-import javax.media.opengl.*;
-import javax.media.opengl.glu.*;
-import javax.swing.*;
-
-import com.sun.opengl.util.*;
-
-import april.jmat.geom.*;
 import april.jmat.*;
-import april.image.*;
-import april.util.*;
+import april.jmat.geom.*;
 
-/** A JComponent allowing a view into a VisWorld using JOGL **/
-public class VisCanvas extends JPanel implements VisWorldListener,
-                                      MouseMotionListener,
-                                      MouseListener,
-                                      MouseWheelListener,
-                                      KeyListener,
-                                      VisContext
+import lcm.lcm.*;
+
+/** A VisCanvas coordinates the rendering and event handling for a
+ * collection of VisLayers in a single JComponent.
+ **/
+public class VisCanvas extends JComponent implements VisSerializable
 {
-    VisWorld       world;
-    VisViewManager viewManager;
-    VisView        thisView; // the view currently being rendered
-    VisView        lastView; // the last fully drawn view
-    GLAutoDrawable canvas;
-    public VisCanvasDefaultEventHandler defaultEventHandler;
+    GLManager glManager = GLManager.getSingleton();
+    BufferedImage im = null;
+    RedrawTask redrawTask = new RedrawTask();
 
-    VisCanvasEventHandler pickingHandler, hoveringHandler;
+    int frameCounter;
 
-    MouseEvent lastMousePosition;
+    long canvasId;
 
-    VisCanvasPopupMenu popupMenu;
+    // protected by synchronizing on 'layers'
+    ArrayList<VisLayer> layers = new ArrayList<VisLayer>();
+    VisWorld privateWorld;
+    VisLayer privateLayer;
 
-    java.util.Timer timer = new java.util.Timer();
+    EventHandler eh = new EventHandler();
 
-    // used to determine whether we need to redraw the status line
-    String lastStatusLine = "";
+    RenderInfo lastRenderInfo;
 
-    ArrayList<VisCanvasEventHandler> eventHandlers =
-        new ArrayList<VisCanvasEventHandler>();
+    public int popupFrameRates[] = new int[] { 1, 5, 10, 20, 30, 60, 100 };
+    int targetFrameRate = 100;
 
-    HashMap<VisCanvasEventHandler, Integer> eventHandlerPriorities =
-        new HashMap<VisCanvasEventHandler, Integer>();
+    // a list of open movies.
+    ArrayList<Movie> movies = new ArrayList<Movie>();
+    Movie popupMovie;
 
-    long last_draw_mtime;
-    boolean redrawPending = false;
+    // time-averaged frame rate (empirically measured), but
+    // initialized with a good guess.
+    double fpsDt = 1.000 / targetFrameRate;
 
-    double targetFPS = 100; // will be overwritten by popup menu
+    JFrame layerBufferManager;
+    LayerBufferPanel layerBufferPanel;
 
-    ArrayList<ImageCaptureObject> imageCaptureObjects = new ArrayList<ImageCaptureObject>();
+    boolean showFPS = false;
 
-    static
+    ArrayList<Listener> listeners = new ArrayList<Listener>();
+
+    public interface Listener
     {
-        JoglLoader.initialize();
+        public void layerAdded(VisCanvas vc, VisLayer vl);
     }
 
-    GZIPOutputStream movieOutputStream;
-    boolean movieAutoFrames;
-    boolean movieMakeFramePending;
-
-    int aaLevel = 0;        // what anti-aliasing level? (0 = off)
-    boolean debug = false;  // look for bugs
-    boolean faster = false; // try to run faster (at the expense of quality)
-
-    public VisCanvas(VisWorld world)
+    public class Movie
     {
-        this.world = world;
-        this.viewManager = new VisViewManager(this);
+        boolean autoframes;
+        GZIPOutputStream outs;
 
-        debug = EnvUtil.getProperty("vis.debug", false);
-        aaLevel = EnvUtil.getProperty("vis.aalevel", aaLevel);
-        faster = EnvUtil.getProperty("vis.faster", faster);
-
-        GLCapabilities capsv[] = new GLCapabilities[] {
-            makeCapabilities(32, true, true, aaLevel),
-            makeCapabilities(24, true, true, aaLevel),
-            makeCapabilities(16, true, true, aaLevel),
-            makeCapabilities(32, true, true, 0),
-            makeCapabilities(24, true, true, 0),
-            makeCapabilities(16, true, true, 0),
-            makeCapabilities(24, false, false, 0),
-            makeCapabilities(16, false, false, 0) };
-
-        if (EnvUtil.getProperty("vis.glcanvas", true))
-            canvas = createGLCanvasWorkaround(capsv);
-        else
-            canvas = new GLJPanel(capsv[0]); // this doesn't seem to be nearly as buggy as GLCanvas
-
-        canvas.addGLEventListener(new MyGLEventListener());
-
-        setBackground(Color.white);
-
-        setLayout(new BorderLayout());
-        add((Component) canvas, BorderLayout.CENTER);
-
-        world.addListener(this);
-
-        canvas.addMouseMotionListener(this);
-        canvas.addMouseListener(this);
-        canvas.addMouseWheelListener(this);
-        canvas.addKeyListener(this);
-
-        // allow us to capture tab and shift-tab events, instead of cycling through text fields.
-        ((Component) canvas).setFocusTraversalKeysEnabled(false);
-
-        defaultEventHandler = new VisCanvasDefaultEventHandler(this);
-        addEventHandler(defaultEventHandler, -1);
-
-        popupMenu = new VisCanvasPopupMenu(this);
-
-        if (debug) {
-            System.out.println("VisCanvas: aalevel "+aaLevel+", faster "+faster);
-        }
-    }
-
-    GLCapabilities makeCapabilities(int depthbits, boolean hwaccel, boolean doublebuffered, int aalevel)
-    {
-        GLCapabilities caps = new GLCapabilities();
-        caps.setAlphaBits(8);
-        caps.setRedBits(8);
-        caps.setBlueBits(8);
-        caps.setGreenBits(8);
-        caps.setHardwareAccelerated(hwaccel);
-        caps.setDoubleBuffered(doublebuffered);
-        caps.setDepthBits(depthbits);
-        caps.setSampleBuffers(aalevel > 0);
-        if (aalevel > 0)
-            caps.setNumSamples(aalevel);
-
-        return caps;
-    }
-
-    GLCanvas createGLCanvasWorkaround(GLCapabilities capsv[])
-    {
-        for (GLCapabilities cap : capsv) {
-            try {
-                GLCanvas canvas = new GLCanvas(cap);
-                if (debug)
-                    System.out.println("GLCanvas has accepted: "+cap);
-                return canvas;
-            } catch (Exception ex) {
-                System.out.println("GLCanvas has rejected "+cap);
-            }
-        }
-
-        // last resort
-        return new GLCanvas();
-    }
-
-    class MyCapabilitiesChooser implements GLCapabilitiesChooser
-    {
-        public int chooseCapabilities(GLCapabilities desired, GLCapabilities[] available, int recommended)
+        Movie(GZIPOutputStream outs, boolean autoframes)
         {
-            if (recommended < 0)
-                recommended = 0;
+            this.autoframes = autoframes;
+            this.outs = outs;
+        }
 
-            int best = recommended;
-            double bestscore = 0;
+        synchronized public void addFrame()
+        {
+            drawSync();
+            addFrame(im);
+        }
 
-            for (int i = 0 ; i < available.length; i++) {
-                double thisscore = scoreCaps(available[i]);
-                if (thisscore > bestscore) {
-                    best = i;
-                    bestscore = thisscore;
+        synchronized public void close() throws IOException
+        {
+            synchronized(movies) {
+                movies.remove(this);
+            }
+
+            outs.close();
+        }
+
+        synchronized void addFrame(BufferedImage upsideDownImage)
+        {
+            BufferedImage im = upsideDownImage;
+
+            int width = im.getWidth(), height = im.getHeight();
+
+            int idata[] = ((DataBufferInt) (im.getRaster().getDataBuffer())).getData();
+            byte bdata[] = new byte[width*height*3];
+            int bdatapos = 0;
+
+            for (int y = height-1; y >= 0; y--) {
+                for (int x = 0; x < width; x++) {
+                    int rgb = idata[y*width+x];
+                    bdata[bdatapos++] = (byte) ((rgb>>16)&0xff);
+                    bdata[bdatapos++] = (byte) ((rgb>>8)&0xff);
+                    bdata[bdatapos++] = (byte) ((rgb>>0)&0xff);
                 }
             }
 
-            if (debug)
-                System.out.println("going with capabilities: "+available[best]);
-            return best;
-        }
+            try {
+                String hdr = "";
+                hdr += String.format("# mtime=%d\n", System.currentTimeMillis());
+                hdr += String.format("P6 %d %d %d\n", width, height, 255);
 
-        double scoreCaps(GLCapabilities c)
+                outs.write(hdr.getBytes());
+                outs.write(bdata);
+                outs.flush();
+            } catch (IOException ex) {
+                System.out.println("Error writing movie: "+ex);
+            }
+        }
+    }
+
+    public static class RenderInfo
+    {
+        // The layers, in the order that they were rendered.
+        public ArrayList<VisLayer> layers = new ArrayList<VisLayer>();
+
+        // The position of the layers when they were rendered.
+        public HashMap<VisLayer, int[]> layerPositions = new HashMap<VisLayer, int[]>();
+
+        public HashMap<VisLayer, VisCameraManager.CameraPosition> cameraPositions = new HashMap<VisLayer, VisCameraManager.CameraPosition>();
+    }
+
+    public VisCanvas(VisLayer... layers)
+    {
+        privateWorld = new VisWorld();
+        privateLayer = new VisLayer("VisCanvas Private Layer", privateWorld);
+        privateLayer.drawOrder = Integer.MAX_VALUE;
+        privateLayer.backgroundColor = new Color(0,0,0,0);
+        privateLayer.clearDepth = false;
+        privateLayer.eventHandlers.clear();
+        addLayer(privateLayer);
+
+        canvasId = VisUtil.allocateID();
+
+        addComponentListener(new MyComponentListener());
+
+        addMouseMotionListener(eh);
+        addMouseListener(eh);
+        addMouseWheelListener(eh);
+        addKeyListener(eh);
+
+        setFocusTraversalKeysEnabled(false);
+
+        for (int i = 0; i < layers.length; i++)
+            addLayer(layers[i]);
+
+        new RepaintThread().start();
+    }
+
+    public void addListener(Listener listener)
+    {
+        if (!listeners.contains(listener))
+            listeners.add(listener);
+    }
+
+    public void addLayer(VisLayer layer)
+    {
+        layers.add(layer);
+        for (Listener listener : listeners)
+            listener.layerAdded(this, layer);
+    }
+
+    class RepaintThread extends Thread
+    {
+        public RepaintThread()
         {
-            double score = 0;
-
-            if (c == null)
-                return score;
-
-            if (c.getHardwareAccelerated())
-                score += 100;
-
-            // XXX !
-            if (c.getNumSamples() > 0)
-                score += 100 + c.getNumSamples();
-
-            if (c.getDepthBits() >= 24)
-                score += 200 + c.getDepthBits();
-
-            if (c.getDepthBits() < 24)
-                score += c.getDepthBits();
-
-            score += c.getAlphaBits();
-            //	    System.out.println(c+" "+score);
-
-            return score;
+            setDaemon(true);
         }
-    }
 
-    /** Get the view that will be used for future drawing operations. **/
-    public VisViewManager getViewManager()
-    {
-        return viewManager;
-    }
-
-    /** Get the view that corresponds to the most recently rendered
-     * frame. You should not modify this view.
-     **/
-    public VisView getLastView()
-    {
-        if (lastView == null)
-            return viewManager.getView();
-
-        return lastView;
-    }
-
-    /** Get the view currently being rendered. **/
-    public VisView getRenderingView()
-    {
-        if (thisView == null)
-            return viewManager.getView();
-
-        return thisView;
-    }
-
-    public void setOrthographic(boolean b)
-    {
-        popupMenu.orthoItem.setState(b);
-        popupMenu.orthographic();
-    }
-
-    public void setTargetFPS(double fps)
-    {
-        if (fps > targetFPS)
-            drawNow();
-
-        this.targetFPS = fps;
-    }
-
-    public double getTargetFPS()
-    {
-        return targetFPS;
-    }
-
-    public void worldChanged(VisWorld w)
-    {
-        draw();
-    }
-
-    public VisWorld getWorld()
-    {
-        return world;
-    }
-
-    /** Begin drawing (asynchronously) as soon as possible. **/
-    public synchronized void drawNow()
-    {
-        canvas.repaint();
-        last_draw_mtime = System.currentTimeMillis();
-    }
-
-    /** Schedule a redraw event according to the rendering rate
-     * policy. The redraw will occur asynchronously**/
-    public synchronized void draw()
-    {
-        if (redrawPending)
-            return;
-
-        long now = System.currentTimeMillis();
-        double dt = (now - last_draw_mtime) / 1000.0;
-
-        if (dt > 1.0 / targetFPS) {
-            canvas.repaint();
-            last_draw_mtime = now;
-        } else {
-            redrawPending = true;
-            int ms = (int) ((1.0 / targetFPS - dt) * 1000.0);
-            last_draw_mtime = now+ms;
-
-            timer.schedule(new RedrawTask(), ms);
-        }
-    }
-
-    class RedrawTask extends TimerTask
-    {
         public void run()
         {
-            synchronized(VisCanvas.this) {
-                redrawPending = false;
+            while (true) {
+                try {
+                    Thread.sleep(1000 / targetFrameRate);
+                } catch (InterruptedException ex) {
+                    System.out.println("ex: "+ex);
+                }
+                glManager.add(redrawTask);
             }
-            VisCanvas.this.canvas.repaint();
         }
     }
 
-    protected class MyGLEventListener implements GLEventListener
+    class MyComponentListener extends ComponentAdapter
     {
-        long last_draw_mtime = System.currentTimeMillis();
-        double fps_dt = 0.1;
+        VisObject lastResizeObject = null;
 
-        public void init(GLAutoDrawable drawable)
+        public void componentResized(ComponentEvent e)
         {
+            VisWorld.Buffer vb = privateWorld.getBuffer("VisCanvas dimensions");
+
+            vb.removeTemporary(lastResizeObject);
+
+            lastResizeObject = new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.CENTER_ROUND,
+                                                       new VisDepthTest(false,
+                                                                        new VzText(VzText.ANCHOR.CENTER_ROUND,
+                                                                                    "<<sansserif-12>>"+
+                                                                                    String.format("%d x %d", getWidth(), getHeight()))));
+            vb.addTemporary(lastResizeObject, 0.750);
+
+            draw();
         }
 
-        public void display(GLAutoDrawable drawable)
+        public void componentShown(ComponentEvent e)
         {
-            GL gl = drawable.getGL();
-            GLU glu = new GLU();
+            draw();
+        }
+    }
 
-            if (debug) {
-                gl = new DebugGL(gl);
-                System.out.println("VisCanvas.display");
+    // This task serves as a synchronization barrier, which we use
+    // perform synchronous frame updates.
+    class SyncTask implements GLManager.Task
+    {
+        Object o = new Object();
+
+        public void run()
+        {
+            synchronized(o) {
+                o.notifyAll();
+            }
+        }
+    }
+
+    class RedrawTask implements GLManager.Task
+    {
+        GL gl;
+        int fboId;
+        int fboWidth, fboHeight;
+
+        long lastDrawTime = System.currentTimeMillis();
+
+        public void run()
+        {
+            // GL object must be created from the GLManager thread.
+            if (gl == null) {
+                gl = new GL();
             }
 
-            int viewport[] = new int[4];
+            int width = getWidth();
+            int height = getHeight();
 
-            gl.glGetIntegerv(gl.GL_VIEWPORT, viewport, 0);
+            if (!VisCanvas.this.isVisible() || width==0 || height==0 )
+                return;
 
-            viewManager.viewGoal.viewport = viewport;
-            thisView = viewManager.getView();
+            // XXX Should we only reallocate an FBO if our render size
+            // has gotten bigger? If we do this, we should modify
+            // getFrame() so that we don't read parts of the image
+            // that we don't need.
+            if (fboId <= 0 || fboWidth != width || fboHeight != height) {
+                if (fboId > 0) {
+                    gl.frameBufferDestroy(fboId);
+                    fboId = 0;
+                }
 
-            // reminder: alpha is 4th channel. 1.0=opaque.
-            Color backgroundColor = getBackground();
-            gl.glClearColor(backgroundColor.getRed()/255f,
-                            backgroundColor.getGreen()/255f,
-                            backgroundColor.getBlue()/255f,
-                            1.0f);
+                fboId = gl.frameBufferCreate(width, height);
+                if (fboId < 0) {
+                    System.out.println("Failed to create frame buffer. "+width+"\n");
+                    return;
+                }
+                fboWidth = width;
+                fboHeight = height;
+            }
 
-            gl.glClearDepth(1.0f);
-            gl.glClear(GL.GL_COLOR_BUFFER_BIT | GL.GL_DEPTH_BUFFER_BIT); // |  GL.GL_ACCUM_BUFFER_BIT | GL.GL_STENCIL_BUFFER_BIT);
+            gl.frameBufferBind(fboId);
+
+            gl.gldFrameBegin(canvasId);
+
+            ///////////////////////////////////////////////
+            // Begin GL Rendering
+            int viewport[] = new int[] { 0, 0, getWidth(), getHeight() };
+
+            gl.glViewport(viewport[0], viewport[1], viewport[2], viewport[3]);
 
             gl.glEnable(GL.GL_NORMALIZE);
-
             gl.glEnable(GL.GL_LIGHTING);
+
             gl.glLightModeli(GL.GL_LIGHT_MODEL_TWO_SIDE, GL.GL_TRUE);
             gl.glEnable(GL.GL_COLOR_MATERIAL);
             gl.glColorMaterial(GL.GL_FRONT_AND_BACK, GL.GL_AMBIENT_AND_DIFFUSE);
             gl.glMaterialf(GL.GL_FRONT_AND_BACK, GL.GL_SHININESS, 0);
-            gl.glMaterialfv(GL.GL_FRONT_AND_BACK, GL.GL_SPECULAR, new float[] {.1f, .1f, .1f, .1f}, 0);
+            gl.glMaterialfv(GL.GL_FRONT_AND_BACK, GL.GL_SPECULAR, new float[] {.1f, .1f, .1f, .1f});
 
-            for (int i = 0; i < world.lights.size(); i++) {
-                VisLight light = world.lights.get(i);
-                gl.glLightfv(GL.GL_LIGHT0 + i, GL.GL_POSITION, light.position, 0);
-                gl.glLightfv(GL.GL_LIGHT0 + i, GL.GL_AMBIENT, light.ambient, 0);
-                gl.glLightfv(GL.GL_LIGHT0 + i, GL.GL_DIFFUSE, light.diffuse, 0);
-                gl.glLightfv(GL.GL_LIGHT0 + i, GL.GL_SPECULAR, light.specular, 0);
-
-                gl.glEnable(GL.GL_LIGHT0 + i);
-            }
-
+            gl.glEnable(GL.GL_DEPTH_TEST);
             gl.glDepthFunc(GL.GL_LEQUAL);
+
             gl.glEnable(GL.GL_BLEND);
             gl.glBlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
-            gl.glEnable(GL.GL_DEPTH_TEST);
+
+            // don't do z-buffer updates for fully transparent
+            // pixels. VisFont relies on this, because texture atlas
+            // for individual characters tend to overlap when
+            // rendering.
+            gl.glEnable(GL.GL_ALPHA_TEST);
+            gl.glAlphaFunc(GL.GL_GREATER, 0);
 
             gl.glPolygonMode(GL.GL_FRONT, GL.GL_FILL);
             gl.glPolygonMode(GL.GL_BACK, GL.GL_FILL);
@@ -372,621 +308,690 @@ public class VisCanvas extends JPanel implements VisWorldListener,
 
             gl.glShadeModel(GL.GL_SMOOTH);
 
-            if (faster) {
-                gl.glDisable(GL.GL_POINT_SMOOTH);
-                gl.glDisable(GL.GL_LINE_SMOOTH);
-            } else {
-                gl.glEnable(GL.GL_POINT_SMOOTH);
-                gl.glHint(GL.GL_POINT_SMOOTH_HINT, GL.GL_NICEST);
+/*
+  gl.glEnable(GL.GL_POINT_SMOOTH);
+  gl.glHint(GL.GL_POINT_SMOOTH_HINT, GL.GL_NICEST);
+*/
 
-                gl.glEnable(GL.GL_LINE_SMOOTH);
-                gl.glHint(GL.GL_LINE_SMOOTH_HINT, GL.GL_NICEST);
+            // VzGrid benefits tremendously from this
+            gl.glEnable(GL.GL_LINE_SMOOTH);
+            gl.glHint(GL.GL_LINE_SMOOTH_HINT, GL.GL_NICEST);
+/*
+  gl.glEnable(GL.GL_POLYGON_SMOOTH);
+  gl.glHint(GL.GL_POLYGON_SMOOTH_HINT, GL.GL_NICEST);
+*/
+
+            gl.glEnable(GL.GL_SCISSOR_TEST);
+
+            long mtime = System.currentTimeMillis();
+
+            // rinfo records where we rendered everything, which we'll
+            // need in order to properly handle events.
+            RenderInfo rinfo = new RenderInfo();
+            synchronized(layers) {
+                rinfo.layers.addAll(layers);
             }
-
-            /////////// PROJECTION MATRIX ////////////////
-            gl.glMatrixMode(gl.GL_PROJECTION);
-            gl.glLoadIdentity();
-            gl.glMultMatrixd(thisView.getProjectionMatrix().getColumnPackedCopy(), 0);
-
-            /////////// MODEL MATRIX ////////////////
-            gl.glMatrixMode(gl.GL_MODELVIEW);
-            gl.glLoadIdentity();
-            gl.glMultMatrixd(thisView.getModelViewMatrix().getColumnPackedCopy(), 0);
-
-            if (aaLevel > 0)
-                gl.glEnable(GL.GL_MULTISAMPLE);
-
-            //////// hover
-            if (pickingHandler == null && lastMousePosition != null) {
-
-                GRay3D ray = thisView.computeRay(lastMousePosition.getX(), lastMousePosition.getY());
-
-                double bestDistance = Double.MAX_VALUE;
-                VisCanvasEventHandler bestHandler = null;
-
-                synchronized(eventHandlers) {
-                    for (VisCanvasEventHandler eh : eventHandlers) {
-                        double dist = eh.hoverQuery(VisCanvas.this, ray);
-                        if (dist < 0)
-                            continue;
-
-                        if (dist < bestDistance) {
-                            bestDistance = dist;
-                            bestHandler = eh;
-                        }
-                    }
-
-                    hoveringHandler = bestHandler;
-                    for (VisCanvasEventHandler eh : eventHandlers)
-                        eh.hoverNotify(eh == hoveringHandler);
-                }
-            }
-
-            /////// Update status text
-            String fpsLine = "";
-            if (popupMenu.fpsItem.isSelected()) {
-                fpsLine = String.format("%4.1f FPS", 1.0/fps_dt);
-            }
-
-            String pickingLine = "";
-            ///////
-            if (pickingHandler != null)
-                pickingLine = "[ "+pickingHandler.getName()+" ]";
-
-
-            String newStatusLine = fpsLine + "\n" +
-                pickingLine + "\n";
-
-            if (newStatusLine.trim().length()==0)
-                newStatusLine = "";
 
             if (true) {
-                VisWorld.Buffer vb = world.getBuffer("__VISCANVAS_STATUS:" + VisCanvas.this.hashCode());
+                VisWorld.Buffer vb = privateWorld.getBuffer("FPS Rate");
 
-                if (!newStatusLine.equals(lastStatusLine) || fpsLine.length()>0) {
-                    lastStatusLine = newStatusLine;
-                    vb.addBuffered(new VisContextSpecific(VisCanvas.this,
-                                                          new VisText(VisText.ANCHOR.BOTTOM_LEFT,
-                                                                      newStatusLine)));
-                }
-
-                if (popupMenu.showLookAt.isSelected()) {
-                    vb.addBuffered(new VisContextSpecific(VisCanvas.this,
-                                                          new VisText(VisText.ANCHOR.BOTTOM_RIGHT,
-                                                                      String.format("eye:    %10f %10f %10f\n" +
-                                                                                    "lookAt: %10f %10f %10f\n" +
-                                                                                    "up:     %10f %10f %10f\n",
-                                                                                    thisView.eye[0], thisView.eye[1], thisView.eye[2],
-                                                                                    thisView.lookAt[0], thisView.lookAt[1], thisView.lookAt[2],
-                                                                                    thisView.up[0], thisView.up[1], thisView.up[2]))));
-                }
-                vb.switchBuffer();
-                vb.setDrawOrder(99);
+                if (showFPS)
+                    vb.addBack(new VisDepthTest(false,
+                                                new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.BOTTOM_LEFT,
+                                                                        new VzText(VzText.ANCHOR.BOTTOM_LEFT_ROUND,
+                                                                                   "<<white,monospaced-12>>"+
+                                                                                   String.format("%5.1f fps %c",
+                                                                                                 getMeasuredFPS(),
+                                                                                                 (frameCounter&1) > 0 ? '.' : ' ')))));
+                vb.swap();
             }
 
-            //////// render
-            world.render(VisCanvas.this, gl, glu);
+            Collections.sort(rinfo.layers);
+
+            if (true) {
+                gl.glClearDepth(1.0);
+                gl.glClearColor(0, 0, 0, 0);
+
+                gl.glClear(GL.GL_DEPTH_BUFFER_BIT | GL.GL_COLOR_BUFFER_BIT);
+            }
+
+            for (VisLayer layer : rinfo.layers) {
+
+                if (!layer.isEnabled())
+                    continue;
+
+                int layerPosition[] = layer.layerManager.getLayerPosition(VisCanvas.this, viewport, layer, mtime);
+                rinfo.layerPositions.put(layer, layerPosition);
+
+                gl.glScissor(layerPosition[0], layerPosition[1], layerPosition[2], layerPosition[3]);
+                gl.glViewport(layerPosition[0], layerPosition[1], layerPosition[2], layerPosition[3]);
+
+                int clearflags = 0;
+
+                if (layer.clearDepth) {
+                    gl.glClearDepth(1.0);
+                    clearflags |= GL.GL_DEPTH_BUFFER_BIT;
+                }
+
+                if (layer.backgroundColor.getAlpha() != 0) {
+                    gl.glClearColor(layer.backgroundColor.getRed()/255f,
+                                    layer.backgroundColor.getGreen()/255f,
+                                    layer.backgroundColor.getBlue()/255f,
+                                    layer.backgroundColor.getAlpha()/255f);
+                    clearflags |= GL.GL_COLOR_BUFFER_BIT;
+                }
+
+                if (clearflags != 0)
+                    gl.glClear(clearflags);
+
+                ///////////////////////////////////////////////////////
+                // set up lighting
+
+                // The position of lights is transformed by the
+                // current model view matrix, thus we load the
+                // identity matrix before configuring the lights.
+                gl.glMatrixMode(GL.GL_MODELVIEW);
+                gl.glLoadIdentity();
+
+                for (int i = 0; i < layer.lights.size(); i++) {
+                    VisLight light = layer.lights.get(i);
+                    gl.glLightfv(GL.GL_LIGHT0 + i, GL.GL_POSITION, light.position);
+                    gl.glLightfv(GL.GL_LIGHT0 + i, GL.GL_AMBIENT, light.ambient);
+                    gl.glLightfv(GL.GL_LIGHT0 + i, GL.GL_DIFFUSE, light.diffuse);
+                    gl.glLightfv(GL.GL_LIGHT0 + i, GL.GL_SPECULAR, light.specular);
+
+                    gl.glEnable(GL.GL_LIGHT0 + i);
+                }
+
+                // position the camera
+                VisCameraManager.CameraPosition cameraPosition = layer.cameraManager.getCameraPosition(VisCanvas.this,
+                                                                                                      viewport,
+                                                                                                      layerPosition,
+                                                                                                      layer,
+                                                                                                      mtime);
+                rinfo.cameraPositions.put(layer, cameraPosition);
+
+                gl.glMatrixMode(GL.GL_PROJECTION);
+                gl.glLoadIdentity();
+                gl.glMultMatrix(cameraPosition.getProjectionMatrix());
+
+                gl.glMatrixMode(GL.GL_MODELVIEW);
+                gl.glLoadIdentity();
+                gl.glMultMatrix(cameraPosition.getModelViewMatrix());
+
+                // draw the objects
+                layer.world.render(VisCanvas.this, layer, rinfo, gl);
+
+                // undo our lighting
+                for (int i = 0; i < layer.lights.size(); i++) {
+                    gl.glDisable(GL.GL_LIGHT0 + i);
+                }
+            }
+
+            gl.gldFrameEnd(canvasId);
+
+            int err = gl.glGetError();
+            if (err != 0)
+                System.out.printf("glGetError: %d\n", err);
+
+            im = gl.getImage(im);
+
+            repaint();
+            lastRenderInfo = rinfo;
+
+            synchronized(movies) {
+                for (Movie m : movies) {
+                    if (m.autoframes)
+                        m.addFrame(im);
+                }
+            }
 
             if (true) {
                 long now = System.currentTimeMillis();
-                double dt = (now - last_draw_mtime) / 1000.0;
-                // larger alpha = favor existing estimate.
-                double fps_alpha = 1.0 - dt;
-                fps_alpha = Math.max(0, Math.min(1, fps_alpha));
+                double dt = (now - lastDrawTime) / 1000.0;
 
-                fps_dt = fps_dt * fps_alpha + dt * (1.0 - fps_alpha);
-                last_draw_mtime = now;
+                // clamp to [0,1]
+                double dtclamp = Math.max(0, Math.min(1, dt));
+
+                // larger alpha = favor existing estimate
+                //
+                // after T seconds of updates, we'd like the
+                // effective weight of the existing estimate to be
+                // w.  In one second, there where will be (T / dt)
+                // updates. Solve for alpha.
+                //
+                // alpha^(T / dt) = w
+                //
+                //  (T / dt) * log(alpha) = log(w)
+                // alpha = exp( log(w) / (T / dt) )
+
+                double T = 1;
+                double w = 0.2;
+                double fpsAlpha = Math.exp( Math.log(w) / (T / dtclamp) );
+
+                fpsDt = fpsDt * fpsAlpha + dt * (1.0 - fpsAlpha);
+                lastDrawTime = now;
             }
 
-            // Do we need a screen capture?
-            synchronized(imageCaptureObjects) {
-
-                if (movieOutputStream != null && (movieAutoFrames || movieMakeFramePending)) {
-                    int width = canvas.getWidth();
-                    int height = canvas.getHeight();
-                    movieMakeFramePending = false;
-
-                    byte imdata[] = new byte[width*height*3];
-
-                    // read the BGR values into the image buffer
-                    gl.glPixelStorei(GL.GL_PACK_ALIGNMENT, 1);
-                    gl.glReadPixels(0, 0, width, height, GL.GL_RGB,
-                                    GL.GL_UNSIGNED_BYTE, ByteBuffer.wrap(imdata));
-                    VisUtil.flipImage(width*3, height, imdata);
-
-                    try {
-                        String hdr = "";
-                        hdr += String.format("# mtime=%d\n", System.currentTimeMillis());
-                        hdr += String.format("P6 %d %d %d\n", width, height, 255);
-
-                        movieOutputStream.write(hdr.getBytes());
-                        movieOutputStream.write(imdata);
-                        movieOutputStream.flush();
-                    } catch (IOException ex) {
-                        System.out.println("Error writing to movie: "+ex);
-                    }
-
-                    if (!movieAutoFrames)
-                        System.out.println("Made movie frame");
-                }
-
-                if (imageCaptureObjects.size() > 0) {
-
-                    int width = canvas.getWidth();
-                    int height = canvas.getHeight();
-
-                    BufferedImage im = new BufferedImage(width, height,
-                                                         BufferedImage.TYPE_3BYTE_BGR);
-
-                    byte imdata[] = ((DataBufferByte) im.getRaster().getDataBuffer()).getData();
-
-                    // read the BGR values into the image buffer
-                    gl.glPixelStorei(GL.GL_PACK_ALIGNMENT, 1);
-                    gl.glReadPixels(0, 0, width, height, GL.GL_BGR,
-                                    GL.GL_UNSIGNED_BYTE, ByteBuffer.wrap(imdata));
-
-                    VisUtil.flipImage(width*3, height, imdata);
-
-                    for (ImageCaptureObject ico : imageCaptureObjects) {
-                        if (ico.file != null)  {
-                            try {
-                                ImageIO.write(im, ico.format, ico.file);
-                                System.out.println("Screenshot written to: "+ico.file);
-                            } catch (IOException ex) {
-                                System.out.println("Error writing screenshot to: "+ico.file);
-                            }
-                        }
-
-                        synchronized(ico) {
-                            ico.im = im;
-                            ico.notifyAll();
-                        }
-                    }
-
-                    imageCaptureObjects.clear();
-                }
-            }
-
-            lastView = thisView;
-
-            //	    VisCanvas.this.canvas.swapBuffers();
+            frameCounter++;
         }
+    }
 
-        VisObject reshapeText;
+    public double getMeasuredFPS()
+    {
+        return 1.0 / fpsDt;
+    }
 
-        public void reshape(GLAutoDrawable drawable, int i, int x, int width, int height)
+    /** Caution: can return null. **/
+    public RenderInfo getLastRenderInfo()
+    {
+        return lastRenderInfo;
+    }
+
+    /** Schedule a repainting operation as soon as possible, even if
+     * the target frame rate is exceeded.
+     **/
+    public void draw()
+    {
+        glManager.add(redrawTask);
+    }
+
+    public void paintComponent(Graphics _g)
+    {
+        Graphics2D g = (Graphics2D) _g;
+
+        if (im != null) {
+            g.translate(0, getHeight());
+            g.scale(1, -1);
+            g.drawImage(im, 0, 0, null);
+        }
+    }
+
+    class EventHandler implements MouseMotionListener, MouseListener, MouseWheelListener, KeyListener
+    {
+        VisLayer mousePressedLayer;
+        VisLayer keyboardFocusLayer;
+
+        int lastex = -1, lastey = -1;
+
+        public void keyPressed(KeyEvent e)
         {
-            if (reshapeText != null)
-                world.removeTemporary(reshapeText);
-            reshapeText = new VisContextSpecific(VisCanvas.this, new VisText(VisText.ANCHOR.CENTER, ""+width+" x "+height));
-
-            world.addTemporary(reshapeText, 1.0);
-
-            if (debug)
-                System.out.printf("VisCanvas.reshape (%d x %d)\n", width, height);
+            dispatchKeyEvent(e);
         }
 
-        public void displayChanged(GLAutoDrawable drawable, boolean modeChanged, boolean deviceChanged)
+        public void keyReleased(KeyEvent e)
         {
-            System.out.println("displayChanged");
+            dispatchKeyEvent(e);
         }
-    }
 
-    public FloatImage getDepthBuffer()
-    {
-        GLContext glc = canvas.getContext();
-        glc.makeCurrent();
-        GL gl = glc.getGL();
-
-        int width = canvas.getWidth();
-        int height = canvas.getHeight();
-        float data[] = new float[width*height];
-        FloatImage fim = new FloatImage(width, height, data);
-
-        int e1 = gl.glGetError();
-
-        gl.glPixelStorei(GL.GL_PACK_ALIGNMENT, 4);
-        gl.glReadPixels(0, 0, width, height, GL.GL_DEPTH_COMPONENT,
-                        GL.GL_FLOAT, FloatBuffer.wrap(data));
-
-        int e2 = gl.glGetError();
-
-        glc.release();
-        return fim;
-    }
-
-    public void movieBegin(String path) throws IOException
-    {
-        movieBegin(path, true);
-    }
-
-    public void movieMakeFrame()
-    {
-        movieMakeFramePending = true;
-        drawNow();
-    }
-
-    /** If autoframes == false, you must call movieMakeFrame() to generate the next frame. **/
-    public void movieBegin(String path, boolean autoframes) throws IOException
-    {
-        synchronized(imageCaptureObjects) {
-            movieEnd();
-
-            movieAutoFrames = autoframes;
-            movieMakeFramePending = false;
-            movieOutputStream = new GZIPOutputStream(new FileOutputStream(path));
-            System.out.println("Capturing movie to: "+path);
+        public void keyTyped(KeyEvent e)
+        {
+            dispatchKeyEvent(e);
         }
-    }
 
-    public void movieEnd() throws IOException
-    {
-        synchronized(imageCaptureObjects) {
+        public void mouseWheelMoved(MouseWheelEvent e)
+        {
+            dispatchMouseEvent(e);
+        }
 
-            if (movieOutputStream == null)
+        public void mouseDragged(MouseEvent e)
+        {
+            dispatchMouseEvent(e);
+        }
+
+        public void mouseMoved(MouseEvent e)
+        {
+            dispatchMouseEvent(e);
+        }
+
+        public void mousePressed(MouseEvent e)
+        {
+            dispatchMouseEvent(e);
+        }
+
+        public void mouseReleased(MouseEvent e)
+        {
+            dispatchMouseEvent(e);
+        }
+
+        public void mouseClicked(MouseEvent e)
+        {
+            dispatchMouseEvent(e);
+        }
+
+        public void mouseEntered(MouseEvent e)
+        {
+            dispatchMouseEvent(e);
+            requestFocus();
+        }
+
+        public void mouseExited(MouseEvent e)
+        {
+            dispatchMouseEvent(e);
+        }
+
+        // Find a layer that can consume this event.
+        void dispatchMouseEvent(MouseEvent e)
+        {
+            RenderInfo rinfo = lastRenderInfo;
+            if (rinfo == null)
                 return;
 
-            movieOutputStream.close();
-            System.out.println("Movie capture ended");
-            movieOutputStream = null;
-        }
-    }
+            int ex = e.getX();
+            int ey = getHeight() - e.getY();
 
-    // Synchronously grab a screen shot
-    // cannot be called from an awt thread!
-    public BufferedImage screenShot()
-    {
-        ImageCaptureObject ico = new ImageCaptureObject();
-        synchronized(imageCaptureObjects) {
-            imageCaptureObjects.add(ico);
-        }
+            lastex = ex;
+            lastey = ey;
 
-        // force a redraw
-        draw();
+            // these events go to the layer that got the MOUSE_PRESSED
+            // event, not the layer under the event.
+            if (e.getID() == MouseEvent.MOUSE_DRAGGED || e.getID() == MouseEvent.MOUSE_RELEASED) {
+                if (mousePressedLayer != null && rinfo.cameraPositions.get(mousePressedLayer) != null)
+                    dispatchMouseEventToLayer(VisCanvas.this, mousePressedLayer, rinfo,
+                                              rinfo.cameraPositions.get(mousePressedLayer).computeRay(ex, ey), e);
 
-        synchronized(ico) {
-            while (ico.im == null) {
-                try {
-                    ico.wait();
-                } catch (InterruptedException ex) {
-                    System.out.println("ex: "+ex);
+                return;
+            }
+
+            for (int lidx = rinfo.layers.size()-1; lidx >= 0; lidx--) {
+                VisLayer layer = rinfo.layers.get(lidx);
+                if (!layer.enabled)
+                    continue;
+
+                int pos[] = rinfo.layerPositions.get(layer);
+
+                GRay3D ray = rinfo.cameraPositions.get(layer).computeRay(ex, ey);
+
+                if (ex >= pos[0] && ey >= pos[1] &&
+                    ex < pos[0]+pos[2] && ey < pos[1]+pos[3]) {
+
+                    boolean handled = dispatchMouseEventToLayer(VisCanvas.this, layer, rinfo, ray, e);
+
+                    if (e.getID() == MouseEvent.MOUSE_PRESSED) {
+                        if (handled)
+                            mousePressedLayer = layer;
+                        else
+                            mousePressedLayer = null;
+                    }
+
+                    if (handled)
+                        return;
                 }
             }
         }
 
-        return ico.im;
+        // this is used by dispatchMouseEvent. It processes the event
+        // handlers within the layer, returning true if one of them
+        // consumed the event.
+        boolean dispatchMouseEventToLayer(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GRay3D ray, MouseEvent e)
+        {
+            boolean handled = false;
+
+            synchronized (layer.eventHandlers) {
+                for (VisEventHandler eh : layer.eventHandlers) {
+
+                    switch (e.getID()) {
+                        case MouseEvent.MOUSE_PRESSED:
+                            mousePressedLayer = layer;
+                            handled = eh.mousePressed(VisCanvas.this, layer, rinfo, ray, e);
+                            break;
+                        case MouseEvent.MOUSE_RELEASED:
+                            handled = eh.mouseReleased(VisCanvas.this, layer, rinfo, ray, e);
+                            break;
+                        case MouseEvent.MOUSE_CLICKED:
+                            handled = eh.mouseClicked(VisCanvas.this, layer, rinfo, ray, e);
+                            break;
+                        case MouseEvent.MOUSE_DRAGGED:
+                            handled = eh.mouseDragged(VisCanvas.this, layer, rinfo, ray, e);
+                            break;
+                        case MouseEvent.MOUSE_MOVED:
+                            handled = eh.mouseMoved(VisCanvas.this, layer, rinfo, ray, e);
+                            break;
+                        case MouseEvent.MOUSE_WHEEL:
+                            handled = eh.mouseWheel(VisCanvas.this, layer, rinfo, ray, (MouseWheelEvent) e);
+                            break;
+                        case MouseEvent.MOUSE_ENTERED:
+                            handled = false;
+                            break;
+                        case MouseEvent.MOUSE_EXITED:
+                            handled = false;
+                            break;
+                        default:
+                            System.out.println("Unhandled mouse event id: "+e.getID());
+                            handled = false;
+                            break;
+                    }
+
+                    if (handled)
+                        break;
+                }
+            }
+
+            return handled;
+        }
+
+        void dispatchKeyEvent(KeyEvent e)
+        {
+            RenderInfo rinfo = lastRenderInfo;
+            if (rinfo == null)
+                return;
+
+            for (int lidx = rinfo.layers.size()-1; lidx >= 0; lidx--) {
+                VisLayer layer = rinfo.layers.get(lidx);
+                if (!layer.enabled)
+                    continue;
+
+                int pos[] = rinfo.layerPositions.get(layer);
+
+                if (lastex >= pos[0] && lastey >= pos[1] &&
+                    lastex < pos[0]+pos[2] && lastey < pos[1]+pos[3]) {
+
+                    boolean handled = dispatchKeyEventToLayer(VisCanvas.this, layer, rinfo, e);
+
+                    if (handled)
+                        return;
+                }
+            }
+        }
+
+        boolean dispatchKeyEventToLayer(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, KeyEvent e)
+        {
+            boolean handled = false;
+
+            synchronized (layer.eventHandlers) {
+                for (VisEventHandler eh : layer.eventHandlers) {
+
+                    switch (e.getID()) {
+                        case KeyEvent.KEY_TYPED:
+                            handled = eh.keyTyped(VisCanvas.this, layer, rinfo, e);
+                            break;
+                        case KeyEvent.KEY_PRESSED:
+                            handled = eh.keyPressed(VisCanvas.this, layer, rinfo, e);
+                            break;
+                        case KeyEvent.KEY_RELEASED:
+                            handled = eh.keyReleased(VisCanvas.this, layer, rinfo, e);
+                            break;
+                        default:
+                            System.out.println("Unhandled key event id: "+e.getID());
+                            break;
+                    }
+
+                    if (handled)
+                        break;
+                }
+
+                return handled;
+            }
+        }
     }
 
-    /** Asynchronously write a screen shot **/
+    public void drawSync()
+    {
+        SyncTask st = new SyncTask();
+
+        synchronized(st.o) {
+            glManager.add(redrawTask); // ensure we're queued
+            glManager.add(st);
+
+            try {
+                st.o.wait();
+            } catch (InterruptedException ex) {
+                System.out.println("VisCanvas: drawSync interrupted!");
+            }
+        }
+    }
+
+    /** Forces a synchronous redraw and then draws. **/
     public void writeScreenShot(File file, String format)
     {
-        ImageCaptureObject ico = new ImageCaptureObject();
-        ico.file = file;
-        ico.format = format;
+        drawSync();
 
-        synchronized(imageCaptureObjects) {
-            imageCaptureObjects.add(ico);
+        BufferedImage thisim = im;
+
+        // Our image will be upside down. let's flip it.
+        if (true) {
+            int height = thisim.getHeight();
+            int width = thisim.getWidth();
+            int stride = thisim.getWidth();
+
+            int imdata[] = ((DataBufferInt) (thisim.getRaster().getDataBuffer())).getData();
+
+            BufferedImage thisim2 = new BufferedImage(width, height, thisim.getType());
+            int imdata2[] = ((DataBufferInt) (thisim2.getRaster().getDataBuffer())).getData();
+
+            for (int y = 0; y < height; y++)
+                System.arraycopy(imdata, y*stride, imdata2, (height-1-y)*stride, stride);
+
+            thisim = thisim2;
         }
 
-        // force a redraw
-        draw();
+        try {
+            ImageIO.write(thisim, format, file);
+        } catch (IOException ex) {
+            System.out.println("ex: "+ex);
+            return;
+        }
+
+        System.out.println("Screen shot written to "+file.getPath());
+        return;
     }
 
-    /////////////////////////////////////////////
-    // Event Handling
-    // higher priority event handlers get first dibs.
-    public void addEventHandler(VisCanvasEventHandler eh)
+    /** There are two ways to make movies which differ in when frames
+     * are added to the movie. In 'autoframes' mode, every rendered
+     * frame is added to the movie. In manual mode, frames are added
+     * programmatically by calls to movieAddFrame **/
+    public Movie movieCreate(String path, boolean autoframes) throws IOException
     {
-        addEventHandler(eh, 0);
+        Movie m = new Movie(new GZIPOutputStream(new FileOutputStream(path)), autoframes);
+
+        synchronized(movies) {
+            movies.add(m);
+        }
+
+        return m;
     }
 
-    public void addEventHandler(VisCanvasEventHandler eh, int priority)
+    public void populatePopupMenu(JPopupMenu jmenu)
     {
-        synchronized(eventHandlers) {
-            eventHandlers.add(eh);
-            eventHandlerPriorities.put(eh, priority);
+        if (true) {
+            JMenuItem jmi = new JMenuItem("Save screenshot (.png)");
+            jmi.addActionListener(new ActionListener() {
+                    public void actionPerformed(ActionEvent e) {
 
-            Collections.sort(eventHandlers, new Comparator<VisCanvasEventHandler>() {
-                    public int compare(VisCanvasEventHandler a, VisCanvasEventHandler b) {
-                        return eventHandlerPriorities.get(b) - eventHandlerPriorities.get(a);
-                    }
+                        Calendar c = new GregorianCalendar();
 
-                    public boolean equals(Object obj) {
-                        return false;
+                        String s = String.format("%4d%02d%02d_%02d%02d%02d_%03d", c.get(Calendar.YEAR),
+                                                 c.get(Calendar.MONTH)+1,
+                                                 c.get(Calendar.DAY_OF_MONTH),
+                                                 c.get(Calendar.HOUR_OF_DAY),
+                                                 c.get(Calendar.MINUTE),
+                                                 c.get(Calendar.SECOND),
+                                                 c.get(Calendar.MILLISECOND)
+                            );
+
+                        String path = "p"+s+".png";
+
+                        writeScreenShot(new File(path), "png");
                     }
                 });
-        }
-    }
-
-    public boolean isPicking(VisCanvasEventHandler eh)
-    {
-        return eh == pickingHandler;
-    }
-
-    // EventHandlers should use this VERY sparingly. It can be used to
-    // take focus when a key is pressed, for example.
-    public void takePick(VisCanvasEventHandler eh)
-    {
-        releasePick();
-
-        pickingHandler = eh;
-    }
-
-    public void releasePick()
-    {
-        if (pickingHandler != null)
-            pickingHandler.pickNotify(false);
-
-        pickingHandler = null;
-    }
-
-    public void releasePick(VisCanvasEventHandler eh)
-    {
-        if (pickingHandler == eh) {
-            pickingHandler.pickNotify(false);
-
-            pickingHandler = null;
-        }
-    }
-
-    public void keyPressed(KeyEvent e)
-    {
-        if (pickingHandler != null) {
-            boolean consumed = pickingHandler.keyPressed(this, e);
-            if (consumed)
-                return;
+            jmenu.add(jmi);
         }
 
-        synchronized(eventHandlers) {
-            for (VisCanvasEventHandler eh : eventHandlers) {
-                boolean consumed = eh.keyPressed(this, e);
-                if (consumed)
-                    return;
-            }
-        }
-    }
+        if (true) {
+            JMenuItem jmi = new JMenuItem("Save scene (.vsc)");
+            jmi.addActionListener(new ActionListener() {
+                    public void actionPerformed(ActionEvent e) {
 
-    public void keyReleased(KeyEvent e)
-    {
-        if (pickingHandler != null) {
-            boolean consumed = pickingHandler.keyReleased(this, e);
-            if (consumed)
-                return;
-        }
+                        Calendar c = new GregorianCalendar();
 
-        synchronized(eventHandlers) {
-            for (VisCanvasEventHandler eh : eventHandlers) {
-                boolean consumed = eh.keyReleased(this, e);
-                if (consumed)
-                    return;
-            }
-        }
-    }
+                        String s = String.format("%4d%02d%02d_%02d%02d%02d_%03d", c.get(Calendar.YEAR),
+                                                 c.get(Calendar.MONTH)+1,
+                                                 c.get(Calendar.DAY_OF_MONTH),
+                                                 c.get(Calendar.HOUR_OF_DAY),
+                                                 c.get(Calendar.MINUTE),
+                                                 c.get(Calendar.SECOND),
+                                                 c.get(Calendar.MILLISECOND)
+                            );
 
-    public void keyTyped(KeyEvent e)
-    {
-        if (pickingHandler != null) {
-            boolean consumed = pickingHandler.keyTyped(this, e);
-            if (consumed)
-                return;
-        }
+                        String path = "v"+s+".vsc";
 
-        synchronized(eventHandlers) {
-            for (VisCanvasEventHandler eh : eventHandlers) {
-                boolean consumed = eh.keyTyped(this, e);
-                if (consumed)
-                    return;
-            }
-        }
-    }
+                        try {
+                            DataOutputStream outs = new DataOutputStream(new GZIPOutputStream(new BufferedOutputStream(new FileOutputStream(path))));
+                            ObjectWriter ow = new ObjectWriter(outs);
+                            ow.writeObject(VisCanvas.this);
+                            outs.flush();
+                            outs.close();
+                            System.out.println("wrote "+path);
 
-    public void mouseWheelMoved(MouseWheelEvent e)
-    {
-        if (lastView == null)
-            return;
-
-        GRay3D ray = lastView.computeRay(e.getX(), e.getY());
-
-        if (pickingHandler != null) {
-            boolean consumed = pickingHandler.mouseWheelMoved(this, ray, e);
-            if (consumed)
-                return;
-        }
-
-        synchronized(eventHandlers) {
-            for (VisCanvasEventHandler eh : eventHandlers) {
-                boolean consumed = eh.mouseWheelMoved(this, ray, e);
-                if (consumed)
-                    return;
-            }
-        }
-    }
-
-    public void mouseDragged(MouseEvent e)
-    {
-        if (lastView == null)
-            return;
-
-        GRay3D ray = lastView.computeRay(e.getX(), e.getY());
-
-        if (pickingHandler != null) {
-            boolean consumed = pickingHandler.mouseDragged(this, ray, e);
-            if (consumed)
-                return;
-        }
-
-        synchronized(eventHandlers) {
-            for (VisCanvasEventHandler eh : eventHandlers) {
-                boolean consumed = eh.mouseDragged(this, ray, e);
-                if (consumed)
-                    return;
-            }
-        }
-    }
-
-    public void mouseMoved(MouseEvent e)
-    {
-        this.lastMousePosition = e;
-
-        if (lastView == null)
-            return;
-
-        GRay3D ray = lastView.computeRay(e.getX(), e.getY());
-
-        if (pickingHandler != null) {
-            boolean consumed = pickingHandler.mouseMoved(this, ray, e);
-            if (consumed)
-                return;
-        }
-
-        synchronized(eventHandlers) {
-            for (VisCanvasEventHandler eh : eventHandlers) {
-                boolean consumed = eh.mouseMoved(this, ray, e);
-                if (consumed)
-                    return;
-            }
-        }
-    }
-
-    public void mousePressed(MouseEvent e)
-    {
-        if (lastView == null)
-            return;
-
-        GRay3D ray = lastView.computeRay(e.getX(), e.getY());
-
-        int mods = e.getModifiersEx();
-        boolean shift = (mods&MouseEvent.SHIFT_DOWN_MASK)>0;
-        boolean ctrl = (mods&MouseEvent.CTRL_DOWN_MASK)>0;
-
-        if (pickingHandler == null && e.getButton() == 1 && !shift && !ctrl) {
-
-            double bestDistance = Double.MAX_VALUE;
-            VisCanvasEventHandler bestHandler = null;
-
-            synchronized(eventHandlers) {
-                for (VisCanvasEventHandler eh : eventHandlers) {
-                    double dist = eh.pickQuery(this, ray);
-                    if (dist < 0)
-                        continue;
-
-                    if (dist < bestDistance) {
-                        bestDistance = dist;
-                        bestHandler = eh;
+                        } catch (IOException ex) {
+                            System.out.println("ex: "+ex);
+                        }
                     }
+                });
+            jmenu.add(jmi);
+        }
+
+        if (popupMovie == null) {
+            JMenuItem jmi = new JMenuItem("Record Movie");
+            jmi.addActionListener(new ActionListener() {
+                    public void actionPerformed(ActionEvent e) {
+                        Calendar c = new GregorianCalendar();
+                        String s = String.format("%4d%02d%02d_%02d%02d%02d_%03d.ppms.gz", c.get(Calendar.YEAR),
+                                                 c.get(Calendar.MONTH)+1,
+                                                 c.get(Calendar.DAY_OF_MONTH),
+                                                 c.get(Calendar.HOUR_OF_DAY),
+                                                 c.get(Calendar.MINUTE),
+                                                 c.get(Calendar.SECOND),
+                                                 c.get(Calendar.MILLISECOND)
+                            );
+
+                        try {
+                            popupMovie = movieCreate(s, true);
+                        } catch (IOException ex) {
+                            System.out.println("ex: "+ex);
+                        }
+                    }
+                });
+            jmenu.add(jmi);
+        } else {
+            JMenuItem jmi = new JMenuItem("Stop Recording Movie");
+            jmi.addActionListener(new ActionListener() {
+                    public void actionPerformed(ActionEvent e) {
+                        try {
+                            popupMovie.close();
+
+                        } catch (IOException ex) {
+                            System.out.println("ex: "+ex);
+                        }
+                    }
+                });
+            jmenu.add(jmi);
+        }
+
+
+        if (true) {
+            JCheckBoxMenuItem jmi = new JCheckBoxMenuItem("Show FPS counter");
+            jmi.setSelected(showFPS);
+
+            jmi.addActionListener(new ActionListener() {
+                    public void actionPerformed(ActionEvent e) {
+                        showFPS ^= true;
+                    }
+                });
+
+            jmenu.add(jmi);
+        }
+
+        if (true) {
+            JMenu jm = new JMenu("Max Frame Rate");
+            JRadioButtonMenuItem jmis[] = new JRadioButtonMenuItem[popupFrameRates.length];
+            ButtonGroup group = new ButtonGroup();
+
+            for (int i = 0; i < jmis.length; i++) {
+                jmis[i] = new JRadioButtonMenuItem(""+popupFrameRates[i]);
+                group.add(jmis[i]);
+                jm.add(jmis[i]);
+
+                jmis[i].addActionListener(new ActionListener() {
+                        public void actionPerformed(ActionEvent e) {
+                            JRadioButtonMenuItem jmi = (JRadioButtonMenuItem) e.getSource();
+                            VisCanvas.this.targetFrameRate = Integer.parseInt(jmi.getText());
+                        }
+                    });
+            }
+
+            int bestIndex = 0;
+            for (int i = 0; i < popupFrameRates.length; i++) {
+                if (Math.abs(popupFrameRates[i] - targetFrameRate) < Math.abs(popupFrameRates[bestIndex] - targetFrameRate))
+                    bestIndex = i;
+            }
+
+            jmis[bestIndex].setSelected(true);
+
+            jmenu.add(jm);
+        }
+
+        if (true) {
+            JMenuItem jmi = new JMenuItem("Show Layer/Buffer Manager");
+            jmi.addActionListener(new ActionListener() {
+                public void actionPerformed(ActionEvent e)
+                {
+                    if (layerBufferManager == null) {
+                        layerBufferManager = new JFrame("Layer/Buffer Manager");
+                        layerBufferManager.setLayout(new BorderLayout());
+                        layerBufferPanel = new LayerBufferPanel(VisCanvas.this);
+                        layerBufferManager.add(layerBufferPanel, BorderLayout.CENTER);
+                        layerBufferManager.setSize(400, 600);
+                    } else {
+                        layerBufferPanel.rebuild();
+                    }
+                    layerBufferManager.setVisible(true);
                 }
-            }
-            pickingHandler = bestHandler;
-            for (VisCanvasEventHandler eh : eventHandlers)
-                eh.pickNotify(eh == pickingHandler);
-        }
+            });
 
-        if (pickingHandler != null) {
-            boolean consumed = pickingHandler.mousePressed(this, ray, e);
-            if (consumed)
-                return;
-        }
-
-        synchronized(eventHandlers) {
-            for (VisCanvasEventHandler eh : eventHandlers) {
-                boolean consumed = eh.mousePressed(this, ray, e);
-                if (consumed)
-                    return;
-            }
+            jmenu.add(jmi);
         }
     }
 
-    public void mouseReleased(MouseEvent e)
+    public void setTargetFPS(double fps)
     {
-        if (lastView == null)
-            return;
-
-        GRay3D ray = lastView.computeRay(e.getX(), e.getY());
-
-        if (pickingHandler != null) {
-            boolean consumed = pickingHandler.mouseReleased(this, ray, e);
-            if (consumed)
-                return;
-        }
-
-        synchronized(eventHandlers) {
-            for (VisCanvasEventHandler eh : eventHandlers) {
-                boolean consumed = eh.mouseReleased(this, ray, e);
-                if (consumed)
-                    return;
-            }
-        }
+        targetFrameRate = (int) fps;
     }
 
-    public void mouseClicked(MouseEvent e)
+    /** for serialization only **/
+    public VisCanvas(ObjectReader r)
     {
-        if (lastView == null)
-            return;
+        canvasId = VisUtil.allocateID();
 
-        GRay3D ray = lastView.computeRay(e.getX(), e.getY());
+        addComponentListener(new MyComponentListener());
 
-        if (pickingHandler != null) {
-            boolean consumed = pickingHandler.mouseClicked(this, ray, e);
-            if (consumed)
-                return;
-        }
+        addMouseMotionListener(eh);
+        addMouseListener(eh);
+        addMouseWheelListener(eh);
+        addKeyListener(eh);
 
-        synchronized(eventHandlers) {
-            for (VisCanvasEventHandler eh : eventHandlers) {
-                boolean consumed = eh.mouseClicked(this, ray, e);
-                if (consumed)
-                    return;
-            }
-        }
+        setFocusTraversalKeysEnabled(false);
     }
 
-    public void mouseEntered(MouseEvent e)
+    public void writeObject(ObjectWriter outs) throws IOException
     {
-        ((Component) canvas).requestFocus();
+        outs.writeInt(layers.size());
+        for (VisLayer layer : layers)
+            outs.writeObject(layer);
+        outs.writeObject(privateWorld);
+        outs.writeObject(privateLayer);
     }
 
-    public void mouseExited(MouseEvent e)
+    public void readObject(ObjectReader ins) throws IOException
     {
-    }
+        int n = ins.readInt();
+        for (int i = 0; i < n; i++)
+            addLayer((VisLayer) ins.readObject());
 
-    Dimension forceDim;
+        privateWorld = (VisWorld) ins.readObject();
+        privateLayer = (VisLayer) ins.readObject();
 
-    /** Doesn't work, unfortunately. **/
-    public void forceSize(Dimension d)
-    {
-        forceDim = d;
-        if (d != null)
-            setSize((int) d.getWidth(), (int) d.getHeight());
-        invalidate();
-        revalidate();
-    }
-
-    public Dimension getMaximumSize()
-    {
-        return forceDim == null ? super.getMaximumSize() : forceDim;
-    }
-
-    public Dimension getPreferredSize()
-    {
-        return forceDim == null ? super.getPreferredSize() : forceDim;
-    }
-
-    public Dimension getMinimumSize()
-    {
-        return forceDim == null ? new Dimension(1,1) : forceDim;
-    }
-
-    // A request to generate a screenshot, it will be processed the
-    // next time the frame is rendered. The ImageCaptureObject will
-    // then get notified().
-    //
-    // If path/format are non-null, then the image will be written to
-    // disk, via ImageIO.write.
-    class ImageCaptureObject
-    {
-        BufferedImage im;
-
-        File   file;
-        String format;
+        new RepaintThread().start();
     }
 }
+

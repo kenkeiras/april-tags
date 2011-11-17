@@ -53,7 +53,8 @@
 
   <!-- Build Jar -->
   <target name="build-jar">
-    <jar destfile="april.jar" compress="false">
+    <mkdir dir="build"/>
+    <jar destfile="april.jar" compress="false" update="true">
 
       <fileset dir="build">
 	<include name="**/*.class" />

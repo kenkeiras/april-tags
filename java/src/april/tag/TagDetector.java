@@ -507,17 +507,18 @@ public class TagDetector
 
                 double notch = Math.max(2, 0.1*seg.length);
 
-                debugSegments.addBuffered(new VisChain(LinAlg.translate(0, height, 0),
-                                                       LinAlg.scale(1, -1, 1),
-                                                       new VisData(new VisDataLineStyle(Color.yellow, 1),
-                                                                   new double[] { seg.x0, seg.y0},
-                                                                   new double[] { seg.x1, seg.y1}),
-                                                       new VisData(new VisDataLineStyle(Color.yellow, 1),
-                                                                   new double[] { cx,  cy },
-                                                                   new double[] { cx + notch*Math.sin(seg.theta),
-                                                                                  cy - notch*Math.cos(seg.theta) }),
-                                                       new VisData(new VisDataPointStyle(Color.red, 4),
-                                                                   new double[] { seg.x0, seg.y0 })));
+                debugSegments.addBack(new VisChain(LinAlg.translate(0, height, 0),
+                                                   LinAlg.scale(1, -1, 1),
+                                                   new VzLines(new VisVertexData(new double[] { seg.x0, seg.y0},
+                                                                                  new double[] { seg.x1, seg.y1}),
+                                                                new VisConstantColor(Color.yellow),1, VzLines.TYPE.LINE_STRIP),
+                                                   new VzLines(new VisVertexData(new double[] { cx,  cy },
+                                                                                  new double[] { cx + notch*Math.sin(seg.theta),
+                                                                                                 cy - notch*Math.cos(seg.theta) }),
+                                                                new VisConstantColor(Color.yellow),1, VzLines.TYPE.LINE_STRIP),
+                                                   new VzPoints(new VisVertexData(new double[] { seg.x0, seg.y0 }),
+                                                                 new VisConstantColor(Color.red),4)
+                                          ));
             }
         }
 
@@ -585,10 +586,10 @@ public class TagDetector
 
         if (debug && debugQuads != null) {
             for (Quad q : quads) {
-                debugQuads.addBuffered(new VisChain(LinAlg.translate(0, height, 0),
+                debugQuads.addBack(new VisChain(LinAlg.translate(0, height, 0),
                                                     LinAlg.scale(1, -1, 1),
-                                                    new VisData(new VisDataLineStyle(Color.orange, 2),
-                                                                q.p[0], q.p[1], q.p[2], q.p[3], q.p[0])));
+                                                new VzLines(new VisVertexData(q.p[0], q.p[1], q.p[2], q.p[3], q.p[0]),
+                                                             new VisConstantColor(Color.orange),2,VzLines.TYPE.LINE_STRIP)));
             }
         }
 
@@ -604,14 +605,14 @@ public class TagDetector
             GrayModel blackModel = new GrayModel();
             GrayModel whiteModel = new GrayModel();
 
-            VisData vdblack = null;
-            VisData vdwhite = null;
-            VisData vdsamp = null;
+            VisVertexData vdblack = null;
+            VisVertexData vdwhite = null;
+            VisVertexData vdsamp = null;
 
             if (debug && debugSamples != null) {
-                vdblack = new VisData(new VisDataPointStyle(Color.black, 3));
-                vdwhite = new VisData(new VisDataPointStyle(Color.lightGray, 3));
-                vdsamp = new VisData(new VisDataPointStyle(Color.orange, 4));
+                vdblack = new VisVertexData();
+                vdwhite = new VisVertexData();
+                vdsamp = new VisVertexData();
             }
 
             // sample points around the black and white border in
@@ -683,11 +684,14 @@ public class TagDetector
             }
 
             if (debug && debugSamples != null) {
-                debugSamples.addBuffered(new VisChain(LinAlg.translate(0, height, 0),
-                                                      LinAlg.scale(1, -1, 1),
-                                                      vdwhite,
-                                                      vdblack,
-                                                      vdsamp));
+                debugSamples.addBack(new VisChain(LinAlg.translate(0, height, 0),
+                                                  LinAlg.scale(1, -1, 1),
+                                                  new VzPoints(vdwhite,
+                                                                new VisConstantColor(Color.white),3),
+                                                  new VzPoints(vdblack,
+                                                                new VisConstantColor(Color.black),3),
+                                                  new VzPoints(vdsamp,
+                                                                new VisConstantColor(Color.orange),4)));
             }
 
             if (!bad) {
@@ -725,14 +729,16 @@ public class TagDetector
             }
         }
 
-        if (debugSegments != null)
-            debugSegments.switchBuffer();
-        if (debugQuads != null)
-            debugQuads.switchBuffer();
-        if (debugSamples != null)
-            debugSamples.switchBuffer();
-        if (debugLabels != null)
-            debugLabels.switchBuffer();
+        if (debug) {
+            if (debugSegments != null)
+                debugSegments.swap();
+            if (debugQuads != null)
+                debugQuads.swap();
+            if (debugSamples != null)
+                debugSamples.swap();
+            if (debugLabels != null)
+                debugLabels.swap();
+        }
 
         ////////////////////////////////////////////////////////////////
         // Step nine. Some quads may be detected more than once, due

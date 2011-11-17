@@ -2,15 +2,18 @@ package april.vis;
 
 import java.io.*;
 
-import lcm.lcm.*;
-
-// Please see VisSerialize for documentation
+/** You must implement a constructor like this:
+ *
+ *     VisSerializable(ObjectReader ins);
+ *
+ * Note that during deserialization, the constructor will be called
+ * with null, then readObject will immediately be called with a valid
+ * ObjectReader. This protocol is used to allow a serializable object
+ * to have public constructor that won't be confused as a user API.
+ **/
 public interface VisSerializable
 {
-    // NOTE: You must ALSO specify a default constructor, e.g. MyVisObject(), if you extend this class
+    public void writeObject(ObjectWriter outs) throws IOException;
 
-    // automatically writes appropriate header information for this class
-    public void serialize(LCMDataOutputStream out) throws IOException;
-    public void unserialize(LCMDataInputStream in) throws IOException;
-
+    public void readObject(ObjectReader ins) throws IOException;
 }

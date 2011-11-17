@@ -1,19 +1,42 @@
 package april.vis;
 
-import javax.swing.*;
 import java.awt.*;
+import java.awt.event.*;
+import java.awt.image.*;
+import java.io.*;
+import java.util.*;
+import java.util.zip.*;
+import javax.swing.*;
+import javax.imageio.*;
 
-// Usage:  java april.vis.VisSceneViewer <path-to-snapshot>
+import april.jmat.*;
+import april.jmat.geom.*;
+
 public class VisSceneViewer
 {
+    JFrame jf;
+
+    public VisSceneViewer(String name, VisCanvas vc)
+    {
+        jf = new JFrame(name);
+        jf.setLayout(new BorderLayout());
+        jf.add(vc, BorderLayout.CENTER);
+        jf.setSize(600,400);
+        jf.setVisible(true);
+    }
+
     public static void main(String args[])
     {
-        VisCanvas vc = VisSerialize.readVCFromFile(args[0]);
+        try {
+            long time0 = System.currentTimeMillis();
+            ObjectReader ins = new ObjectReader(args[0]);
+            VisCanvas vc = (VisCanvas) ins.readObject();
+            long time1 = System.currentTimeMillis();
 
-        JFrame jf = new JFrame("Vis Scene "+args[0]);
-        jf.add(vc);
-        jf.setSize(640,480);
-        jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        jf.setVisible(true);
+            System.out.printf("Time to load scene: %15.3f s\n", (time1 - time0) / 1000.0);
+            new VisSceneViewer(args[0], vc);
+        } catch (IOException ex) {
+            System.out.println("ex: "+ex);
+        }
     }
 }
