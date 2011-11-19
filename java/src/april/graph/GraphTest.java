@@ -155,7 +155,9 @@ public class GraphTest implements ParameterListener
                 }
             }
 
-            vb.addBack(new VzLines(vd, new VisConstantColor(Color.green),1,VzLines.TYPE.LINES));
+            vb.addBack(new VzLines(vd,
+                                   VzLines.LINES,
+                                   new VzLines.Style(Color.green, 1)));
         }
 
         for (GNode gn : g.nodes) {
@@ -168,7 +170,8 @@ public class GraphTest implements ParameterListener
 
             if (points != null)
                 vb.addBack(new VisChain(LinAlg.xyzrpyToMatrix(gn.toXyzRpy(gn.state)),
-                                        new VzPoints(new VisVertexData(points),new VisConstantColor(Color.gray),1)));
+                                        new VzPoints(new VisVertexData(points),
+                                                     new VzPoints.Style(Color.gray, 1))));
         }
 
         Graph.ErrorStats estats = g.getErrorStats();

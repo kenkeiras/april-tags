@@ -7,28 +7,50 @@ import java.io.*;
 public class VzPoints implements VisObject, VisSerializable
 {
     VisAbstractVertexData vd;
-    VisAbstractColorData cd;
-    double pointSize;
+    Style styles[];
 
-    public VzPoints(VisAbstractVertexData vd, VisAbstractColorData cd, double pointSize)
+    public static class Style
+    {
+        Color c;
+        double pointSize;
+        VisAbstractColorData cd;
+
+        public Style(Color c, double pointSize)
+        {
+            this(new VisConstantColor(c), pointSize);
+        }
+
+        public Style(VisAbstractColorData cd, double pointSize)
+        {
+            this.cd = cd;
+            this.pointSize = pointSize;
+        }
+
+        public void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl, VzPoints vpoints)
+        {
+            vpoints.vd.bindVertex(gl);
+            cd.bindColor(gl);
+
+            gl.glNormal3f(0, 0, 1);
+            gl.glPointSize((float) pointSize);
+
+            gl.glDrawArrays(GL.GL_POINTS, 0, vpoints.vd.size());
+
+            cd.unbindColor(gl);
+            vpoints.vd.unbindVertex(gl);
+        }
+    }
+
+    public VzPoints(VisAbstractVertexData vd, Style ... styles)
     {
         this.vd = vd;
-        this.cd = cd;
-        this.pointSize = pointSize;
+        this.styles = styles;
     }
 
     public synchronized void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl)
     {
-        vd.bindVertex(gl);
-        cd.bindColor(gl);
-
-        gl.glNormal3f(0, 0, 1);
-
-        gl.glPointSize((float) pointSize);
-        gl.glDrawArrays(GL.GL_POINTS, 0, vd.size());
-
-        cd.unbindColor(gl);
-        vd.unbindVertex(gl);
+        for (Style style : styles)
+            style.render(vc, layer, rinfo, gl, this);
     }
 
     public VzPoints(ObjectReader ins)
@@ -38,14 +60,10 @@ public class VzPoints implements VisObject, VisSerializable
     public void writeObject(ObjectWriter outs) throws IOException
     {
         outs.writeObject(vd);
-        outs.writeObject(cd);
-        outs.writeDouble(pointSize);
     }
 
     public void readObject(ObjectReader ins) throws IOException
     {
         vd = (VisAbstractVertexData) ins.readObject();
-        cd = (VisAbstractColorData) ins.readObject();
-        pointSize = ins.readDouble();
     }
 }

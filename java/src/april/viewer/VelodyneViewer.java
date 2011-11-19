@@ -102,7 +102,7 @@ public class VelodyneViewer implements ViewObject, LCMSubscriber
             for (int i = 0; i < visPoints.size(); i++) {
                 if (visPoints.get(i) == null) {
                     VzPoints  vp = new VzPoints(new VisVertexData(points.get(i)),
-                                                  cm.makeColorData(points.get(i),2),1);
+                                                new VzPoints.Style(cm.makeColorData(points.get(i),2), 1));
 
                     visPoints.set(i,vp);
                 }

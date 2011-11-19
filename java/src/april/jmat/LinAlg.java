@@ -560,6 +560,21 @@ public final class LinAlg
         return crossProduct(a, b, null);
     }
 
+    public static float[] crossProduct(float a[], float b[], float r[])
+    {
+        if(r == null)
+            r = new float[a.length];
+        r[0] = a[1] * b[2] - a[2] * b[1];
+        r[1] = a[2] * b[0] - a[0] * b[2];
+        r[2] = a[0] * b[1] - a[1] * b[0];
+        return r;
+    }
+
+    public static float[] crossProduct(float a[], float b[])
+    {
+        return crossProduct(a, b, null);
+    }
+
     /** Consider the directed 2D line that travels from p0 to p1. is q
      * on the left (or on the line)?
      **/

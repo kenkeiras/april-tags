@@ -502,8 +502,10 @@ public class MultiResolutionMatcher
                                           matcher.gms[0].y0 + matcher.gms[0].metersPerPixel*(pt.iy + dbg.n.ty0 + .5) });
                 }
                 VisVertexData vvd = new VisVertexData(ps);
-                vb.addBack(new VzPoints(vvd, new VisConstantColor(Color.black), 5));
-                vb.addBack(new VzPoints(vvd, new VisConstantColor(Color.yellow), 5));
+                vb.addBack(new VzPoints(vvd,
+                                        new VzPoints.Style(Color.black, 5)));
+                vb.addBack(new VzPoints(vvd,
+                                        new VzPoints.Style(Color.yellow, 5)));
                 vb.swap();
 
                 vb = vw.getBuffer("score");
@@ -531,8 +533,10 @@ public class MultiResolutionMatcher
                 }
 
                 VisVertexData vvd = new VisVertexData(ps);
-                vb.addBack(new VzPoints(vvd, new VisConstantColor(Color.black), 5));
-                vb.addBack(new VzPoints(vvd, new VisConstantColor(Color.red), 5));
+                vb.addBack(new VzPoints(vvd,
+                                        new VzPoints.Style(Color.black, 5)));
+                vb.addBack(new VzPoints(vvd,
+                                        new VzPoints.Style(Color.red, 5)));
                 vb.swap();
 
                 double score = dbg.gm.score(search.points, matcher.gms[0].metersPerPixel*(tx+.5), matcher.gms[0].metersPerPixel*(ty+.5), search.t0 + search.tres*tt, search.prior, search.priorinv);

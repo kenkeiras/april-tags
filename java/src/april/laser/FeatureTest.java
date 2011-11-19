@@ -154,7 +154,7 @@ public class FeatureTest implements ParameterListener
             for (pose_t p : poses)
                 points.add(p.pos);
             vb.addBack(new VzPoints(new VisVertexData(points),
-                                     new VisConstantColor(Color.gray),1));
+                                    new VzPoints.Style(Color.gray, 1)));
             vb.addBack(new VisChain(LinAlg.quatPosToMatrix(posea.orientation, posea.pos), new VzRobot(Color.blue)));
             vb.addBack(new VisChain(LinAlg.quatPosToMatrix(poseb.orientation, poseb.pos), new VzRobot(Color.red)));
             vb.swap();
@@ -214,7 +214,7 @@ public class FeatureTest implements ParameterListener
                 VisWorld.Buffer vb = vwa.getBuffer("points");
                 if (isEnabled())
                     vb.addBack(new VzPoints(new VisVertexData(pointsa),
-                                             new VisConstantColor(Color.blue),2));
+                                            new VzPoints.Style(Color.blue, 2)));
                 vb.swap();
             }
 
@@ -223,7 +223,7 @@ public class FeatureTest implements ParameterListener
                 VisWorld.Buffer vb = vwb.getBuffer("points");
                 if (isEnabled())
                     vb.addBack(new VzPoints(new VisVertexData(pointsb),
-                                             new VisConstantColor(Color.blue), 2));
+                                            new VzPoints.Style(Color.blue, 2)));
                 vb.swap();
             }
         }
@@ -284,7 +284,8 @@ public class FeatureTest implements ParameterListener
                     ArrayList<ArrayList<double[]>> contours = contourExtractor.getContours(pointsa);
                     for (ArrayList<double[]> contour : contours) {
                         vb.addBack(new VzLines(new VisVertexData(contour),
-                                                new VisConstantColor(ColorUtil.randomColor()),2, VzLines.TYPE.LINE_STRIP));
+                                               VzLines.LINE_STRIP,
+                                               new VzLines.Style(ColorUtil.randomColor(), 2)));
                     }
                 }
 
@@ -298,7 +299,8 @@ public class FeatureTest implements ParameterListener
                     ArrayList<ArrayList<double[]>> contours = contourExtractor.getContours(pointsb);
                     for (ArrayList<double[]> contour : contours) {
                         vb.addBack(new VzLines(new VisVertexData(contour),
-                                                new VisConstantColor(ColorUtil.randomColor()), 2, VzLines.TYPE.LINE_STRIP));
+                                               VzLines.LINE_STRIP,
+                                               new VzLines.Style(ColorUtil.randomColor(), 2)));
                     }
                 }
                 vb.swap();
@@ -356,13 +358,15 @@ public class FeatureTest implements ParameterListener
                         Color color = ColorUtil.randomColor();
 
                         vb.addBack(new VzLines(new VisVertexData(lf.seg.p1, lf.seg.p2),
-                                                new VisConstantColor(color),2, VzLines.TYPE.LINE_STRIP));
+                                               VzLines.LINE_STRIP,
+                                               new VzLines.Style(color, 2)));
                         double cx[] = new double[] {(lf.seg.p1[0] + lf.seg.p2[0]) / 2,
                                                     (lf.seg.p1[1] + lf.seg.p2[1]) / 2 };
                         double nx[] = LinAlg.add(cx,new double[] { sz*Math.cos(lf.normal),
                                                                    sz*Math.sin(lf.normal)});
                         vb.addBack(new VzLines(new VisVertexData(cx,nx),
-                                                new VisConstantColor(color), 1, VzLines.TYPE.LINE_STRIP));
+                                               VzLines.LINE_STRIP,
+                                               new VzLines.Style(color, 1)));
                     }
                 }
 
@@ -378,13 +382,16 @@ public class FeatureTest implements ParameterListener
                         Color color = ColorUtil.randomColor();
 
                         vb.addBack(new VzLines(new VisVertexData(lf.seg.p1, lf.seg.p2),
-                                                new VisConstantColor(color),2, VzLines.TYPE.LINE_STRIP));
+                                               VzLines.LINE_STRIP,
+                                               new VzLines.Style(color, 2)));
+
                         double cx[] = new double[] {(lf.seg.p1[0] + lf.seg.p2[0]) / 2,
                                                     (lf.seg.p1[1] + lf.seg.p2[1]) / 2 };
                         double nx[] =  LinAlg.add(cx, new double[] { sz*Math.cos(lf.normal),
                                                                      sz*Math.sin(lf.normal)});
                         vb.addBack(new VzLines(new VisVertexData(cx, nx),
-                                                new VisConstantColor(color),1, VzLines.TYPE.LINE_STRIP));
+                                               VzLines.LINE_STRIP,
+                                               new VzLines.Style(color, 1)));
                     }
                 }
 

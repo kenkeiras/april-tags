@@ -184,11 +184,14 @@ public class TagTransmit implements ParameterListener
                                                                    new VzText(VzText.ANCHOR.CENTER,
                                                                                String.format("<<center,blue>>id %3d\n(err=%d)\n", d.id, d.hammingDistance))),
                                                       new VzLines(new VisVertexData(p0, p1, p2, p3, p0),
-                                                                   new VisConstantColor(Color.blue),4, VzLines.TYPE.LINE_STRIP),
+                                                                  VzLines.LINE_STRIP,
+                                                                  new VzLines.Style(Color.blue, 4)),
                                                       new VzLines(new VisVertexData(p0,p1),
-                                                                   new VisConstantColor(Color.green),4, VzLines.TYPE.LINE_STRIP), // x axis
+                                                                  VzLines.LINE_STRIP,
+                                                                  new VzLines.Style(Color.green, 4)),
                                                       new VzLines(new VisVertexData(p0, p3),
-                                                                   new VisConstantColor(Color.red),4, VzLines.TYPE.LINE_STRIP))); // y axis
+                                                                  VzLines.LINE_STRIP,
+                                                                  new VzLines.Style(Color.red, 4))));
 
                     System.out.printf("id %3d err %3d\n", d.id, d.hammingDistance);
                 }

@@ -202,11 +202,14 @@ public class TagTest implements ParameterListener
                     vbDetections.addBack(new VisChain(LinAlg.translate(0, im.getHeight(), 0),
                                                       LinAlg.scale(1, -1, 1),
                                                       new VzLines(new VisVertexData(p0, p1, p2, p3, p0),
-                                                                   new VisConstantColor(Color.blue),4, VzLines.TYPE.LINE_STRIP),
+                                                                  VzLines.LINE_STRIP,
+                                                                  new VzLines.Style(Color.blue, 4)),
                                                       new VzLines(new VisVertexData(p0,p1),
-                                                                   new VisConstantColor(Color.green),4, VzLines.TYPE.LINE_STRIP), // x axis
+                                                                  VzLines.LINE_STRIP,
+                                                                  new VzLines.Style(Color.green, 4)),
                                                       new VzLines(new VisVertexData(p0, p3),
-                                                                  new VisConstantColor(Color.red),4, VzLines.TYPE.LINE_STRIP), // y axis
+                                                                  VzLines.LINE_STRIP,
+                                                                  new VzLines.Style(Color.red, 4)),
                                                       new VisChain(LinAlg.translate(d.cxy[0], ymax + 20, 0), //LinAlg.translate(d.cxy[0],d.cxy[1],0),
                                                                    LinAlg.scale(1, -1, 1),
                                                                    LinAlg.scale(.25, .25, .25),

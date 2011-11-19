@@ -7,53 +7,70 @@ import java.io.*;
 public class VzLines implements VisObject
 {
     VisAbstractVertexData vd;
-    VisAbstractColorData cd;
-    double lineWidth;
+    int type;
+    Style styles[];
 
-    public enum TYPE { LINES, LINE_LOOP, LINE_STRIP };
+    public static final int LINES = 1, LINE_LOOP = 2, LINE_STRIP = 4;
 
-    TYPE type;
+    public static class Style
+    {
+        Color c;
+        double lineWidth;
+        VisAbstractColorData cd;
 
-    public VzLines(VisAbstractVertexData vd, VisAbstractColorData cd, double lineWidth, TYPE type)
+        public Style(Color c, double lineWidth)
+        {
+            this(new VisConstantColor(c), lineWidth);
+        }
+
+        public Style(VisAbstractColorData cd, double lineWidth)
+        {
+            this.cd = cd;
+            this.lineWidth = lineWidth;
+        }
+
+        public void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl, VzLines vlines)
+        {
+            vlines.vd.bindVertex(gl);
+            cd.bindColor(gl);
+
+            gl.glNormal3f(0, 0, 1);
+            gl.glLineWidth((float) lineWidth);
+
+            if (vlines.type == LINES)
+                gl.glDrawArrays(GL.GL_LINES, 0, vlines.vd.size());
+            else if (vlines.type == LINE_STRIP)
+                gl.glDrawArrays(GL.GL_LINE_STRIP, 0, vlines.vd.size());
+            else if (vlines.type == LINE_LOOP)
+                gl.glDrawArrays(GL.GL_LINE_LOOP, 0, vlines.vd.size());
+
+            cd.unbindColor(gl);
+            vlines.vd.unbindVertex(gl);
+        }
+    }
+
+    public VzLines(VisAbstractVertexData vd, int type, Style ... styles)
     {
         this.vd = vd;
-        this.cd = cd;
-        this.lineWidth = lineWidth;
         this.type = type;
+        this.styles = styles;
     }
 
     public synchronized void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl)
     {
-        vd.bindVertex(gl);
-        cd.bindColor(gl);
-
-        gl.glNormal3f(0, 0, 1);
-        gl.glLineWidth((float) lineWidth);
-
-        if (type == TYPE.LINES)
-            gl.glDrawArrays(GL.GL_LINES, 0, vd.size());
-        else if (type == TYPE.LINE_STRIP)
-            gl.glDrawArrays(GL.GL_LINE_STRIP, 0, vd.size());
-        else if (type == TYPE.LINE_LOOP)
-            gl.glDrawArrays(GL.GL_LINE_LOOP, 0, vd.size());
-
-        cd.unbindColor(gl);
-        vd.unbindVertex(gl);
+        for (Style style : styles)
+            style.render(vc, layer, rinfo, gl, this);
     }
 
     public void writeObject(ObjectWriter outs) throws IOException
     {
         outs.writeObject(vd);
-        outs.writeObject(cd);
-        outs.writeDouble(lineWidth);
-        outs.writeUTF(type.name());
+        outs.writeInt(type);
     }
 
     public void readObject(ObjectReader ins) throws IOException
     {
         vd = (VisAbstractVertexData) ins.readObject();
-        cd = (VisAbstractColorData) ins.readObject();
-        lineWidth = ins.readDouble();
-        this.type = TYPE.valueOf(ins.readUTF());
+        this.type = ins.readInt();
     }
 }

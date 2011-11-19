@@ -510,14 +510,16 @@ public class TagDetector
                 debugSegments.addBack(new VisChain(LinAlg.translate(0, height, 0),
                                                    LinAlg.scale(1, -1, 1),
                                                    new VzLines(new VisVertexData(new double[] { seg.x0, seg.y0},
-                                                                                  new double[] { seg.x1, seg.y1}),
-                                                                new VisConstantColor(Color.yellow),1, VzLines.TYPE.LINE_STRIP),
+                                                                                 new double[] { seg.x1, seg.y1}),
+                                                               VzLines.LINE_STRIP,
+                                                               new VzLines.Style(Color.yellow, 1)),
                                                    new VzLines(new VisVertexData(new double[] { cx,  cy },
-                                                                                  new double[] { cx + notch*Math.sin(seg.theta),
-                                                                                                 cy - notch*Math.cos(seg.theta) }),
-                                                                new VisConstantColor(Color.yellow),1, VzLines.TYPE.LINE_STRIP),
+                                                                                 new double[] { cx + notch*Math.sin(seg.theta),
+                                                                                                cy - notch*Math.cos(seg.theta) }),
+                                                               VzLines.LINE_STRIP,
+                                                               new VzLines.Style(Color.yellow, 1)),
                                                    new VzPoints(new VisVertexData(new double[] { seg.x0, seg.y0 }),
-                                                                 new VisConstantColor(Color.red),4)
+                                                                new VzPoints.Style(Color.red, 4))
                                           ));
             }
         }
@@ -589,7 +591,8 @@ public class TagDetector
                 debugQuads.addBack(new VisChain(LinAlg.translate(0, height, 0),
                                                     LinAlg.scale(1, -1, 1),
                                                 new VzLines(new VisVertexData(q.p[0], q.p[1], q.p[2], q.p[3], q.p[0]),
-                                                             new VisConstantColor(Color.orange),2,VzLines.TYPE.LINE_STRIP)));
+                                                            VzLines.LINE_STRIP,
+                                                            new VzLines.Style(Color.orange, 2))));
             }
         }
 
@@ -687,11 +690,11 @@ public class TagDetector
                 debugSamples.addBack(new VisChain(LinAlg.translate(0, height, 0),
                                                   LinAlg.scale(1, -1, 1),
                                                   new VzPoints(vdwhite,
-                                                                new VisConstantColor(Color.white),3),
+                                                               new VzPoints.Style(Color.white, 3)),
                                                   new VzPoints(vdblack,
-                                                                new VisConstantColor(Color.black),3),
+                                                               new VzPoints.Style(Color.black, 3)),
                                                   new VzPoints(vdsamp,
-                                                                new VisConstantColor(Color.orange),4)));
+                                                               new VzPoints.Style(Color.orange, 4))));
             }
 
             if (!bad) {

@@ -67,7 +67,7 @@ public class VisTest
                 vd.add(p);
                 cd.add(0xff7f0000 + (int) (255*(.5+p[1]/2)));
             }
-            vb.addBack(new VisLighting(false, new VzPoints(vd, cd, 2.0)));
+            vb.addBack(new VisLighting(false, new VzPoints(vd, new VzPoints.Style(cd, 2.0))));
 //            vb.addBack(new VisLighting(false, new VzPoints(vd, new VisConstantColor(Color.yellow), 2.0)));
             vb.swap();
         }
