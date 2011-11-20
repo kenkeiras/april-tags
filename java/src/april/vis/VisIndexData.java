@@ -22,6 +22,11 @@ public class VisIndexData implements VisAbstractIndexData, VisSerializable
         add(c);
     }
 
+    public VisIndexData(IntArray c)
+    {
+        add(c.getData());
+    }
+
     void tmpFlush()
     {
         if (tmpsz > 0) {

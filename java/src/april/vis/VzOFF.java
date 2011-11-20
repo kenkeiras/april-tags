@@ -10,21 +10,29 @@ import april.jmat.*;
 /** Loads and represents an object in OFF format **/
 public class VzOFF implements VisObject
 {
-    FloatArray vertexArray = new FloatArray();
-    IntArray indexArray = new IntArray();
-    FloatArray normalArray;
+    String path;
 
-    long vid = VisUtil.allocateID();
-    long nid = VisUtil.allocateID();
-    long iid = VisUtil.allocateID();
-
+    VzMesh mesh;
     VzMesh.Style style;
+
+    double xyz_min[] = new double[] { Double.MAX_VALUE,
+                                      Double.MAX_VALUE,
+                                      Double.MAX_VALUE };
+
+    double xyz_max[] = new double[] { -Double.MAX_VALUE,
+                                      -Double.MAX_VALUE,
+                                      -Double.MAX_VALUE };
 
     public VzOFF(String path, VzMesh.Style style) throws IOException
     {
+        this.path = path;
         this.style = style;
 
         BufferedReader ins = new BufferedReader(new FileReader(new File(path)));
+
+        FloatArray vertexArray = new FloatArray();
+        IntArray indexArray = new IntArray();
+        FloatArray normalArray;
 
         String header = ins.readLine();
         if (!header.equals("OFF"))
@@ -33,7 +41,7 @@ public class VzOFF implements VisObject
         int nvertexArray, nfaces, nedges;
         if (true) {
             String sizes = ins.readLine();
-            String toks[] = sizes.split("\\s+");
+            String toks[] = fastSplit(sizes);
             nvertexArray = Integer.parseInt(toks[0]);
             nfaces = Integer.parseInt(toks[1]);
             nedges = Integer.parseInt(toks[2]);
@@ -41,10 +49,23 @@ public class VzOFF implements VisObject
 
         for (int i = 0; i < nvertexArray; i++) {
             String line = ins.readLine();
-            String toks[] = line.split("\\s+");
-            vertexArray.add(Float.parseFloat(toks[0]));
-            vertexArray.add(Float.parseFloat(toks[1]));
-            vertexArray.add(Float.parseFloat(toks[2]));
+            String toks[] = fastSplit(line);
+
+            float x = Float.parseFloat(toks[0]);
+            float y = Float.parseFloat(toks[1]);
+            float z = Float.parseFloat(toks[2]);
+
+            xyz_min[0] = Math.min(xyz_min[0], x);
+            xyz_min[1] = Math.min(xyz_min[1], y);
+            xyz_min[2] = Math.min(xyz_min[2], z);
+
+            xyz_max[0] = Math.max(xyz_max[0], x);
+            xyz_max[1] = Math.max(xyz_max[1], y);
+            xyz_max[2] = Math.max(xyz_max[2], z);
+
+            vertexArray.add(x);
+            vertexArray.add(y);
+            vertexArray.add(z);
         }
 
         float vs[] = vertexArray.getData();
@@ -53,7 +74,7 @@ public class VzOFF implements VisObject
 
         for (int i = 0; i < nfaces; i++) {
             String line = ins.readLine();
-            String toks[] = line.split("\\s+");
+            String toks[] = fastSplit(line);
 
             int len = Integer.parseInt(toks[0]);
             assert(len+1 == toks.length);
@@ -75,7 +96,7 @@ public class VzOFF implements VisObject
                                             vs[c*3+1] - vs[a*3+1],
                                             vs[c*3+2] - vs[a*3+2] };
 
-                float n[] = LinAlg.crossProduct(vba, vca);
+                float n[] = LinAlg.normalize(LinAlg.crossProduct(vba, vca));
 
                 for (int k = 0; k < 3; k++) {
                     ns[3*a+k] += n[k];
@@ -92,30 +113,54 @@ public class VzOFF implements VisObject
             ns[i+2] /= mag;
         }
 
+        mesh = new VzMesh(new VisVertexData(vs, vs.length / 3, 3),
+                          new VisVertexData(ns, ns.length / 3, 3),
+                          new VisIndexData(indexArray),
+                          VzMesh.TRIANGLES);
         ins.close();
+    }
+
+    // equivalent to s.split("\ +")
+    static final String[] fastSplit(String s)
+    {
+        ArrayList<String> toks = new ArrayList<String>();
+
+        StringBuilder sb = null;
+
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c==' ') {  //  || c=='\n' || c=='\r' || c=='\t') {
+                if (sb != null) {
+                    toks.add(sb.toString());
+                    sb = null;
+                }
+            } else {
+                if (sb == null)
+                    sb = new StringBuilder();
+                sb.append(c);
+            }
+        }
+
+        if (sb != null)
+            toks.add(sb.toString());
+
+        return toks.toArray(new String[toks.size()]);
     }
 
     public void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl)
     {
-        gl.glColor(Color.blue);
-
-//        gl.glEnable(GL.GL_CULL_FACE);
-
-        gl.gldBind(GL.VBO_TYPE_VERTEX, vid, vertexArray.size() / 3, 3, vertexArray.getData());
-        gl.gldBind(GL.VBO_TYPE_NORMAL, nid, normalArray.size() / 3, 3, normalArray.getData());
-        gl.gldBind(GL.VBO_TYPE_ELEMENT_ARRAY, iid, indexArray.size(), 1, indexArray.getData());
-
-        gl.glDrawRangeElements(GL.GL_TRIANGLES,
-                               0, vertexArray.size()/3, indexArray.size(),
-                               0);
-
-        gl.gldUnbind(GL.VBO_TYPE_VERTEX, vid);
-        gl.gldUnbind(GL.VBO_TYPE_NORMAL, nid);
-        gl.gldUnbind(GL.VBO_TYPE_ELEMENT_ARRAY, iid);
-
-//        gl.glDisable(GL.GL_CULL_FACE);
+        mesh.render(vc, layer, rinfo, gl, style);
     }
 
+    static String baseName(String path)
+    {
+        int idx = path.lastIndexOf("/");
+        if (idx < 0)
+            return path;
+        return path.substring(idx+1);
+    }
+
+    /** Call with one or more OFF model paths **/
     public static void main(String args[])
     {
         JFrame f = new JFrame("VzOFF "+args[0]);
@@ -125,27 +170,66 @@ public class VzOFF implements VisObject
         VisLayer vl = new VisLayer(vw);
         VisCanvas vc = new VisCanvas(vl);
 
-        try {
-            VzOFF model = new VzOFF(args[0], new VzMesh.Style(Color.red));
+        VzMesh.Style defaultMeshStyle = new VzMesh.Style(Color.cyan);
 
-            System.out.printf("loaded %d vertexArray, %d triangle indexArray\n", model.vertexArray.size()/3, model.indexArray.size()/3);
+        ArrayList<VzOFF> models = new ArrayList<VzOFF>();
 
-            VisWorld.Buffer vb = vw.getBuffer("model");
-            vb.addBack(model);
-
-            if (false) {
-                for (int x = 0; x < 10; x++) {
-                    for (int y = 0; y < 10; y++) {
-                        vb.addBack(new VisChain(LinAlg.translate(x*10, y*10, 0),
-                                                model));
-                    }
+        for (int i = 0; i < args.length; i++) {
+            if (args[i].endsWith(".off")) {
+                try {
+                    models.add(new VzOFF(args[i], defaultMeshStyle));
+                    System.out.printf("Loaded: %20s (%5.2f%%)\n", args[i], i*100.0 / args.length);
+                } catch (IOException ex) {
+                    System.out.println("ex: "+ex);
                 }
+            } else {
+                System.out.printf("Ignoring file with wrong suffix: "+args[i]);
             }
-
-            vb.swap();
-        } catch (IOException ex) {
-            System.out.println("ex: "+ex);
         }
+
+        if (models.size() == 0) {
+            System.out.println("No models specified\n");
+            return;
+        }
+
+        int rows = (int) Math.sqrt(models.size());
+        int cols = models.size() / rows + 1;
+
+//        VzGrid.addGrid(vw);
+
+        VisWorld.Buffer vb = vw.getBuffer("models");
+        for (int y = 0; y < rows; y++) {
+            for (int x = 0; x < cols; x++) {
+                int idx = y*cols + x;
+                if (idx >= models.size())
+                    break;
+
+                VzOFF model = models.get(idx);
+
+                double mx = Math.max(model.xyz_max[2] - model.xyz_min[2],
+                                     Math.max(model.xyz_max[1] - model.xyz_min[1],
+                                              model.xyz_max[0] - model.xyz_min[0]));
+
+                vb.addBack(new VisChain(LinAlg.translate(x+.5, rows - (y+.5), 0),
+                                        new VzSquare(1, 1, new VzLines.Style(Color.white, 3)),
+                                        new VisChain(LinAlg.translate(0, .4, 0),
+                                                     new VzText(VzText.ANCHOR.CENTER,
+                                                                String.format("<<sansserif-20,scale=.003>>%s", baseName(model.path)))),
+                                        LinAlg.scale(.5, .5, .5),
+                                        LinAlg.scale(1.0 / mx, 1.0 / mx, 1.0 / mx),
+                                        LinAlg.translate(-(model.xyz_max[0] + model.xyz_min[0]) / 2.0,
+                                                         -(model.xyz_max[1] + model.xyz_min[1]) / 2.0,
+                                                         -(model.xyz_max[2] + model.xyz_min[2]) / 2.0),
+                                        model));
+
+
+            }
+        }
+
+        vb.swap();
+
+        vl.cameraManager.fit2D(new double[] { 0, 0, 0 }, new double[] { cols, rows, 0 }, true);
+        ((DefaultCameraManager) vl.cameraManager).interfaceMode = 3.0;
 
         f.add(vc);
         f.setSize(600, 400);

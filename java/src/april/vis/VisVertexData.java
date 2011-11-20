@@ -21,6 +21,16 @@ public class VisVertexData implements VisAbstractVertexData, VisSerializable
     {
     }
 
+    public VisVertexData(FloatArray f, int dim)
+    {
+        add(f.getData(), f.size() / dim, dim);
+    }
+
+    public VisVertexData(DoubleArray f, int dim)
+    {
+        add(f.getData(), f.size() / dim, dim);
+    }
+
     public VisVertexData(float vf[], int nv, int dim)
     {
         add(vf, nv, dim);
