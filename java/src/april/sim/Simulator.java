@@ -69,7 +69,7 @@ public class Simulator implements VisConsole.Listener
 
         vl.addEventHandler(new MyEventHandler());
 
-        VzGrid.addGrid(vw).groundColor = Color.white;//new java.awt.Color(255,255,255,0);
+//        VzGrid.addGrid(vw).groundColor = Color.white;//new java.awt.Color(255,255,255,0);
         vl.backgroundColor = Color.white;
         if (true) {
             VisWorld.Buffer vb = vw.getBuffer("SimWorld");

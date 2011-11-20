@@ -7,8 +7,11 @@ import april.jmat.*;
 public class VzSphere implements VisObject
 {
     static final SphereBuilder sphere4 = new SphereBuilder(4);
-
-    VisFillStyle fillStyle;
+    static final VzMesh mesh = new VzMesh(new VisVertexData(sphere4.verts, sphere4.verts.length / 3, 3),
+                                          new VisVertexData(sphere4.verts, sphere4.verts.length / 3, 3),
+                                          new VisIndexData(sphere4.indices),
+                                          VzMesh.TRIANGLES);
+    VzMesh.Style meshStyle;
     VisTexture   texture;
     double       r;
 
@@ -184,10 +187,20 @@ public class VzSphere implements VisObject
         }
     }
 
-    public VzSphere(double r, VisFillStyle fillStyle)
+    public VzSphere(VzMesh.Style meshStyle)
+    {
+        this(1, meshStyle);
+    }
+
+    public VzSphere(double r, VzMesh.Style meshStyle)
     {
         this.r = r;
-        this.fillStyle = fillStyle;
+        this.meshStyle = meshStyle;
+    }
+
+    public VzSphere(VisTexture texture)
+    {
+        this(1, texture);
     }
 
     public VzSphere(double r, VisTexture texture)
@@ -200,13 +213,20 @@ public class VzSphere implements VisObject
     {
         SphereBuilder sb = sphere4;
 
+        gl.glPushMatrix();
+
         gl.glScaled(r, r, r);
 
-        gl.gldBind(GL.VBO_TYPE_VERTEX, sb.vid, sb.verts.length / 3, 3, sb.verts);
-        gl.gldBind(GL.VBO_TYPE_NORMAL, sb.vid, sb.verts.length / 3, 3, sb.verts);
-        gl.gldBind(GL.VBO_TYPE_ELEMENT_ARRAY, sb.iid, sb.indices.length, 1, sb.indices);
+        if (meshStyle != null) {
+            mesh.render(vc, layer, rinfo, gl, meshStyle);
+        }
 
         if (texture != null) {
+
+            gl.gldBind(GL.VBO_TYPE_VERTEX, sb.vid, sb.verts.length / 3, 3, sb.verts);
+            gl.gldBind(GL.VBO_TYPE_NORMAL, sb.vid, sb.verts.length / 3, 3, sb.verts);
+            gl.gldBind(GL.VBO_TYPE_ELEMENT_ARRAY, sb.iid, sb.indices.length, 1, sb.indices);
+
             gl.glColor(Color.white);
 
             texture.bind(gl);
@@ -214,16 +234,12 @@ public class VzSphere implements VisObject
             gl.glDrawRangeElements(GL.GL_TRIANGLES, 0, sb.verts.length / 3, sb.indices.length, 0);
             gl.gldUnbind(GL.VBO_TYPE_TEX_COORD, sb.tid);
             texture.unbind(gl);
+
+            gl.gldUnbind(GL.VBO_TYPE_VERTEX, sb.vid);
+            gl.gldUnbind(GL.VBO_TYPE_NORMAL, sb.vid);
         }
 
-        if (fillStyle != null) {
-            fillStyle.bindFill(gl);
-            gl.glDrawRangeElements(GL.GL_TRIANGLES, 0, sb.verts.length / 3, sb.indices.length, 0);
-            fillStyle.unbindFill(gl);
-        }
-
-        gl.gldUnbind(GL.VBO_TYPE_VERTEX, sb.vid);
-        gl.gldUnbind(GL.VBO_TYPE_NORMAL, sb.vid);
+        gl.glPopMatrix();
     }
 }
 

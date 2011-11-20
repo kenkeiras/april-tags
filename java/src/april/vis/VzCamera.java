@@ -9,29 +9,39 @@ import april.jmat.*;
  **/
 public class VzCamera implements VisObject
 {
-    static Color defaultFill = Color.gray;
-
-    Color color;
+    Style styles[];
+    VzBox box = new VzBox();
+    VzSquarePyramid pyramid = new VzSquarePyramid();
 
     public VzCamera()
     {
-        this(defaultFill);
+        this(new VzMesh.Style(Color.gray));
     }
 
-    public VzCamera(Color fill)
+    public VzCamera(Style ... styles)
     {
-        this.color = fill;
+        this.styles = styles;
+    }
+
+    public void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl, Style style)
+    {
+        box.render(vc, layer, rinfo, gl, style);
+
+        gl.glPushMatrix();
+        gl.glMultMatrix(LinAlg.multiplyMany(LinAlg.scale(1, .5, .5),
+                                            LinAlg.translate(1, 0, 0),
+                                            LinAlg.rotateY(-Math.PI/2)));
+
+        pyramid.render(vc, layer, rinfo, gl, style);
+
+        gl.glPopMatrix();
     }
 
     public void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl)
     {
-        VisChain c = new VisChain(new VisChain(LinAlg.scale(1, .5, .5),
-                                               LinAlg.translate(1, 0, 0),
-                                               LinAlg.rotateY(-Math.PI/2),
-                                               new VzSquarePyramid(new VisFillStyle(color), false)),
-                                  new VzBox(new VisFillStyle(color)));
-
-        c.render(vc, layer, rinfo, gl);
+        for (Style style : styles) {
+            render(vc, layer, rinfo, gl, style);
+        }
     }
 
 }

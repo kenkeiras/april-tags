@@ -18,7 +18,7 @@ public class VzOFF implements VisObject
     long nid = VisUtil.allocateID();
     long iid = VisUtil.allocateID();
 
-    VzFillStyle style;
+    VzMesh.Style style;
 
     public VzOFF(String path, VzMesh.Style style) throws IOException
     {
@@ -126,7 +126,7 @@ public class VzOFF implements VisObject
         VisCanvas vc = new VisCanvas(vl);
 
         try {
-            VzOFF model = new VzOFF(args[0]);
+            VzOFF model = new VzOFF(args[0], new VzMesh.Style(Color.red));
 
             System.out.printf("loaded %d vertexArray, %d triangle indexArray\n", model.vertexArray.size()/3, model.indexArray.size()/3);
 

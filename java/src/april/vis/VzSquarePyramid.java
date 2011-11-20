@@ -6,83 +6,82 @@ import java.awt.*;
  * (with z = 0), and apex rises up z axis to (0,0,1) **/
 public class VzSquarePyramid implements VisObject
 {
-    static final float sqrt2 = (float) Math.sqrt(2);
+    Style styles[];
+    int flags;
 
-    static float vd[] = new float[] { 1, -1, 0,
-                                      1, 1, 0,
-                                      0, 0, 1,
+    public static final int BOTTOM = 1;
 
-                                      1, 1, 0,
-                                      -1, 1, 0,
-                                      0, 0, 1,
+    static VzMesh mesh;
+    static VzSquare square;
 
-                                      -1, 1, 0,
-                                      -1, -1, 0,
-                                      0, 0, 1,
+    static {
+        final float sqrt2 = (float) Math.sqrt(2);
 
-                                      -1, -1, 0,
-                                      1, -1, 0,
-                                      0, 0, 1,
+        float vd[] = new float[] { 1, -1, 0,
+                                   1, 1, 0,
+                                   0, 0, 1,
 
-                                      // the base
-                                      -1, -1, 0,
-                                      -1, 1, 0,
-                                      1, 1, 0,
+                                   1, 1, 0,
+                                   -1, 1, 0,
+                                   0, 0, 1,
 
-                                      -1, -1, 0,
-                                      1, 1, 0,
-                                      1, -1, 0
-    };
+                                   -1, 1, 0,
+                                   -1, -1, 0,
+                                   0, 0, 1,
 
-    static float nd[] = new float[] { sqrt2, 0, sqrt2,
-                                      sqrt2, 0, sqrt2,
-                                      sqrt2, 0, sqrt2,
+                                   -1, -1, 0,
+                                   1, -1, 0,
+                                   0, 0, 1,        };
 
-                                      0, sqrt2, sqrt2,
-                                      0, sqrt2, sqrt2,
-                                      0, sqrt2, sqrt2,
+        VisVertexData fillVertices = new VisVertexData(vd, vd.length / 3, 3);
 
-                                      -sqrt2, 0, sqrt2,
-                                      -sqrt2, 0, sqrt2,
-                                      -sqrt2, 0, sqrt2,
+        float nd[] = new float[] { sqrt2, 0, sqrt2,
+                                   sqrt2, 0, sqrt2,
+                                   sqrt2, 0, sqrt2,
 
-                                      0, -sqrt2, sqrt2,
-                                      0, -sqrt2, sqrt2,
-                                      0, -sqrt2, sqrt2,
+                                   0, sqrt2, sqrt2,
+                                   0, sqrt2, sqrt2,
+                                   0, sqrt2, sqrt2,
 
-                                      0, 0, -1,
-                                      0, 0, -1,
-                                      0, 0, -1,
+                                   -sqrt2, 0, sqrt2,
+                                   -sqrt2, 0, sqrt2,
+                                   -sqrt2, 0, sqrt2,
 
-                                      0, 0, -1,
-                                      0, 0, -1,
-                                      0, 0, -1 };
+                                   0, -sqrt2, sqrt2,
+                                   0, -sqrt2, sqrt2,
+                                   0, -sqrt2, sqrt2 };
 
-    static long vdid = VisUtil.allocateID();
-    static long ndid = VisUtil.allocateID();
+        VisVertexData fillNormals = new VisVertexData(nd, nd.length / 3, 3);
+        mesh = new VzMesh(fillVertices, fillNormals, VzMesh.TRIANGLES);
 
-    VisAbstractFillStyle fillStyle;
-    boolean hasBottom;
+        square = new VzSquare(2, 2);
+    }
 
-    public VzSquarePyramid(VisAbstractFillStyle fillStyle, boolean hasBottom)
+    public VzSquarePyramid(Style ... styles)
     {
-        this.fillStyle = fillStyle;
-        this.hasBottom = hasBottom;
+        this(BOTTOM, styles);
+    }
+
+    public VzSquarePyramid(int flags, Style ... styles)
+    {
+        this.flags = flags;
+        this.styles = styles;
+    }
+
+    public void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl, Style style)
+    {
+        if (style instanceof VzMesh.Style) {
+            mesh.render(vc, layer, rinfo, gl, (VzMesh.Style) style);
+
+            if ((flags & BOTTOM) != 0) {
+                square.render(vc, layer, rinfo, gl, (VzMesh.Style) style);
+            }
+        }
     }
 
     public void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl)
     {
-        fillStyle.bindFill(gl);
-        gl.gldBind(GL.VBO_TYPE_VERTEX, vdid, vd.length / 3, 3, vd);
-        gl.gldBind(GL.VBO_TYPE_NORMAL, ndid, nd.length / 3, 3, nd);
-
-        if (hasBottom)
-            gl.glDrawArrays(GL.GL_TRIANGLES, 0, vd.length / 3);
-        else
-            gl.glDrawArrays(GL.GL_TRIANGLES, 0, vd.length / 3 - 6);
-
-        gl.gldUnbind(GL.VBO_TYPE_VERTEX, vdid);
-        gl.gldUnbind(GL.VBO_TYPE_NORMAL, ndid);
-        fillStyle.unbindFill(gl);
+        for (Style style : styles)
+            render(vc, layer, rinfo, gl, style);
     }
 }

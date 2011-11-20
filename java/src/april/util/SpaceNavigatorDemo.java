@@ -186,22 +186,22 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
     public void redraw()
     {
         vb.addBack(new VisChain(LinAlg.translate(0, 0, -1),
-                                new VzBox(100, 100, 2, Color.gray)));
+                                new VzBox(100, 100, 2, new VzMesh.Style(Color.gray))));
 
         vb.addBack(new VisChain(LinAlg.translate(4, -5, 1),
-                                new VzBox(3, 3, 2, getColor(0))));
+                                new VzBox(3, 3, 2, new VzMesh.Style(getColor(0)))));
 
         vb.addBack(new VisChain(LinAlg.translate(4, 0, 1),
-                                new VzBox(3, 3, 4, getColor(1))));
+                                new VzBox(3, 3, 4, new VzMesh.Style(getColor(1)))));
 
         vb.addBack(new VisChain(LinAlg.translate(4, 5, 1),
-                                new VzBox(3, 2, 2, getColor(2))));
+                                new VzBox(3, 2, 2, new VzMesh.Style(getColor(2)))));
 
         vb.addBack(new VisChain(LinAlg.translate(4, 12, 1),
-                                new VzBox(4, 4, 2, getColor(3))));
+                                new VzBox(4, 4, 2, new VzMesh.Style(getColor(3)))));
 
         vb.addBack(new VisChain(LinAlg.translate(4, 17, 1),
-                                new VzBox(4, 4, 2, getColor(4))));
+                                new VzBox(4, 4, 2, new VzMesh.Style(getColor(4)))));
 
         vb.swap();
     }

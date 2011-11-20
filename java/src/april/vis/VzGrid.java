@@ -8,10 +8,6 @@ import april.jmat.*;
 
 public class VzGrid implements VisObject, VisSerializable
 {
-    static int sz = 100; // number of lines to use when rendering grid.
-    static float gridVertices[];
-    static long gridId = VisUtil.allocateID();
-
     /** If non-null, specifies fixed spacing for gridlines in the x
      * and y directions.
      **/
@@ -20,33 +16,37 @@ public class VzGrid implements VisObject, VisSerializable
     /** The last spacing actually rendered. might be null. **/
     public double lastspacing[];
 
-    public Color gridColor, groundColor;
+    Style styles[];
 
-    public VzGrid()
-    {
-        this(new Color(128,128,128), new Color(32,32,32,128));
-    }
-
-    public VzGrid(Color gridColor, Color groundColor)
-    {
-        this.gridColor = gridColor;
-        this.groundColor = groundColor;
-    }
+    static int sz = 100; // number of lines to use when rendering grid.
+    static VzLines gridLines;
+    static VzCircle groundCircle = new VzCircle(1);
 
     static {
         // build (2*sz+1) lines that form a grid covering [-sz,-sz] to
         // [sz, sz]. Two vertices (four points) per line.
-        gridVertices = new float[4*(2*sz+1)];
+        VisVertexData gridLinesData = new VisVertexData();
 
-        int pos = 0;
         for (int i = -sz; i <= sz; i++) {
             float r = (float) Math.sqrt(sz*sz - i*i);
-            gridVertices[pos++] = -r;
-            gridVertices[pos++] = i;
-
-            gridVertices[pos++] = r;
-            gridVertices[pos++] = i;
+            gridLinesData.add(new float[] { -r, i });
+            gridLinesData.add(new float[] { r, i });
         }
+
+        gridLines = new VzLines(gridLinesData, VzLines.LINES);
+    }
+
+    public VzGrid()
+    {
+        this(new VzMesh.Style(new Color(32,32,32,128)),
+             new VzLines.Style(new Color(128,128,128), 1));
+
+    }
+
+    /** Better quality usually results from listing mesh style first, followed by line styles. **/
+    public VzGrid(Style ... styles)
+    {
+        this.styles = styles;
     }
 
     public synchronized void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl)
@@ -74,36 +74,25 @@ public class VzGrid implements VisObject, VisSerializable
 
         gl.glMultMatrix(LinAlg.scale(spacingx, spacingy, 1));
 
-        if (groundColor != null) {
-            BasicShapes s = BasicShapes.circleFill16;
+        for (Style style : styles) {
+            if (style instanceof VzMesh.Style) {
+                gl.glPushMatrix();
+                gl.glEnable(GL.GL_POLYGON_OFFSET_FILL);
+                gl.glPolygonOffset(5,5);
+                gl.glMultMatrix(LinAlg.scale(sz, sz, sz));
+                groundCircle.render(vc, layer, rinfo, gl, style);
+                gl.glDisable(GL.GL_POLYGON_OFFSET_FILL);
+                gl.glPopMatrix();
+            }
 
-            gl.glEnable(GL.GL_POLYGON_OFFSET_FILL);
-            gl.glPolygonOffset(5,5);
-
-            gl.glLineWidth(1.0f);
-            gl.glPushMatrix();
-            gl.glMultMatrix(LinAlg.scale(sz, sz, sz));
-            gl.glColor(groundColor);
-            gl.gldBind(GL.VBO_TYPE_VERTEX, s.vid, s.vsz, s.vdim, s.v);
-            gl.glDrawArrays(s.mode, 0, s.vsz);
-            gl.gldUnbind(GL.VBO_TYPE_VERTEX, s.vid);
-            gl.glPopMatrix();
-
-            gl.glDisable(GL.GL_POLYGON_OFFSET_FILL);
-        }
-
-        if (gridColor != null) {
-//            gl.glTranslated(0, 0, 0.01);
-//            gl.glPolygonOffset(5,5);
-            gl.glColor(gridColor);
-            gl.gldBind(GL.VBO_TYPE_VERTEX, gridId, gridVertices.length/2, 2, gridVertices);
-
-            gl.glDrawArrays(GL.GL_LINES, 0, gridVertices.length/2);
-            gl.glMultMatrix(LinAlg.rotateZ(Math.PI/2));
-            gl.glDrawArrays(GL.GL_LINES, 0, gridVertices.length/2);
-
-            gl.gldUnbind(GL.VBO_TYPE_VERTEX, gridId);
-        }
+            if (style instanceof VzLines.Style) {
+                gl.glPushMatrix();
+                gridLines.render(vc, layer, rinfo, gl, (VzLines.Style) style);
+                gl.glMultMatrix(LinAlg.rotateZ(Math.PI/2));
+                gridLines.render(vc, layer, rinfo, gl, (VzLines.Style) style);
+                gl.glPopMatrix();
+            }
+       }
 
         gl.glPopMatrix();
     }
@@ -129,9 +118,17 @@ public class VzGrid implements VisObject, VisSerializable
     /** Create a VzGrid with the default properties and a text overlay. **/
     public static VzGrid addGrid(VisWorld vw)
     {
-        VzGrid vg = new VzGrid();
+        return addGrid(vw, new VzGrid());
+    }
 
+    public static VzGrid addGrid(VisWorld vw, VzGrid vg)
+    {
         if (true) {
+            // for transparent grid surfaces, we need to draw
+            // last. Otherwise we end up setting Z buffer values and
+            // blocking any objects behind it.
+
+            // however, alpha blending is ugly this way around VzText.
             VisWorld.Buffer vb = vw.getBuffer("grid");
             vb.setDrawOrder(10000);
             vb.addFront(vg);
@@ -159,14 +156,19 @@ public class VzGrid implements VisObject, VisSerializable
     public void writeObject(ObjectWriter outs) throws IOException
     {
         outs.writeDoubles(spacing);
-        outs.writeColor(gridColor);
-        outs.writeColor(groundColor);
+
+        outs.writeInt(styles.length);
+        for (int sidx = 0; sidx < styles.length; sidx++)
+            outs.writeObject(styles[sidx]);
     }
 
     public void readObject(ObjectReader ins) throws IOException
     {
         spacing = ins.readDoubles();
-        gridColor = ins.readColor();
-        groundColor = ins.readColor();
+
+        int nstyles = ins.readInt();
+        styles = new Style[nstyles];
+        for (int sidx = 0; sidx < styles.length; sidx++)
+            styles[sidx] = (Style) ins.readObject();
     }
 }

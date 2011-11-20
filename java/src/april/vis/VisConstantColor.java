@@ -4,7 +4,7 @@ import java.util.*;
 import java.awt.*;
 import java.io.*;
 
-public class VisConstantColor implements VisAbstractColorData, VisAbstractFillStyle, VisSerializable
+public class VisConstantColor implements VisAbstractColorData, VisSerializable
 {
     Color c;
 

@@ -9,9 +9,8 @@ public class VzPoints implements VisObject, VisSerializable
     VisAbstractVertexData vd;
     Style styles[];
 
-    public static class Style
+    public static class Style implements VisSerializable, april.vis.Style
     {
-        Color c;
         double pointSize;
         VisAbstractColorData cd;
 
@@ -26,18 +25,20 @@ public class VzPoints implements VisObject, VisSerializable
             this.pointSize = pointSize;
         }
 
-        public void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl, VzPoints vpoints)
+        public Style(ObjectReader ins)
         {
-            vpoints.vd.bindVertex(gl);
-            cd.bindColor(gl);
+        }
 
-            gl.glNormal3f(0, 0, 1);
-            gl.glPointSize((float) pointSize);
+        public void writeObject(ObjectWriter outs) throws IOException
+        {
+            outs.writeDouble(pointSize);
+            outs.writeObject(cd);
+        }
 
-            gl.glDrawArrays(GL.GL_POINTS, 0, vpoints.vd.size());
-
-            cd.unbindColor(gl);
-            vpoints.vd.unbindVertex(gl);
+        public void readObject(ObjectReader ins) throws IOException
+        {
+            pointSize = ins.readDouble();
+            cd = (VisAbstractColorData) ins.readObject();
         }
     }
 
@@ -47,10 +48,24 @@ public class VzPoints implements VisObject, VisSerializable
         this.styles = styles;
     }
 
+    public synchronized void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl, VzPoints.Style style)
+    {
+        vd.bindVertex(gl);
+        style.cd.bindColor(gl);
+
+        gl.glNormal3f(0, 0, 1);
+        gl.glPointSize((float) style.pointSize);
+
+        gl.glDrawArrays(GL.GL_POINTS, 0, vd.size());
+
+        style.cd.unbindColor(gl);
+        vd.unbindVertex(gl);
+    }
+
     public synchronized void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl)
     {
         for (Style style : styles)
-            style.render(vc, layer, rinfo, gl, this);
+            render(vc, layer, rinfo, gl, style);
     }
 
     public VzPoints(ObjectReader ins)
@@ -60,10 +75,20 @@ public class VzPoints implements VisObject, VisSerializable
     public void writeObject(ObjectWriter outs) throws IOException
     {
         outs.writeObject(vd);
+
+        outs.writeInt(styles.length);
+        for (int sidx = 0; sidx < styles.length; sidx++)
+            outs.writeObject(styles[sidx]);
     }
 
     public void readObject(ObjectReader ins) throws IOException
     {
         vd = (VisAbstractVertexData) ins.readObject();
+
+        int nstyles = ins.readInt();
+        styles = new Style[nstyles];
+        for (int sidx = 0; sidx < styles.length; sidx++)
+            styles[sidx] = (Style) ins.readObject();
+
     }
 }

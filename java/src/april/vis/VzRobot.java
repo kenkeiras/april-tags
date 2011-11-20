@@ -5,45 +5,45 @@ import java.awt.*;
 /** Renders a robot as a small triangle. **/
 public class VzRobot implements VisObject
 {
-    final static Color defaultFill = Color.blue;
-    final static Color defaultBorder = Color.white;
+    Style styles[];
 
-    final static float length = 0.6f;
-    final static float width = .35f;
+    final static float length = 1.0f;
+    final static float width = .45f;
 
-    final static VisVertexData vd = new VisVertexData(new float[] { -length/2, width/2 },
-                                                      new float[] { length/2,  0 },
-                                                      new float[] { -length/2, -width/2 });
+    static VzMesh mesh;
+    static VzLines lines;
 
-    Color fillColor, borderColor;
+    static {
+        VisVertexData vd = new VisVertexData(new float[] { -length/2, width/2, 0 },
+                                             new float[] { length/2,  0, 0 },
+                                             new float[] { -length/2, -width/2, 0 });
+
+        mesh = new VzMesh(vd, VzMesh.TRIANGLES);
+        lines = new VzLines(vd, VzLines.LINE_LOOP);
+    }
 
     public VzRobot()
     {
-        this(defaultFill, defaultBorder);
+        this(new VzLines.Style(Color.cyan, 1), new VzMesh.Style(Color.blue));
     }
 
-    public VzRobot(Color fill)
+    public VzRobot(Color c)
     {
-        this(fill, defaultBorder);
+        this(new VzMesh.Style(c));
     }
 
-    public VzRobot(Color fill, Color border)
+    public VzRobot(Style ... styles)
     {
-        this.fillColor = fill;
-        this.borderColor = border;
+        this.styles = styles;
     }
 
     public void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl)
     {
-        gl.glLineWidth(1f);
-
-        vd.bindVertex(gl);
-        gl.glColor(fillColor);
-        gl.glDrawArrays(GL.GL_LINE_LOOP, 0, vd.size());
-
-        gl.glColor(borderColor);
-        gl.glDrawArrays(GL.GL_TRIANGLES, 0, vd.size());
-
-        vd.unbindVertex(gl);
+        for (Style style : styles) {
+            if (style instanceof VzLines.Style)
+                lines.render(vc, layer, rinfo, gl, (VzLines.Style) style);
+            if (style instanceof VzMesh.Style)
+                mesh.render(vc, layer, rinfo, gl, (VzMesh.Style) style);
+        }
     }
 }
