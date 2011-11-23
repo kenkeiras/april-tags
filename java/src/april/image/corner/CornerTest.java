@@ -69,6 +69,7 @@ public class CornerTest implements ParameterListener
         jf = new JFrame("CornerTest");
         jf.setLayout(new BorderLayout());
 
+        pg.addDoubleSlider("sigma", "pre-filter sigma", 0, 10, .8);
         pg.addDoubleSlider("thresh", "strength thresh", 0, 1, 0.01);
         pg.addListener(this);
 
@@ -134,6 +135,15 @@ public class CornerTest implements ParameterListener
         CornerDetector cd = detectors[jtp.getSelectedIndex()];
 
         FloatImage fim = new FloatImage(im);
+
+        double sigma = pg.gd("sigma");
+        if (sigma > 0) {
+            int fsz = ((int) Math.max(3, 3*sigma)) | 1;
+            float f[] = SigProc.makeGaussianFilter(sigma, fsz);
+
+            fim = fim.filterFactoredCentered(f, f);
+        }
+
         FloatImage response = cd.computeResponse(fim).normalize();
 
         BufferedImage out = response.makeColorImage();
