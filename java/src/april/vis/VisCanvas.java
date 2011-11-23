@@ -37,7 +37,7 @@ public class VisCanvas extends JComponent implements VisSerializable
     RenderInfo lastRenderInfo;
 
     public int popupFrameRates[] = new int[] { 1, 5, 10, 20, 30, 60, 100 };
-    int targetFrameRate = 100;
+    int targetFrameRate = 20;
 
     // a list of open movies.
     ArrayList<Movie> movies = new ArrayList<Movie>();

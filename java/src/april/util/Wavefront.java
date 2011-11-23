@@ -358,10 +358,10 @@ public class Wavefront
                 VisWorld.Buffer vb = vw.getBuffer("sourcesink");
                 vb.setDrawOrder(50);
                 vb.addBack(new VzPoints(new VisVertexData(sinks),
-                                         new VisConstantColor(Color.blue), 5));
+                                        new VzPoints.Style(Color.blue, 5)));
                 if (source != null)
                     vb.addBack(new VzPoints(new VisVertexData(source),
-                                             new VisConstantColor(Color.red), 8));
+                                            new VzPoints.Style(Color.red, 8)));
                 vb.swap();
             }
 
@@ -386,7 +386,9 @@ public class Wavefront
             if (true) {
                 VisWorld.Buffer vb = vw.getBuffer("path");
                 vb.setDrawOrder(100);
-                vb.addBack(new VzLines(new VisVertexData(path), new VisConstantColor(Color.yellow), 1, VzLines.TYPE.LINE_STRIP));
+                vb.addBack(new VzLines(new VisVertexData(path),
+                                       VzLines.LINE_STRIP,
+                                       new VzLines.Style(Color.yellow, 1)));
                 vb.swap();
             }
 

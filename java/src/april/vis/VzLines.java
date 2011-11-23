@@ -4,56 +4,103 @@ import java.util.*;
 import java.awt.*;
 import java.io.*;
 
-public class VzLines implements VisObject
+public class VzLines implements VisObject, VisSerializable
 {
     VisAbstractVertexData vd;
-    VisAbstractColorData cd;
-    double lineWidth;
+    int type;
+    Style styles[];
 
-    public enum TYPE { LINES, LINE_LOOP, LINE_STRIP };
+    public static final int LINES = 1, LINE_LOOP = 2, LINE_STRIP = 4;
 
-    TYPE type;
+    public static class Style implements VisSerializable, april.vis.Style
+    {
+        double lineWidth;
+        VisAbstractColorData cd;
 
-    public VzLines(VisAbstractVertexData vd, VisAbstractColorData cd, double lineWidth, TYPE type)
+        public Style(Color c, double lineWidth)
+        {
+            this(new VisConstantColor(c), lineWidth);
+        }
+
+        public Style(VisAbstractColorData cd, double lineWidth)
+        {
+            this.cd = cd;
+            this.lineWidth = lineWidth;
+        }
+
+        public Style(ObjectReader ins)
+        {
+        }
+
+        public void writeObject(ObjectWriter outs) throws IOException
+        {
+            outs.writeDouble(lineWidth);
+            outs.writeObject(cd);
+        }
+
+        public void readObject(ObjectReader ins) throws IOException
+        {
+            lineWidth = ins.readDouble();
+            cd = (VisAbstractColorData) ins.readObject();
+        }
+    }
+
+    public VzLines(VisAbstractVertexData vd, int type, Style ... styles)
     {
         this.vd = vd;
-        this.cd = cd;
-        this.lineWidth = lineWidth;
         this.type = type;
+        this.styles = styles;
+    }
+
+    public synchronized void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl, Style style)
+    {
+        vd.bindVertex(gl);
+        style.cd.bindColor(gl);
+
+        gl.glLineWidth((float) style.lineWidth);
+
+        switch (type) {
+            case LINES:
+                gl.glDrawArrays(GL.GL_LINES, 0, vd.size());
+                break;
+            case LINE_STRIP:
+                gl.glDrawArrays(GL.GL_LINE_STRIP, 0, vd.size());
+                break;
+            case LINE_LOOP:
+                gl.glDrawArrays(GL.GL_LINE_LOOP, 0, vd.size());
+                break;
+            default:
+                assert(false);
+        }
+
+        style.cd.unbindColor(gl);
+        vd.unbindVertex(gl);
     }
 
     public synchronized void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl)
     {
-        vd.bindVertex(gl);
-        cd.bindColor(gl);
-
-        gl.glNormal3f(0, 0, 1);
-        gl.glLineWidth((float) lineWidth);
-
-        if (type == TYPE.LINES)
-            gl.glDrawArrays(GL.GL_LINES, 0, vd.size());
-        else if (type == TYPE.LINE_STRIP)
-            gl.glDrawArrays(GL.GL_LINE_STRIP, 0, vd.size());
-        else if (type == TYPE.LINE_LOOP)
-            gl.glDrawArrays(GL.GL_LINE_LOOP, 0, vd.size());
-
-        cd.unbindColor(gl);
-        vd.unbindVertex(gl);
+        for (Style style : styles)
+            render(vc, layer, rinfo, gl, style);
     }
 
     public void writeObject(ObjectWriter outs) throws IOException
     {
         outs.writeObject(vd);
-        outs.writeObject(cd);
-        outs.writeDouble(lineWidth);
-        outs.writeUTF(type.name());
+        outs.writeInt(type);
+
+        outs.writeInt(styles.length);
+        for (int sidx = 0; sidx < styles.length; sidx++)
+            outs.writeObject(styles[sidx]);
     }
 
     public void readObject(ObjectReader ins) throws IOException
     {
         vd = (VisAbstractVertexData) ins.readObject();
-        cd = (VisAbstractColorData) ins.readObject();
-        lineWidth = ins.readDouble();
-        this.type = TYPE.valueOf(ins.readUTF());
+        this.type = ins.readInt();
+
+        int nstyles = ins.readInt();
+        styles = new Style[nstyles];
+        for (int sidx = 0; sidx < styles.length; sidx++)
+            styles[sidx] = (Style) ins.readObject();
     }
 }

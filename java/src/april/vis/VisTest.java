@@ -67,7 +67,7 @@ public class VisTest
                 vd.add(p);
                 cd.add(0xff7f0000 + (int) (255*(.5+p[1]/2)));
             }
-            vb.addBack(new VisLighting(false, new VzPoints(vd, cd, 2.0)));
+            vb.addBack(new VisLighting(false, new VzPoints(vd, new VzPoints.Style(cd, 2.0))));
 //            vb.addBack(new VisLighting(false, new VzPoints(vd, new VisConstantColor(Color.yellow), 2.0)));
             vb.swap();
         }
@@ -85,6 +85,11 @@ public class VisTest
 
         if (true) {
             VisWorld.Buffer vb = vw.getBuffer("foo");
+            vb.addBack(new VisChain(LinAlg.translate(0, 0, -1),
+                                    new VzCircle(10,
+                                                 new VzLines.Style(Color.blue, 2),
+                                                 new VzMesh.Style(Color.gray))));
+
             vb.addBack(new VisChain(LinAlg.scale(10, 10, 10),
                                     new Square(Color.blue),
                                     LinAlg.translate(-0.1, -0.1, 1),

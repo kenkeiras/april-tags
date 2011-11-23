@@ -11,6 +11,12 @@ public final class FloatArray implements VisSerializable
     {
     }
 
+    public FloatArray(float data[])
+    {
+        this.data = data;
+        this.pos = data.length;
+    }
+
     public void ensureSpace(int additionalCapacity)
     {
         if (pos + additionalCapacity < data.length)

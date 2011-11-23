@@ -87,9 +87,8 @@ public class ViewRobot extends VisEventAdapter implements ViewObject, LCMSubscri
     {
         VisWorld.Buffer vb = viewer.getVisWorld().getBuffer("Robot");
         vb.addBack(new VzLines(new VisVertexData(trajectory),
-                                new VisConstantColor(Color.blue),
-                                1,
-                                VzLines.TYPE.LINE_STRIP));
+                               VzLines.LINE_STRIP,
+                               new VzLines.Style(Color.blue, 1)));
 
 //        vb.addBack(new VisData(new VisDataLineStyle(Color.blue, 1), trajectory));
         vb.addBack(new VisChain(LinAlg.quatPosToMatrix(pose.orientation, pose.pos), vrobot));

@@ -177,7 +177,7 @@ public class CornerTest implements ParameterListener
                 vb.addBack(new VisChain(LinAlg.translate(0, out.getHeight(), 0),
                                         LinAlg.scale(1, -1, 1),
                                         LinAlg.translate(corner[0], corner[1], 0),
-                                        new VzCircle(4, Color.yellow)));
+                                        new VzCircle(4, new VzLines.Style(Color.yellow, 1), null)));
             }
 
             vb.swap();

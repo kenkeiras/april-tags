@@ -5,52 +5,69 @@ import java.awt.*;
 public class VzCircle implements VisObject
 {
     double r;
-    Color lineColor;
 
-    static float vd[] = makeCircleOutline(16);
-    static long vdid = VisUtil.allocateID();
+    Style styles[];
 
-    public VzCircle(double r, Color lineColor)
+    public static final VzLines lines = new VzLines(makeCircleOutline(16), VzLines.LINE_LOOP);
+    public static final VzMesh  mesh = new VzMesh(makeCircleFill(16), VzMesh.TRIANGLE_FAN);
+
+    public VzCircle(Style ... styles)
+    {
+        this(1.0, styles);
+    }
+
+
+    public VzCircle(double r, Style ... styles)
     {
         this.r = r;
-        this.lineColor = lineColor;
+        this.styles = styles;
+    }
+
+    public void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl, Style style)
+    {
+        gl.glPushMatrix();
+        gl.glScaled(r, r, r);
+
+        if (style instanceof VzLines.Style)
+            lines.render(vc, layer, rinfo, gl, (VzLines.Style) style);
+
+        if (style instanceof VzMesh.Style)
+            mesh.render(vc, layer, rinfo, gl, (VzMesh.Style) style);
+
+        gl.glPopMatrix();
     }
 
     public void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl)
     {
-        gl.glColor(lineColor);
-        gl.gldBind(GL.VBO_TYPE_VERTEX, vdid, vd.length / 2, 2, vd);
-        gl.glDrawArrays(GL.GL_LINE_LOOP, 0, vd.length / 2);
-        gl.gldUnbind(GL.VBO_TYPE_VERTEX, vdid);
+        for (Style style : styles)
+            render(vc, layer, rinfo, gl, style);
     }
 
-    static float[] makeCircleOutline(int n)
+    static VisVertexData makeCircleOutline(int n)
     {
-        float v[] = new float[n*2];
+        VisVertexData vd = new VisVertexData();
 
         for (int i = 0; i < n; i++) {
             double theta = 2*Math.PI * i / n;
-            v[2*i+0] = (float) Math.cos(theta);
-            v[2*i+1] = (float) Math.sin(theta);
+            vd.add(new float[] { (float) Math.cos(theta),
+                                 (float) Math.sin(theta) });
         }
 
-        return v;
+        return vd;
     }
 
-    static float[] makeCircleFill(int n)
+    static VisVertexData makeCircleFill(int n)
     {
-        float v[] = new float[(n+1)*2+2];
+        VisVertexData vd = new VisVertexData();
 
-        v[0] = 0;
-        v[1] = 0;
+        vd.add(new float[] { 0, 0 });
 
         for (int i = 0; i <= n; i++) {
             double theta = 2*Math.PI * i / n;
-            v[2+2*i+0] = (float) Math.cos(theta);
-            v[2+2*i+1] = (float) Math.sin(theta);
+            vd.add(new float[] { (float) Math.cos(theta),
+                                 (float) Math.sin(theta) });
         }
 
-        return v;
+        return vd;
     }
-
 }

@@ -21,6 +21,21 @@ public class VisVertexData implements VisAbstractVertexData, VisSerializable
     {
     }
 
+    public VisVertexData(FloatArray f, int dim)
+    {
+        add(f.getData(), f.size() / dim, dim);
+    }
+
+    public VisVertexData(DoubleArray f, int dim)
+    {
+        add(f.getData(), f.size() / dim, dim);
+    }
+
+    public VisVertexData(float vf[], int nv, int dim)
+    {
+        add(vf, nv, dim);
+    }
+
     public VisVertexData(double[]  ... points)
     {
         if (points.length > 0)
@@ -255,6 +270,26 @@ public class VisVertexData implements VisAbstractVertexData, VisSerializable
     public synchronized void unbindVertex(GL gl)
     {
         gl.gldUnbind(GL.VBO_TYPE_VERTEX, id);
+    }
+
+    public synchronized void bindNormal(GL gl)
+    {
+        combine();
+
+        if (id < 0)
+            id = VisUtil.allocateID();
+
+        Block b = blocks.get(0);
+
+        if (b.vf != null)
+            gl.gldBind(GL.VBO_TYPE_NORMAL, id, b.nv, b.dim, b.vf);
+        else
+            gl.gldBind(GL.VBO_TYPE_NORMAL, id, b.nv, b.dim, b.vd);
+    }
+
+    public synchronized void unbindNormal(GL gl)
+    {
+        gl.gldUnbind(GL.VBO_TYPE_NORMAL, id);
     }
 
     public synchronized void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl)

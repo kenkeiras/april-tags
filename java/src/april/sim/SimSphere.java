@@ -34,7 +34,7 @@ public class SimSphere implements SimObject
 
     public VisObject getVisObject()
     {
-        return new VzSphere(r, new VisFillStyle(color));
+        return new VzSphere(r, new VzMesh.Style(color));
     }
 
     /** Restore state that was previously written **/

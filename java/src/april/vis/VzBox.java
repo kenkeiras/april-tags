@@ -5,142 +5,159 @@ import java.awt.*;
 public class VzBox implements VisObject
 {
     double sx, sy, sz;
-    VisAbstractFillStyle fillStyle;
 
-    // vertex data for GL_QUADS
-    static float vd[] = new float[] { -1, 1, -1,
-                                      1, 1, -1,
-                                      1, -1, -1,
-                                      -1, -1, -1,
+    Style styles[];
 
-                                      -1, -1, -1,
-                                      1, -1, -1,
-                                      1, -1, 1,
-                                      -1, -1, 1,
+    static VzLines lines;
+    static VzMesh  mesh;
 
-                                      -1, -1, 1,
-                                      -1, 1, 1,
-                                      -1, 1, -1,
-                                      -1, -1, -1,
+    static {
 
-                                      1, 1, 1,
-                                      1, -1, 1,
-                                      1, -1, -1,
-                                      1, 1, -1,
+        // vertex data for GL_QUADS
+        float vd[] = new float[] { -1, 1, -1,
+                                   1, 1, -1,
+                                   1, -1, -1,
+                                   -1, -1, -1,
 
-                                      1, 1, -1,
-                                      -1, 1, -1,
-                                      -1, 1, 1,
-                                      1, 1, 1,
+                                   -1, -1, -1,
+                                   1, -1, -1,
+                                   1, -1, 1,
+                                   -1, -1, 1,
 
-                                      -1, -1, 1,
-                                      1, -1, 1,
-                                      1, 1, 1,
-                                      -1, 1, 1
-    };
+                                   -1, -1, 1,
+                                   -1, 1, 1,
+                                   -1, 1, -1,
+                                   -1, -1, -1,
 
-    // normal data for GL_QUADS
-    static float nd[] = new float[] { 0, 0, -1,
-                                      0, 0, -1,
-                                      0, 0, -1,
-                                      0, 0, -1,
+                                   1, 1, 1,
+                                   1, -1, 1,
+                                   1, -1, -1,
+                                   1, 1, -1,
 
-                                      0, 1, 0,
-                                      0, 1, 0,
-                                      0, 1, 0,
-                                      0, 1, 0,
+                                   1, 1, -1,
+                                   -1, 1, -1,
+                                   -1, 1, 1,
+                                   1, 1, 1,
 
-                                      1, 0, 0,
-                                      1, 0, 0,
-                                      1, 0, 0,
-                                      1, 0, 0,
+                                   -1, -1, 1,
+                                   1, -1, 1,
+                                   1, 1, 1,
+                                   -1, 1, 1        };
 
-                                      1, 0, 0,
-                                      1, 0, 0,
-                                      1, 0, 0,
-                                      1, 0, 0,
+        VisVertexData fillVertices = new VisVertexData(vd, vd.length / 3, 3);
 
-                                      0, 1, 0,
-                                      0, 1, 0,
-                                      0, 1, 0,
-                                      0, 1, 0,
+        // normal data for GL_QUADS
+        float nd[] = new float[] { 0, 0, -1,
+                                   0, 0, -1,
+                                   0, 0, -1,
+                                   0, 0, -1,
 
-                                      0, 0, 1,
-                                      0, 0, 1,
-                                      0, 0, 1,
-                                      0, 0, 1
-    };
+                                   0, 1, 0,
+                                   0, 1, 0,
+                                   0, 1, 0,
+                                   0, 1, 0,
 
+                                   1, 0, 0,
+                                   1, 0, 0,
+                                   1, 0, 0,
+                                   1, 0, 0,
 
-    // GL_LINES
-    static float lvf[] = new float[] { -1, -1, -1, // a
-                                       1, -1, -1,  // b
-                                       1, -1, -1,  // b
-                                       1, 1, -1,   // c
-                                       1, 1, -1,   // c
-                                       -1, 1, -1,  // d
-                                       -1, 1, -1,  // d
-                                       -1, -1, -1, // a
+                                   1, 0, 0,
+                                   1, 0, 0,
+                                   1, 0, 0,
+                                   1, 0, 0,
 
-                                       -1, -1, 1,  // a
-                                       1, -1, 1,   // b
-                                       1, -1, 1,   // b
-                                       1, 1, 1,    // c
-                                       1, 1, 1,    // c
-                                       -1, 1, 1,   // d
-                                       -1, 1, 1,   // d
-                                       -1, -1, 1,  // a
+                                   0, 1, 0,
+                                   0, 1, 0,
+                                   0, 1, 0,
+                                   0, 1, 0,
 
-                                       -1, -1, -1,
-                                       -1, -1, 1,
-                                       1, -1, -1,
-                                       1, -1, 1,
-                                       1, 1, -1,
-                                       1, 1, 1,
-                                       -1, 1, -1,
-                                       -1, 1, 1
-    };
+                                   0, 0, 1,
+                                   0, 0, 1,
+                                   0, 0, 1,
+                                   0, 0, 1        };
 
-    static long vdid = VisUtil.allocateID();
-    static long ndid = VisUtil.allocateID();
-    static long vlid = VisUtil.allocateID();
+        VisVertexData fillNormals = new VisVertexData(nd, nd.length / 3, 3);
 
-    /** A box that extends from -1 to +1 along x, y, and z axis **/
-    public VzBox(VisAbstractFillStyle fillStyle)
-    {
-        this(1, 1, 1, fillStyle);
+        mesh = new VzMesh(fillVertices, fillNormals, VzMesh.QUADS);
+
+        // GL_LINES
+        float lvf[] = new float[] { -1, -1, -1, // a
+                                    1, -1, -1,  // b
+                                    1, -1, -1,  // b
+                                    1, 1, -1,   // c
+                                    1, 1, -1,   // c
+                                    -1, 1, -1,  // d
+                                    -1, 1, -1,  // d
+                                    -1, -1, -1, // a
+
+                                    -1, -1, 1,  // a
+                                    1, -1, 1,   // b
+                                    1, -1, 1,   // b
+                                    1, 1, 1,    // c
+                                    1, 1, 1,    // c
+                                    -1, 1, 1,   // d
+                                    -1, 1, 1,   // d
+                                    -1, -1, 1,  // a
+
+                                    -1, -1, -1,
+                                    -1, -1, 1,
+                                    1, -1, -1,
+                                    1, -1, 1,
+                                    1, 1, -1,
+                                    1, 1, 1,
+                                    -1, 1, -1,
+                                    -1, 1, 1        };
+
+        VisVertexData lineVertices = new VisVertexData(lvf, lvf.length/3, 3);
+
+        lines = new VzLines(lineVertices, VzLines.LINES);
     }
 
-    public VzBox(double sx, double sy, double sz, Color color)
+    /** A box that extends from -1 to +1 along x, y, and z axis **/
+    public VzBox(Style ... styles)
     {
-        this(sx, sy, sz, new VisFillStyle(color));
+        this(1, 1, 1, styles);
     }
 
     /** A box that extends from -sx/2 to sx/2, -sy/2 to sy/2, -sz/2 to sz/2 **/
-    public VzBox(double sx, double sy, double sz, VisAbstractFillStyle fillStyle)
+    public VzBox(double sx, double sy, double sz, Style ... styles)
     {
         this.sx = sx / 2;
         this.sy = sy / 2;
         this.sz = sz / 2;
-        this.fillStyle = fillStyle;
+        this.styles = styles;
     }
 
-    public void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl)
+    public void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl, Style style)
     {
         gl.glPushMatrix();
         gl.glScaled(sx, sy, sz);
 
-        fillStyle.bindFill(gl);
-        gl.gldBind(GL.VBO_TYPE_VERTEX, vdid, vd.length / 3, 3, vd);
-        gl.gldBind(GL.VBO_TYPE_NORMAL, ndid, nd.length / 3, 3, nd);
+        if (style instanceof VzMesh.Style)
+            mesh.render(vc, layer, rinfo, gl, (VzMesh.Style) style);
 
-        gl.glDrawArrays(GL.GL_QUADS, 0, vd.length / 3);
+/*            fillStyle.bindFill(gl);
+            gl.gldBind(GL.VBO_TYPE_VERTEX, vdid, vd.length / 3, 3, vd);
+            gl.gldBind(GL.VBO_TYPE_NORMAL, ndid, nd.length / 3, 3, nd);
 
-        gl.gldUnbind(GL.VBO_TYPE_VERTEX, vdid);
-        gl.gldUnbind(GL.VBO_TYPE_NORMAL, ndid);
-        fillStyle.unbindFill(gl);
+            gl.glDrawArrays(GL.GL_QUADS, 0, vd.length / 3);
+
+            gl.gldUnbind(GL.VBO_TYPE_VERTEX, vdid);
+            gl.gldUnbind(GL.VBO_TYPE_NORMAL, ndid);
+            fillStyle.unbindFill(gl);
+        }
+*/
+        if (style instanceof VzLines.Style)
+            lines.render(vc, layer, rinfo, gl, (VzLines.Style) style);
 
         gl.glPopMatrix();
+    }
+
+    public void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl)
+    {
+        for (Style style : styles)
+            render(vc, layer, rinfo, gl, style);
     }
 
 }

@@ -51,6 +51,8 @@ public class VzText implements VisObject, VisSerializable
 
     double pixelMargin = 3.0; // around entire VzText
 
+    double scale = 1.0;
+
     private enum JUSTIFICATION { LEFT, CENTER, RIGHT };
 
     int DEFAULT_FONT_SIZE = 24;
@@ -247,6 +249,14 @@ public class VzText implements VisObject, VisSerializable
                         continue;
                     }
 
+                    if (toks[i].startsWith("scale")) {
+                        if (toks[i].contains("=")) {
+                            String arg = toks[i].substring(toks[i].indexOf("=")+1).trim().toLowerCase();
+                            scale = Double.parseDouble(arg);
+                        }
+                        continue;
+                    }
+
                     // dropshadow=#RRGGBB/#AARRGGBB, dropshadow=true/false
                     if (toks[i].startsWith("dropshadow")) {
                         if (toks[i].contains("=")) {
@@ -392,6 +402,9 @@ public class VzText implements VisObject, VisSerializable
         if (lines == null)
             parse();
 
+        gl.glPushMatrix();
+        gl.glScaled(scale, scale, scale);
+
         // determine overall width and height so we can draw a drop
         // shadow, and so that we can anchor.
         double maxLineWidth = 0;
@@ -532,6 +545,8 @@ public class VzText implements VisObject, VisSerializable
                 gl.glPopMatrix();
             }
         }
+
+        gl.glPopMatrix();
     }
 
     public VzText(ObjectReader r)
