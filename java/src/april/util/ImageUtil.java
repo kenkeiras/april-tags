@@ -61,8 +61,8 @@ public class ImageUtil
         Graphics2D g = out.createGraphics();
 
         final Object interp = (newwidth < in.getWidth() && newheight < in.getHeight()) ?
-                    RenderingHints.VALUE_INTERPOLATION_BILINEAR :
-                    RenderingHints.VALUE_INTERPOLATION_BICUBIC;
+            RenderingHints.VALUE_INTERPOLATION_BILINEAR :
+            RenderingHints.VALUE_INTERPOLATION_BICUBIC;
 
         g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, interp);
         g.drawImage(in, 0, 0, out.getWidth(), out.getHeight(), null);
@@ -105,4 +105,22 @@ public class ImageUtil
 
         return out;
     }
+
+    public static BufferedImage flipVertical(BufferedImage im)
+    {
+        int height = im.getHeight();
+        int width = im.getWidth();
+        int stride = im.getWidth();
+
+        int imdata[] = ((DataBufferInt) (im.getRaster().getDataBuffer())).getData();
+
+        BufferedImage im2 = new BufferedImage(width, height, im.getType());
+        int imdata2[] = ((DataBufferInt) (im2.getRaster().getDataBuffer())).getData();
+
+        for (int y = 0; y < height; y++)
+            System.arraycopy(imdata, y*stride, imdata2, (height-1-y)*stride, stride);
+
+        return im2;
+    }
+
 }

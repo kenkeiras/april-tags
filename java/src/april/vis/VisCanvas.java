@@ -11,6 +11,7 @@ import javax.imageio.*;
 
 import april.jmat.*;
 import april.jmat.geom.*;
+import april.util.*;
 
 import lcm.lcm.*;
 
@@ -741,29 +742,20 @@ public class VisCanvas extends JComponent implements VisSerializable
         }
     }
 
+    // XXX trying to avoid an image copy, assuming (possibly erroneously) that BufferedImage will
+    //     be ok with multiple threads reading its contents
+    public BufferedImage getLatestFrame()
+    {
+        return im;
+    }
+
     /** Forces a synchronous redraw and then draws. **/
     public void writeScreenShot(File file, String format)
     {
         drawSync();
 
-        BufferedImage thisim = im;
-
         // Our image will be upside down. let's flip it.
-        if (true) {
-            int height = thisim.getHeight();
-            int width = thisim.getWidth();
-            int stride = thisim.getWidth();
-
-            int imdata[] = ((DataBufferInt) (thisim.getRaster().getDataBuffer())).getData();
-
-            BufferedImage thisim2 = new BufferedImage(width, height, thisim.getType());
-            int imdata2[] = ((DataBufferInt) (thisim2.getRaster().getDataBuffer())).getData();
-
-            for (int y = 0; y < height; y++)
-                System.arraycopy(imdata, y*stride, imdata2, (height-1-y)*stride, stride);
-
-            thisim = thisim2;
-        }
+        BufferedImage thisim = ImageUtil.flipVertical(im);
 
         try {
             ImageIO.write(thisim, format, file);
