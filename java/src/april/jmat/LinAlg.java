@@ -1263,6 +1263,20 @@ public final class LinAlg
         return xyt;
     }
 
+    public static double[] quatPosToXyzrpy(double q[], double pos[])
+    {
+        double xyzrpy[] = new double[6];
+        xyzrpy[0] = pos[0];
+        xyzrpy[1] = pos[1];
+        xyzrpy[2] = pos[2];
+        double rpy[] = quatToRollPitchYaw(q);
+        xyzrpy[3] = rpy[0];
+        xyzrpy[4] = rpy[1];
+        xyzrpy[5] = rpy[2];
+        return xyzrpy;
+    }
+
+
     /** v = v*a, storing result back into v **/
     public static void scaleEquals(double v[], double a)
     {

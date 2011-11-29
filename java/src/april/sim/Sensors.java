@@ -26,8 +26,10 @@ public class Sensors
                                        int width, int height)
     {
         synchronized(vocObj) {
-            if (vol == null)
+            if (vol == null) {
                 vol = new VisLayer(vw);
+                vol.backgroundColor = Color.white;
+            }
             if (voc == null)
                 voc = new VisCanvas(vol);
 
