@@ -82,6 +82,52 @@ public class Simulator implements VisConsole.Listener
             vb.swap();
         }
 
+        // Set the window size correctly
+        if (true) {
+            double max[] = {-Double.MAX_VALUE, - Double.MAX_VALUE,- Double.MAX_VALUE};
+            double min[] = {Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE};
+            for (SimObject so : world.objects) {
+                double T[][] = so.getPose();
+                Shape s = so.getShape();
+                if (s instanceof BoxShape) {
+                    BoxShape bs = (BoxShape) s;
+
+                    ArrayList<double[]> vertices = bs.getVertices();
+
+                    for (double vertex[] : vertices) {
+                        double global_v[] = LinAlg.transform(T, vertex);
+
+                        for (int l = 0; l < 3; l++) {
+                            max[l] = Math.max(global_v[l],max[l]);
+                            min[l] = Math.min(global_v[l],min[l]);
+                        }
+                    }
+
+                } else if (s instanceof SphereShape){
+                    SphereShape ss = (SphereShape) s;
+                    double r = ss.getRadius();
+                    for (int l = 0; l < 3; l++) {
+                        max[l] = Math.max(T[l][3] + r, max[l]);
+                        min[l] = Math.min(T[l][3] - r, min[l]);
+                    }
+
+                } else {
+                    for (int l = 0; l < 3; l++) {
+                        max[l] = Math.max(T[l][3],max[l]);
+                        min[l] = Math.min(T[l][3],min[l]);
+                    }
+                    System.out.println("WRN: Unsupported shape type: "+s.getClass().getName());
+                }
+
+
+            }
+
+            // XXX Might be good to add a bit of 'fudge' here, especially if we stick with perspective
+            vl.cameraManager.fit2D(LinAlg.resize(min,2),
+                                   LinAlg.resize(max,2),true);
+        }
+
+
         //vis2
         console.addListener(this);
         console.addShortcut(VisConsole.Shortcut.makeCode("start", KeyEvent.VK_F1, 0));
