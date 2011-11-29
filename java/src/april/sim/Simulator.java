@@ -36,6 +36,7 @@ public class Simulator implements VisConsole.Listener
     FindSimObjects finder = new FindSimObjects();
 
     GetOpt gopt;
+    KeyboardGamepad keygp = new KeyboardGamepad();
 
     public Simulator(GetOpt gopt)
     {
@@ -58,6 +59,9 @@ public class Simulator implements VisConsole.Listener
             ex.printStackTrace();
             return;
         }
+
+        keygp.running = false;
+        new Thread(keygp).start();
 
         jf = new JFrame("Simulator");
         jf.setLayout(new BorderLayout());
@@ -82,6 +86,8 @@ public class Simulator implements VisConsole.Listener
         console.addListener(this);
         console.addShortcut(VisConsole.Shortcut.makeCode("start", KeyEvent.VK_F1, 0));
         console.addShortcut(VisConsole.Shortcut.makeCode("stop", KeyEvent.VK_F2, 0));
+        console.addShortcut(VisConsole.Shortcut.makeCode("toggle-keyboard-gamepad", KeyEvent.VK_F5, 0));
+
         draw();
 
         if (gopt.getBoolean("start")) {
@@ -169,13 +175,19 @@ public class Simulator implements VisConsole.Listener
             return true;
         }
 
+        if (toks[0].equals("toggle-keyboard-gamepad")) {
+            keygp.running = !keygp.running;
+            out.printf("Keyboard Gamepad "+(keygp.running? "running" : "off") + "\n");
+            return true;
+        }
+
         out.printf("Unknown command\n");
         return false;
     }
 
     public ArrayList<String> consoleCompletions(VisConsole vc, String prefix)
     {
-        String cs[] = new String[] { "save", "start", "stop" };
+        String cs[] = new String[] { "save", "start", "stop", "toggle-keyboard-gamepad"};
 
         ArrayList<String> as = new ArrayList<String>();
         for (String s: cs)
@@ -387,6 +399,11 @@ public class Simulator implements VisConsole.Listener
             return true;
         }
 
+        public boolean keyReleased(VisCanvas vc, VisLayer vl, VisCanvas.RenderInfo rinfo, KeyEvent e)
+        {
+            keygp.keyReleased(e);
+            return false;
+        }
         public boolean keyPressed(VisCanvas vc, VisLayer vl, VisCanvas.RenderInfo rinfo, KeyEvent e)
         {
             if (e.getKeyChar() >= '1' && e.getKeyChar() <= '9') {
@@ -438,6 +455,8 @@ public class Simulator implements VisConsole.Listener
                 draw();
                 return true;
             }
+
+            keygp.keyPressed(e);
             return false;
         }
 
