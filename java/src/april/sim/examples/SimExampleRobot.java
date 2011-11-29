@@ -18,6 +18,9 @@ import lcm.lcm.*;
 public class SimExampleRobot implements SimObject
 {
     static final double robot_radius = .4;
+    static final double laser_height = .087;
+    static final double laser_width = .06;
+    static final double camera_height = .035;
 
     DifferentialDrive drive;
     PeriodicTasks tasks = new PeriodicTasks(2);
@@ -65,7 +68,11 @@ public class SimExampleRobot implements SimObject
     // Display the robot as a simple wedge for display purposes
     public VisObject getVisObject()
     {
-        return new VisChain(LinAlg.scale(robot_radius*2),new VzRobot());
+        return new VisChain(new VisChain(LinAlg.translate(robot_radius,0,0),LinAlg.scale(robot_radius*2),new VzRobot()),
+                            LinAlg.translate(laser_width/2,0,laser_height/2),
+                            new VisChain(LinAlg.scale(.06,.06,laser_height),new VzBox( new VzMesh.Style(new Color(255,65,5)))),
+                            LinAlg.translate(-laser_width/2 + .01,0,laser_height/2 + camera_height/2),
+                            new VisChain(LinAlg.scale(.02,camera_height,camera_height), new VzCamera(new VzMesh.Style(Color.black))));
     }
 
     // We expect the save file to contain two xyzrpy arrays,
@@ -164,8 +171,12 @@ public class SimExampleRobot implements SimObject
             laser.nranges = 1080;
             laser.rad0 = (float)(-3*Math.PI/4);
             laser.radstep = (float)((3*Math.PI/2)/laser.nranges);
-            laser.ranges = LinAlg.copyFloats(Sensors.laser(sw,ignore,LinAlg.matrixAB(getPose(),LinAlg.translate(0,0,.1)),
-                                                           laser.nranges,laser.rad0,laser.radstep, 30.0));
+            laser.ranges = LinAlg.copyFloats(Sensors.laser(sw,ignore,LinAlg.matrixAB(getPose(),LinAlg.translate(laser_width/2,0,laser_height/2)),
+                                                           laser.nranges,laser.rad0,laser.radstep, 31.0));
+
+            for (int i = 0; i < laser.ranges.length; i++)
+                if (laser.ranges[i] > 30.0)
+                    laser.ranges[i] = 0.0f;
 
             LCM.getSingleton().publish("LIDAR",laser);
         }
@@ -186,9 +197,11 @@ public class SimExampleRobot implements SimObject
             VisWorld vw = new VisWorld();
             VisWorld.Buffer vb = vw.getBuffer("to-draw");
             VzGrid.addGrid(vw, new VzGrid(new VzMesh.Style(Color.gray)));
-            for (SimObject so :  sw.objects)
-                if (!ignore.contains(so))
-                    vb.addBack(new VisChain(so.getPose(),so.getVisObject()));
+            synchronized(sw) {
+                for (SimObject so :  sw.objects)
+                    if (!ignore.contains(so))
+                        vb.addBack(new VisChain(so.getPose(),so.getVisObject()));
+            }
             vb.swap();
 
             // Camera image is based on true position of robot
@@ -196,8 +209,8 @@ public class SimExampleRobot implements SimObject
                                                   drive.poseTruth.pos);
 
             // Compute camera position and look direction
-            double eye[] = LinAlg.transform(T,new double[]{0,0,.15});
-            double lookAt[] = LinAlg.transform(T,new double[]{1,0,.15});
+            double eye[] = LinAlg.transform(T,new double[]{.01,0,laser_height + camera_height/2});
+            double lookAt[] = LinAlg.transform(T,new double[]{1,0,laser_height + camera_height/2});
             double up[] = {0,0,1};//LinAlg.subtract(LinAlg.transform(T,new double[]{0,0,1}), eye);
 
             // Retrieve the rendered image
