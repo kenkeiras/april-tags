@@ -112,9 +112,7 @@ public class FHSegmentTest implements ParameterListener
 
             VisWorld.Buffer vb = vw.getBuffer("image");
 
-            vb.addBack(new VzImage(new VisTexture(blurim),
-                                   new double[][]{{0,0},{width,height}},
-                                   new double[][]{{0,0},{width,height}}, Color.blue));
+            vb.addBack(new VzImage(blurim,VzImage.FLIP));
             vb.swap();
 
             vb = vw.getBuffer("segment");
@@ -122,9 +120,7 @@ public class FHSegmentTest implements ParameterListener
             BufferedImage imseg = FHSegment.segment(blurim, pg.gi("k"), pg.gi("minsize"));
             long endmtime = System.currentTimeMillis();
             System.out.println(endmtime - startmtime);
-            vb.addBack(new VzImage(new VisTexture(imseg),
-                                   new double[][]{{0,0},{width,height}},
-                                   new double[][]{{0,0},{width,height}}, Color.blue));
+            vb.addBack(new VzImage(imseg, VzImage.FLIP));
             vb.swap();
         }
 

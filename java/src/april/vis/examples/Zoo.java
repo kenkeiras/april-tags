@@ -44,7 +44,7 @@ public class Zoo
                                                 new VzCylinder(meshStyle),
                                                 new VzRobot(lineStyle, meshStyle),
                                                 new VzSphere(meshStyle),
-                                                new VzSphere(new VisTexture(im)),
+                                                //xxx Texture file missing new VzSphere(new VisTexture(im)),
                                                 new VzSquarePyramid(lineStyle, meshStyle),
                                                 new VzStar(lineStyle, meshStyle),
                                                 new VzText(VzText.ANCHOR.CENTER, "<<sansserif-10,scale=.1,dropshadow=false>>Hi!"),
