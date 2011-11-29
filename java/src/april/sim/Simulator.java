@@ -458,6 +458,8 @@ public class Simulator implements VisConsole.Listener
                 T[0][3] = xy[0];
                 T[1][3] = xy[1];
                 T[2][3] = sz/2;
+                if (selectedObject.getShape().getBoundingRadius() < 0)
+                    T[2][3] = 0;
                 selectedObject.setPose(T);
 
                 if (selectedObject instanceof SimBox) {
