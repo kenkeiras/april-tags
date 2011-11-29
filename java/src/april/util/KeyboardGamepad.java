@@ -33,6 +33,7 @@ public class KeyboardGamepad implements KeyListener, Runnable
             gamepad_t gp = new gamepad_t();
             gp.naxes = 6; // for compatability -- we only use the last two
             gp.axes = new double[gp.naxes];
+            gp.present = true;
 
             synchronized (this) {
                 gp.utime = TimeUtil.utime();
@@ -63,8 +64,10 @@ public class KeyboardGamepad implements KeyListener, Runnable
                     gp.buttons = gp.buttons | 2;
                 if (isDown(gp.utime,KeyEvent.VK_SHIFT))
                     gp.buttons = gp.buttons | 4;
-                if (isDown(gp.utime,KeyEvent.VK_CONTROL))
+                if (isDown(gp.utime,KeyEvent.VK_ALT))
                     gp.buttons = gp.buttons | 8;
+                if (isDown(gp.utime,KeyEvent.VK_CONTROL))
+                    gp.buttons = gp.buttons | 16;
             }
             LCM.getSingleton().publish("GAMEPAD",gp);
         }

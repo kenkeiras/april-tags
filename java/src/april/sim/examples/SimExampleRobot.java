@@ -68,8 +68,8 @@ public class SimExampleRobot implements SimObject
     // Display the robot as a simple wedge for display purposes
     public VisObject getVisObject()
     {
-        return new VisChain(new VisChain(LinAlg.translate(robot_radius,0,0),LinAlg.scale(robot_radius*2),new VzRobot()),
-                            LinAlg.translate(laser_width/2,0,laser_height/2),
+        return new VisChain(new VisChain(LinAlg.scale(robot_radius*2),new VzRobot()),
+                            LinAlg.translate(laser_width/2 - robot_radius,0,laser_height/2),
                             new VisChain(LinAlg.scale(.06,.06,laser_height),new VzBox( new VzMesh.Style(new Color(255,65,5)))),
                             LinAlg.translate(-laser_width/2 + .01,0,laser_height/2 + camera_height/2),
                             new VisChain(LinAlg.scale(.02,camera_height,camera_height), new VzCamera(new VzMesh.Style(Color.black))));
@@ -134,14 +134,24 @@ public class SimExampleRobot implements SimObject
                 final int RIGHT_HORZ_AXIS = 2;
 
                 double speed = -gp.axes[RIGHT_VERT_AXIS];
-                if ((gp.buttons&(16|64)) != 0) // turbo boost
-                    speed *= 4;
-
                 double turn = gp.axes[RIGHT_HORZ_AXIS];
+
+
+                if (true) { // Use D-PAD when in use, also enables compatability with KeyboardGamepad
+                    if (Math.abs(gp.axes[5]) > Math.abs(speed))
+                        speed = -gp.axes[5];
+                    if (Math.abs(gp.axes[4]) > Math.abs(turn))
+                        turn = gp.axes[4]*.25; // Don't want to turn out of control!
+                }
+
 
                 if (gp.buttons != 0) { // check 'estop'
                     cmd = new double[] { speed + turn, speed - turn };
                 }
+
+                if ((gp.buttons&(16|64)) != 0) // turbo boost
+                    cmd = LinAlg.scale(cmd,4);
+
             }
             drive.motorCommands = cmd; // set voltages
 
@@ -167,11 +177,12 @@ public class SimExampleRobot implements SimObject
         {
             laser_t laser = new laser_t();
 
+            double T[][] = LinAlg.matrixAB(getPose(),LinAlg.translate(laser_width/2 - robot_radius,0,laser_height/2));
             laser.utime = TimeUtil.utime();
             laser.nranges = 1080;
             laser.rad0 = (float)(-3*Math.PI/4);
             laser.radstep = (float)((3*Math.PI/2)/laser.nranges);
-            laser.ranges = LinAlg.copyFloats(Sensors.laser(sw,ignore,LinAlg.matrixAB(getPose(),LinAlg.translate(laser_width/2,0,laser_height/2)),
+            laser.ranges = LinAlg.copyFloats(Sensors.laser(sw, ignore, T,
                                                            laser.nranges,laser.rad0,laser.radstep, 31.0));
 
             for (int i = 0; i < laser.ranges.length; i++)
@@ -209,7 +220,7 @@ public class SimExampleRobot implements SimObject
                                                   drive.poseTruth.pos);
 
             // Compute camera position and look direction
-            double eye[] = LinAlg.transform(T,new double[]{.01,0,laser_height + camera_height/2});
+            double eye[] = LinAlg.transform(T,new double[]{.01 - robot_radius,0,laser_height + camera_height/2});
             double lookAt[] = LinAlg.transform(T,new double[]{1,0,laser_height + camera_height/2});
             double up[] = {0,0,1};//LinAlg.subtract(LinAlg.transform(T,new double[]{0,0,1}), eye);
 
