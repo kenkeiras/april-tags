@@ -15,8 +15,10 @@ public class Zoo
 {
     public static void main(String args[])
     {
-        JFrame f = new JFrame("Vis Zoo");
-        f.setLayout(new BorderLayout());
+        JFrame jf = new JFrame("Vis Zoo");
+        jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        jf.setSize(600,400);
+        jf.setLayout(new BorderLayout());
 
         VisWorld vw = new VisWorld();
         VisLayer vl = new VisLayer(vw);
@@ -49,6 +51,7 @@ public class Zoo
                                                 new VzStar(lineStyle, meshStyle),
                                                 new VzText(VzText.ANCHOR.CENTER, "<<sansserif-10,scale=.1,dropshadow=false>>Hi!"),
                                                 new VzSquare(lineStyle, meshStyle),
+                                                new VzTriangle(lineStyle, meshStyle),
         };
 
         VisWorld.Buffer vb = vw.getBuffer("zoo");
@@ -76,9 +79,9 @@ public class Zoo
 
         vb.swap();
 
-        f.add(vc);
-        f.setSize(600, 400);
-        f.setVisible(true);
+        jf.add(vc);
+        jf.setSize(600, 400);
+        jf.setVisible(true);
 
         vl.cameraManager.fit2D(new double[] { 0, 0 }, new double[] { cols*grid, rows*grid }, true);
     }
