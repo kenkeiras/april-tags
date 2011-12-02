@@ -1,9 +1,10 @@
 package april.vis;
 
 import java.awt.*;
+import java.io.*;
 
 /** Renders a robot as a small triangle. **/
-public class VzRobot implements VisObject
+public class VzRobot implements VisObject, VisSerializable
 {
     Style styles[];
 
@@ -45,5 +46,25 @@ public class VzRobot implements VisObject
             if (style instanceof VzMesh.Style)
                 mesh.render(vc, layer, rinfo, gl, (VzMesh.Style) style);
         }
+    }
+
+    public VzRobot(ObjectReader ins)
+    {
+    }
+
+    public void writeObject(ObjectWriter outs) throws IOException
+    {
+        outs.writeInt(styles.length);
+        for (int sidx = 0; sidx < styles.length; sidx++)
+            outs.writeObject(styles[sidx]);
+    }
+
+    public void readObject(ObjectReader ins) throws IOException
+    {
+        int nstyles = ins.readInt();
+        styles = new Style[nstyles];
+        for (int sidx = 0; sidx < styles.length; sidx++)
+            styles[sidx] = (Style) ins.readObject();
+
     }
 }

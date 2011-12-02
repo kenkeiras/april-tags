@@ -105,6 +105,7 @@ JNIEXPORT jint JNICALL Java_april_vis_GL_gl_1fbo_1destroy
     return 0;
 }
 
+/*
 JNIEXPORT jintArray JNICALL Java_april_vis_GL_gl_1read_1pixels
   (JNIEnv *jenv, jclass jcls, jint width, jint height)
 {
@@ -124,9 +125,10 @@ JNIEXPORT jintArray JNICALL Java_april_vis_GL_gl_1read_1pixels
 
     return jdata;
 }
-
+*/
 static int warned_is_copy = 0;
 
+/*
 JNIEXPORT jint JNICALL Java_april_vis_GL_gl_1read_1pixels2
   (JNIEnv *jenv, jclass jcls, jint width, jint height, jintArray jdata)
 {
@@ -140,13 +142,16 @@ JNIEXPORT jint JNICALL Java_april_vis_GL_gl_1read_1pixels2
         printf("gl_jni.c: got a copy when accessing image buffer; probably slower.\n");
     }
 
-    glReadPixels(0, 0, width, height, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, data);
+    printf("*2*\n");
+//    glReadPixels(0, 0, width, height, GL_BGR, GL_UNSIGNED_INT_8_8_8_8_REV, data);
+    glReadPixels(0, 0, width, height, GL_BGR, GL_UNSIGNED_BYTE, data);
 
     (*jenv)->ReleasePrimitiveArrayCritical(jenv, jdata, data, 0);
     return 0;
 }
+*/
 
-JNIEXPORT jint JNICALL Java_april_vis_GL_gl_1read_1pixels2__II_3B
+JNIEXPORT jint JNICALL Java_april_vis_GL_gl_1read_1pixels2
   (JNIEnv *jenv, jclass jcls, jint width, jint height, jbyteArray jdata)
 {
     glFlush();
@@ -159,8 +164,9 @@ JNIEXPORT jint JNICALL Java_april_vis_GL_gl_1read_1pixels2__II_3B
         printf("gl_jni.c: got a copy when accessing image buffer; probably slower.\n");
     }
 
-    printf("*2*\n");
-    glReadPixels(0, 0, width, height, GL_BGR, GL_UNSIGNED_INT_8_8_8_8_REV, data);
+//    glReadPixels(0, 0, width, height, GL_BGR, GL_UNSIGNED_INT_8_8_8_8_REV, data);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glReadPixels(0, 0, width, height, GL_BGR, GL_UNSIGNED_BYTE, data);
 
     (*jenv)->ReleasePrimitiveArrayCritical(jenv, jdata, data, 0);
     return 0;

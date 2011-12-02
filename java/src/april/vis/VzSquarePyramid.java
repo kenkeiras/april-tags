@@ -1,10 +1,11 @@
 package april.vis;
 
 import java.awt.*;
+import java.io.*;
 
 /* A square-base pyramid; base spans from -1 to +1 in the XY plane
  * (with z = 0), and apex rises up z axis to (0,0,1) **/
-public class VzSquarePyramid implements VisObject
+public class VzSquarePyramid implements VisObject, VisSerializable
 {
     Style styles[];
     int flags;
@@ -83,5 +84,29 @@ public class VzSquarePyramid implements VisObject
     {
         for (Style style : styles)
             render(vc, layer, rinfo, gl, style);
+    }
+
+    public VzSquarePyramid(ObjectReader ins)
+    {
+    }
+
+    public void writeObject(ObjectWriter outs) throws IOException
+    {
+        outs.writeInt(flags);
+
+        outs.writeInt(styles.length);
+        for (int sidx = 0; sidx < styles.length; sidx++)
+            outs.writeObject(styles[sidx]);
+    }
+
+    public void readObject(ObjectReader ins) throws IOException
+    {
+        flags = ins.readInt();
+
+        int nstyles = ins.readInt();
+        styles = new Style[nstyles];
+        for (int sidx = 0; sidx < styles.length; sidx++)
+            styles[sidx] = (Style) ins.readObject();
+
     }
 }

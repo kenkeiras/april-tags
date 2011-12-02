@@ -2,9 +2,11 @@ package april.vis;
 
 import java.awt.*;
 import java.util.*;
+import java.io.*;
+
 import april.jmat.*;
 
-public class VzSphere implements VisObject
+public class VzSphere implements VisObject, VisSerializable
 {
     static final SphereBuilder sphere4 = new SphereBuilder(4);
     static final VzMesh mesh = new VzMesh(new VisVertexData(sphere4.verts, sphere4.verts.length / 3, 3),
@@ -240,6 +242,25 @@ public class VzSphere implements VisObject
         }
 
         gl.glPopMatrix();
+    }
+
+    public VzSphere(ObjectReader ins)
+    {
+    }
+
+    public void writeObject(ObjectWriter outs) throws IOException
+    {
+        outs.writeDouble(r);
+
+        outs.writeObject(texture);
+        outs.writeObject(meshStyle);
+    }
+
+    public void readObject(ObjectReader ins) throws IOException
+    {
+        r = ins.readDouble();
+        texture = (VisTexture) ins.readObject();
+        meshStyle = (VzMesh.Style) ins.readObject();
     }
 }
 

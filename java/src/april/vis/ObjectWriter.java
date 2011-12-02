@@ -139,6 +139,11 @@ public class ObjectWriter
 
     public void writeObject(Object obj) throws IOException
     {
+        if (obj == null) {
+            outs.writeUTF("null");
+            return;
+        }
+
         // write the class name, e.g., april.vis.VzBox
         outs.writeUTF(obj.getClass().getName());
 

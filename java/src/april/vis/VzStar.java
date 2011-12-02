@@ -1,10 +1,13 @@
 package april.vis;
 
 import java.awt.*;
+import java.io.*;
 
-public class VzStar implements VisObject
+public class VzStar implements VisObject, VisSerializable
 {
     int npoints;
+    double ratio;
+
     Style styles[];
 
     Implementation impl;
@@ -55,17 +58,24 @@ public class VzStar implements VisObject
         this(5, DEFAULT_RATIO, styles);
     }
 
+    static Implementation getImplementation(int npoints, double ratio)
+    {
+        if (ratio == DEFAULT_RATIO && npoints < impls.length) {
+            return impls[npoints];
+        } else {
+            return new Implementation(npoints, ratio);
+        }
+    }
+
     public VzStar(int npoints, double ratio, Style ... styles)
     {
         assert(npoints >= 3);
 
-        if (ratio == DEFAULT_RATIO && npoints < impls.length) {
-            impl = impls[npoints];
-        } else {
-            impl = new Implementation(npoints, ratio);
-        }
-
+        this.npoints = npoints;
+        this.ratio = ratio;
         this.styles = styles;
+
+        impl = getImplementation(npoints, ratio);
     }
 
     public void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl)
@@ -78,4 +88,31 @@ public class VzStar implements VisObject
         }
     }
 
+    public VzStar(ObjectReader ins)
+    {
+    }
+
+    public void writeObject(ObjectWriter outs) throws IOException
+    {
+        outs.writeInt(npoints);
+        outs.writeDouble(ratio);
+
+        outs.writeInt(styles.length);
+        for (int sidx = 0; sidx < styles.length; sidx++)
+            outs.writeObject(styles[sidx]);
+    }
+
+    public void readObject(ObjectReader ins) throws IOException
+    {
+        npoints = ins.readInt();
+        ratio = ins.readDouble();
+
+        impl = getImplementation(npoints, ratio);
+
+        int nstyles = ins.readInt();
+        styles = new Style[nstyles];
+        for (int sidx = 0; sidx < styles.length; sidx++)
+            styles[sidx] = (Style) ins.readObject();
+
+    }
 }

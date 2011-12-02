@@ -1,8 +1,9 @@
 package april.vis;
 
 import java.awt.*;
+import java.io.*;
 
-public class VzSquare implements VisObject
+public class VzSquare implements VisObject, VisSerializable
 {
     double sx, sy;
 
@@ -79,4 +80,29 @@ public class VzSquare implements VisObject
             render(vc, layer, rinfo, gl, style);
     }
 
+    public VzSquare(ObjectReader ins)
+    {
+    }
+
+    public void writeObject(ObjectWriter outs) throws IOException
+    {
+        outs.writeDouble(sx);
+        outs.writeDouble(sy);
+
+        outs.writeInt(styles.length);
+        for (int sidx = 0; sidx < styles.length; sidx++)
+            outs.writeObject(styles[sidx]);
+    }
+
+    public void readObject(ObjectReader ins) throws IOException
+    {
+        sx = ins.readDouble();
+        sy = ins.readDouble();
+
+        int nstyles = ins.readInt();
+        styles = new Style[nstyles];
+        for (int sidx = 0; sidx < styles.length; sidx++)
+            styles[sidx] = (Style) ins.readObject();
+
+    }
 }

@@ -110,17 +110,36 @@ public class ImageUtil
     {
         int height = im.getHeight();
         int width = im.getWidth();
-        int stride = im.getWidth();
 
-        int imdata[] = ((DataBufferInt) (im.getRaster().getDataBuffer())).getData();
+        DataBuffer db = im.getRaster().getDataBuffer();
+        if (db instanceof DataBufferInt) {
+            int imdata[] = ((DataBufferInt) db).getData();
 
-        BufferedImage im2 = new BufferedImage(width, height, im.getType());
-        int imdata2[] = ((DataBufferInt) (im2.getRaster().getDataBuffer())).getData();
+            BufferedImage im2 = new BufferedImage(width, height, im.getType());
+            int imdata2[] = ((DataBufferInt) (im2.getRaster().getDataBuffer())).getData();
 
-        for (int y = 0; y < height; y++)
-            System.arraycopy(imdata, y*stride, imdata2, (height-1-y)*stride, stride);
+            int stride = im.getWidth();
+            for (int y = 0; y < height; y++)
+                System.arraycopy(imdata, y*stride, imdata2, (height-1-y)*stride, stride);
 
-        return im2;
+            return im2;
+        }
+
+        if (db instanceof DataBufferByte) {
+            byte imdata[] = ((DataBufferByte) db).getData();
+
+            BufferedImage im2 = new BufferedImage(width, height, im.getType());
+            byte imdata2[] = ((DataBufferByte) (im2.getRaster().getDataBuffer())).getData();
+
+            int stride = 3 * im.getWidth();
+            for (int y = 0; y < height; y++)
+                System.arraycopy(imdata, y*stride, imdata2, (height-1-y)*stride, stride);
+
+            return im2;
+        }
+
+        assert(false);
+        return null;
     }
 
 }

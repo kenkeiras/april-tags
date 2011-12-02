@@ -2,9 +2,11 @@ package april.vis;
 
 import java.awt.*;
 import java.util.*;
+import java.io.*;
+
 import april.jmat.*;
 
-public class VzCone implements VisObject
+public class VzCone implements VisObject, VisSerializable
 {
     Style styles[];
     double r, h;
@@ -84,5 +86,33 @@ public class VzCone implements VisObject
         }
 
         gl.glPopMatrix();
+    }
+
+    public VzCone(ObjectReader ins)
+    {
+    }
+
+    public void writeObject(ObjectWriter outs) throws IOException
+    {
+        outs.writeDouble(r);
+        outs.writeDouble(h);
+        outs.writeInt(flags);
+
+        outs.writeInt(styles.length);
+        for (int sidx = 0; sidx < styles.length; sidx++)
+            outs.writeObject(styles[sidx]);
+    }
+
+    public void readObject(ObjectReader ins) throws IOException
+    {
+        r = ins.readDouble();
+        h = ins.readDouble();
+        flags = ins.readInt();
+
+        int nstyles = ins.readInt();
+        styles = new Style[nstyles];
+        for (int sidx = 0; sidx < styles.length; sidx++)
+            styles[sidx] = (Style) ins.readObject();
+
     }
 }
