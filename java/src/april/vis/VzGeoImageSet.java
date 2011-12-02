@@ -51,6 +51,13 @@ public class VzGeoImageSet implements VisObject, VisSerializable
 
     public void render(VisCanvas vc, VisLayer vl, VisCanvas.RenderInfo rinfo, GL gl)
     {
+        gl.glPushAttrib(gl.GL_ENABLE_BIT);
+
+        if (true)
+            gl.glDisable(GL.GL_LIGHTING);
+        else
+            gl.glEnable(GL.GL_LIGHTING);
+
         synchronized(tiles) {
             for (Tile tile : tiles) {
                 gl.glPushMatrix();
@@ -60,6 +67,10 @@ public class VzGeoImageSet implements VisObject, VisSerializable
                 gl.glPopMatrix();
             }
         }
+
+        gl.glPopAttrib();
+
+
     }
 
     class LoadThread extends Thread
@@ -93,13 +104,14 @@ public class VzGeoImageSet implements VisObject, VisSerializable
 
         for (File file : files) {
             if (file.getName().endsWith(".png")) {
+
                 GeoImage geoim = new GeoImage(file.getPath(), gpslin);
 
                 BufferedImage im = geoim.getImage();
-                VisTexture vt = new VisTexture(im);
+                VisTexture vt = new VisTexture(im,  VisTexture.NO_REPEAT);// | VisTexture.NO_MAG_FILTER | VisTexture.NO_MIN_FILTER);
                 //vis2 vt.lock();
-                double xy12[][]={{0,0},{im.getWidth(), im.getHeight()}};
-                VzImage vim = new VzImage(vt, xy12,xy12, modulateColor);
+                // double xy12[][]={{0,0},{im.getWidth(), im.getHeight()}};
+                VzImage vim = new VzImage(vt,0);
 
                 Tile tile = new Tile();
                 tile.vim = vim;

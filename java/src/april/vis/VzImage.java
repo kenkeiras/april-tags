@@ -16,7 +16,7 @@ public class VzImage implements VisObject
 
     // Convenience constructor. Maps pixels directly to images, so camera images will appear upside down
     // suggested usage for rightsideup images:
-    //  vb.addBack(new VisChain(LinAlg.scale(1,-1,1),new VzImage(cameraImage)));
+    //  vb.addBack(new VzImage(cameraImage, VzImage.FLIP)));
     public VzImage(BufferedImage im)
     {
         this(im, 0);
