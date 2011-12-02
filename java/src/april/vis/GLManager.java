@@ -36,6 +36,11 @@ public class GLManager
 
     class RunThread extends Thread
     {
+        public RunThread()
+        {
+            setDaemon(true);
+        }
+
         public void run()
         {
             GL.initialize();

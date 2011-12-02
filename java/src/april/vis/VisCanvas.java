@@ -55,6 +55,23 @@ public class VisCanvas extends JComponent implements VisSerializable
 
     ArrayList<Listener> listeners = new ArrayList<Listener>();
 
+    static {
+        // There's a bug in the JDK that is tickled if two threads
+        // both attempt to do graphics rendering at the same time;
+        // they both invoke a static initializer and the JDK
+        // deadlocks. VisCanvas, when used in headless mode, seems to
+        // trigger this bug. Thus, we force static initalizers to run
+        // with the code below; this will execute before any
+        // VisCanvases are created, ensuring that the static
+        // initializer is invoked only on one thread.
+        //
+        // See Sun bug #6995195.
+        //  --- ebolson (11/2011)
+
+        BufferedImage im = new BufferedImage(10, 10, BufferedImage.TYPE_INT_ARGB);
+        Graphics g = im.createGraphics();
+    }
+
     public interface Listener
     {
         public void layerAdded(VisCanvas vc, VisLayer vl);
@@ -191,7 +208,9 @@ public class VisCanvas extends JComponent implements VisSerializable
                 } catch (InterruptedException ex) {
                     System.out.println("ex: "+ex);
                 }
-                glManager.add(redrawTask);
+
+                if (VisCanvas.this.isVisible())
+                    glManager.add(redrawTask);
             }
         }
     }
@@ -254,7 +273,7 @@ public class VisCanvas extends JComponent implements VisSerializable
             int width = getWidth();
             int height = getHeight();
 
-            if (!VisCanvas.this.isVisible() || width==0 || height==0 )
+            if (width==0 || height==0 )
                 return;
 
             // XXX Should we only reallocate an FBO if our render size
@@ -780,6 +799,9 @@ public class VisCanvas extends JComponent implements VisSerializable
      * programmatically by calls to movieAddFrame **/
     public Movie movieCreate(String path, boolean autoframes) throws IOException
     {
+        if (!path.endsWith(".ppms.gz"))
+            path += ".ppms.gz";
+
         Movie m = new Movie(new GZIPOutputStream(new FileOutputStream(path)), autoframes);
 
         synchronized(movies) {

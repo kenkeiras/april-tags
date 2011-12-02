@@ -362,7 +362,7 @@ JNIEXPORT jint JNICALL Java_april_vis_GL_gl_1ops
             buf+=4;
             break;
         case april_vis_GL_OP_DRAWRANGEELEMENTS:
-            glDrawRangeElements((int) buf[pos], (int) buf[pos+1], (int) buf[pos+2], (int) buf[pos+3], GL_UNSIGNED_INT, (void*) ((int) buf[pos+4]));
+            glDrawRangeElements((int) buf[pos], (int) buf[pos+1], (int) buf[pos+2], (int) buf[pos+3], GL_UNSIGNED_INT, (GLvoid*) ((int) buf[pos+4]));
             pos += 5;
             break;
         default:
