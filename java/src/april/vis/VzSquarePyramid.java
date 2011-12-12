@@ -13,7 +13,7 @@ public class VzSquarePyramid implements VisObject, VisSerializable
     public static final int BOTTOM = 1;
 
     static VzMesh mesh;
-    static VzSquare square;
+    static VzRectangle square;
 
     static {
         final float sqrt2 = (float) Math.sqrt(2);
@@ -55,7 +55,7 @@ public class VzSquarePyramid implements VisObject, VisSerializable
         VisVertexData fillNormals = new VisVertexData(nd, nd.length / 3, 3);
         mesh = new VzMesh(fillVertices, fillNormals, VzMesh.TRIANGLES);
 
-        square = new VzSquare(2, 2);
+        square = new VzRectangle(2, 2);
     }
 
     public VzSquarePyramid(Style ... styles)

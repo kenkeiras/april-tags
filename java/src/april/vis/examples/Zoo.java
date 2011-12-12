@@ -50,7 +50,7 @@ public class Zoo
                                                 new VzSquarePyramid(lineStyle, meshStyle),
                                                 new VzStar(lineStyle, meshStyle),
                                                 new VzText(VzText.ANCHOR.CENTER, "<<sansserif-10,scale=.1,dropshadow=false>>Hi!"),
-                                                new VzSquare(lineStyle, meshStyle),
+                                                new VzRectangle(1.6,1.0,lineStyle, meshStyle),
                                                 new VzTriangle(lineStyle, meshStyle),
         };
 
@@ -69,7 +69,7 @@ public class Zoo
 
                 vb.addBack(new VisChain(LinAlg.translate(x*grid + grid/2, rows*grid - (y*grid + grid/2), 0),
                                         new VisChain(LinAlg.translate(0,0,0.1),
-                                                     new VzSquare(grid, grid, new VzLines.Style(Color.gray, 2))),
+                                                     new VzRectangle(grid, grid, new VzLines.Style(Color.gray, 2))),
                                         vo,
                                         LinAlg.translate(0, grid*.4, 0),
                                         LinAlg.scale(.02, .02, .02),

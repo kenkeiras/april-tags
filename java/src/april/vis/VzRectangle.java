@@ -3,7 +3,7 @@ package april.vis;
 import java.awt.*;
 import java.io.*;
 
-public class VzSquare implements VisObject, VisSerializable
+public class VzRectangle implements VisObject, VisSerializable
 {
     double sx, sy;
 
@@ -36,13 +36,13 @@ public class VzSquare implements VisObject, VisSerializable
     }
 
     /** A box that extends from -1 to +1 along x, and y axis **/
-    public VzSquare(Style ... styles)
+    public VzRectangle(Style ... styles)
     {
         this(1, 1, styles);
     }
 
     /** A box that extends from -sx/2 to sx/2, -sy/2 to sy/2 **/
-    public VzSquare(double sx, double sy, Style ... styles)
+    public VzRectangle(double sx, double sy, Style ... styles)
     {
         this.sx = sx / 2;
         this.sy = sy / 2;
@@ -80,7 +80,7 @@ public class VzSquare implements VisObject, VisSerializable
             render(vc, layer, rinfo, gl, style);
     }
 
-    public VzSquare(ObjectReader ins)
+    public VzRectangle(ObjectReader ins)
     {
     }
 
