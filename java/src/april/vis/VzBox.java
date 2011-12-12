@@ -130,6 +130,13 @@ public class VzBox implements VisObject, VisSerializable
         this.styles = styles;
     }
 
+
+    /** A box that extends from -sx/2 to sx/2, -sy/2 to sy/2, -sz/2 to sz/2 **/
+    public VzBox(double sxyz[], Style ... styles)
+    {
+        this(sxyz[0], sxyz[1], sxyz[2], styles);
+    }
+
     public void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl, Style style)
     {
         gl.glPushMatrix();
