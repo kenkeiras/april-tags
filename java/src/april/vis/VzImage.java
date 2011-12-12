@@ -10,7 +10,7 @@ public class VzImage implements VisObject
     VisTexture texture;
     double vertices[][];
     double texcoords[][];
-    Color c = Color.gray;
+    public Color modulateColor = Color.gray;
 
     public static final int FLIP = 1;
 
@@ -45,7 +45,7 @@ public class VzImage implements VisObject
                 texcoords[i][1] = 1 - texcoords[i][1];
         }
 
-        this.c = null;
+        this.modulateColor = null;
     }
 
     /** Display an image. Can pass 'null' for color if texture is not alpha mask
@@ -53,12 +53,12 @@ public class VzImage implements VisObject
      *  @param texcoords A list of four 2D texture coordinates, normalized between 0 and 1.
      *  @param c a color to modulate the texture with. Use white to make image appear normally.
      **/
-    public VzImage(VisTexture texture, double vertices[][], double texcoords[][], Color c)
+    public VzImage(VisTexture texture, double _vertices[][], double texcoords[][], Color c)
     {
         this.texture = texture;
-        this.vertices = LinAlg.copy(vertices);
+        this.vertices = LinAlg.copy(_vertices);
         this.texcoords = LinAlg.copy(texcoords);
-        this.c = c;
+        this.modulateColor = c;
 
         assert(vertices.length == 4);
         assert(texcoords.length == 4);
@@ -72,8 +72,8 @@ public class VzImage implements VisObject
 
     public void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl)
     {
-        if (c != null)
-            gl.glColor(c);
+        if (modulateColor != null)
+            gl.glColor(modulateColor);
         else
             gl.glColor(Color.white);
 

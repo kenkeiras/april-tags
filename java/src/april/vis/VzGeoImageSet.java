@@ -62,7 +62,7 @@ public class VzGeoImageSet implements VisObject, VisSerializable
             for (Tile tile : tiles) {
                 gl.glPushMatrix();
                 gl.glMultMatrix(tile.M);
-                tile.vim.c = modulateColor;
+                tile.vim.modulateColor = modulateColor;
                 tile.vim.render(vc, vl, rinfo, gl);
                 gl.glPopMatrix();
             }

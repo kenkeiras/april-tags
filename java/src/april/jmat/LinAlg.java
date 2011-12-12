@@ -2630,6 +2630,56 @@ public final class LinAlg
         return A[0][0]*A[1][1] - A[1][0] *A[0][1];
     }
 
+    // computes A = U diag(sv) U^t in closed form. Derivation based on
+    // computing minima/maxima wrt. t of v^tv where v = [a b; b d]* [cos(t), sin(t)]^t
+    public static void svd22(double A[][],
+                             // Return vars:
+                             double sv[], double U[][])
+    {
+        final double a = A[0][0];
+        final double b = A[1][0];
+        final double d = A[1][1];
+
+        // Compute the theta which max/minimizes the multiplication against A
+        double theta = Math.atan2(2*b*(a + d), a*a - d*d)/2;
+        // note: There are only two distinct solutions for theta, one corresponding to the minimum eigenvalue
+        // and another to the maximum. We don't care which one we get, since it is easy to compute one from the other.
+
+        // Now we can compute the two perpendicular eigen vectors
+        double eva[] =  {Math.cos(theta), Math.sin(theta)};
+        double evb[] =  {-Math.sin(theta), Math.cos(theta)};
+
+        // Compute the eigenvalues by multiplying the eigen vectors by A
+        double evat[] = {a * eva[0] + b *eva[1],
+                         b * eva[0] + d *eva[1]};
+
+        double evbt[] = {a * evb[0] + b *evb[1],
+                         b * evb[0] + d *evb[1]};
+        double va = Math.sqrt((evat[0]*evat[0] + evat[1]*evat[1])/(eva[0]*eva[0] + eva[1]*eva[1]));
+        double vb = Math.sqrt((evbt[0]*evbt[0] + evbt[1]*evbt[1])/(evb[0]*evb[0] + evb[1]*evb[1]));
+
+        // sort the eigenvalues (& corresponding eigenvectors) by size
+        if (va  > vb) {
+            sv[0] = va;
+            sv[1] = vb;
+
+            U[0][0] = eva[0];
+            U[1][0] = eva[1];
+
+            U[0][1] = evb[0];
+            U[1][1] = evb[1];
+        } else {
+            sv[0] = vb;
+            sv[1] = va;
+
+            U[0][0] = evb[0];
+            U[1][0] = evb[1];
+
+            U[0][1] = eva[0];
+            U[1][1] = eva[1];
+        }
+    }
+
 }
 
 
