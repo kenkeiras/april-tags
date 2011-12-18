@@ -18,6 +18,9 @@ public class SimWorld
 
     public ArrayList<SimObject> objects = new ArrayList<SimObject>();
 
+    // Tracks the most recent file (either load or write) for this world
+    String path = null;
+
     public SimWorld(Config config)
     {
         this.config = config;
@@ -26,6 +29,7 @@ public class SimWorld
 
     public SimWorld(String path, Config config) throws IOException
     {
+        this.path = path;
         this.config = config;
         handleConfig();
 
@@ -104,6 +108,7 @@ public class SimWorld
 
     public void write(String path) throws IOException
     {
+        this.path = path;
         FileWriter outs = new FileWriter(path);
         write(new BufferedWriter(outs));
         outs.close();

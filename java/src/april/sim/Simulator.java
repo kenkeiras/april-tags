@@ -18,15 +18,11 @@ import lcm.util.*;
 
 public class Simulator implements VisConsole.Listener
 {
-    JFrame jf;
+    VisWorld vw;
+    VisLayer vl;
+    VisConsole console;
 
-    public VisWorld vw = new VisWorld();
-    VisLayer vl = new VisLayer(vw);
-    VisCanvas vc = new VisCanvas(vl);
-
-    VisConsole console = new VisConsole(vw, vl, vc);
-
-    public SimWorld world;
+    SimWorld world;
     String worldFilePath = "/tmp/world.world";
 
     static final double MIN_SIZE = 0.25;
@@ -35,41 +31,20 @@ public class Simulator implements VisConsole.Listener
     SimObject selectedObject = null;
     FindSimObjects finder = new FindSimObjects();
 
-    GetOpt gopt;
     KeyboardGamepad keygp = new KeyboardGamepad();
 
-    public Simulator(GetOpt gopt)
+    public Simulator(VisWorld vw, VisLayer vl, VisConsole console, SimWorld sw)
     {
-        this.gopt = gopt;
+        this.vw = vw;
+        this.vl = vl;
+        this.console = console;
+        this.world = sw;
 
-        try {
-            Config config = new Config();
-            if (gopt.wasSpecified("config"))
-                config = new ConfigFile(EnvUtil.expandVariables(gopt.getString("config")));
-
-            if (gopt.getString("world").length() > 0) {
-                worldFilePath = EnvUtil.expandVariables(gopt.getString("world"));
-                this.world = new SimWorld(worldFilePath, config);
-            } else {
-                this.world = new SimWorld(config);
-            }
-
-        } catch (IOException ex) {
-            System.out.println("ex: "+ex);
-            ex.printStackTrace();
-            return;
-        }
+        if (world.path != null)
+            worldFilePath = world.path;
 
         keygp.running = false;
         new Thread(keygp).start();
-
-        jf = new JFrame("Simulator");
-        jf.setLayout(new BorderLayout());
-        jf.add(vc, BorderLayout.CENTER);
-
-        jf.setSize(800,600);
-        jf.setVisible(true);
-        jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         vl.addEventHandler(new MyEventHandler());
 
@@ -136,11 +111,6 @@ public class Simulator implements VisConsole.Listener
 
         draw();
 
-        if (gopt.getBoolean("start")) {
-            world.setRunning(true);
-        }
-
-        vc.setTargetFPS(gopt.getInt("fps"));
 
         if (world.geoimage != null) {
 
@@ -258,7 +228,45 @@ public class Simulator implements VisConsole.Listener
             return;
         }
 
-        Simulator editor = new Simulator(gopt);
+        SimWorld world;
+        try {
+            Config config = new Config();
+            if (gopt.wasSpecified("config"))
+                config = new ConfigFile(EnvUtil.expandVariables(gopt.getString("config")));
+
+            if (gopt.getString("world").length() > 0) {
+                String worldFilePath = EnvUtil.expandVariables(gopt.getString("world"));
+                world = new SimWorld(worldFilePath, config);
+            } else {
+                world = new SimWorld(config);
+            }
+
+        } catch (IOException ex) {
+            System.out.println("ex: "+ex);
+            ex.printStackTrace();
+            return;
+        }
+
+        VisWorld vw = new VisWorld();
+        VisLayer vl = new VisLayer(vw);
+        VisCanvas vc = new VisCanvas(vl);
+        vc.setTargetFPS(gopt.getInt("fps"));
+
+        JFrame jf = new JFrame("Simulator");
+        jf.setLayout(new BorderLayout());
+        jf.add(vc, BorderLayout.CENTER);
+
+        jf.setSize(800,600);
+        jf.setVisible(true);
+        jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+
+        Simulator editor = new Simulator(vw, vl, new VisConsole(vw,vl,vc), world);
+
+        if (gopt.getBoolean("start")) {
+            world.setRunning(true);
+        }
+
     }
 
     class VisSimWorld implements VisObject
