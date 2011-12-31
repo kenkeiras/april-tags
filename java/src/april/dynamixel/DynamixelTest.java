@@ -10,7 +10,7 @@ public class DynamixelTest
     public static void main(String args[]) throws IOException
     {
         GetOpt gopt = new GetOpt();
-        gopt.addString('d', "device", "/dev/ttyUSB0", "USBDynamixel device path");
+        gopt.addString('d', "device", "/dev/ttyUSB0", "USBDynamixel device path, or 'sim'");
         gopt.addInt('b', "baud", 1000000, "Baud rate");
         gopt.addSeparator();
         gopt.addInt('i', "id", -1, "Execute a command for a specific servo");
@@ -31,11 +31,24 @@ public class DynamixelTest
             return;
         }
 
-        JSerial js = new JSerial(gopt.getString("device"), gopt.getInt("baud"));
-        js.setCTSRTS(true);
+        AbstractBus bus;
+        String device = gopt.getString("device");
 
-        SerialBus bus = new SerialBus(js);
-        bus.TIMEOUT_MS = 50;
+        if (device.equals("sim")) {
+            SimBus sbus = new SimBus();
+            sbus.addAX12(1);
+            sbus.addMX28(2);
+            sbus.addMX28(3);
+            bus = sbus;
+        } else {
+
+            JSerial js = new JSerial(gopt.getString("device"), gopt.getInt("baud"));
+            js.setCTSRTS(true);
+
+            SerialBus sbus = new SerialBus(js);
+            sbus.TIMEOUT_MS = 50;
+            bus = sbus;
+        }
 
         if (gopt.getInt("id") >= 0) {
 
