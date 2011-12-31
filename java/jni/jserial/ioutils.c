@@ -71,6 +71,10 @@ int read_fully_timeout(int fd, void *bufin, int len, int msTimeout)
         if (thisread < 0)
             return thisread;
 
+        // timeout?
+        if (thisread == 0)
+            return 0;
+
         readsofar+=thisread;
     }
 
