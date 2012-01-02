@@ -31,7 +31,7 @@ public class SerialBus extends AbstractBus
 
             if (resp[0] != 0) {
                 int code = (resp[0]) & 0xff;
-                System.out.printf("SerialBus id=%d error 0x%02x: %s\n", id, code, AbstractServo.Status.getErrorString(code, "OK"));
+//              System.out.printf("SerialBus id=%d error 0x%02x: %s\n", id, code, AbstractServo.Status.getErrorString(code, "OK"));
 
                 int errormask = AbstractServo.ERROR_ANGLE_LIMIT |
                     AbstractServo.ERROR_VOLTAGE |

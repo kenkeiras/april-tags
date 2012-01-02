@@ -5,6 +5,25 @@ public class MX28Servo extends AbstractServo
     public MX28Servo(AbstractBus bus, int id)
     {
         super(bus, id);
+
+        bus.sendCommand(id,
+                        AbstractBus.INST_WRITE_DATA,
+                        new byte[] { 18, 4 },
+                        true );
+
+/*
+  // PID
+  bus.sendCommand(id,
+                        AbstractBus.INST_WRITE_DATA,
+                        new byte[] { 26, 16, 10 },
+                        true );
+
+                        // punch
+        bus.sendCommand(id,
+                        AbstractBus.INST_WRITE_DATA,
+                        new byte[] { 48, 64, 0 },
+                        true );
+*/
     }
 
     public void setGoal(double radians, double speedfrac, double torquefrac)
@@ -20,6 +39,29 @@ public class MX28Servo extends AbstractServo
                                      (byte) (speedv & 0xff), (byte) (speedv >> 8),
                                      (byte) (torquev & 0xff), (byte) (torquev >> 8) },
                         true);
+
+/*
+        byte resp[] = bus.sendCommand(id,
+                                      AbstractBus.INST_READ_DATA,
+                                      new byte[] { 0x1e, 6 },
+                                      true);
+
+        resp = bus.sendCommand(id,
+                                      AbstractBus.INST_READ_DATA,
+                                      new byte[] { 14, 6 },
+                                      true);
+
+        dump(resp);
+        assert(false);
+
+*/
+    }
+    static void dump(byte buf[])
+    {
+        for (int i = 0; i < buf.length; i++)
+            System.out.printf("%02x ", buf[i] & 0xff);
+
+        System.out.printf("\n");
     }
 
     /** Get servo status **/
@@ -50,6 +92,11 @@ public class MX28Servo extends AbstractServo
         st.voltage = (resp[7] & 0xff) / 10.0; // scale to voltage
         st.temperature = (resp[8] & 0xff); // deg celsius
         st.errorFlags = resp[0];
+
+
+        resp = bus.sendCommand(id, AbstractBus.INST_READ_DATA,
+                               new byte[] { 24, 25 }, true);
+        dump(resp);
 
         return st;
      }

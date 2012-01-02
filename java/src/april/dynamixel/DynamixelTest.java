@@ -15,6 +15,7 @@ public class DynamixelTest
         gopt.addSeparator();
         gopt.addInt('i', "id", -1, "Execute a command for a specific servo");
         gopt.addBoolean('\0', "home", false, "Command the servo to zero degrees");
+        gopt.addBoolean('\0', "home-all", false, "Command all servos to zero degrees");
         gopt.addBoolean('\0', "idle", false, "Command the servo to zero torque");
         gopt.addInt('\0', "set-id", 0, "Set the servo's ID");
         gopt.addInt('\0', "set-baud", 0, "Set the servo's baud rate");
@@ -22,6 +23,7 @@ public class DynamixelTest
         gopt.addSeparator();
         gopt.addDouble('\0', "speed", .5, "Speed setting for interactive mode");
         gopt.addDouble('\0', "torque", .5, "Torque setting for interactive mode");
+        gopt.addInt('\0', "max-id", 253, "Maximum ID to poll over");
 
         gopt.addSeparator();
         gopt.addBoolean('h', "help", false, "Show this help");
@@ -50,6 +52,16 @@ public class DynamixelTest
             bus = sbus;
         }
 
+        if (gopt.getBoolean("home-all")) {
+            for (int id = 0; id < gopt.getInt("max-id"); id++) {
+                System.out.printf("homing servo %d\n", id);
+                AbstractServo servo = bus.getServo(id);
+                if (servo == null)
+                    continue;
+                servo.setGoal(0, gopt.getDouble("speed"), gopt.getDouble("torque"));
+            }
+        }
+
         if (gopt.getInt("id") >= 0) {
 
             int id = gopt.getInt("id");
@@ -62,7 +74,7 @@ public class DynamixelTest
 
             if (gopt.getBoolean("home")) {
                 System.out.printf("Commanding servo %d home\n", id);
-                servo.setGoal(0, .3, .3);
+                servo.setGoal(0, gopt.getDouble("speed"), gopt.getDouble("torque"));
             }
 
             if (gopt.getBoolean("idle")) {
@@ -93,16 +105,20 @@ public class DynamixelTest
             double speed = gopt.getDouble("speed");
             double torque = gopt.getDouble("torque");
 
+            int id0, id1;
+            if (gopt.wasSpecified("id")) {
+                id0 = gopt.getInt("id");
+                id1 = id0;
+            } else {
+                id0 = 0;
+                id1 = gopt.getInt("max-id");
+            }
+
+
             while (true) {
 
-                int id0, id1;
-                if (gopt.wasSpecified("id")) {
-                    id0 = gopt.getInt("id");
-                    id1 = id0;
-                } else {
-                    id0 = 0;
-                    id1 = 253;
-                }
+                if (id0 != id1)
+                    System.out.println("");
 
                 for (int id = id0; id <= id1; id++) {
 
@@ -124,6 +140,12 @@ public class DynamixelTest
                         if (c >= '1' && c <= '9') {
                             double v = 1.0 * (c - '1') / ('9' - '1');
                             servo.setGoal(Math.toRadians(359.99999) * v - Math.PI, speed, torque);
+                        }
+
+                        if (c >= 'a' && c <= 'z') {
+                            id = c - 'a' + 1;
+                            id0 = id;
+                            id1 = id;
                         }
                     }
                 }
