@@ -27,7 +27,7 @@ public class DoG
         FloatImage resp1 = data.filterFactoredCentered(f1, f1);
         FloatImage resp2 = data.filterFactoredCentered(f2, f2);
 
-        FloatImage response = resp1.subtract(resp2);
+        FloatImage response = resp1.subtract(resp2).abs();
         return response;
     }
 }
