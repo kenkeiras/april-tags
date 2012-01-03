@@ -24,6 +24,8 @@ public class GL
     private static native int gl_read_pixels2(int width, int height, byte data[]);
     private static native int gl_ops(double toks[], int toklen);
 
+    private static native int gl_get_double_v(int param, double d[]);
+
     public static final int VBO_TYPE_VERTEX=1, VBO_TYPE_NORMAL=2, VBO_TYPE_COLOR=3, VBO_TYPE_TEX_COORD=4, VBO_TYPE_ELEMENT_ARRAY=5;
 
     // bind and unbind vertex data
@@ -106,6 +108,8 @@ public class GL
     public static final int GL_GREATER = 0x0204, GL_GEQUAL = 0x0206, GL_ALWAYS = 0x0207;
 
     public static final int TEX_FLAG_MIN_FILTER = 1, TEX_FLAG_MAG_FILTER = 2, TEX_FLAG_REPEAT = 4;
+
+    public static final int GL_MODELVIEW_MATRIX = 0x0ba6, GL_PROJECTION_MATRIX = 0x0ba7;
 
     /** While "public", this method should only be called once and
      * only called on the thread that will do all subsequent GL
@@ -431,6 +435,43 @@ public class GL
     {
         flush();
         return gl_get_error();
+    }
+
+    public double[][] getModelViewMatrix()
+    {
+        double v[] = new double[16];
+        glGetDoublev(GL_MODELVIEW_MATRIX, v);
+
+        double m[][] = new double[4][4];
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                m[j][i] = v[i*4+j];
+            }
+        }
+
+        return m;
+    }
+
+    public double[][] getProjectionMatrix()
+    {
+        double v[] = new double[16];
+        glGetDoublev(GL_MODELVIEW_MATRIX, v);
+
+        double m[][] = new double[4][4];
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                m[j][i] = v[i*4+j];
+            }
+        }
+
+        return m;
+    }
+
+    public int glGetDoublev(int param, double data[])
+    {
+        flush();
+
+        return gl_get_double_v(param, data);
     }
 
     public void glViewport(int x, int y, int width, int height)

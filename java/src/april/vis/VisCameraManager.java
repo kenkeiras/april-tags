@@ -15,6 +15,10 @@ public interface VisCameraManager
         public int layerViewport[];
 
         public double perspectiveness = 1.0;
+
+        // field of view is the *total* field of view, i.e., in both
+        // the +y and -y direction. Thus, the maximum allowed value is
+        // 90.
         public double perspective_fovy_degrees = 50;
 
         public double zclip_near = 0.1;

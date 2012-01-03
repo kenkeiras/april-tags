@@ -2,6 +2,8 @@ package april.vis;
 
 import java.awt.*;
 
+/** A circle in the XY plane centered at zero. **/
+
 public class VzCircle implements VisObject
 {
     double r;

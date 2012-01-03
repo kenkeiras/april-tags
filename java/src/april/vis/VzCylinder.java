@@ -4,6 +4,8 @@ import java.awt.*;
 import java.util.*;
 import april.jmat.*;
 
+/** Cylinder's geometric center is at the origin; it has a circular
+ * footprint in the XY plane and extends from z=-h/2 to z=h/2 **/
 public class VzCylinder implements VisObject
 {
     Style styles[];

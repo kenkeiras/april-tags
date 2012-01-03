@@ -157,4 +157,48 @@ public class VisUtil
         }
     }
 
+    /** The gluPerspective call computes the projection matrix in
+     * terms of the field of view in the Y direction; the field of
+     * view in the X direction is derived from this. However, the
+     * fields of view in the X/Y direction are NOT simply scaled by
+     * the aspect ratio (the focal lengths are, but the fields of view
+     * have an extra trigonometric identity involved).
+     *
+     * This function computes the correct field of view (in the Y
+     * direction, in degrees) given the desired field of view in the X
+     * direction and the aspect ratio (width / height).
+     *
+     *                        __--|
+     *                  __--~~    |  1.0
+     *            __--~~ ) theta/2|
+     *          O -----------------
+     *                    f
+     *
+     * Consider the focal point through O. We wish theta to be half of
+     * the X field of view (the actual projection frustrum is
+     * symmetrical around the horizontal axis), and since we wish this
+     * to map to the full screen (which in OpenGL is scaled to span
+     * from -1 to 1), the vertical axis has magnitude 1.0.
+     *
+     * We first compute f = 1.0 / tan(theta/2), giving us the focal length.
+     *
+     * We now wish to measure the theta for the Y axis, for which we
+     * can draw a nearly identical figure as above, except that the
+     * vertical axis has height (1.0 / aspect) and f is already known:
+     * we just need to compute the corresponding theta/2.
+     **/
+    public static double computeFieldOfViewY(double fovx_degrees, double aspect)
+    {
+        double f = 1.0 / Math.tan(Math.toRadians(fovx_degrees) / 2);
+        return 2*Math.toDegrees(Math.atan(1.0 / aspect / f));
+    }
+
+    /** Computes the field of view in the X direction for a given fovy. **/
+    public static double computeFieldOfViewX(double fovy_degrees, double aspect)
+    {
+        // first compute focal length
+        double f = 1.0 / Math.tan(Math.toRadians(fovy_degrees) / 2);
+
+        return 2*Math.toDegrees(Math.atan(aspect / f));
+    }
 }
