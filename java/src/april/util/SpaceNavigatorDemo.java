@@ -107,16 +107,16 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
         vb = vw.getBuffer("CENTER");
         vb.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.CENTER,
                                            new VzText(VzText.ANCHOR.LEFT,
-                                                       "<<large, blue>>|")));
+                                                       "<<monospaced-24, blue>>|")));
         vb.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.CENTER,
                                            new VzText(VzText.ANCHOR.LEFT,
-                                                       "<<large, blue>>--")));
+                                                       "<<monospaced-24, blue>>--")));
         vb.swap();
 
         vb = vw.getBuffer("CENTER2");
         vb.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.CENTER,
                                            new VzText(VzText.ANCHOR.RIGHT,
-                                                       "<<large, black>>+")));
+                                                       "<<monospaced-24, black>>+")));
         vb.swap();
 
         //vis2  SpaceNavigatorDemo needs to be reimplemented as custom CameraManager

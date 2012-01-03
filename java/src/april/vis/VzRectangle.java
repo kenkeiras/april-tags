@@ -1,8 +1,9 @@
 package april.vis;
 
 import java.awt.*;
+import java.io.*;
 
-public class VzSquare implements VisObject
+public class VzRectangle implements VisObject, VisSerializable
 {
     double sx, sy;
 
@@ -35,13 +36,13 @@ public class VzSquare implements VisObject
     }
 
     /** A box that extends from -1 to +1 along x, and y axis **/
-    public VzSquare(Style ... styles)
+    public VzRectangle(Style ... styles)
     {
         this(1, 1, styles);
     }
 
     /** A box that extends from -sx/2 to sx/2, -sy/2 to sy/2 **/
-    public VzSquare(double sx, double sy, Style ... styles)
+    public VzRectangle(double sx, double sy, Style ... styles)
     {
         this.sx = sx / 2;
         this.sy = sy / 2;
@@ -79,4 +80,29 @@ public class VzSquare implements VisObject
             render(vc, layer, rinfo, gl, style);
     }
 
+    public VzRectangle(ObjectReader ins)
+    {
+    }
+
+    public void writeObject(ObjectWriter outs) throws IOException
+    {
+        outs.writeDouble(sx);
+        outs.writeDouble(sy);
+
+        outs.writeInt(styles.length);
+        for (int sidx = 0; sidx < styles.length; sidx++)
+            outs.writeObject(styles[sidx]);
+    }
+
+    public void readObject(ObjectReader ins) throws IOException
+    {
+        sx = ins.readDouble();
+        sy = ins.readDouble();
+
+        int nstyles = ins.readInt();
+        styles = new Style[nstyles];
+        for (int sidx = 0; sidx < styles.length; sidx++)
+            styles[sidx] = (Style) ins.readObject();
+
+    }
 }

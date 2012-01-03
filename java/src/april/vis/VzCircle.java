@@ -1,10 +1,11 @@
 package april.vis;
 
 import java.awt.*;
+import java.io.*;
 
 /** A circle in the XY plane centered at zero. **/
 
-public class VzCircle implements VisObject
+public class VzCircle implements VisObject, VisSerializable
 {
     double r;
 
@@ -71,5 +72,29 @@ public class VzCircle implements VisObject
         }
 
         return vd;
+    }
+
+    public VzCircle(ObjectReader ins)
+    {
+    }
+
+    public void writeObject(ObjectWriter outs) throws IOException
+    {
+        outs.writeDouble(r);
+
+        outs.writeInt(styles.length);
+        for (int sidx = 0; sidx < styles.length; sidx++)
+            outs.writeObject(styles[sidx]);
+    }
+
+    public void readObject(ObjectReader ins) throws IOException
+    {
+        r = ins.readDouble();
+
+        int nstyles = ins.readInt();
+        styles = new Style[nstyles];
+        for (int sidx = 0; sidx < styles.length; sidx++)
+            styles[sidx] = (Style) ins.readObject();
+
     }
 }

@@ -55,7 +55,7 @@ public class VzText implements VisObject, VisSerializable
 
     private enum JUSTIFICATION { LEFT, CENTER, RIGHT };
 
-    int DEFAULT_FONT_SIZE = 24;
+    int DEFAULT_FONT_SIZE = 12; // Default to good size for displaying in pixels
 
     /** A line of text is composed of multiple styled fragments, each
      * drawn contiguously (horizontally). The line additionally has an

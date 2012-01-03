@@ -2,8 +2,9 @@ package april.vis;
 
 import april.jmat.*;
 import java.awt.*;
+import java.io.*;
 
-public class VzAxes implements VisObject
+public class VzAxes implements VisObject, VisSerializable
 {
     static VisObject vo;
 
@@ -57,4 +58,17 @@ public class VzAxes implements VisObject
         vo.render(vc, layer, rinfo, gl);
     }
 
+    public VzAxes(ObjectReader ins)
+    {
+    }
+
+    public void writeObject(ObjectWriter outs) throws IOException
+    {
+        // nothing to do
+    }
+
+    public void readObject(ObjectReader ins) throws IOException
+    {
+        // nothing to do
+    }
 }

@@ -11,6 +11,7 @@ import javax.imageio.*;
 
 import april.jmat.*;
 import april.jmat.geom.*;
+import april.util.*;
 
 import lcm.lcm.*;
 
@@ -36,7 +37,7 @@ public class VisCanvas extends JComponent implements VisSerializable
 
     RenderInfo lastRenderInfo;
 
-    public int popupFrameRates[] = new int[] { 1, 5, 10, 20, 30, 60, 100 };
+    public int popupFrameRates[] = new int[] { 1, 5, 10, 20, 30, 60, 100, 100000 };
     int targetFrameRate = 20;
 
     // a list of open movies.
@@ -53,6 +54,23 @@ public class VisCanvas extends JComponent implements VisSerializable
     boolean showFPS = false;
 
     ArrayList<Listener> listeners = new ArrayList<Listener>();
+
+    static {
+        // There's a bug in the JDK that is tickled if two threads
+        // both attempt to do graphics rendering at the same time;
+        // they both invoke a static initializer and the JDK
+        // deadlocks. VisCanvas, when used in headless mode, seems to
+        // trigger this bug. Thus, we force static initalizers to run
+        // with the code below; this will execute before any
+        // VisCanvases are created, ensuring that the static
+        // initializer is invoked only on one thread.
+        //
+        // See Sun bug #6995195.
+        //  --- ebolson (11/2011)
+
+        BufferedImage im = new BufferedImage(10, 10, BufferedImage.TYPE_INT_ARGB);
+        Graphics g = im.createGraphics();
+    }
 
     public interface Listener
     {
@@ -91,17 +109,23 @@ public class VisCanvas extends JComponent implements VisSerializable
 
             int width = im.getWidth(), height = im.getHeight();
 
-            int idata[] = ((DataBufferInt) (im.getRaster().getDataBuffer())).getData();
-            byte bdata[] = new byte[width*height*3];
-            int bdatapos = 0;
+            byte bdata[] = ((DataBufferByte) (im.getRaster().getDataBuffer())).getData();
 
-            for (int y = height-1; y >= 0; y--) {
-                for (int x = 0; x < width; x++) {
-                    int rgb = idata[y*width+x];
-                    bdata[bdatapos++] = (byte) ((rgb>>16)&0xff);
-                    bdata[bdatapos++] = (byte) ((rgb>>8)&0xff);
-                    bdata[bdatapos++] = (byte) ((rgb>>0)&0xff);
+            if (true) {
+                // flip upside down and convert BGR to RGB
+
+                byte bdata2[] = new byte[bdata.length];
+                int pos = 0;
+
+                for (int y = height-1; y >= 0; y--) {
+                    for (int x = 0; x < width; x++) {
+                        bdata2[pos++] = bdata[y*3*width + 3*x + 2];
+                        bdata2[pos++] = bdata[y*3*width + 3*x + 1];
+                        bdata2[pos++] = bdata[y*3*width + 3*x + 0];
+                    }
                 }
+
+                bdata = bdata2;
             }
 
             try {
@@ -184,7 +208,9 @@ public class VisCanvas extends JComponent implements VisSerializable
                 } catch (InterruptedException ex) {
                     System.out.println("ex: "+ex);
                 }
-                glManager.add(redrawTask);
+
+                if (VisCanvas.this.isVisible())
+                    glManager.add(redrawTask);
             }
         }
     }
@@ -247,7 +273,7 @@ public class VisCanvas extends JComponent implements VisSerializable
             int width = getWidth();
             int height = getHeight();
 
-            if (!VisCanvas.this.isVisible() || width==0 || height==0 )
+            if (width==0 || height==0 )
                 return;
 
             // XXX Should we only reallocate an FBO if our render size
@@ -741,29 +767,20 @@ public class VisCanvas extends JComponent implements VisSerializable
         }
     }
 
+    // XXX trying to avoid an image copy, assuming (possibly erroneously) that BufferedImage will
+    //     be ok with multiple threads reading its contents
+    public BufferedImage getLatestFrame()
+    {
+        return im;
+    }
+
     /** Forces a synchronous redraw and then draws. **/
     public void writeScreenShot(File file, String format)
     {
         drawSync();
 
-        BufferedImage thisim = im;
-
         // Our image will be upside down. let's flip it.
-        if (true) {
-            int height = thisim.getHeight();
-            int width = thisim.getWidth();
-            int stride = thisim.getWidth();
-
-            int imdata[] = ((DataBufferInt) (thisim.getRaster().getDataBuffer())).getData();
-
-            BufferedImage thisim2 = new BufferedImage(width, height, thisim.getType());
-            int imdata2[] = ((DataBufferInt) (thisim2.getRaster().getDataBuffer())).getData();
-
-            for (int y = 0; y < height; y++)
-                System.arraycopy(imdata, y*stride, imdata2, (height-1-y)*stride, stride);
-
-            thisim = thisim2;
-        }
+        BufferedImage thisim = ImageUtil.flipVertical(im);
 
         try {
             ImageIO.write(thisim, format, file);
@@ -782,6 +799,9 @@ public class VisCanvas extends JComponent implements VisSerializable
      * programmatically by calls to movieAddFrame **/
     public Movie movieCreate(String path, boolean autoframes) throws IOException
     {
+        if (!path.endsWith(".ppms.gz"))
+            path += ".ppms.gz";
+
         Movie m = new Movie(new GZIPOutputStream(new FileOutputStream(path)), autoframes);
 
         synchronized(movies) {
@@ -824,16 +844,14 @@ public class VisCanvas extends JComponent implements VisSerializable
 
                         Calendar c = new GregorianCalendar();
 
-                        String s = String.format("%4d%02d%02d_%02d%02d%02d_%03d", c.get(Calendar.YEAR),
-                                                 c.get(Calendar.MONTH)+1,
-                                                 c.get(Calendar.DAY_OF_MONTH),
-                                                 c.get(Calendar.HOUR_OF_DAY),
-                                                 c.get(Calendar.MINUTE),
-                                                 c.get(Calendar.SECOND),
-                                                 c.get(Calendar.MILLISECOND)
+                        String path = String.format("v%4d%02d%02d_%02d%02d%02d_%03d.vsc", c.get(Calendar.YEAR),
+                                                    c.get(Calendar.MONTH)+1,
+                                                    c.get(Calendar.DAY_OF_MONTH),
+                                                    c.get(Calendar.HOUR_OF_DAY),
+                                                    c.get(Calendar.MINUTE),
+                                                    c.get(Calendar.SECOND),
+                                                    c.get(Calendar.MILLISECOND)
                             );
-
-                        String path = "v"+s+".vsc";
 
                         try {
                             DataOutputStream outs = new DataOutputStream(new GZIPOutputStream(new BufferedOutputStream(new FileOutputStream(path))));
@@ -856,17 +874,18 @@ public class VisCanvas extends JComponent implements VisSerializable
             jmi.addActionListener(new ActionListener() {
                     public void actionPerformed(ActionEvent e) {
                         Calendar c = new GregorianCalendar();
-                        String s = String.format("%4d%02d%02d_%02d%02d%02d_%03d.ppms.gz", c.get(Calendar.YEAR),
-                                                 c.get(Calendar.MONTH)+1,
-                                                 c.get(Calendar.DAY_OF_MONTH),
-                                                 c.get(Calendar.HOUR_OF_DAY),
-                                                 c.get(Calendar.MINUTE),
-                                                 c.get(Calendar.SECOND),
-                                                 c.get(Calendar.MILLISECOND)
+                        String path = String.format("m%4d%02d%02d_%02d%02d%02d_%03d.ppms.gz", c.get(Calendar.YEAR),
+                                                    c.get(Calendar.MONTH)+1,
+                                                    c.get(Calendar.DAY_OF_MONTH),
+                                                    c.get(Calendar.HOUR_OF_DAY),
+                                                    c.get(Calendar.MINUTE),
+                                                    c.get(Calendar.SECOND),
+                                                    c.get(Calendar.MILLISECOND)
                             );
 
                         try {
-                            popupMovie = movieCreate(s, true);
+                            popupMovie = movieCreate(path, true);
+                            System.out.println("beginning movie "+path);
                         } catch (IOException ex) {
                             System.out.println("ex: "+ex);
                         }
@@ -879,7 +898,7 @@ public class VisCanvas extends JComponent implements VisSerializable
                     public void actionPerformed(ActionEvent e) {
                         try {
                             popupMovie.close();
-
+                            System.out.println("movie ended");
                         } catch (IOException ex) {
                             System.out.println("ex: "+ex);
                         }

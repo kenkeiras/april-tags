@@ -177,12 +177,10 @@ public class TagTransmit implements ParameterListener
                     double p2[] = d.interpolate(1,1);
                     double p3[] = d.interpolate(-1,1);
 
+                    double ymax = Math.max(Math.max(p0[1], p1[1]), Math.max(p2[1], p3[1]));
 
                     vbDetections.addBack(new VisChain(LinAlg.translate(0, im.getHeight(), 0),
                                                       LinAlg.scale(1, -1, 1),
-                                                      new VisChain(LinAlg.translate(d.cxy[0],d.cxy[1],0),
-                                                                   new VzText(VzText.ANCHOR.CENTER,
-                                                                               String.format("<<center,blue>>id %3d\n(err=%d)\n", d.id, d.hammingDistance))),
                                                       new VzLines(new VisVertexData(p0, p1, p2, p3, p0),
                                                                   VzLines.LINE_STRIP,
                                                                   new VzLines.Style(Color.blue, 4)),
@@ -191,8 +189,12 @@ public class TagTransmit implements ParameterListener
                                                                   new VzLines.Style(Color.green, 4)),
                                                       new VzLines(new VisVertexData(p0, p3),
                                                                   VzLines.LINE_STRIP,
-                                                                  new VzLines.Style(Color.red, 4))));
-
+                                                                  new VzLines.Style(Color.red, 4)),
+                                                      new VisChain(LinAlg.translate(d.cxy[0], ymax + 20, 0), //LinAlg.translate(d.cxy[0],d.cxy[1],0),
+                                                                   LinAlg.scale(1, -1, 1),
+                                                                   LinAlg.scale(.25, .25, .25),
+                                                                   new VzText(VzText.ANCHOR.CENTER,
+                                                                              String.format("<<sansserif-48,center,yellow,dropshadow=#88000000>>id %3d\n(err=%d)\n", d.id, d.hammingDistance)))));
                     System.out.printf("id %3d err %3d\n", d.id, d.hammingDistance);
                 }
                 vbDetections.swap();

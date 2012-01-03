@@ -47,7 +47,6 @@ int serial_open(const char *port, int baud, int blocking)
 
     if (tcgetattr(fd, &opts))
     {
-        printf("*** %i\n",fd);
         perror("tcgetattr");
         return -1;
     }
@@ -56,7 +55,7 @@ int serial_open(const char *port, int baud, int blocking)
     cfsetospeed(&opts, serial_translate_baud(9600));
 
     cfmakeraw(&opts);
-        
+
     // set one stop bit
     opts.c_cflag &= ~CSTOPB;
 
@@ -132,8 +131,8 @@ int serial_set_N82 (int fd)
     return 0;
 }
 
-/** Enable cts/rts flow control. 
-    Returns non-zero on error. 
+/** Enable cts/rts flow control.
+    Returns non-zero on error.
 **/
 int serial_set_ctsrts(int fd, int enable)
 {
@@ -158,8 +157,8 @@ int serial_set_ctsrts(int fd, int enable)
 }
 
 
-/** Enable xon/xoff flow control. 
-    Returns non-zero on error. 
+/** Enable xon/xoff flow control.
+    Returns non-zero on error.
 **/
 int serial_set_xon(int fd, int enable)
 {
@@ -218,7 +217,7 @@ int serial_set_baud(int fd, int baudrate)
     } else {
         // non-standard baud rate.
 #ifdef SUPPORT_HISPEED
-        printf("Setting custom divisor\n");
+//        printf("Setting custom divisor\n");
 
         if (tcgetattr(fd, &tios))
             perror("tcgetattr");
@@ -232,20 +231,20 @@ int serial_set_baud(int fd, int baudrate)
 
         if (ioctl(fd, TIOCGSERIAL, &ser))
             perror("ioctl TIOCGSERIAL");
-      
+
         ser.flags=(ser.flags&(~ASYNC_SPD_MASK)) | ASYNC_SPD_CUST;
         ser.custom_divisor = (ser.baud_base + baudrate/2)/baudrate;
         ser.reserved_char[0] = 0; // what the hell does this do?
 
-        printf("baud_base %i\ndivisor %i\n", ser.baud_base,ser.custom_divisor);
+//        printf("baud_base %i\ndivisor %i\n", ser.baud_base,ser.custom_divisor);
 
         if (ioctl(fd, TIOCSSERIAL, &ser))
             perror("ioctl TIOCSSERIAL");
 #endif
     }
-  
+
     tcflush(fd, TCIFLUSH);
-  
+
     return 0;
 }
 

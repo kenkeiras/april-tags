@@ -19,8 +19,8 @@ public class GL
     private static native int gl_fbo_create(int width, int height);
     private static native int gl_fbo_destroy(int fboid);
     private static native int gl_fbo_bind(int fboid);
-    private static native int[] gl_read_pixels(int width, int height);
-    private static native int gl_read_pixels2(int width, int height, int data[]);
+//    private static native int[] gl_read_pixels(int width, int height);
+//    private static native int gl_read_pixels2(int width, int height, int data[]);
     private static native int gl_read_pixels2(int width, int height, byte data[]);
     private static native int gl_ops(double toks[], int toklen);
 
@@ -166,9 +166,12 @@ public class GL
         int wh[] = frameBufferSizes.get(currentFrameBufferId);
 
         if (im == null || im.getWidth() != wh[0] || im.getHeight() != wh[1])
-            im = new BufferedImage(wh[0], wh[1], BufferedImage.TYPE_INT_ARGB_PRE);
+            im = new BufferedImage(wh[0], wh[1], BufferedImage.TYPE_3BYTE_BGR);
+//            im = new BufferedImage(wh[0], wh[1], BufferedImage.TYPE_INT_ARGB_PRE);
 
-        int data[] = ((DataBufferInt) (im.getRaster().getDataBuffer())).getData();
+//        int data[] = ((DataBufferInt) (im.getRaster().getDataBuffer())).getData();
+        byte data[] = ((DataBufferByte) (im.getRaster().getDataBuffer())).getData();
+
         gl_read_pixels2(wh[0], wh[1], data);
 
         return im;

@@ -81,13 +81,14 @@ public class image_t_util
             case FORMAT_MJP8:
             case FORMAT_MJP9:
             	return decodeMJPEG(v);
-            
+
             default:        // uncompressed gray scale.
                 return decodeRAW(v);
         }
     }
 
     /** Quality: 0 = low, 1 = high **/
+    // Note BufferedImages in formate TYPE_4BYTE_ABGR_PRE will fail to convert correctly
     public static image_t encodeJPEG(BufferedImage bi, float quality) throws IOException
     {
         image_t v = new image_t();
@@ -125,7 +126,7 @@ public class image_t_util
         // Quantize quality setting into 10 levels [0.0, 0.9]
         final int qualityQuantum = Math.min((int)(quality*10), 9);
         quality = (qualityQuantum + 1) / 10f;
-        
+
         final image_t v = new image_t();
         v.width = (short) bi.getWidth();
         v.height = (short) bi.getHeight();

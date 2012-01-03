@@ -17,7 +17,8 @@ import april.vis.*;
 public class Sensors
 {
     static Object vocObj = new Object();
-    //vis2 static VisOffscreenCanvas voc;
+    static VisCanvas voc;
+    static VisLayer vol;
 
     public static BufferedImage camera(VisWorld vw,
                                        double eye[], double lookAt[], double up[],
@@ -25,26 +26,25 @@ public class Sensors
                                        int width, int height)
     {
         synchronized(vocObj) {
-            //vis2
-            // if (voc == null) {
-            //     voc = new VisOffscreenCanvas(width, height, vw);
-            //     voc.getViewManager().interfaceMode = 3.0; // critical! allow any viewpoint (don't move camera!)
-            // } else {
-            //     voc.setSize(width, height);
-            // }
+            if (vol == null) {
+                vol = new VisLayer(vw);
+                vol.backgroundColor = Color.white;
+            }
+            if (voc == null)
+                voc = new VisCanvas(vol);
 
-            // voc.setWorld(vw);
 
-            // VisView view = voc.getViewManager().viewGoal;
-            // view.zclip_near = 0.1;
-            // view.perspective_fovy_degrees = fovy_degrees;
-            // view.eye = eye;
-            // view.lookAt = lookAt;
-            // view.up = up;
+            voc.setSize(width, height);
+            vol.world = vw;
+            ((DefaultCameraManager)vol.cameraManager).interfaceMode = 3.0;
+            ((DefaultCameraManager)vol.cameraManager).zclip_near = 0.1;
+            ((DefaultCameraManager)vol.cameraManager).perspective_fovy_degrees = fovy_degrees;
+            ((DefaultCameraManager)vol.cameraManager).UI_ANIMATE_MS = 0;
+            vol.cameraManager.uiLookAt(eye,lookAt,up, false);
 
-            // VisOffscreenCanvas.RenderData rd = voc.getImageData(false);
-            // return rd.im;
-            return null; //xxx
+
+            voc.drawSync();
+            return ImageUtil.flipVertical(voc.getLatestFrame());
         }
     }
 

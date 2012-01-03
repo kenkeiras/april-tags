@@ -1,17 +1,19 @@
 package april.vis;
 
 import java.awt.*;
+import java.io.*;
 
 import april.jmat.*;
 
 /** A camera formed by a box and a pyramid, with a focal point (the
  * apex of the pyramid) pointing down the +x axis.
  **/
-public class VzCamera implements VisObject
+public class VzCamera implements VisObject, VisSerializable
 {
     Style styles[];
-    VzBox box = new VzBox();
-    VzSquarePyramid pyramid = new VzSquarePyramid();
+
+    static VzBox box = new VzBox();
+    static VzSquarePyramid pyramid = new VzSquarePyramid();
 
     public VzCamera()
     {
@@ -44,4 +46,22 @@ public class VzCamera implements VisObject
         }
     }
 
+    public VzCamera(ObjectReader ins)
+    {
+    }
+
+    public void writeObject(ObjectWriter outs) throws IOException
+    {
+        outs.writeInt(styles.length);
+        for (int sidx = 0; sidx < styles.length; sidx++)
+            outs.writeObject(styles[sidx]);
+    }
+
+    public void readObject(ObjectReader ins) throws IOException
+    {
+        int nstyles = ins.readInt();
+        styles = new Style[nstyles];
+        for (int sidx = 0; sidx < styles.length; sidx++)
+            styles[sidx] = (Style) ins.readObject();
+    }
 }

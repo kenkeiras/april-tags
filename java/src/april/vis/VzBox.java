@@ -1,8 +1,9 @@
 package april.vis;
 
 import java.awt.*;
+import java.io.*;
 
-public class VzBox implements VisObject
+public class VzBox implements VisObject, VisSerializable
 {
     double sx, sy, sz;
 
@@ -129,6 +130,13 @@ public class VzBox implements VisObject
         this.styles = styles;
     }
 
+
+    /** A box that extends from -sx/2 to sx/2, -sy/2 to sy/2, -sz/2 to sz/2 **/
+    public VzBox(double sxyz[], Style ... styles)
+    {
+        this(sxyz[0], sxyz[1], sxyz[2], styles);
+    }
+
     public void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl, Style style)
     {
         gl.glPushMatrix();
@@ -160,4 +168,31 @@ public class VzBox implements VisObject
             render(vc, layer, rinfo, gl, style);
     }
 
+    public VzBox(ObjectReader ins)
+    {
+    }
+
+    public void writeObject(ObjectWriter outs) throws IOException
+    {
+        outs.writeDouble(sx);
+        outs.writeDouble(sy);
+        outs.writeDouble(sz);
+
+        outs.writeInt(styles.length);
+        for (int sidx = 0; sidx < styles.length; sidx++)
+            outs.writeObject(styles[sidx]);
+    }
+
+    public void readObject(ObjectReader ins) throws IOException
+    {
+        sx = ins.readDouble();
+        sy = ins.readDouble();
+        sz = ins.readDouble();
+
+        int nstyles = ins.readInt();
+        styles = new Style[nstyles];
+        for (int sidx = 0; sidx < styles.length; sidx++)
+            styles[sidx] = (Style) ins.readObject();
+
+    }
 }

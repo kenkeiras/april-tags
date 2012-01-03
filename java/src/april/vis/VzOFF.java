@@ -211,7 +211,7 @@ public class VzOFF implements VisObject
                                               model.xyz_max[0] - model.xyz_min[0]));
 
                 vb.addBack(new VisChain(LinAlg.translate(x+.5, rows - (y+.5), 0),
-                                        new VzSquare(1, 1, new VzLines.Style(Color.white, 3)),
+                                        new VzRectangle(1, 1, new VzLines.Style(Color.white, 3)),
                                         new VisChain(LinAlg.translate(0, .4, 0),
                                                      new VzText(VzText.ANCHOR.CENTER,
                                                                 String.format("<<sansserif-20,scale=.003>>%s", baseName(model.path)))),

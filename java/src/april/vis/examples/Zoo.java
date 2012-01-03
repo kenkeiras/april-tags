@@ -15,8 +15,10 @@ public class Zoo
 {
     public static void main(String args[])
     {
-        JFrame f = new JFrame("Vis Zoo");
-        f.setLayout(new BorderLayout());
+        JFrame jf = new JFrame("Vis Zoo");
+        jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        jf.setSize(600,400);
+        jf.setLayout(new BorderLayout());
 
         VisWorld vw = new VisWorld();
         VisLayer vl = new VisLayer(vw);
@@ -44,11 +46,12 @@ public class Zoo
                                                 new VzCylinder(meshStyle),
                                                 new VzRobot(lineStyle, meshStyle),
                                                 new VzSphere(meshStyle),
-                                                new VzSphere(new VisTexture(im)),
+                                                //xxx Texture file missing new VzSphere(new VisTexture(im)),
                                                 new VzSquarePyramid(lineStyle, meshStyle),
                                                 new VzStar(lineStyle, meshStyle),
                                                 new VzText(VzText.ANCHOR.CENTER, "<<sansserif-10,scale=.1,dropshadow=false>>Hi!"),
-                                                new VzSquare(lineStyle, meshStyle),
+                                                new VzRectangle(1.6,1.0,lineStyle, meshStyle),
+                                                new VzTriangle(lineStyle, meshStyle),
         };
 
         VisWorld.Buffer vb = vw.getBuffer("zoo");
@@ -66,7 +69,7 @@ public class Zoo
 
                 vb.addBack(new VisChain(LinAlg.translate(x*grid + grid/2, rows*grid - (y*grid + grid/2), 0),
                                         new VisChain(LinAlg.translate(0,0,0.1),
-                                                     new VzSquare(grid, grid, new VzLines.Style(Color.gray, 2))),
+                                                     new VzRectangle(grid, grid, new VzLines.Style(Color.gray, 2))),
                                         vo,
                                         LinAlg.translate(0, grid*.4, 0),
                                         LinAlg.scale(.02, .02, .02),
@@ -76,9 +79,9 @@ public class Zoo
 
         vb.swap();
 
-        f.add(vc);
-        f.setSize(600, 400);
-        f.setVisible(true);
+        jf.add(vc);
+        jf.setSize(600, 400);
+        jf.setVisible(true);
 
         vl.cameraManager.fit2D(new double[] { 0, 0 }, new double[] { cols*grid, rows*grid }, true);
     }

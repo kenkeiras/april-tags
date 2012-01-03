@@ -78,6 +78,7 @@ public class VisTest
         VzGrid.addGrid(vw);
 
         jf = new JFrame("VisTest");
+        jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         jf.setLayout(new BorderLayout());
         jf.add(vc, BorderLayout.CENTER);
         jf.setSize(600,400);

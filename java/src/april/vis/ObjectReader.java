@@ -213,6 +213,9 @@ public class ObjectReader
     {
         String cls = ins.readUTF();
 
+        if (cls.equals("null"))
+            return null;
+
         long id = ins.readLong();
 
         int mode = ins.readByte()&0xff;

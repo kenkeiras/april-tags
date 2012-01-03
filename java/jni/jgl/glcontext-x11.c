@@ -15,6 +15,7 @@ glcontext_t *glcontext_X11_create()
     assert(dpy != NULL);
 
     Window root = DefaultRootWindow(dpy);
+    // These GL settings are unimportant; see glcontext.c for the allocation of the FBO.
     GLint att[] = { GLX_RGBA, GLX_DEPTH_SIZE, 24, GLX_DOUBLEBUFFER, None };
     XVisualInfo *vi = glXChooseVisual(dpy, 0, att);
     Colormap cmap = XCreateColormap(dpy, root, vi->visual, AllocNone);
@@ -25,9 +26,6 @@ glcontext_t *glcontext_X11_create()
     swa.event_mask = ExposureMask | KeyPressMask;
 
     Window win = XCreateWindow(dpy, root, 0, 0, 100, 100, 0, vi->depth, InputOutput, vi->visual, CWColormap | CWEventMask, &swa);
-
-//    XMapWindow(dpy, win);
-//    XStoreName(dpy, win, "VERY SIMPLE APPLICATION");
 
     GLXContext _glc = glXCreateContext(dpy, vi, NULL, GL_TRUE);
     glXMakeCurrent(dpy, win, _glc);
