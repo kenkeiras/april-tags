@@ -218,7 +218,7 @@ public class ImageConvert
     public static BufferedImage convertToImage(String format, int width, int height, byte d[])
     {
         if (format.equals("BAYER_GBRG"))
-            return debayerGBRG(format, width, height, d);
+            return debayerGBRGhalf(format, width, height, d);
 
         if (format.equals("BAYER_RGGB"))
             return debayerRGGB(format, width, height, d);
