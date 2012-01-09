@@ -182,7 +182,9 @@ public class CornerTest implements ParameterListener
         KanadeDetector()
         {
             pg = new ParameterGUI();
-            pg.addIntSlider("halfsize", "window size/2", 0, 10, 2);
+            pg.addIntSlider("scale", "scale", 1, 64, 1);
+            pg.addDoubleSlider("sigma", "sigma", 0, 10, 1.8);
+            pg.addIntSlider("halfsize", "window size/2", 0, 10, 1);
             pg.addListener(this);
 
             jp = new JPanel();
@@ -207,7 +209,7 @@ public class CornerTest implements ParameterListener
 
         public FloatImage computeResponse(FloatImage input)
         {
-            KanadeTomasi kt = new KanadeTomasi(pg.gi("halfsize"));
+            KanadeTomasi kt = new KanadeTomasi(pg.gi("scale"), pg.gd("sigma"), pg.gi("halfsize"));
             FloatImage response = kt.computeResponse(input);
 
             return response;
