@@ -6,6 +6,8 @@ import java.io.*;
 
 import april.jmat.*;
 
+/** The cone's circular base is centered at the origin and in the XY
+ * plane. The point extends in the +z direction. **/
 public class VzCone implements VisObject, VisSerializable
 {
     Style styles[];
@@ -33,8 +35,7 @@ public class VzCone implements VisObject, VisSerializable
             double theta = 2*Math.PI * i / n;
 
             barrelData.add(new float[] { (float) Math.cos(theta),
-                                         (float) Math.sin(theta),
-                                         -1 });
+                                         (float) Math.sin(theta) });
 
             barrelNormals.add(new float[] { (float) Math.cos(theta),
                                             (float) Math.sin(theta),

@@ -38,7 +38,7 @@ public class VzRectangle implements VisObject, VisSerializable
     /** A box that extends from -1 to +1 along x, and y axis **/
     public VzRectangle(Style ... styles)
     {
-        this(1, 1, styles);
+        this(2, 2, styles);
     }
 
     /** A box that extends from -sx/2 to sx/2, -sy/2 to sy/2 **/

@@ -665,3 +665,16 @@ JNIEXPORT jint JNICALL Java_april_vis_GL_gl_1get_1error
 {
     return glGetError();
 }
+
+
+JNIEXPORT jint JNICALL Java_april_vis_GL_gl_1get_1double_1v
+  (JNIEnv *jenv, jclass jcls, jint param, jdoubleArray jdata)
+{
+    jboolean is_copy = 0;
+    jdouble *data = (*jenv)->GetPrimitiveArrayCritical(jenv, jdata, &is_copy);
+
+    glGetDoublev(param, data);
+
+    (*jenv)->ReleasePrimitiveArrayCritical(jenv, jdata, data, 0);
+    return 0;
+}

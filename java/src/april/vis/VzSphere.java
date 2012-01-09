@@ -1,8 +1,12 @@
 package april.vis;
 
 import java.awt.*;
+import java.awt.image.*;
 import java.util.*;
 import java.io.*;
+
+import javax.swing.*;
+import javax.imageio.*;
 
 import april.jmat.*;
 
@@ -242,6 +246,31 @@ public class VzSphere implements VisObject, VisSerializable
         }
 
         gl.glPopMatrix();
+    }
+
+    public static void main(String args[])
+    {
+        JFrame f = new JFrame("Vis Zoo");
+        f.setLayout(new BorderLayout());
+
+        VisWorld vw = new VisWorld();
+        VisLayer vl = new VisLayer(vw);
+        VisCanvas vc = new VisCanvas(vl);
+
+        BufferedImage im = null;
+        try {
+            im = ImageIO.read(new File("/home/ebolson/earth.png"));
+        } catch (IOException ex) {
+            System.out.println("ex: "+ex);
+        }
+
+        VisWorld.Buffer vb = vw.getBuffer("zoo");
+        vb.addBack(new VzSphere(new VisTexture(im)));
+        vb.swap();
+
+        f.add(vc, BorderLayout.CENTER);
+        f.setSize(600, 400);
+        f.setVisible(true);
     }
 
     public VzSphere(ObjectReader ins)

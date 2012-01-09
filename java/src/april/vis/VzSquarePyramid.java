@@ -4,7 +4,22 @@ import java.awt.*;
 import java.io.*;
 
 /* A square-base pyramid; base spans from -1 to +1 in the XY plane
- * (with z = 0), and apex rises up z axis to (0,0,1) **/
+ * (with z = 0), and apex rises up z axis to (0,0,1).
+ *
+ * Can also be used as a viewing frustrum, where M is the model view
+ * matrix, d is a large number (to scale the size of the viewing
+ * frustrum, and fovx and fovy are the fields of view of the camera in
+ * degrees. (See CameraPosition and VisUtil.computeFieldOfViewX).
+
+      tmp = new VisChain(LinAlg.inverse(M),
+                         LinAlg.scale(d, d, d),
+                         LinAlg.translate(0, 0, -1),
+                         LinAlg.scale(Math.tan(Math.toRadians(fovx/2)),
+                                      Math.tan(Math.toRadians(fovy/2)),
+                                      1),
+                         new VzSquarePyramid(new VzMesh.Style(new Color(0,255,255,100))));
+
+ **/
 public class VzSquarePyramid implements VisObject, VisSerializable
 {
     Style styles[];
