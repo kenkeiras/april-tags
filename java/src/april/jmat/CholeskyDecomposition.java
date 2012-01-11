@@ -141,6 +141,20 @@ public class CholeskyDecomposition
         return isSpd;
     }
 
+    // Computes the determinant by squaring the product of the diagonals of L.
+    // Returns 0 if the matrix A is not SPD
+    public double getDet()
+    {
+        if (!isSpd)
+            return 0;
+
+        double det = 1.0;
+        for (int i = 0; i < L.m; i++)
+            det *= L.get(i,i);
+
+        return det*det;
+    }
+
     public Matrix solve(Matrix B)
     {
         int m = L.m, n = L.n;
