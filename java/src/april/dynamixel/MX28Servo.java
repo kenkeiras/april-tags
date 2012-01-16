@@ -84,6 +84,9 @@ public class MX28Servo extends AbstractServo
                                       new byte[] { 0x24, 8 },
                                       true);
 
+        if (resp == null)
+            return null;
+
         Status st = new Status();
         st.positionRadians = ((resp[1] & 0xff) + ((resp[2] & 0x3f) << 8)) * 2 * Math.PI / 0xfff - Math.PI;
 
@@ -104,11 +107,6 @@ public class MX28Servo extends AbstractServo
         st.temperature = (resp[8] & 0xff); // deg celsius
         st.errorFlags = resp[0];
 
-/*
-        resp = bus.sendCommand(id, AbstractBus.INST_READ_DATA,
-                               new byte[] { 24, 25 }, true);
-        dump(resp);
-*/
         return st;
      }
 }

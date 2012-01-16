@@ -10,6 +10,8 @@ public abstract class AbstractBus
     public static final int INST_RESET_DATA   = 0x06;
     public static final int INST_SYNC_WRITE   = 0x83;
 
+    boolean retryEnable = true;
+
     /** Send an instruction with the specified parameters. The error
      * code, body and checksum of the response are returned (the
      * initial 4 bytes of header are removed.)
@@ -18,6 +20,11 @@ public abstract class AbstractBus
      * for certain non-fatal errors) will be retried.
      **/
     public abstract byte[] sendCommand(int id, int instruction, byte parameters[], boolean retry);
+
+    public void setRetryEnable(boolean retryEnable)
+    {
+        this.retryEnable = retryEnable;
+    }
 
     /** Returns the model identifier for the servo or -1 if no servo found. **/
     public int getServoModel(int id)

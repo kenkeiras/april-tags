@@ -26,7 +26,7 @@ public class DefaultCameraManager implements VisCameraManager, VisSerializable
     // we don't interpolate between these values.
     public double interfaceMode = 2.5;
     public double perspective_fovy_degrees = 50;
-    public double zclip_near = 0.1;
+    public double zclip_near = 0.025;
     public double zclip_far = 50000;
 
     public double popupInterfaceModes[] = new double[] { 1.5, 2.0, 2.5, 3.0 };

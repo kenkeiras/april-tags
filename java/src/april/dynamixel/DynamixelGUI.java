@@ -27,6 +27,8 @@ public class DynamixelGUI
     {
         this.bus = bus;
 
+        bus.setRetryEnable(false);
+
         jf = new JFrame("DynamixelGUI");
         jf.setLayout(new BorderLayout());
 
@@ -218,6 +220,9 @@ public class DynamixelGUI
                     return;
 
                 AbstractServo.Status status = servo.getStatus();
+                if (status == null)
+                    return;
+
                 positionSlider.setActualValue(status.positionRadians);
                 speedSlider.setActualValue(Math.abs(status.speed));
                 torqueSlider.setActualValue(Math.abs(status.load));
