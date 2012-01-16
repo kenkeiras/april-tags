@@ -26,6 +26,17 @@ public class MX28Servo extends AbstractServo
 */
     }
 
+
+    public double getMinimumPositionRadians()
+    {
+        return -Math.PI;
+    }
+
+    public double getMaximumPositionRadians()
+    {
+        return Math.PI;
+    }
+
     public void setGoal(double radians, double speedfrac, double torquefrac)
     {
         int posv = ((int) ((radians+Math.PI)/(2*Math.PI)*4096)) & 0xfff;
@@ -93,11 +104,11 @@ public class MX28Servo extends AbstractServo
         st.temperature = (resp[8] & 0xff); // deg celsius
         st.errorFlags = resp[0];
 
-
+/*
         resp = bus.sendCommand(id, AbstractBus.INST_READ_DATA,
                                new byte[] { 24, 25 }, true);
         dump(resp);
-
+*/
         return st;
      }
 }

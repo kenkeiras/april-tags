@@ -9,6 +9,16 @@ public class AX12Servo extends AbstractServo
         super(bus, id);
     }
 
+    public double getMinimumPositionRadians()
+    {
+        return Math.toRadians(-150);
+    }
+
+    public double getMaximumPositionRadians()
+    {
+        return Math.toRadians(150);
+    }
+
     public void setGoal(double radians, double speedfrac, double torquefrac)
     {
         int posv = ((int) ((radians+Math.toRadians(150))/Math.toRadians(300)*1024)) & 0x3ff;

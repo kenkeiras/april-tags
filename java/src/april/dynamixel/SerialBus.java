@@ -17,7 +17,17 @@ public class SerialBus extends AbstractBus
         this.js = js;
     }
 
-    public byte[] sendCommand(int id, int instruction, byte parameters[], boolean retry)
+    public void setBaud(int baud) throws IOException
+    {
+        js.setBaud(baud);
+    }
+
+    public int getBaud()
+    {
+        return js.getBaud();
+    }
+
+    public synchronized byte[] sendCommand(int id, int instruction, byte parameters[], boolean retry)
     {
         do {
 
