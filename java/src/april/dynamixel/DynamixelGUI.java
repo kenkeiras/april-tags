@@ -55,7 +55,7 @@ public class DynamixelGUI
 
     class SerialBusPanel extends JPanel
     {
-        String bauds[] = new String[] { "57600", "1000000" };
+        String bauds[] = new String[] { "57600", "500000", "1000000" };
         JComboBox jcb = new JComboBox(bauds);
 
         public SerialBusPanel()
@@ -168,7 +168,7 @@ public class DynamixelGUI
                 }
 
                 JMenu baudMenu = new JMenu("Set Baud");
-                int bauds[] = new int[] { 57600, 1000000 };
+                int bauds[] = new int[] { 57600, 500000, 1000000 };
                 for (int i = 0; i < bauds.length; i++) {
                     JMenuItem item = new JMenuItem(""+bauds[i]);
                     baudMenu.add(item);

@@ -154,6 +154,7 @@ public class SerialBus extends AbstractBus
                 checksum = (checksum & 0xff) ^ 0xff;
                 if ((body[body.length - 1] & 0xff) != checksum) {
                     System.out.printf("SerialBus: Bad checksum %02x %02x\n", body[body.length - 1] & 0xff, checksum);
+                    return null;
                 }
             }
 
