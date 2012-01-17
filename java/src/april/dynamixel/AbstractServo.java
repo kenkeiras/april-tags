@@ -77,6 +77,9 @@ public abstract class AbstractServo
         assert(id >= 0 && id < 254); // note 254 = broadcast address.
     }
 
+    public abstract double getMinimumPositionRadians();
+    public abstract double getMaximumPositionRadians();
+
     public void setID(int newid)
     {
         assert(newid >= 0 && newid < 254);

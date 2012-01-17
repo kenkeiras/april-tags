@@ -22,6 +22,8 @@ public class JSerial
 
     int fd;
 
+    int baud;
+
     static {
         System.loadLibrary("jserial");
     }
@@ -29,6 +31,7 @@ public class JSerial
     public JSerial(String url, int baudrate, String mode, boolean blocking) throws IOException
     {
         fd = serial_open_jni(url, baudrate, blocking ? 1 : 0);
+        baud = baudrate;
         setMode(mode);
 
         if (fd < 0)
@@ -38,6 +41,7 @@ public class JSerial
     public JSerial(String url, int baudrate, String mode) throws IOException
     {
         fd = serial_open_jni(url, baudrate, 1);
+        baud = baudrate;
         setMode(mode);
 
         if (fd < 0)
@@ -47,6 +51,7 @@ public class JSerial
     public JSerial(String url, int baudrate) throws IOException
     {
         fd = serial_open_jni(url, baudrate, 1);
+        baud = baudrate;
 
         if (fd < 0)
             throw new IOException("Couldn't open serial port "+url);
@@ -154,11 +159,17 @@ public class JSerial
         return write(fd, buf, offset, len);
     }
 
+    public int getBaud()
+    {
+        return baud;
+    }
+
     public void setBaud(int baudrate) throws IOException
     {
         int res = serial_set_baud_jni(fd, baudrate);
         if (res != 0)
             throw new IOException("Could not set baudrate: "+baudrate);
+        baud = baudrate;
     }
 
     public void setCTSRTS(boolean v)

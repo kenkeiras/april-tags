@@ -383,75 +383,8 @@ public class VisCanvas extends JComponent implements VisSerializable
 
             for (VisLayer layer : rinfo.layers) {
 
-                if (!layer.isEnabled())
-                    continue;
+                layer.render(VisCanvas.this, rinfo, gl, viewport, mtime);
 
-                int layerPosition[] = layer.layerManager.getLayerPosition(VisCanvas.this, viewport, layer, mtime);
-                rinfo.layerPositions.put(layer, layerPosition);
-
-                gl.glScissor(layerPosition[0], layerPosition[1], layerPosition[2], layerPosition[3]);
-                gl.glViewport(layerPosition[0], layerPosition[1], layerPosition[2], layerPosition[3]);
-
-                int clearflags = 0;
-
-                if (layer.clearDepth) {
-                    gl.glClearDepth(1.0);
-                    clearflags |= GL.GL_DEPTH_BUFFER_BIT;
-                }
-
-                if (layer.backgroundColor.getAlpha() != 0) {
-                    gl.glClearColor(layer.backgroundColor.getRed()/255f,
-                                    layer.backgroundColor.getGreen()/255f,
-                                    layer.backgroundColor.getBlue()/255f,
-                                    layer.backgroundColor.getAlpha()/255f);
-                    clearflags |= GL.GL_COLOR_BUFFER_BIT;
-                }
-
-                if (clearflags != 0)
-                    gl.glClear(clearflags);
-
-                ///////////////////////////////////////////////////////
-                // set up lighting
-
-                // The position of lights is transformed by the
-                // current model view matrix, thus we load the
-                // identity matrix before configuring the lights.
-                gl.glMatrixMode(GL.GL_MODELVIEW);
-                gl.glLoadIdentity();
-
-                for (int i = 0; i < layer.lights.size(); i++) {
-                    VisLight light = layer.lights.get(i);
-                    gl.glLightfv(GL.GL_LIGHT0 + i, GL.GL_POSITION, light.position);
-                    gl.glLightfv(GL.GL_LIGHT0 + i, GL.GL_AMBIENT, light.ambient);
-                    gl.glLightfv(GL.GL_LIGHT0 + i, GL.GL_DIFFUSE, light.diffuse);
-                    gl.glLightfv(GL.GL_LIGHT0 + i, GL.GL_SPECULAR, light.specular);
-
-                    gl.glEnable(GL.GL_LIGHT0 + i);
-                }
-
-                // position the camera
-                VisCameraManager.CameraPosition cameraPosition = layer.cameraManager.getCameraPosition(VisCanvas.this,
-                                                                                                      viewport,
-                                                                                                      layerPosition,
-                                                                                                      layer,
-                                                                                                      mtime);
-                rinfo.cameraPositions.put(layer, cameraPosition);
-
-                gl.glMatrixMode(GL.GL_PROJECTION);
-                gl.glLoadIdentity();
-                gl.glMultMatrix(cameraPosition.getProjectionMatrix());
-
-                gl.glMatrixMode(GL.GL_MODELVIEW);
-                gl.glLoadIdentity();
-                gl.glMultMatrix(cameraPosition.getModelViewMatrix());
-
-                // draw the objects
-                layer.world.render(VisCanvas.this, layer, rinfo, gl);
-
-                // undo our lighting
-                for (int i = 0; i < layer.lights.size(); i++) {
-                    gl.glDisable(GL.GL_LIGHT0 + i);
-                }
             }
 
             gl.gldFrameEnd(canvasId);

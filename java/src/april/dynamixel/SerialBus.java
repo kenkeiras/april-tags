@@ -7,7 +7,7 @@ import april.util.*;
 
 public class SerialBus extends AbstractBus
 {
-    int TIMEOUT_MS = 100;
+    int TIMEOUT_MS = 50;
 
     JSerial js;
     boolean verbose = false;
@@ -17,10 +17,19 @@ public class SerialBus extends AbstractBus
         this.js = js;
     }
 
-    public byte[] sendCommand(int id, int instruction, byte parameters[], boolean retry)
+    public void setBaud(int baud) throws IOException
+    {
+        js.setBaud(baud);
+    }
+
+    public int getBaud()
+    {
+        return js.getBaud();
+    }
+
+    public synchronized byte[] sendCommand(int id, int instruction, byte parameters[], boolean retry)
     {
         do {
-
             byte resp[] = sendCommandRaw(id, instruction, parameters);
 
             if (resp == null || resp.length < 1) {
@@ -43,7 +52,7 @@ public class SerialBus extends AbstractBus
 
             return resp;
 
-        } while (retry);
+        } while (retry && retryEnable);
 
         return null;
     }

@@ -47,6 +47,8 @@ public class VisLayer implements Comparable<VisLayer>, VisSerializable
 
     VisEventHandler popupMenu = new DefaultPopupMenu(this);
 
+    boolean showCameraPosition = false;
+
     public int popupBackgroundColors[] = new int[] { 0x000000, 0x808080, 0xffffff };
 
     HashSet<String> disabledBuffers = new HashSet<String>();
@@ -74,6 +76,94 @@ public class VisLayer implements Comparable<VisLayer>, VisSerializable
 
         addEventHandler(new DefaultEventHandler());
         addEventHandler(popupMenu);
+    }
+
+    public void render(VisCanvas vc, VisCanvas.RenderInfo rinfo, GL gl, int viewport[], long mtime)
+    {
+        if (!isEnabled())
+            return;
+
+        int layerPosition[] = layerManager.getLayerPosition(vc, viewport, this, mtime);
+        rinfo.layerPositions.put(this, layerPosition);
+
+        gl.glScissor(layerPosition[0], layerPosition[1], layerPosition[2], layerPosition[3]);
+        gl.glViewport(layerPosition[0], layerPosition[1], layerPosition[2], layerPosition[3]);
+
+        int clearflags = 0;
+
+        if (clearDepth) {
+            gl.glClearDepth(1.0);
+            clearflags |= GL.GL_DEPTH_BUFFER_BIT;
+        }
+
+        if (backgroundColor.getAlpha() != 0) {
+            gl.glClearColor(backgroundColor.getRed()/255f,
+                            backgroundColor.getGreen()/255f,
+                            backgroundColor.getBlue()/255f,
+                            backgroundColor.getAlpha()/255f);
+            clearflags |= GL.GL_COLOR_BUFFER_BIT;
+        }
+
+        if (clearflags != 0)
+            gl.glClear(clearflags);
+
+        ///////////////////////////////////////////////////////
+        // set up lighting
+
+        // The position of lights is transformed by the
+        // current model view matrix, thus we load the
+        // identity matrix before configuring the lights.
+        gl.glMatrixMode(GL.GL_MODELVIEW);
+        gl.glLoadIdentity();
+
+        for (int i = 0; i < lights.size(); i++) {
+            VisLight light = lights.get(i);
+            gl.glLightfv(GL.GL_LIGHT0 + i, GL.GL_POSITION, light.position);
+            gl.glLightfv(GL.GL_LIGHT0 + i, GL.GL_AMBIENT, light.ambient);
+            gl.glLightfv(GL.GL_LIGHT0 + i, GL.GL_DIFFUSE, light.diffuse);
+            gl.glLightfv(GL.GL_LIGHT0 + i, GL.GL_SPECULAR, light.specular);
+
+            gl.glEnable(GL.GL_LIGHT0 + i);
+        }
+
+        // position the camera
+        VisCameraManager.CameraPosition cameraPosition = cameraManager.getCameraPosition(vc,
+                                                                                         viewport,
+                                                                                         layerPosition,
+                                                                                         this,
+                                                                                         mtime);
+        rinfo.cameraPositions.put(this, cameraPosition);
+
+        gl.glMatrixMode(GL.GL_PROJECTION);
+        gl.glLoadIdentity();
+        gl.glMultMatrix(cameraPosition.getProjectionMatrix());
+
+        gl.glMatrixMode(GL.GL_MODELVIEW);
+        gl.glLoadIdentity();
+        gl.glMultMatrix(cameraPosition.getModelViewMatrix());
+
+        // draw the objects
+        world.render(vc, this, rinfo, gl);
+
+        if (showCameraPosition) {
+
+            VisObject vo = new VisDepthTest(false,
+                                            new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.BOTTOM_RIGHT,
+                                                                    new VzText(VzText.ANCHOR.BOTTOM_RIGHT_ROUND,
+                                                                               "<<white,monospaced-12>>"+
+                                                                               String.format("eye:    %15.5f %15.5f %15.5f\n" +
+                                                                                             "lookat: %15.5f %15.5f %15.5f\n" +
+                                                                                             "up:     %15.5f %15.5f %15.5f\n",
+                                                                                             cameraPosition.eye[0], cameraPosition.eye[1], cameraPosition.eye[2],
+                                                                                             cameraPosition.lookat[0], cameraPosition.lookat[1], cameraPosition.lookat[2],
+                                                                                             cameraPosition.up[0], cameraPosition.up[1], cameraPosition.up[2]))));
+            vo.render(vc, this, rinfo, gl);
+        }
+
+        // undo our lighting
+        for (int i = 0; i < lights.size(); i++) {
+            gl.glDisable(GL.GL_LIGHT0 + i);
+        }
     }
 
     public boolean isEnabled()
@@ -121,11 +211,11 @@ public class VisLayer implements Comparable<VisLayer>, VisSerializable
                 jm.add(jmis[i]);
 
                 jmis[i].addActionListener(new ActionListener() {
-                        public void actionPerformed(ActionEvent e) {
-                            JRadioButtonMenuItem jmi = (JRadioButtonMenuItem) e.getSource();
-                            backgroundColor = new Color(Integer.parseInt(jmi.getText(), 16));
-                        }
-                    });
+                    public void actionPerformed(ActionEvent e) {
+                        JRadioButtonMenuItem jmi = (JRadioButtonMenuItem) e.getSource();
+                        backgroundColor = new Color(Integer.parseInt(jmi.getText(), 16));
+                    }
+                });
             }
 
             int bestIndex = 0;
@@ -155,26 +245,31 @@ public class VisLayer implements Comparable<VisLayer>, VisSerializable
                     jmis[i].setSelected(!disabledBuffers.contains(vb.name));
 
                     jmis[i].addActionListener(new ActionListener() {
-                            public void actionPerformed(ActionEvent e) {
-                                JCheckBoxMenuItem jmi = (JCheckBoxMenuItem) e.getSource();
-                                String bufferName = jmi.getText();
+                        public void actionPerformed(ActionEvent e) {
+                            JCheckBoxMenuItem jmi = (JCheckBoxMenuItem) e.getSource();
+                            String bufferName = jmi.getText();
 
-                                VisWorld.Buffer vb = world.getBuffer(bufferName);
+                            VisWorld.Buffer vb = world.getBuffer(bufferName);
 
-                                setBufferEnabled(vb.name, !isBufferEnabled(vb.name));
-                            }
-                        });
+                            setBufferEnabled(vb.name, !isBufferEnabled(vb.name));
+                        }
+                    });
 
                     jm.add(jmis[i]);
                 }
             }
 
-            if (false) {
-                jm.addSeparator();
+            if (true) {
+                JCheckBoxMenuItem jmi = new JCheckBoxMenuItem("Show Camera Position");
+                jmi.setSelected(showCameraPosition);
 
-                JMenuItem jmi = new JMenuItem("Detatch...");
-                // XXX TODO
-                jm.add(jmi);
+                jmi.addActionListener(new ActionListener() {
+                    public void actionPerformed(ActionEvent e) {
+                        showCameraPosition ^= true;
+                    }
+                });
+
+                jmenu.add(jmi);
             }
 
             jmenu.add(jm);
