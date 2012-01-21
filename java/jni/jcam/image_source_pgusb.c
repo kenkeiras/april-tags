@@ -317,7 +317,6 @@ char** image_source_enumerate_pgusb(char **urls)
 
             char buf[1024];
             snprintf(buf, 1024, "pgusb://%"PRIx64, guid);
-
             urls = string_array_add(urls, buf);
         }
     }
@@ -424,8 +423,6 @@ static int set_named_format(image_source_t *isrc, const char *desired_format)
 
 static int num_features(image_source_t *isrc)
 {
-    printf("num_features\n");
-
     // don't forget: feature index starts at 0
     return 0;
 }
@@ -498,14 +495,6 @@ static int start(image_source_t *isrc)
     impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
     image_source_format_t *ifmt = get_format(isrc, get_current_format(isrc));
     struct format_priv *format_priv = (struct format_priv*) ifmt->priv;
-
-/*
-    for (int i = 0x0600; i <= 0x0630; i+=4) {
-        uint32_t d;
-        do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + i, &d, 1);
-        printf("%04x: %08x\n", i, d);
-    }
-*/
 
     // set iso channel
     if (1) {
@@ -614,7 +603,6 @@ static int start(image_source_t *isrc)
 
     // 614 = 80000000 (streaming = on)
 
-
     // set up USB transfers
     if (libusb_claim_interface(impl->handle, 0) < 0) {
         printf("couldn't claim interface\n");
@@ -647,7 +635,6 @@ static int start(image_source_t *isrc)
         (format_priv->color_coding_idx == 10)) {
         bytes_per_pixel = 2;
     }
-
 
     impl->bytes_per_frame = ifmt->width * ifmt->height * bytes_per_pixel;
 
@@ -766,11 +753,6 @@ static int my_close(image_source_t *isrc)
 {
     assert(isrc->impl_type == IMPL_TYPE);
     impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
-
-//    for (int i = 0; i < impl->nrecords; i++)
-//        libusb_cancel_transfer(impl->records[i].transfer);
-
-    printf("XXX UNIMPLEMENTED CLOSE\n");
 
     libusb_close(impl->handle);
     libusb_exit(impl->context);
@@ -928,11 +910,6 @@ image_source_t *image_source_pgusb_open(url_parser_t *urlp)
                 if (do_read(impl->handle, CONFIG_ROM_BASE + mode_csr, quads, nquads) != nquads)
                     return NULL;
 
-/*
-                for (int i = 0; i < 32; i++)
-                    printf(" %03x : %08x\n", i*4, quads[i]);
-*/
-
                 uint32_t cmodes = quads[5];
                 for (int cmode = 0; cmode < 11; cmode++) {
                     if (cmodes & (1<<(31-cmode))) {
@@ -982,8 +959,6 @@ image_source_t *image_source_pgusb_open(url_parser_t *urlp)
 
     isrc->stop = stop;
     isrc->close = my_close;
-
-    printf("isrc %p\n", isrc);
 
     return isrc;
 }
