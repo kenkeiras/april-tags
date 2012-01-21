@@ -6,26 +6,32 @@ public class MX28Servo extends AbstractServo
     {
         super(bus, id);
 
-        bus.sendCommand(id,
-                        AbstractBus.INST_WRITE_DATA,
-                        new byte[] { 18, 4 },
-                        true );
+        // Anlge limits
+        // byte resp[] = bus.sendCommand(id,
+        //                               AbstractBus.INST_READ_DATA,
+        //                               new byte[] { 6, 4 },
+        //                               true);
+        // System.out.println("Angle limits: " + id);
+        // dump(resp);
 
-/*
-  // PID
-  bus.sendCommand(id,
-                        AbstractBus.INST_WRITE_DATA,
-                        new byte[] { 26, 16, 10 },
-                        true );
+        // Alarm Shutdown
+        // bus.sendCommand(id,
+        //                 AbstractBus.INST_WRITE_DATA,
+        //                 new byte[] { 18, 4 },
+        //                 true );
 
-                        // punch
-        bus.sendCommand(id,
-                        AbstractBus.INST_WRITE_DATA,
-                        new byte[] { 48, 64, 0 },
-                        true );
-*/
+        // // PID
+        // bus.sendCommand(id,
+        //                 AbstractBus.INST_WRITE_DATA,
+        //                 new byte[] { 26, 16, 10 },
+        //                 true );
+
+        // // punch
+        // bus.sendCommand(id,
+        //                 AbstractBus.INST_WRITE_DATA,
+        //                 new byte[] { 48, 64, 0 },
+        //                 true );
     }
-
 
     public double getMinimumPositionRadians()
     {
@@ -67,13 +73,6 @@ public class MX28Servo extends AbstractServo
 
 */
     }
-    static void dump(byte buf[])
-    {
-        for (int i = 0; i < buf.length; i++)
-            System.out.printf("%02x ", buf[i] & 0xff);
-
-        System.out.printf("\n");
-    }
 
     /** Get servo status **/
     public Status getStatus()
@@ -110,3 +109,4 @@ public class MX28Servo extends AbstractServo
         return st;
      }
 }
+

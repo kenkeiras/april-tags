@@ -7,6 +7,14 @@ public class AX12Servo extends AbstractServo
     public AX12Servo(AbstractBus bus, int id)
     {
         super(bus, id);
+
+        // Anlge limits
+        // byte resp[] = bus.sendCommand(id,
+        //                               AbstractBus.INST_READ_DATA,
+        //                               new byte[] { 6, 4 },
+        //                               true);
+        // System.out.println("Angle limits: " + id);
+        // dump(resp);
     }
 
     public double getMinimumPositionRadians()

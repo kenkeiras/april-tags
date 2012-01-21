@@ -77,6 +77,19 @@ public abstract class AbstractServo
         assert(id >= 0 && id < 254); // note 254 = broadcast address.
     }
 
+
+    static void dump(byte buf[])
+    {
+        if (buf == null) {
+            System.out.println("WRN: Null Buffer");
+            return;
+        }
+        for (int i = 0; i < buf.length; i++)
+            System.out.printf("%02x ", buf[i] & 0xff);
+
+        System.out.printf("\n");
+    }
+
     public abstract double getMinimumPositionRadians();
     public abstract double getMaximumPositionRadians();
 
