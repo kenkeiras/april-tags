@@ -50,13 +50,18 @@ struct impl_pgusb
 //    int nframes;
 //    struct usb_frame *frames;
 
-    int bytes_per_frame;
+    int bytes_per_frame; // how many bytes are actually used in each image?
+    int transfer_size;
+
+    int packet_size;
+    int packets_per_image;
 
     int nrecords;
     struct transfer_info *records;
 
     int current_user_frame; // what frame is currently in the user's possession?
     pthread_t worker_thread;
+    volatile int started;
 
     pthread_mutex_t queue_mutex;
     pthread_cond_t queue_cond;
@@ -168,8 +173,6 @@ static void put_ready_frame(impl_pgusb_t *impl, int idx)
 
     pthread_cond_broadcast(&impl->queue_cond);
     pthread_mutex_unlock(&impl->queue_mutex);
-
-    printf("put %d\n", idx);
 }
 
 static int get_ready_frame(impl_pgusb_t *impl)
@@ -189,8 +192,6 @@ static int get_ready_frame(impl_pgusb_t *impl)
         impl->queue[i] = impl->queue[i+1];
 
     pthread_mutex_unlock(&impl->queue_mutex);
-
-    printf("get %d\n", idx);
 
     return idx;
 }
@@ -446,18 +447,26 @@ static void callback(struct libusb_transfer *transfer)
     }
     if (idx < 0 || idx >= impl->nrecords) {
         printf("BAD IDX %d %p\n", idx, transfer);
-        assert(0);
+        return; //assert(0);
     }
 
     if (transfer->status == LIBUSB_TRANSFER_COMPLETED && transfer->actual_length == transfer->length) {
 
         put_ready_frame(impl, idx);
+
     } else {
         // transfer failed. Just queue that buffer up again.
-        printf("bad usb transfer status %d\n", transfer->status);
+        if (transfer->status == LIBUSB_TRANSFER_OVERFLOW) {
+            // device sent too much (?)
+            printf("%s:%d usb transfer failed; device sent %d, requested %d\n",
+                   __FILE__, __LINE__, transfer->actual_length, transfer->length);
+        } else {
+            printf("%s:%d usb transfer status %d\n",
+                   __FILE__, __LINE__, transfer->status);
+        }
 
         libusb_fill_bulk_transfer(impl->records[idx].transfer, impl->handle,
-                                  0x81, impl->records[idx].buf, impl->bytes_per_frame, callback, isrc, 0);
+                                  0x81, impl->records[idx].buf, impl->transfer_size, callback, isrc, 0);
 
         if (libusb_submit_transfer(impl->records[idx].transfer) < 0) {
             printf("submit failed\n");
@@ -470,7 +479,7 @@ static void *worker_thread_proc(void *arg)
     image_source_t *isrc = (image_source_t*) arg;
     impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
 
-    while (1) {
+    while (impl->started) {
 
         struct timeval tv = {
             .tv_sec = 0,
@@ -502,7 +511,7 @@ static int start(image_source_t *isrc)
     if (1) {
         uint32_t quads[] = { 0x02000000 }; //
         if (do_write(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + 0x60c, quads, 1) != 1)
-            printf("ack!\n");
+            printf("failed write: line %d\n", __LINE__);
     }
 
     // shutter 81c = c3000212
@@ -519,14 +528,14 @@ static int start(image_source_t *isrc)
     if (1) {
         uint32_t quads[] = { 0xe0000000 }; // 7 << 29
         if (do_write(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + 0x608, quads, 1) != 1)
-            printf("ack!\n");
+            printf("failed write: line %d\n", __LINE__);
     }
 
     // set format 7 mode (604 = 00000000)
     if (1) {
         uint32_t quads[] = { format_priv->format7_mode_idx<<24 };
         if (do_write(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + 0x604, quads, 1) != 1)
-            printf("ack!\n");
+            printf("failed write: line %d\n", __LINE__);
     }
 
     // set iso channel (again?) 60c = 02000000 (UNNECESSARY?)
@@ -535,21 +544,21 @@ static int start(image_source_t *isrc)
     if (1) {
         uint32_t quads[] = { ifmt->height + (ifmt->width<<16) };
         if (do_write(impl->handle, CONFIG_ROM_BASE + format_priv->csr + 0x0c, quads, 1) != 1)
-            printf("ack!\n");
+            printf("failed write: line %d\n", __LINE__);
     }
 
     // set image position a08 = 00000000
     if (1) {
         uint32_t quads[] = { 0 };
         if (do_write(impl->handle, CONFIG_ROM_BASE + format_priv->csr + 0x08, quads, 1) != 1)
-            printf("ack!\n");
+            printf("failed write: line %d\n", __LINE__);
     }
 
     // set format 7 color mode (a10 = 00000000)
     if (1) {
         uint32_t quads[] = { format_priv->color_coding_idx<<24 };
         if (do_write(impl->handle, CONFIG_ROM_BASE + format_priv->csr + 0x10, quads, 1) != 1)
-            printf("ack!\n");
+            printf("failed write: line %d\n", __LINE__);
     }
 
     // a7c = 40000000
@@ -558,7 +567,7 @@ static int start(image_source_t *isrc)
 
         uint32_t quads[] = { 0x40000000 };
         if (do_write(impl->handle, CONFIG_ROM_BASE + format_priv->csr + 0x7c, quads, 1) != 1)
-            printf("VALUE_SETTING ack!\n");
+            printf("failed write: line %d\n", __LINE__);
 
         while (1) {
             uint32_t resp;
@@ -571,18 +580,36 @@ static int start(image_source_t *isrc)
         }
     }
 
+    if (1) {
+        uint32_t pixels_per_frame;
+        do_read(impl->handle, CONFIG_ROM_BASE + format_priv->csr + 0x34, &pixels_per_frame, 1);
+
+        uint32_t total_bytes_hi, total_bytes_lo;
+        do_read(impl->handle, CONFIG_ROM_BASE + format_priv->csr + 0x38, &total_bytes_hi, 1);
+        do_read(impl->handle, CONFIG_ROM_BASE + format_priv->csr + 0x3c, &total_bytes_lo, 1);
+
+        printf("pixels_per_frame %08x, total_bytes_hi %08x, total_bytes_lo %08x\n",
+               pixels_per_frame, total_bytes_hi, total_bytes_lo);
+    }
+
     // a44 = 0bc00000
     if (1) {
+        uint32_t packet_size;
+        uint32_t packet_param;
+
+        do_read(impl->handle, CONFIG_ROM_BASE + format_priv->csr + 0x40, &packet_param, 1);
+
         // set packet size
-        uint32_t resp;
-        do_read(impl->handle, CONFIG_ROM_BASE + format_priv->csr + 0x44, &resp, 1);
-        printf("bytes per packet %08x\n", resp);
+        do_read(impl->handle, CONFIG_ROM_BASE + format_priv->csr + 0x44, &packet_size, 1);
+        printf("packet param %08x, bytes per packet %08x\n", packet_param, packet_size);
 
-        uint32_t quads[] = { (resp&0xffff)<<16 };
+//        packet_size = packet_param & 0xffff; // max packet size
+        uint32_t quads[] = { (packet_size&0xffff)<<16 | (packet_size&0xffff)};
 
-        if (do_write(impl->handle, CONFIG_ROM_BASE + format_priv->csr + 0x44, quads, 1))
-            printf("ack\n");
+        if (do_write(impl->handle, CONFIG_ROM_BASE + format_priv->csr + 0x44, quads, 1) != 1)
+            printf("failed write: line %d\n", __LINE__);
 
+        impl->packet_size = packet_size & 0xffff;
     }
 
     // 614 = 80000000 (streaming = on)
@@ -621,15 +648,22 @@ static int start(image_source_t *isrc)
         bytes_per_pixel = 2;
     }
 
+
     impl->bytes_per_frame = ifmt->width * ifmt->height * bytes_per_pixel;
 
-    printf("bytes_per_frame %d\n", impl->bytes_per_frame);
+    uint32_t packets_per_image = (impl->bytes_per_frame + impl->packet_size - 1) / impl->packet_size;
+
+    impl->transfer_size = packets_per_image * impl->packet_size;
+
+    printf("bytes_per_frame %d, transfer_size %d\n", impl->bytes_per_frame, impl->transfer_size);
 
     for (int i = 0; i < impl->nrecords; i++) {
         impl->records[i].transfer = libusb_alloc_transfer(0);
-        impl->records[i].buf = malloc(impl->bytes_per_frame);
+        impl->records[i].buf = malloc(impl->transfer_size);
         libusb_fill_bulk_transfer(impl->records[i].transfer, impl->handle,
-                                  0x81, impl->records[i].buf, impl->bytes_per_frame, callback, isrc, 0);
+                                  0x81, impl->records[i].buf, impl->transfer_size, callback, isrc, 0);
+
+        impl->records[i].transfer->flags = LIBUSB_TRANSFER_SHORT_NOT_OK;
 
         if (libusb_submit_transfer(impl->records[i].transfer) < 0) {
             printf("submit failed\n");
@@ -642,6 +676,8 @@ static int start(image_source_t *isrc)
         if (do_write(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + 0x614, quads, 1) != 1)
             printf("ack!\n");
     }
+
+    impl->started = 1;
 
     if (pthread_create(&impl->worker_thread, NULL, worker_thread_proc, isrc) != 0) {
         perror("pthread");
@@ -677,7 +713,7 @@ static int release_frame(image_source_t *isrc, void *imbuf)
 
     libusb_fill_bulk_transfer(impl->records[impl->current_user_frame].transfer, impl->handle,
                               0x81, impl->records[impl->current_user_frame].buf,
-                              impl->bytes_per_frame, callback, isrc, 0);
+                              impl->transfer_size, callback, isrc, 0);
 
     if (libusb_submit_transfer(impl->records[impl->current_user_frame].transfer) < 0) {
         printf("submit failed\n");
@@ -693,12 +729,35 @@ static int stop(image_source_t *isrc)
     assert(isrc->impl_type == IMPL_TYPE);
     impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
 
-    // set transmission to ON
+    for (int i = 0; i < impl->nrecords; i++) {
+        printf("CONSUME %d\n", i);
+        get_ready_frame(impl);
+    }
+
+    impl->started = 0;
+    pthread_join(impl->worker_thread, NULL);
+
+    // set transmission to OFF
     if (1) {
         uint32_t quads[] = { 0x00000000UL };
         if (do_write(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + 0x614, quads, 1) != 1)
             printf("ack!\n");
     }
+
+    for (int i = 0; i < impl->nrecords; i++) {
+        libusb_free_transfer(impl->records[i].transfer);
+        free(impl->records[i].buf);
+    }
+    free(impl->records);
+    free(impl->queue);
+
+
+    libusb_release_interface(impl->handle, 0);
+
+
+
+//    for (int i = 0; i < impl->nrecords; i++)
+//        libusb_cancel_transfer(impl->records[i].transfer);
 
     return 0;
 }
@@ -708,9 +767,11 @@ static int my_close(image_source_t *isrc)
     assert(isrc->impl_type == IMPL_TYPE);
     impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
 
+//    for (int i = 0; i < impl->nrecords; i++)
+//        libusb_cancel_transfer(impl->records[i].transfer);
+
     printf("XXX UNIMPLEMENTED CLOSE\n");
 
-    libusb_release_interface(impl->handle, 0);
     libusb_close(impl->handle);
     libusb_exit(impl->context);
 
