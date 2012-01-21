@@ -10,6 +10,7 @@ public class SimBus extends AbstractBus
 {
     Device devices[] = new Device[256];
     Timer timer = new Timer();
+    int messageDelay_ms;
 
     interface Device
     {
@@ -143,6 +144,12 @@ public class SimBus extends AbstractBus
 
     public SimBus()
     {
+        messageDelay_ms = 10;
+    }
+
+    public SimBus(int messageDelay_ms)
+    {
+        this.messageDelay_ms = messageDelay_ms;
     }
 
     public void addAX12(int id)
@@ -183,6 +190,9 @@ public class SimBus extends AbstractBus
 
         if (dev == null)
             return null;
+
+        // delay as if a real command was sent
+        TimeUtil.sleep(messageDelay_ms);
 
         switch (instruction) {
             case AbstractBus.INST_PING:
