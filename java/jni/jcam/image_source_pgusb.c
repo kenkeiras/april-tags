@@ -598,7 +598,8 @@ static int start(image_source_t *isrc)
         if (do_write(impl->handle, CONFIG_ROM_BASE + format_priv->csr + 0x44, quads, 1) != 1)
             printf("failed write: line %d\n", __LINE__);
 
-        impl->packet_size = packet_size & 0xffff;
+        impl->packet_size = packet_size & 0xffff; // use recommended packet size
+//        impl->packet_size = (packet_size>>16)&0xffff;
     }
 
     // 614 = 80000000 (streaming = on)
