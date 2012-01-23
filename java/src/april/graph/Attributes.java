@@ -25,7 +25,7 @@ public class Attributes
     public HashMap<String, Attr> attrs = new HashMap<String, Attr>();
 
 
-    static Attributes read(StructureReader ins ) throws IOException
+    public static Attributes read(StructureReader ins ) throws IOException
     {
         int nattributes = ins.readInt();
         if (nattributes == 0)
@@ -46,7 +46,7 @@ public class Attributes
         return a;
     }
 
-    static void write(Attributes a, StructureWriter outs) throws IOException
+    public static void write(Attributes a, StructureWriter outs) throws IOException
     {
         outs.writeComment("num attributes");
         if (a == null) {
@@ -81,7 +81,7 @@ public class Attributes
         }
     }
 
-    Attributes copy()
+    public Attributes copy()
     {
         Attributes a = new Attributes();
         a.attrs = (HashMap<String, Attr>) attrs.clone();
