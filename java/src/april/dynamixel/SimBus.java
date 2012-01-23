@@ -109,7 +109,7 @@ public class SimBus extends AbstractBus
                     registers[addr] = (byte) value;
                     if (addr == 31) {
                         int tmp = (registers[30] & 0xff) + ((registers[31]&0xff)<<8);
-                        radiansGoal = radiansRange * tmp / 1024.0;
+                        radiansGoal = radiansRange * tmp / (1.0*radiansQuant);
                     }
                     break;
 

@@ -29,7 +29,14 @@ public class AX12Servo extends AbstractServo
 
     public void setGoal(double radians, double speedfrac, double torquefrac)
     {
-        int posv = ((int) ((radians+Math.toRadians(150))/Math.toRadians(300)*1024)) & 0x3ff;
+        int posv;
+        if (radians > 150)
+            posv = 0x3ff;
+        else if (radians < -150)
+            posv = 0;
+        else
+            posv = ((int) ((radians+Math.toRadians(150))/Math.toRadians(300)*1024)) & 0x3ff;
+
         int speedv = (int) (0x3ff * speedfrac);
         int torquev = (int) (0x3ff * torquefrac);
 
