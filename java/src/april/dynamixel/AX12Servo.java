@@ -1,6 +1,6 @@
 package april.dynamixel;
 
-import april.jmat.*;
+import april.jmat.MathUtil;
 
 public class AX12Servo extends AbstractServo
 {
@@ -8,13 +8,16 @@ public class AX12Servo extends AbstractServo
     {
         super(bus, id);
 
-        // Anlge limits
-        // byte resp[] = bus.sendCommand(id,
-        //                               AbstractBus.INST_READ_DATA,
-        //                               new byte[] { 6, 4 },
-        //                               true);
-        // System.out.println("Angle limits: " + id);
-        // dump(resp);
+        ////////////// Servo Control Table //////////////
+        // Bytes 0x00 - 0x17: EEPROM                   //
+        // Bytes 0x18 - 0x31: RAM                      //
+        /////////////////////////////////////////////////
+
+        // // Set Anlge limits  (EEPROM)
+        // bus.sendCommand(id,
+        //                 AbstractBus.INST_WRITE_DATA,
+        //                 new byte[] { 6, 0, 0, (byte)0xFF, 3 },
+        //                 true );
     }
 
     public double getMinimumPositionRadians()
@@ -29,13 +32,15 @@ public class AX12Servo extends AbstractServo
 
     public void setGoal(double radians, double speedfrac, double torquefrac)
     {
+        radians = MathUtil.mod2pi(radians);
+        final double limit = Math.toRadians(150);
         int posv;
-        if (radians > 150)
+        if (radians >= limit)
             posv = 0x3ff;
-        else if (radians < -150)
+        else if (radians <= -limit)
             posv = 0;
         else
-            posv = ((int) ((radians+Math.toRadians(150))/Math.toRadians(300)*1024)) & 0x3ff;
+            posv = ((int) ((radians+limit)/(2*limit)*1024)) & 0x3ff;
 
         int speedv = (int) (0x3ff * speedfrac);
         int torquev = (int) (0x3ff * torquefrac);

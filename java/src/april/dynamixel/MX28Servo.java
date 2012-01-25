@@ -1,35 +1,34 @@
 package april.dynamixel;
 
+import april.jmat.MathUtil;
+
 public class MX28Servo extends AbstractServo
 {
     public MX28Servo(AbstractBus bus, int id)
     {
         super(bus, id);
 
-        // Anlge limits
-        // byte resp[] = bus.sendCommand(id,
-        //                               AbstractBus.INST_READ_DATA,
-        //                               new byte[] { 6, 4 },
-        //                               true);
-        // System.out.println("Angle limits: " + id);
-        // dump(resp);
+        ////////////// Servo Control Table //////////////
+        // Bytes 0x00 - 0x18: EEPROM                   //
+        // Bytes 0x19 - 0x31: RAM                      //
+        /////////////////////////////////////////////////
 
-        // Alarm Shutdown
+        // Do not write to EEPROM often.  However the following
+        // options may be useful in 'some' cases.
+
+        // // Set Alarm Shutdown (EEPROM)
         // bus.sendCommand(id,
         //                 AbstractBus.INST_WRITE_DATA,
-        //                 new byte[] { 18, 4 },
+        //                 new byte[] { 18, 36 },
         //                 true );
 
         // // PID
+        // byte p = 16;
+        // byte i = 10;
+        // byte d = 0;
         // bus.sendCommand(id,
         //                 AbstractBus.INST_WRITE_DATA,
-        //                 new byte[] { 26, 16, 10 },
-        //                 true );
-
-        // // punch
-        // bus.sendCommand(id,
-        //                 AbstractBus.INST_WRITE_DATA,
-        //                 new byte[] { 48, 64, 0 },
+        //                 new byte[] { 26, p, i, d },
         //                 true );
     }
 
@@ -45,7 +44,8 @@ public class MX28Servo extends AbstractServo
 
     public void setGoal(double radians, double speedfrac, double torquefrac)
     {
-        int posv = ((int) ((radians+Math.PI)/(2*Math.PI)*4096)) & 0xfff;
+        radians = MathUtil.mod2pi(radians);
+        int posv = ((int) ((radians + Math.PI) / (2 * Math.PI) * 4096)) & 0xfff;
         int speedv = (int) (0x3ff * speedfrac);
         int torquev = (int) (0x3ff * torquefrac);
 
@@ -56,22 +56,6 @@ public class MX28Servo extends AbstractServo
                                      (byte) (speedv & 0xff), (byte) (speedv >> 8),
                                      (byte) (torquev & 0xff), (byte) (torquev >> 8) },
                         true);
-
-/*
-        byte resp[] = bus.sendCommand(id,
-                                      AbstractBus.INST_READ_DATA,
-                                      new byte[] { 0x1e, 6 },
-                                      true);
-
-        resp = bus.sendCommand(id,
-                                      AbstractBus.INST_READ_DATA,
-                                      new byte[] { 14, 6 },
-                                      true);
-
-        dump(resp);
-        assert(false);
-
-*/
     }
 
     /** Get servo status **/
