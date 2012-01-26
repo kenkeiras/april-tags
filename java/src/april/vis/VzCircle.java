@@ -46,7 +46,7 @@ public class VzCircle implements VisObject, VisSerializable
             render(vc, layer, rinfo, gl, style);
     }
 
-    static VisVertexData makeCircleOutline(int n)
+    public static VisVertexData makeCircleOutline(int n)
     {
         VisVertexData vd = new VisVertexData();
 
@@ -59,7 +59,7 @@ public class VzCircle implements VisObject, VisSerializable
         return vd;
     }
 
-    static VisVertexData makeCircleFill(int n)
+    public static VisVertexData makeCircleFill(int n)
     {
         VisVertexData vd = new VisVertexData();
 
