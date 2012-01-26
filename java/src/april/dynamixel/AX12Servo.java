@@ -13,7 +13,11 @@ public class AX12Servo extends AbstractServo
         // Bytes 0x18 - 0x31: RAM                      //
         /////////////////////////////////////////////////
 
+        // Do not write to EEPROM often.  However the following
+        // options may be useful in 'some' cases.
+
         // // Set Anlge limits  (EEPROM)
+        // System.out.println("WARNING: writing to EEPROM");
         // bus.sendCommand(id,
         //                 AbstractBus.INST_WRITE_DATA,
         //                 new byte[] { 6, 0, 0, (byte)0xFF, 3 },

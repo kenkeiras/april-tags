@@ -17,6 +17,7 @@ public class MX28Servo extends AbstractServo
         // options may be useful in 'some' cases.
 
         // // Set Alarm Shutdown (EEPROM)
+        // System.out.println("WARNING: writing to EEPROM");
         // bus.sendCommand(id,
         //                 AbstractBus.INST_WRITE_DATA,
         //                 new byte[] { 18, 36 },
