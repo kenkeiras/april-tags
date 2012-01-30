@@ -12,9 +12,22 @@ public class MX28Servo extends AbstractServo
         // Bytes 0x00 - 0x18: EEPROM                   //
         // Bytes 0x19 - 0x31: RAM                      //
         /////////////////////////////////////////////////
-
         // Do not write to EEPROM often.  However the following
         // options may be useful in 'some' cases.
+
+        // Return Delay Time
+        // units of 2uSec
+        byte delay = 0x02;
+        byte resp[] = bus.sendCommand(id,
+                                      AbstractBus.INST_READ_DATA,
+                                      new byte[] { 0x05, 1 },
+                                      true);
+        if (resp != null && resp[1] != delay)
+            bus.sendCommand(id,
+                            AbstractBus.INST_WRITE_DATA,
+                            new byte[] { 0x5, delay },
+                            true );
+        // dump(resp);
 
         // // Set Alarm Shutdown (EEPROM)
         // System.out.println("WARNING: writing to EEPROM");
