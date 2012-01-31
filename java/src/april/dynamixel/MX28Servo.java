@@ -2,48 +2,33 @@ package april.dynamixel;
 
 import april.jmat.MathUtil;
 
+/////////// MX-28 Servo Control Table ///////////
+// Bytes 0x00 - 0x18: EEPROM                   //
+// Bytes 0x19 - 0x31: RAM                      //
+/////////////////////////////////////////////////
 public class MX28Servo extends AbstractServo
 {
     public MX28Servo(AbstractBus bus, int id)
     {
         super(bus, id);
 
-        ////////////// Servo Control Table //////////////
-        // Bytes 0x00 - 0x18: EEPROM                   //
-        // Bytes 0x19 - 0x31: RAM                      //
-        /////////////////////////////////////////////////
-        // Do not write to EEPROM often.  However the following
-        // options may be useful in 'some' cases.
+        // Return delay time
+        byte delay = 0x02;  // each unit = 2 usec
+        ensureEEPROM(new byte[] { 0x5, delay });
 
-        // Return Delay Time
-        // units of 2uSec
-        byte delay = 0x02;
-        byte resp[] = bus.sendCommand(id,
-                                      AbstractBus.INST_READ_DATA,
-                                      new byte[] { 0x05, 1 },
-                                      true);
-        if (resp != null && resp[1] != delay)
-            bus.sendCommand(id,
-                            AbstractBus.INST_WRITE_DATA,
-                            new byte[] { 0x5, delay },
-                            true );
-        // dump(resp);
+        // Set Alarm Shutdown (EEPROM)
+        ensureEEPROM(new byte[] { 18, 36 } );
 
-        // // Set Alarm Shutdown (EEPROM)
-        // System.out.println("WARNING: writing to EEPROM");
-        // bus.sendCommand(id,
-        //                 AbstractBus.INST_WRITE_DATA,
-        //                 new byte[] { 18, 36 },
-        //                 true );
-
-        // // PID
+        // PID (RAM)
         // byte p = 16;
         // byte i = 10;
         // byte d = 0;
-        // bus.sendCommand(id,
-        //                 AbstractBus.INST_WRITE_DATA,
-        //                 new byte[] { 26, p, i, d },
-        //                 true );
+        // writeToRAM(new byte[] { 26, p, i, d }, true );
+    }
+
+    public boolean isAddressEEPROM(int address)
+    {
+        return address < 0x19;
     }
 
     public double getMinimumPositionRadians()
@@ -63,13 +48,10 @@ public class MX28Servo extends AbstractServo
         int speedv = (int) (0x3ff * speedfrac);
         int torquev = (int) (0x3ff * torquefrac);
 
-        bus.sendCommand(id,
-                        AbstractBus.INST_WRITE_DATA,
-                        new byte[] { 0x1e,
-                                     (byte) (posv & 0xff), (byte) (posv >> 8),
-                                     (byte) (speedv & 0xff), (byte) (speedv >> 8),
-                                     (byte) (torquev & 0xff), (byte) (torquev >> 8) },
-                        true);
+        writeToRAM(new byte[] { 0x1e,
+                                (byte) (posv & 0xff), (byte) (posv >> 8),
+                                (byte) (speedv & 0xff), (byte) (speedv >> 8),
+                                (byte) (torquev & 0xff), (byte) (torquev >> 8) }, true);
     }
 
     /** Get servo status **/
