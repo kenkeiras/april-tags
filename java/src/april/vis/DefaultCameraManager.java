@@ -59,6 +59,25 @@ public class DefaultCameraManager implements VisCameraManager, VisSerializable
         defaultUp = LinAlg.copy(up);
     }
 
+    public CameraPosition getCameraTarget()
+    {
+        CameraPosition p = new CameraPosition();
+
+        p.layerViewport = null;
+        p.perspective_fovy_degrees = perspective_fovy_degrees;
+        p.zclip_near = zclip_near;
+        p.zclip_far = zclip_far;
+
+        p.eye = LinAlg.copy(eye1);
+        p.lookat = LinAlg.copy(lookat1);
+        p.up = LinAlg.copy(up1);
+        p.perspectiveness = perspectiveness1;
+        p.scalex = scalex1;
+        p.scaley = scaley1;
+
+        return p;
+    }
+
     public CameraPosition getCameraPosition(VisCanvas vc, int viewport[], int layerViewport[], VisLayer vl, long mtime)
     {
         CameraPosition p = new CameraPosition();
@@ -240,6 +259,19 @@ public class DefaultCameraManager implements VisCameraManager, VisSerializable
         scalex1 = pos.scalex;
         scaley1 = pos.scaley;
         this.mtime1 = System.currentTimeMillis() + BOOKMARK_ANIMATE_MS;
+    }
+
+    // Does UI animation instead of lengthy bookmark animation
+    public void goUI(CameraPosition pos)
+    {
+        eye1 = pos.eye;
+        up1 = pos.up;
+        lookat1 = pos.lookat;
+        perspectiveness1 = pos.perspectiveness;
+        perspective_fovy_degrees = pos.perspective_fovy_degrees;
+        scalex1 = pos.scalex;
+        scaley1 = pos.scaley;
+        this.mtime1 = System.currentTimeMillis();
     }
 
     class Fit
