@@ -1,5 +1,5 @@
 GCC = gcc -Wall -g -std=gnu99 -D_REENTRANT -fPIC -shared -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -Wno-unused-parameter -Wno-format-zero-length
-LIBIMAGESOURCE_OBJS = image_source.o image_source_v4l2.o image_source_jni.o image_source_dc1394.o url_parser.o image_source_islog.o
+LIBIMAGESOURCE_OBJS = image_source.o image_source_v4l2.o image_source_jni.o image_source_dc1394.o url_parser.o image_source_islog.o image_source_pgusb.o
 
 LIB=libimagesource.so
 DESTLIB=../../../lib/$(LIB)
@@ -10,7 +10,7 @@ ALL = $(DESTLIB) istest
 # MacOS X
 ifeq "$(shell uname)" "Darwin"
 
-.phony: 
+.phony:
 	@echo "JCam is not supported on Darwin/MacOS."
 
 ALL = .phony
@@ -37,7 +37,7 @@ $(DESTLIB): $(LIB)
 	cp $(LIB) $(DESTLIB)
 
 libimagesource.so: april_jcam_ImageSourceNative.h $(LIBIMAGESOURCE_OBJS)
-	ld --shared $(LIBIMAGESOURCE_OBJS) -o libimagesource.so -ldc1394
+	ld --shared $(LIBIMAGESOURCE_OBJS) -o libimagesource.so -ldc1394 -lc
 
 april_jcam_ImageSourceNative.h:
 	echo "Rebuilding JNI headers. Ensure java file has been recently built."
@@ -54,4 +54,4 @@ JNI_INCLUDES = -I/usr/lib/jvm/java-6-sun/include/ -I/usr/lib/jvm/java-6-sun/incl
 DC1394_INCLUDES = -I/usr/local/include/
 
 %.o: %.c
-	$(GCC) -shared -O2 -c -fPIC -fno-omit-frame-pointer -fno-stack-protector -D_REENTRANT $< $(JNI_INCLUDES) $(DC1394_INCLUDES)
+	gcc -c -shared -Wall -g -std=gnu99 -D_REENTRANT -fPIC -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -Wno-unused-variable -Wno-unused-parameter -Wno-format-zero-length -fno-omit-frame-pointer -fno-stack-protector $< $(JNI_INCLUDES) $(DC1394_INCLUDES)
