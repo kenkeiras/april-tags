@@ -141,6 +141,9 @@ static const char *toformat(dc1394color_coding_t color, dc1394color_filter_t fil
             return "RGB";
         case DC1394_COLOR_CODING_MONO16:
             return "GRAY16";
+
+            // XXX it's not clear from IIDC_1.31.pdf that any of these are big endian
+
         case DC1394_COLOR_CODING_RGB16:
             return "BE_RGB16";
         case DC1394_COLOR_CODING_MONO16S:
@@ -148,7 +151,18 @@ static const char *toformat(dc1394color_coding_t color, dc1394color_filter_t fil
         case DC1394_COLOR_CODING_RGB16S:
             return "BE_SIGNED_RGB16";
         case DC1394_COLOR_CODING_RAW16:
-            return "BE_GRAY16";
+            switch (filter) {
+                case DC1394_COLOR_FILTER_RGGB:
+                    return "BAYER_RGGB16";
+                case DC1394_COLOR_FILTER_GBRG:
+                    return "BAYER_GBRG16";
+                case DC1394_COLOR_FILTER_GRBG:
+                    return "BAYER_GRBG16";
+                case DC1394_COLOR_FILTER_BGGR:
+                    return "BAYER_BGGR16";
+                default:
+                    return "GRAY16";
+            }
     }
     return "UNKNOWN";
 }
@@ -1370,9 +1384,17 @@ restart:
     uint32_t psize_unit, psize_max;
     dc1394_format7_get_packet_parameters(impl->cam, format_priv->dc1394_mode, &psize_unit, &psize_max);
 
-    // XXX There may be some reason to be more clever with this value later, but we don't
-    // see it now (and the code that was here was buggy)
-    impl->packet_size = psize_max; //4096;
+    if (impl->packet_size == 0) {
+        impl->packet_size = psize_max; //4096;
+    } else {
+        impl->packet_size = psize_unit * (impl->packet_size / psize_unit);
+        if (impl->packet_size > psize_max)
+            impl->packet_size = psize_max;
+        if (impl->packet_size < psize_unit)
+            impl->packet_size = psize_unit;
+    }
+
+    printf("psize_unit: %d, psize_max: %d, packet_size: %d\n", psize_unit, psize_max, impl->packet_size);
 
     dc1394_format7_set_packet_size(impl->cam, format_priv->dc1394_mode, impl->packet_size);
     uint64_t bytes_per_frame;
@@ -1675,7 +1697,7 @@ static void printInfo(image_source_t *isrc)
 /** Open the given guid, or if -1, open the first camera available. **/
 image_source_t *image_source_dc1394_open(url_parser_t *urlp)
 {
-    const char *protocol = url_parser_get_protocol(urlp);
+//    const char *protocol = url_parser_get_protocol(urlp);
     const char *location = url_parser_get_location(urlp);
 
     int64_t guid = 0;
@@ -1779,10 +1801,12 @@ image_source_t *image_source_dc1394_open(url_parser_t *urlp)
         for (int i = 0; i < DC1394_FEATURE_NUM; i++) {
             dc1394feature_info_t *f = &impl->features.feature[i];
             if (f->available && f->absolute_capable && !f->abs_control) {
+
                 printf("image_source_dc1394.c: automatically enabled absolute mode for dc1394 feature '%s'\n",
                        dc1394_feature_id_to_string(f->id));
                 fflush(stdout);
                 dc1394_feature_set_absolute_control(impl->cam, f->id, DC1394_ON);
+
                 reread = 1;
             }
         }
