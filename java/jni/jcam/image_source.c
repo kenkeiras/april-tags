@@ -38,15 +38,16 @@ image_source_t *image_source_open(const char *url)
             const char *value = url_parser_get_parameter_value(urlp, param_idx);
 
             if (!strcmp(key, "fidx")) {
-                printf("image_source_dc1394.c: set feature %30s = %15s\n", key, value);
+                printf("image_source.c: set feature %30s = %15s\n", key, value);
                 int fidx = atoi(url_parser_get_parameter(urlp, "fidx", "0"));
+                printf("SETTING %d\n", fidx);
                 isrc->set_format(isrc, fidx);
                 found[param_idx] = 1;
                 continue;
             }
 
             if (!strcmp(key, "format")) {
-                printf("image_source_dc1394.c: set feature %30s = %15s\n", key, value);
+                printf("image_source.c: set feature %30s = %15s\n", key, value);
                 isrc->set_named_format(isrc, value);
                 found[param_idx] = 1;
                 continue;

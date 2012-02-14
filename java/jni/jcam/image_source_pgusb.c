@@ -18,7 +18,19 @@
 /*
 http://www.1394ta.org/press/WhitePapers/Firewire%20Reference%20Tutorial.pdf
 http://damien.douxchamps.net/ieee1394/libdc1394/iidc/IIDC_1.31.pdf
+
+
+libusb thread safety must be carefully managed. Our strategy: we use
+synchronous calls for configuration/etc, and asynchronous calls for
+streaming data. To support asynchronous calls, we spawn off an event
+handling thread. Because this event-handling thread uses the same
+poll/selectx mechanisms as the libusb synchronous calls, we must
+ensure that we are never performing synchronous calls while the thread
+is running.
+
 */
+
+#define TIMEOUT_MS 100
 
 #define IMAGE_SOURCE_UTILS
 #include "image_source.h"
@@ -71,8 +83,8 @@ struct impl_pgusb
 
 struct format_priv
 {
-    int format7_mode_idx;
-    int color_coding_idx;
+    uint32_t format7_mode_idx;
+    uint32_t color_coding_idx;
     uint32_t csr;
 };
 
@@ -229,6 +241,8 @@ static int do_write(libusb_device_handle *handle, uint64_t address, uint32_t *qu
     if (request < 0)
         return -1;
 
+    printf("DO_WRITE %08x := %08x\n", address, quads[0]);
+
     unsigned char buf[num_quads*4];
 
     // Convert from host-endian to little-endian
@@ -363,6 +377,8 @@ static int set_format(image_source_t *isrc, int idx)
 
     impl->current_format_idx = idx;
 
+    printf("HERE! %d\n", idx);
+
     return 0;
 }
 
@@ -434,6 +450,9 @@ static void callback(struct libusb_transfer *transfer)
     impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
     image_source_format_t *ifmt = get_format(isrc, get_current_format(isrc));
 
+    printf("TRANSFER flags %03d, status %03d, length %5d, actual %05d, iso %d\n",
+           transfer->flags, transfer->status, transfer->length, transfer->actual_length, transfer->num_iso_packets);
+
     // which record is it?
     int idx = -1;
     for (int i = 0; i < impl->nrecords; i++) {
@@ -447,6 +466,8 @@ static void callback(struct libusb_transfer *transfer)
         return; //assert(0);
     }
 
+    printf("%d\n", transfer->actual_length);
+
     if (transfer->status == LIBUSB_TRANSFER_COMPLETED && transfer->actual_length == transfer->length) {
 
         put_ready_frame(impl, idx);
@@ -457,13 +478,17 @@ static void callback(struct libusb_transfer *transfer)
             // device sent too much (?)
             printf("%s:%d usb transfer failed; device sent %d, requested %d\n",
                    __FILE__, __LINE__, transfer->actual_length, transfer->length);
+
+            put_ready_frame(impl, idx);
+            return;
+
         } else {
             printf("%s:%d usb transfer status %d\n",
                    __FILE__, __LINE__, transfer->status);
         }
 
         libusb_fill_bulk_transfer(impl->records[idx].transfer, impl->handle,
-                                  0x81, impl->records[idx].buf, impl->transfer_size, callback, isrc, 0);
+                                  0x81, impl->records[idx].buf, impl->transfer_size, callback, isrc, TIMEOUT_MS);
 
         if (libusb_submit_transfer(impl->records[idx].transfer) < 0) {
             printf("submit failed\n");
@@ -496,6 +521,10 @@ static int start(image_source_t *isrc)
     image_source_format_t *ifmt = get_format(isrc, get_current_format(isrc));
     struct format_priv *format_priv = (struct format_priv*) ifmt->priv;
 
+    printf("CURRENT FORMAT %d\n", get_current_format(isrc));
+
+    printf("FORMAT_PRIV: %d %d %d\n", format_priv->format7_mode_idx, format_priv->color_coding_idx, format_priv->csr);
+
     // set iso channel
     if (1) {
         uint32_t quads[] = { 0x02000000 }; //
@@ -522,7 +551,9 @@ static int start(image_source_t *isrc)
 
     // set format 7 mode (604 = 00000000)
     if (1) {
-        uint32_t quads[] = { format_priv->format7_mode_idx<<24 };
+        printf("FORMAT7_MODE_IDX %d\n", format_priv->format7_mode_idx);
+
+        uint32_t quads[] = { format_priv->format7_mode_idx << 24 };
         if (do_write(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + 0x604, quads, 1) != 1)
             printf("failed write: line %d\n", __LINE__);
     }
@@ -627,7 +658,7 @@ static int start(image_source_t *isrc)
             printf(" %03x : %08x\n", i*4, quads[i]);
     }
 
-    impl->nrecords = 4;
+    impl->nrecords = 1;
     impl->records = (struct transfer_info*) calloc(impl->nrecords, sizeof(struct transfer_info));
     impl->queue = (int*) calloc(impl->nrecords, sizeof(int));
 
@@ -642,6 +673,7 @@ static int start(image_source_t *isrc)
     uint32_t packets_per_image = (impl->bytes_per_frame + impl->packet_size - 1) / impl->packet_size;
 
     impl->transfer_size = packets_per_image * impl->packet_size;
+//    impl->transfer_size = 1536*58;
 
     printf("bytes_per_frame %d, transfer_size %d\n", impl->bytes_per_frame, impl->transfer_size);
 
@@ -649,9 +681,10 @@ static int start(image_source_t *isrc)
         impl->records[i].transfer = libusb_alloc_transfer(0);
         impl->records[i].buf = malloc(impl->transfer_size);
         libusb_fill_bulk_transfer(impl->records[i].transfer, impl->handle,
-                                  0x81, impl->records[i].buf, impl->transfer_size, callback, isrc, 0);
+                                  0x81, impl->records[i].buf, impl->transfer_size, callback, isrc, TIMEOUT_MS);
 
         impl->records[i].transfer->flags = LIBUSB_TRANSFER_SHORT_NOT_OK;
+        impl->records[i].transfer->flags = 0; //LIBUSB_TRANSFER_SHORT_NOT_OK;
 
         if (libusb_submit_transfer(impl->records[i].transfer) < 0) {
             printf("submit failed\n");
@@ -701,7 +734,7 @@ static int release_frame(image_source_t *isrc, void *imbuf)
 
     libusb_fill_bulk_transfer(impl->records[impl->current_user_frame].transfer, impl->handle,
                               0x81, impl->records[impl->current_user_frame].buf,
-                              impl->transfer_size, callback, isrc, 0);
+                              impl->transfer_size, callback, isrc, TIMEOUT_MS);
 
     if (libusb_submit_transfer(impl->records[impl->current_user_frame].transfer) < 0) {
         printf("submit failed\n");
@@ -921,14 +954,24 @@ image_source_t *image_source_pgusb_open(url_parser_t *urlp)
                         impl->formats[impl->nformats]->height = quads[0] & 0xffff;
                         impl->formats[impl->nformats]->width = quads[0] >> 16;
 
-                        if (cmode == 9 || cmode == 10) {
+                        if (cmode == 9) {
+                            // 8 bit bayer
                             int filter_mode = quads[22]>>24;
                             impl->formats[impl->nformats]->format = strdup(BAYER_MODES[filter_mode]);
+                        } else if (cmode == 10) {
+                            // 16 bit bayer
+                            int filter_mode = quads[22]>>24;
+                            char buf[1024];
+                            sprintf(buf, "%s16", BAYER_MODES[filter_mode]);
+                            impl->formats[impl->nformats]->format = strdup(buf);
                         } else {
+                            // not a bayer
                             impl->formats[impl->nformats]->format = strdup(COLOR_MODES[cmode]);
                         }
 
                         struct format_priv *format_priv = calloc(1, sizeof(struct format_priv));
+                        printf("MODE %d\n", mode);
+
                         format_priv->format7_mode_idx = mode;
                         format_priv->color_coding_idx = cmode;
                         format_priv->csr = mode_csr;

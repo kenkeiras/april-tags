@@ -40,8 +40,6 @@ int main(int argc, char *argv[])
         printf("%3d: %4d x %4d (%s)\n", i, ifmt->width, ifmt->height, ifmt->format);
     }
 
-    isrc->set_format(isrc, 0);
-
     if (1) {
         int res = isrc->start(isrc);
         printf("start: res = %d\n", res);
