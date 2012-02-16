@@ -319,10 +319,10 @@ static int do_write(libusb_device_handle *handle, uint64_t address, uint32_t *qu
 
     // Convert from host-endian to little-endian
     for (int i = 0; i < num_quads; i++) {
-        buf[4*i]   = quads[0] & 0xff;
-        buf[4*i+1] = (quads[0] >> 8) & 0xff;
-        buf[4*i+2] = (quads[0] >> 16) & 0xff;
-        buf[4*i+3] = (quads[0] >> 24) & 0xff;
+        buf[4*i]   = quads[i] & 0xff;
+        buf[4*i+1] = (quads[i] >> 8) & 0xff;
+        buf[4*i+2] = (quads[i] >> 16) & 0xff;
+        buf[4*i+3] = (quads[i] >> 24) & 0xff;
     }
 
     // IEEE 1394 address writes are mapped to USB control transfers as
@@ -519,6 +519,14 @@ static int num_features(image_source_t *isrc)
 
 static void stop_callback(struct libusb_transfer *transfer)
 {
+    impl_pgusb_t *impl = (impl_pgusb_t*) transfer->user_data;
+
+    for (int i = 0; i < impl->ntransfers; i++) {
+        libusb_cancel_transfer(impl->transfers[i].transfer);
+    }
+
+    impl->consume_transfers_flag = 1;
+
     free(transfer->buffer);
     libusb_free_transfer(transfer);
 }
@@ -771,6 +779,9 @@ static int start(image_source_t *isrc)
         // 512. This is important, since it will allow us to reliably
         // detect end-of-frame conditions.
 
+        // (the camera will send a zero-length frame when data is
+        // lost. We will detect this as an "end of transfer",
+        // resulting in a read of less than 16384 bytes.
         impl->packet_size = packet_max;
         while (1) {
             int npackets = (impl->bytes_per_frame + impl->packet_size - 1) / impl->packet_size;
@@ -969,8 +980,12 @@ static int stop(image_source_t *isrc)
     assert(isrc->impl_type == IMPL_TYPE);
     impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
 
-    impl->consume_transfers_flag = 1;
-
+    // Stopping is a bit tricky; ptgrey camera can get wedged if we
+    // don't pull data from it.  Strategy: submit a STOP command while
+    // continuing to process data. Once the STOP is acknowledged,
+    // cancel remaining URBs (that will happen in stop_callback). Once
+    // all transfers have been either completed or cancelled, we're
+    // done.
     if (1) {
         uint8_t *stop_buffer = calloc(1, LIBUSB_CONTROL_SETUP_SIZE + 4);
         // note: actual command is zero, so just call calloc.
@@ -981,27 +996,25 @@ static int stop(image_source_t *isrc)
         struct libusb_transfer *stop_transfer = libusb_alloc_transfer(0);
         libusb_fill_control_setup(stop_buffer, 0x40, request, address & 0xffff, (address >> 16) & 0xffff, 4);
 
-        libusb_fill_control_transfer(stop_transfer, impl->handle, stop_buffer, stop_callback, NULL, 0);
+        libusb_fill_control_transfer(stop_transfer, impl->handle, stop_buffer, stop_callback, impl, 0);
         libusb_submit_transfer(stop_transfer);
     }
 
-    for (int i = 0; i < impl->ntransfers; i++) {
-        libusb_cancel_transfer(impl->transfers[i].transfer);
-    }
-
+    // now wait for all transfers to be finished.
     while (1) {
         pthread_mutex_lock(&impl->pending_transaction_mutex);
         int cnt = impl->transfers_submitted;
         pthread_mutex_unlock(&impl->pending_transaction_mutex);
 
-        if (cnt == 0)
+        if (impl->consume_transfers_flag && cnt == 0)
             break;
 
-        printf("waiting for transactions to expire: %d\n", cnt);
+        printf("waiting for transactions to complete: %d\n", cnt);
 
         usleep(50000);
     }
 
+    // we can now stop the worker thread.
     impl->worker_exit_flag = 1;
     pthread_join(impl->worker_thread, NULL);
 
