@@ -206,6 +206,32 @@ static int get_empty_frame(impl_pgusb_t *impl)
 {
     int idx = -1;
     pthread_mutex_lock(&impl->queue_mutex);
+
+    // disable this if low latency isn't your primary goal
+    if (1) {
+        // Do we have more than one "ready" frame? (I.e., has the user
+        // fallen behind? If so, release all but the most recent frame,
+        // and renumber the most recent frame to status=1.
+        int max_ready = 0;
+        for (int i = 0; i < impl->nimages; i++) {
+            if (impl->images[i].status > max_ready)
+                max_ready = impl->images[i].status;
+        }
+
+        if (max_ready > 0) {
+            for (int i = 0; i < impl->nimages; i++) {
+                if (impl->images[i].status > 0) {
+                    if (impl->images[i].status == max_ready)
+                        impl->images[i].status = 1;
+                    else
+                        impl->images[i].status = 0;
+                }
+            }
+        }
+    }
+
+
+    // Otherwise, find an unused frame and return it.
     for (int i = 0; i < impl->nimages; i++) {
         if (impl->images[i].status == 0) {
             idx = i;
