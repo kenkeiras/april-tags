@@ -33,8 +33,10 @@ is running.
 
 // we need TIMEOUT_MS > 0 so that pending transfers eventually time
 // out. Otherwise, stop() will never return.
-#define REQUEST_TIMEOUT_MS 100
-#define TIMEOUT_MS 100
+
+// XXX Need a better way to stop streaming
+#define REQUEST_TIMEOUT_MS 0
+#define TIMEOUT_MS 0
 
 #define IMAGE_SOURCE_UTILS
 #include "image_source.h"
@@ -868,7 +870,7 @@ static int start(image_source_t *isrc)
             printf(" %03x : %08x\n", i*4, quads[i]);
     }
 
-    impl->ntransfers = 5;
+    impl->ntransfers = 100;
     impl->transfers = (struct transfer_info*) calloc(impl->ntransfers, sizeof(struct transfer_info));
 
     uint32_t packets_per_frame = (impl->bytes_per_frame + impl->packet_size - 1) / impl->packet_size;
@@ -988,6 +990,10 @@ static int stop(image_source_t *isrc)
         libusb_submit_transfer(stop_transfer);
     }
 
+    for (int i = 0; i < impl->ntransfers; i++) {
+        libusb_cancel_transfer(impl->transfers[i].transfer);
+    }
+
     while (1) {
         pthread_mutex_lock(&impl->pending_transaction_mutex);
         int cnt = impl->transfers_submitted;
@@ -996,7 +1002,7 @@ static int stop(image_source_t *isrc)
         if (cnt == 0)
             break;
 
-        printf("still submitted: %d\n", cnt);
+        printf("waiting for transactions to expire: %d\n", cnt);
 
         usleep(50000);
     }
