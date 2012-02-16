@@ -30,11 +30,6 @@ ensure that we are never performing synchronous calls while the thread
 is running.
 
 */
-
-// we need TIMEOUT_MS > 0 so that pending transfers eventually time
-// out. Otherwise, stop() will never return.
-
-// XXX Need a better way to stop streaming
 #define REQUEST_TIMEOUT_MS 0
 #define TIMEOUT_MS 0
 
