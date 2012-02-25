@@ -165,11 +165,6 @@ public class TextStructureReader implements StructureReader
         return v;
     }
 
-    public StructureReader readBlock() throws IOException
-    {
-        return this;
-    }
-
     String unescapeString(String s)
     {
         StringBuffer sb = new StringBuffer();
