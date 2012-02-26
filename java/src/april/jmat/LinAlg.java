@@ -1340,6 +1340,13 @@ public final class LinAlg
         return X;
     }
 
+    public static void scaleEquals(double v[][], double a)
+    {
+        for (int i = 0; i < v.length; i++)
+            for (int j = 0; j < v[0].length; j++)
+                v[i][j] *= a;
+    }
+
     public static void printTranspose(byte v[])
     {
         for (int i = 0; i < v.length; i++)
