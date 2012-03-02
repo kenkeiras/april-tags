@@ -53,7 +53,7 @@ Moxa *moxa_serial_open(const char *ipaddr, int physport)
 
     moxa->data_socket = ssocket_create();
     res = ssocket_connect(moxa->data_socket, ipaddr, 4001 + physport);
-    if (res) 
+    if (res)
         goto error;
 
     moxa->cmd_socket = ssocket_create();
@@ -123,13 +123,13 @@ static int moxa_send_command(Moxa *moxa, void *cmd, int cmdlen)
 
     while (1) {
         int res = send(ssocket_get_fd(moxa->cmd_socket), cmd, 6, 0);
-        if (res != 6) 
+        if (res != 6)
             perror("send");
-        
+       
         // XXX to-do, wait for ACK
         res = moxa_wait_ack(moxa, ((unsigned char*) cmd)[0]);
         if (res) {
-            printf("command %4i failed, reason %4i (tries = %4d)\n", 
+            printf("command %4i failed, reason %4i (tries = %4d)\n",
                    ((unsigned char*) cmd)[0], res, tries++);
             continue;
         }

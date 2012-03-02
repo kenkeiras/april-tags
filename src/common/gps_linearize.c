@@ -46,7 +46,7 @@ int gps_linearize_to_xy(gps_linearize_t *gl, const double ll_deg[2], double xy[2
 
     xy[0] = sin(dlon) * gl->radius_ew * cos(to_radians(gl->lat0_deg));
     xy[1] = sin(dlat) * gl->radius_ns;
-    
+   
     return 0;
 }
 
