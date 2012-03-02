@@ -26,7 +26,7 @@ public class VisTexture implements VisSerializable
 
     boolean minFilter = true;
     boolean magFilter = true;
-    boolean repeat = true;
+    boolean repeat = false;
 
     public static final int
         NO_MIN_FILTER = 1,  MIN_FILTER = 2,
