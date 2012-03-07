@@ -2,26 +2,28 @@ package april.dynamixel;
 
 import april.jmat.MathUtil;
 
+/////////// AX-12 Servo Control Table ///////////
+// Bytes 0x00 - 0x17: EEPROM                   //
+// Bytes 0x18 - 0x31: RAM                      //
+/////////////////////////////////////////////////
+
 public class AX12Servo extends AbstractServo
 {
     public AX12Servo(AbstractBus bus, int id)
     {
         super(bus, id);
 
-        ////////////// Servo Control Table //////////////
-        // Bytes 0x00 - 0x17: EEPROM                   //
-        // Bytes 0x18 - 0x31: RAM                      //
-        /////////////////////////////////////////////////
+        // Return delay time
+        byte delay = 0x02;  // each unit = 2 usec
+        ensureEEPROM(new byte[] { 0x5, delay });
 
-        // Do not write to EEPROM often.  However the following
-        // options may be useful in 'some' cases.
+        // // Set angle limits  (EEPROM)
+        ensureEEPROM(new byte[] { 6, 0, 0, (byte)0xFF, 3 } );
+    }
 
-        // // Set Anlge limits  (EEPROM)
-        // System.out.println("WARNING: writing to EEPROM");
-        // bus.sendCommand(id,
-        //                 AbstractBus.INST_WRITE_DATA,
-        //                 new byte[] { 6, 0, 0, (byte)0xFF, 3 },
-        //                 true );
+    public boolean isAddressEEPROM(int address)
+    {
+        return address < 0x18;
     }
 
     public double getMinimumPositionRadians()
@@ -49,13 +51,10 @@ public class AX12Servo extends AbstractServo
         int speedv = (int) (0x3ff * speedfrac);
         int torquev = (int) (0x3ff * torquefrac);
 
-        bus.sendCommand(id,
-                        AbstractBus.INST_WRITE_DATA,
-                        new byte[] { 0x1e,
-                                     (byte) (posv & 0xff), (byte) (posv >> 8),
-                                     (byte) (speedv & 0xff), (byte) (speedv >> 8),
-                                     (byte) (torquev & 0xff), (byte) (torquev >> 8) },
-                        true);
+        writeToRAM(new byte[] { 0x1e,
+                                (byte) (posv & 0xff), (byte) (posv >> 8),
+                                (byte) (speedv & 0xff), (byte) (speedv >> 8),
+                                (byte) (torquev & 0xff), (byte) (torquev >> 8) }, true);
     }
 
     /** Get servo status **/

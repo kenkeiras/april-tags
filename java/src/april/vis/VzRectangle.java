@@ -11,6 +11,7 @@ public class VzRectangle implements VisObject, VisSerializable
 
     static VzLines lines;
     static VzMesh  mesh;
+    static VzPoints points;
 
     static {
 
@@ -33,6 +34,8 @@ public class VzRectangle implements VisObject, VisSerializable
         mesh = new VzMesh(fillVertices, fillNormals, VzMesh.QUADS);
 
         lines = new VzLines(fillVertices, VzLines.LINE_LOOP);
+        points = new VzPoints(fillVertices);
+
     }
 
     /** A box that extends from -1 to +1 along x, and y axis **/
@@ -70,6 +73,9 @@ public class VzRectangle implements VisObject, VisSerializable
 */
         if (style instanceof VzLines.Style)
             lines.render(vc, layer, rinfo, gl, (VzLines.Style) style);
+
+        if (style instanceof VzPoints.Style)
+            points.render(vc, layer, rinfo, gl, (VzPoints.Style) style);
 
         gl.glPopMatrix();
     }

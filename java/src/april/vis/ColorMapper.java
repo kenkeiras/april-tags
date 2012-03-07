@@ -105,7 +105,7 @@ public class ColorMapper implements VisSerializable
         if (!isVisible(v))
             return 0x00000000; // transparent
 
-        double normval = (colors.length)*(v-minval)/(maxval-minval);
+        double normval = (colors.length-1)*(v-minval)/(maxval-minval);
 
         int a = (int) (normval);
         if (a<0)

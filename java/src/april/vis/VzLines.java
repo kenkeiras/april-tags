@@ -83,6 +83,12 @@ public class VzLines implements VisObject, VisSerializable
             render(vc, layer, rinfo, gl, style);
     }
 
+
+    // For serialization
+    public VzLines(ObjectReader ins)
+    {
+    }
+
     public void writeObject(ObjectWriter outs) throws IOException
     {
         outs.writeObject(vd);
