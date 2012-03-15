@@ -671,10 +671,11 @@ public class JCamView
                         rgb = im.getRGB(mouseListener.imx, mouseListener.imy) & 0xffffff;
 
                     if (frame_mtime - last_info_mtime > 100) {
-                        infoLabel.setText(String.format("fps: %6.2f, RGB: %02x %02x %02x (%3d, %3d, %3d)",
+                        infoLabel.setText(String.format("fps: %6.2f, RGB: %02x %02x %02x (%3d, %3d, %3d)  (%4d, %4d)",
                                                         1.0/(spf+0.00001),
                                                         (rgb>>16)&0xff, (rgb>>8)&0xff, rgb&0xff,
-                                                        (rgb>>16)&0xff, (rgb>>8)&0xff, rgb&0xff));
+                                                        (rgb>>16)&0xff, (rgb>>8)&0xff, rgb&0xff,
+                                                        mouseListener.imx, mouseListener.imy));
                         last_info_mtime = frame_mtime;
                     }
 
