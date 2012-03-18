@@ -73,7 +73,7 @@ public class Polygon
     {
         tesselate();
 
-        int t[] = new int[triangles.size()];
+        int t[] = new int[triangles.size()*3];
         int idx = 0;
         for (int tri[] :  triangles)
             for (int tr : tri)
