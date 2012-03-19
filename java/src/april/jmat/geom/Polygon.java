@@ -68,6 +68,20 @@ public class Polygon
         return triangles;
     }
 
+    // Useful for making VisIndexData
+    public int[] getTriangleIndices()
+    {
+        tesselate();
+
+        int t[] = new int[triangles.size()*3];
+        int idx = 0;
+        for (int tri[] :  triangles)
+            for (int tr : tri)
+                t[idx++] = tr;
+        return t;
+    }
+
+
     void tesselate()
     {
         if (triangles != null)

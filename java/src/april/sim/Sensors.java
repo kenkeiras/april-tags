@@ -37,7 +37,7 @@ public class Sensors
             voc.setSize(width, height);
             vol.world = vw;
             ((DefaultCameraManager)vol.cameraManager).interfaceMode = 3.0;
-            ((DefaultCameraManager)vol.cameraManager).zclip_near = 0.1;
+            ((DefaultCameraManager)vol.cameraManager).zclip_near = 0.025; // This seems to result in a 2.5 cm backward translation of the camera...
             ((DefaultCameraManager)vol.cameraManager).perspective_fovy_degrees = fovy_degrees;
             ((DefaultCameraManager)vol.cameraManager).UI_ANIMATE_MS = 0;
             vol.cameraManager.uiLookAt(eye,lookAt,up, false);
