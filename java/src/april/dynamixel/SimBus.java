@@ -203,7 +203,8 @@ public class SimBus extends AbstractBus
                 int addr = parameters[0] & 0xff;
                 int length = parameters[1] & 0xff;
 
-                byte resp[] = new byte[length+1];
+                byte resp[] = new byte[length+2]; // [error, <data>, checksum]
+                resp[length+1] = 0;
 
                 synchronized(dev) {
                     for (int i = 0; i < length; i++)
@@ -219,7 +220,8 @@ public class SimBus extends AbstractBus
                 int addr = parameters[0] & 0xff;
                 int length = parameters.length - 1;
 
-                byte resp[] = new byte[1];
+                byte resp[] = new byte[2];  // [error, checksum]
+                resp[1] = 0;
 
                 int error = 0;
 
