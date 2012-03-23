@@ -47,7 +47,7 @@ public class Viewer
      public Viewer(Config _config, JFrame _jf)
      {
      vw = new VisWorld();
-     vc = new VisCanvas(vw);
+     VisLayer vl = new VisLayer(vw);nvc = new VisCanvas(vl);
      jf = _jf;
 
      initialize(_config);

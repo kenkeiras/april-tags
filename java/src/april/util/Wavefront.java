@@ -377,7 +377,7 @@ public class Wavefront
             if (true) {
                 VisWorld.Buffer vb = vw.getBuffer("time");
                 vb.setDrawOrder(100);
-                vb.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.BOTTOM_RIGHT,
+                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_RIGHT,
                                                    new VzText(VzText.ANCHOR.BOTTOM_RIGHT,
                                                                String.format("%.2f ms\n", dt*1000))));
                 vb.swap();

@@ -8,13 +8,13 @@ import java.io.*;
  * to positioning text or images as overlayed data. The resulting
  * coordinate system will be an OpenGL-style coordinate system, where
  * y=0 is on the bottom (not the top). **/
-public class VisPixelCoordinates extends VisChain
+public class VisPixCoords extends VisChain
 {
     public enum ORIGIN { TOP_LEFT, TOP, TOP_RIGHT, LEFT, CENTER, CENTER_ROUND, RIGHT, BOTTOM_LEFT, BOTTOM, BOTTOM_RIGHT };
 
     ORIGIN origin;
 
-    public VisPixelCoordinates(ORIGIN origin, Object... os)
+    public VisPixCoords(ORIGIN origin, Object... os)
     {
         super(os);
         this.origin = origin;
@@ -97,7 +97,7 @@ public class VisPixelCoordinates extends VisChain
         gl.glMatrixMode(GL.GL_MODELVIEW);
     }
 
-    public VisPixelCoordinates(ObjectReader r)
+    public VisPixCoords(ObjectReader r)
     {
     }
 

@@ -256,7 +256,7 @@ public class VisConsole
 
         VisWorld.Buffer vb = vw.getBuffer("command output");
         vb.setDrawOrder(drawOrder);
-        vb.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.BOTTOM_LEFT,
+        vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT,
                                            new VzText(buffer)));
         vb.swap();
     }
