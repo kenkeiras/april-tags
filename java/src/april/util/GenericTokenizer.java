@@ -20,6 +20,8 @@ public class GenericTokenizer<T>
         {
             this.type = type;
             this.token = token;
+            this.line = line;
+            this.column = column;
         }
     }
 
@@ -62,6 +64,21 @@ public class GenericTokenizer<T>
         }
     }
 
+    static String charToString(char c)
+    {
+        if (c == ' ')
+            return "' '";
+        if (c > ' ' && c < 127)
+            return "'"+c+"'";
+        if (c=='\r')
+            return "'\\r'";
+        if (c=='\n')
+            return "'\\n'";
+        if (c == 0)
+            return "'\\0'";
+        return String.format("'\\%03d'", (int) c);
+    }
+
     class NEdge
     {
         // range of permissible characters, c0 < c1
@@ -89,7 +106,8 @@ public class GenericTokenizer<T>
             if (epsilon)
                 return String.format("(edge <epsilon> to %d)", destination.id);
 
-            return String.format("(edge [%c-%c] to %d)", c0, c1, destination.id);
+            return String.format("(edge [%s-%s] to %d)",
+                                 charToString(c0), charToString(c1), destination.id);
         }
     }
 
@@ -106,7 +124,11 @@ public class GenericTokenizer<T>
 
         public String toString()
         {
-            return String.format("(state %d "+t+")", id);
+            String s = String.format("(state %d "+t+": nstates ", id);
+            for (NState ns : nstatesClosure)
+                s = s + String.format("%d ", ns.id);
+            s = s + ")";
+            return s;
         }
     }
 
@@ -123,7 +145,8 @@ public class GenericTokenizer<T>
 
         public String toString()
         {
-            return String.format("(edge [%c-%c] to %d)", c0, c1, destination.id);
+            return String.format("(edge [%s-%s] to %d)",
+                                 charToString(c0), charToString(c1), destination.id);
         }
     }
 
@@ -133,7 +156,7 @@ public class GenericTokenizer<T>
     {
         String s;
         int pos;
-        int line, col;
+        int line = 1, col;
 
         StringFeeder(String s)
         {
@@ -238,6 +261,23 @@ public class GenericTokenizer<T>
     void createNStates(StringFeeder sf, NState initialState,
                        NState s0, NState exitState)
     {
+
+        // Provide a dummy link to insulate this sub-expression from
+        // the previous sub-expression.  Consider the regex:
+        // "A+B|AC". Without this insulation, both OR branches will
+        // have a common root, and the epsilon transition resulting
+        // from the "+" will go back to this common root. As a
+        // consequence, the regular expression would erroneously match
+        // "AAAAAC".  We provide a similar extra link when handling
+        // "|" below.
+        if (true) {
+            NState s = new NState();
+            NEdge e = new NEdge();
+            e.destination = s;
+            s0.out.add(e);
+            s0 = s;
+        }
+
         //    previous    new                exit
         //     state     edge                state
         //
@@ -262,7 +302,12 @@ public class GenericTokenizer<T>
                 e.destination = exitState;
                 s0.out.add(e);
 
-                s0 = initialState;
+                // insulate the new OR clause from the previous clause.
+                NState s = new NState();
+                NEdge e2 = new NEdge();
+                e2.destination = s;
+                initialState.out.add(e2);
+                s0 = s;
                 continue;
             }
 
@@ -439,10 +484,11 @@ public class GenericTokenizer<T>
             if (visited.contains(s))
                 continue;
 
-            // This is a new DState. Process its outgoing edges.
             visited.add(s);
 
-            // Make a list of all the edges that leave this set of
+            // This is a new DState. Process its outgoing edges.
+
+            // Make a list of ALL the edges that leave this set of
             // NStates.
             ArrayList<NEdge> edges = new ArrayList<NEdge>();
             for (NState st : s.nstatesClosure) {
@@ -481,6 +527,8 @@ public class GenericTokenizer<T>
 
                 // add to the last edge if we can.
                 if (lastDestinations!=null && destinations.equals(lastDestinations)) {
+                    assert(lastDEdge.c1 == (i-1));
+                    assert(lastDEdge.destination == getDState(destinations));
                     lastDEdge.c1 = i;
                     continue;
                 }
@@ -530,8 +578,10 @@ public class GenericTokenizer<T>
         // the NState's type.
         int priority = Integer.MAX_VALUE;
         for (NState nstate : closure) {
-            if (nstate.type != null && nstate.priority < priority)
+            if (nstate.type != null && nstate.priority < priority) {
                 ds.t = nstate.type;
+                priority = nstate.priority;
+            }
         }
 
         dstates.add(ds);
@@ -585,6 +635,9 @@ public class GenericTokenizer<T>
     // Traverse the DFS tree, dumping its contents.
     public void dumpDroot()
     {
+        if (!compiled)
+            compile();
+
         Stack<DState> queue = new Stack<DState>();
 
         queue.push(droot);
@@ -687,10 +740,18 @@ public class GenericTokenizer<T>
 
             // there IS an edge, follow it.
             if (consumed) {
+
                 sb.append(c);
                 if (!sf.hasNext()) {
                     if (state.t != null)
                         tokens.add(new Token<T>(state.t, sb.toString(), sf.line, sf.col));
+                    else
+                        // incomplete token means that we ran out of input
+                        // but have not arrived in a state that produces a
+                        // token. In other words, more input is needed to
+                        // complete a token.
+                        System.out.println("incomplete token in state "+state+" "+sb);
+
                     return tokens;
                 }
                 c = sf.next();
@@ -709,7 +770,8 @@ public class GenericTokenizer<T>
                 //   good error reporting should add a production for
                 //   a single mismatched character.
                 //
-                // tokens.add(new Token(null, sb.toString(), sf.line, sf.col));
+                tokens.add(new Token(null, sb.toString(), sf.line, sf.col));
+
                 if (!sf.hasNext())
                     return tokens;
                 c = sf.next();
