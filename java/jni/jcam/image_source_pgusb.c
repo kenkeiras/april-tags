@@ -910,8 +910,8 @@ static int start(image_source_t *isrc)
 
     impl->transfer_size = 16384; // 16384 is largest size not split up by libusb
 
-    printf("bytes_per_frame %d, bytes_transferred_per_frame %d, packets_per_frame %d\n",
-           impl->bytes_per_frame, impl->bytes_transferred_per_frame, packets_per_frame);
+    printf("packet_size %d, bytes_per_frame %d, bytes_transferred_per_frame %d, packets_per_frame %d\n",
+           impl->packet_size, impl->bytes_per_frame, impl->bytes_transferred_per_frame, packets_per_frame);
 
     impl->transfers_submitted = 0;
 
