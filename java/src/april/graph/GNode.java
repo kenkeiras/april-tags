@@ -29,7 +29,7 @@ public abstract class GNode
     /** What is the dimensionality of state? **/
     public abstract int getDOF();
 
-    public abstract double[] toXyzRpy(double s[]);
+//    public abstract double[] toXyzRpy(double s[]);
 
     public void setAttribute(String s, Object o, StructureCoder coder)
     {

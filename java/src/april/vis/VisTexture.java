@@ -90,7 +90,9 @@ public class VisTexture implements VisSerializable
                     bytes_per_pixel = 1;
                     break;
                 }
+/* GL_ABGR_EXT isn't portable (fails on my ATI hardware.) Let this fall through to default.
                 case BufferedImage.TYPE_4BYTE_ABGR: {
+                    System.out.println("4BYTE_ABGR");
                     im = input;
                     glinternal = GL.GL_RGBA8;
                     glformat = GL.GL_ABGR_EXT;
@@ -98,6 +100,7 @@ public class VisTexture implements VisSerializable
                     bytes_per_pixel = 4;
                     break;
                 }
+*/
                 case BufferedImage.TYPE_INT_RGB: {
                     im = input;
                     glinternal = GL.GL_RGB8;
