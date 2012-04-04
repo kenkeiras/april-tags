@@ -128,14 +128,14 @@ public class VisTest
                                                 "<<cyan,serif-italic-bold-20>>serif-bold-italic")));
 
             vb.addBack(new VisDepthTest(false,
-                                        new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.BOTTOM_RIGHT,
+                                        new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_RIGHT,
                                                                 new VzText(VzText.ANCHOR.BOTTOM_RIGHT,
                                                                             "<<margin=15>>" +
                                                                             "<<cyan,serif-italic-32>>cyan 32\n"))));
 
 
             vb.addBack(new VisDepthTest(false,
-                                        new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.TOP_LEFT,
+                                        new VisPixCoords(VisPixCoords.ORIGIN.TOP_LEFT,
                                                                 new VzText(VzText.ANCHOR.TOP_LEFT,
                                                                             "<<margin=15>>" +
                                                                             "<<white,sansserif-bold-16,width=100>>abc<<yellow>>42\n"+

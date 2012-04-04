@@ -138,7 +138,7 @@ public class VzGrid implements VisObject, VisSerializable
             VisWorld.Buffer vb = vw.getBuffer("grid-overlay");
             vb.setDrawOrder(10001);
 
-            vb.addFront(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.CENTER_ROUND,
+            vb.addFront(new VisPixCoords(VisPixCoords.ORIGIN.CENTER_ROUND,
                                                 new VisDepthTest(false,
                                                                  // translate so we don't draw on top of canvas dimensions.
                                                                  LinAlg.translate(0, -30, 0),

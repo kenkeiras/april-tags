@@ -329,7 +329,7 @@ public class Graph
             g.edges.clear();
             g.stateIndices.clear();
         }
-        g.attributes = attributes.copy();
+        g.attributes = Attributes.copy(attributes);
 
         for (GEdge edge : edges)
             g.edges.add(edge.copy());

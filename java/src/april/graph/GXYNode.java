@@ -17,8 +17,7 @@ public class GXYNode extends GNode
         g.init = LinAlg.copy(init);
         if (truth != null)
             g.truth = LinAlg.copy(truth);
-        if(attributes!=null)
-            g.attributes = attributes.copy();
+        g.attributes = Attributes.copy(attributes);
 
         return g;
     }

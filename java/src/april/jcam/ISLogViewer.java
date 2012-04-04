@@ -232,7 +232,7 @@ public class ISLogViewer implements LCMSubscriber
             position = log.getPositionFraction();
         } catch (IOException ex) {}
 
-        vbhud.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.TOP_LEFT,
+        vbhud.addBack(new VisPixCoords(VisPixCoords.ORIGIN.TOP_LEFT,
                                               new VzText(VzText.ANCHOR.TOP_LEFT,
                                                           String.format(str,
                                                                         (e.utime - log_t0)*1e-6,

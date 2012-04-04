@@ -88,7 +88,7 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
         double dt = (now - last) / 1.0E6;
         last = now;
         VisWorld.Buffer vb = vw.getBuffer("FPS");
-        vb.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.TOP_LEFT,
+        vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.TOP_LEFT,
                                            new VzText(VzText.ANCHOR.TOP_LEFT, String.format("FPS: %3.1f", 1.0/dt))));
         vb.swap();
 
@@ -97,7 +97,7 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
                                    "%4d :x\n%4d :y\n%4d :z\n%4d :r\n%4d :p\n%4d :t",
                                    me.x, me.y, me.z, me.roll, me.pitch, me.yaw);
         vb = vw.getBuffer("MOTION_EVENT");
-        vb.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.TOP_RIGHT,
+        vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.TOP_RIGHT,
                                            new VzText(VzText.ANCHOR.TOP_RIGHT, str)));
         vb.swap();
 
@@ -105,16 +105,16 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
         // display cross at center of rotation (eye) in 2 colors to ensure
         //vis2: These VzTexts originally specified a transparent background?? (alpha=0.0), not supported in vis2
         vb = vw.getBuffer("CENTER");
-        vb.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.CENTER,
+        vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
                                            new VzText(VzText.ANCHOR.LEFT,
                                                        "<<monospaced-24, blue>>|")));
-        vb.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.CENTER,
+        vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
                                            new VzText(VzText.ANCHOR.LEFT,
                                                        "<<monospaced-24, blue>>--")));
         vb.swap();
 
         vb = vw.getBuffer("CENTER2");
-        vb.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.CENTER,
+        vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
                                            new VzText(VzText.ANCHOR.RIGHT,
                                                        "<<monospaced-24, black>>+")));
         vb.swap();
