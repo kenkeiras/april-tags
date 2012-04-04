@@ -41,6 +41,11 @@ public class MX28Servo extends AbstractServo
         return Math.PI;
     }
 
+    public void setPID(byte p, byte i, byte d)
+    {
+        writeToRAM(new byte[] { 26, p, i, d}, true);
+    }
+
     public void setGoal(double radians, double speedfrac, double torquefrac)
     {
         radians = MathUtil.mod2pi(radians);
