@@ -87,7 +87,7 @@ public class VisTest
         if (true) {
             VisWorld.Buffer vb = vw.getBuffer("foo");
             vb.addBack(new VisChain(LinAlg.translate(0, 0, -1),
-                                    new VzCircle(10,
+                                    new VzCircle(10.0, 33,
                                                  new VzLines.Style(Color.blue, 2),
                                                  new VzMesh.Style(Color.gray))));
 
