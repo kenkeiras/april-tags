@@ -81,7 +81,7 @@ public class Attributes
         }
     }
 
-    Attributes copy()
+    public Attributes copy()
     {
         Attributes a = new Attributes();
         a.attrs = (HashMap<String, Attr>) attrs.clone();

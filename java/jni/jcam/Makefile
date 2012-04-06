@@ -1,4 +1,4 @@
-GCC = gcc -Wall -g -std=gnu99 -D_REENTRANT -fPIC -shared -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -Wno-unused-parameter -Wno-format-zero-length
+GCC = gcc -Wall -g -std=gnu99 -D_REENTRANT -fPIC -shared -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -Wno-unused-parameter -Wno-format-zero-length -O4
 LIBIMAGESOURCE_OBJS = image_source.o image_source_v4l2.o image_source_jni.o image_source_dc1394.o url_parser.o image_source_islog.o image_source_pgusb.o
 
 LIB=libimagesource.so
