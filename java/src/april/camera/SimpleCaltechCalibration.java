@@ -4,7 +4,7 @@ import april.config.*;
 import april.jmat.*;
 import april.util.*;
 
-public class SimpleCaltechCalibration implements Calibration, Calibratable
+public class SimpleCaltechCalibration implements Calibration, ParameterizableCalibration
 {
     // XXX change this to run until convergence
     static final int num_iterations = 5;
@@ -135,8 +135,8 @@ public class SimpleCaltechCalibration implements Calibration, Calibratable
     }
 
     ////////////////////////////////////////////////////////////////////////////////
-    // Calibratable interface methods
-    public double[] getCalibratableParameters()
+    // Parameterizable interface methods
+    public double[] getParameterization()
     {
         int len = LENGTH_FC + LENGTH_CC + LENGTH_KC;
 
@@ -154,7 +154,7 @@ public class SimpleCaltechCalibration implements Calibration, Calibratable
         return params;
     }
 
-    public void resetCalibratableParameters(double params[])
+    public void resetParameterization(double params[])
     {
         assert(params.length == (LENGTH_FC + LENGTH_CC + LENGTH_KC));
 

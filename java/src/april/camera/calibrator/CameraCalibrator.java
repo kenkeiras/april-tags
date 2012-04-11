@@ -44,7 +44,7 @@ public class CameraCalibrator
 
     private static class CameraWrapper
     {
-        public Calibratable cal;
+        public ParameterizableCalibration cal;
 
         public GIntrinsicsNode cameraIntrinsics;
         public int cameraIntrinsicsIndex;
@@ -259,7 +259,7 @@ public class CameraCalibrator
             String classname = classnames.get(i);
 
             String name     = String.format("camera%d", i);
-            Calibratable cal = getDefaultCalibratable(classname, im.getWidth(), im.getHeight());
+            ParameterizableCalibration cal = getDefaultCalibration(classname, im.getWidth(), im.getHeight());
 
             GIntrinsicsNode cameraIntrinsics = new GIntrinsicsNode(cal);
             System.out.println("Initialized camera intrinsics to:"); LinAlg.print(cameraIntrinsics.init);
@@ -293,7 +293,7 @@ public class CameraCalibrator
         assert(cameras.size() == newImages.size());
     }
 
-    private Calibratable getDefaultCalibratable(String classname, int width, int height)
+    private ParameterizableCalibration getDefaultCalibration(String classname, int width, int height)
     {
         if (classname.equals("april.camera.CaltechCalibration")) {
 

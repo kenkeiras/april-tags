@@ -12,22 +12,22 @@ public class GIntrinsicsNode extends GNode
 {
     // inherited: init, state, truth, attributes
 
-    private Calibratable cal;
+    private ParameterizableCalibration cal;
 
     public GIntrinsicsNode()
     {
     }
 
-    public GIntrinsicsNode(Calibratable cal)
+    public GIntrinsicsNode(ParameterizableCalibration cal)
     {
         this(cal, null);
     }
 
-    public GIntrinsicsNode(Calibratable cal, double truth[])
+    public GIntrinsicsNode(ParameterizableCalibration cal, double truth[])
     {
         this.cal = cal;
 
-        this.init = cal.getCalibratableParameters();
+        this.init = cal.getParameterization();
         this.state = LinAlg.copy(this.init);
 
         if (truth != null)
@@ -36,7 +36,7 @@ public class GIntrinsicsNode extends GNode
 
     public void updateIntrinsics()
     {
-        cal.resetCalibratableParameters(this.state);
+        cal.resetParameterization(this.state);
     }
 
     public double[] project(double xyz_camera[])
