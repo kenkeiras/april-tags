@@ -231,19 +231,22 @@ public class DistortionPlot
 
         // gui tools
         pg = new ParameterGUI();
-        //paramsPanel = new EnabledBuffersPanel(vc);
+        LayerBufferPanel bufferPanel = new LayerBufferPanel(vc);
 
         // jframe
         jf = new JFrame("Distortion plot");
         jf.setLayout(new BorderLayout());
 
-        //JSplitPane jsph = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, vc, paramsPanel);
-        JSplitPane jsph = new JSplitPane(JSplitPane.VERTICAL_SPLIT, vc, pg);
-        jsph.setDividerLocation(1.0);
-        jsph.setResizeWeight(1.0);
+        JSplitPane jspv = new JSplitPane(JSplitPane.VERTICAL_SPLIT, vc, pg);
+        jspv.setDividerLocation(1.0);
+        jspv.setResizeWeight(1.0);
+
+        JSplitPane jsph = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, jspv, bufferPanel);
+        jsph.setDividerLocation(0.9);
+        jsph.setResizeWeight(0.9);
 
         jf.add(jsph, BorderLayout.CENTER);
-        jf.setSize(800, 400);
+        jf.setSize(1200, 700);
         jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         jf.setVisible(true);
     }
