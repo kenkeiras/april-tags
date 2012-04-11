@@ -25,7 +25,7 @@ public class Attributes
     public HashMap<String, Attr> attrs = new HashMap<String, Attr>();
 
 
-    static Attributes read(StructureReader ins ) throws IOException
+    public static Attributes read(StructureReader ins ) throws IOException
     {
         int nattributes = ins.readInt();
         if (nattributes == 0)
@@ -46,7 +46,7 @@ public class Attributes
         return a;
     }
 
-    static void write(Attributes a, StructureWriter outs) throws IOException
+    public static void write(Attributes a, StructureWriter outs) throws IOException
     {
         outs.writeComment("num attributes");
         if (a == null) {
@@ -81,7 +81,7 @@ public class Attributes
         }
     }
 
-    static Attributes copy(Attributes in)
+    public static Attributes copy(Attributes in)
     {
         // handle null check in one location
         if (in  == null)
@@ -92,7 +92,7 @@ public class Attributes
         return out;
     }
 
-    void setAttribute(String key, Object o)
+    public void setAttribute(String key, Object o)
     {
         StructureCoder coder = null;
         if (o instanceof Integer)
@@ -111,12 +111,12 @@ public class Attributes
     }
 
     // code can be null
-    void setAttribute(String key, Object o, StructureCoder coder)
+    public void setAttribute(String key, Object o, StructureCoder coder)
     {
         attrs.put(key, new Attr(o, coder));
     }
 
-    Object getAttribute(String key)
+    public Object getAttribute(String key)
     {
         Attr a = attrs.get(key);
         if (a == null)
