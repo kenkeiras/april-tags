@@ -214,7 +214,12 @@ public class Graph
     public void write(BufferedWriter _outs) throws IOException
     {
         StructureWriter outs = new TextStructureWriter(_outs);
+        write(outs);
+        outs.close();
+    }
 
+    public void write(StructureWriter outs) throws IOException
+    {
         Attributes.write(attributes, outs);
 
         for (int i = 0; i < nodes.size(); i++) {
@@ -237,7 +242,6 @@ public class Graph
             outs.blockEnd();
         }
 
-        outs.close();
         System.out.printf("wrote %d nodes and %d edges\n", nodes.size(), edges.size());
     }
 

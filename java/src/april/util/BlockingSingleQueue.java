@@ -27,6 +27,14 @@ public class BlockingSingleQueue<T>
         return drops;
     }
 
+    public synchronized boolean isEmpty()
+    {
+        if (this.t == null)
+            return true;
+
+        return false;
+    }
+
     /** Block **/
     public synchronized T get()
     {
