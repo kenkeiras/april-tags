@@ -3,7 +3,8 @@ package april.vis;
 import java.awt.*;
 import java.io.*;
 import java.util.HashMap;
-/** A circle in the XY plane centered at zero. **/
+/** A circle in the XY plane centered at zero. Statically caches lines
+ * and mesh in hashmap for instantiated circles.**/
 
 public class VzCircle implements VisObject, VisSerializable
 {
@@ -16,21 +17,16 @@ public class VzCircle implements VisObject, VisSerializable
         }
     }
 
-
-    int npoints;
     double r;
     Style styles[];
 
     private VzLines lines;
     private VzMesh  mesh;
 
-
-
     public VzCircle(Style ... styles)
     {
         this(1.0, styles);
     }
-
 
     public VzCircle(double r, Style ... styles)
     {
@@ -40,20 +36,18 @@ public class VzCircle implements VisObject, VisSerializable
     public VzCircle(double r, int npoints, Style ... styles)
     {
         this.r = r;
-        this.npoints = npoints;
         this.styles = styles;
 
         synchronized(lineMap) {
             lines = lineMap.get(npoints);
-            mesh = meshMap.get(npoints);
 
             if (lines == null){
                 lineMap.put(npoints,new VzLines(makeCircleOutline(npoints), VzLines.LINE_LOOP));
                 meshMap.put(npoints,new VzMesh(makeCircleFill(npoints), VzMesh.TRIANGLE_FAN));
 
                 lines = lineMap.get(npoints);
-                mesh = meshMap.get(npoints);
             }
+            mesh = meshMap.get(npoints);
         }
     }
 
