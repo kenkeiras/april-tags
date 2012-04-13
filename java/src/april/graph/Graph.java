@@ -279,7 +279,17 @@ public class Graph
     public Graph(String path) throws IOException
     {
         StructureReader ins = new TextStructureReader(new BufferedReader(new FileReader(path)));
+        read(ins);
+        ins.close();
+    }
 
+    public Graph(StructureReader ins) throws IOException
+    {
+        read(ins);
+    }
+
+    public void read(StructureReader ins) throws IOException
+    {
         attributes = Attributes.read(ins);
 
         while (true) {
@@ -310,8 +320,6 @@ public class Graph
         }
 
         System.out.printf("loaded %d nodes and %d edges\n", nodes.size(), edges.size());
-
-        ins.close();
     }
 
     // Returns a deep copy of this graph with the exception of a

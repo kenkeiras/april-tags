@@ -1,4 +1,4 @@
-package april.camera;
+package april.camera.cal;
 
 import java.awt.image.*;
 

@@ -1,9 +1,9 @@
-package april.camera.calibrator;
+package april.camera.cal.calibrator;
 
 import java.awt.image.*;
 import java.util.*;
 
-import april.camera.*;
+import april.camera.cal.*;
 import april.config.*;
 import april.graph.*;
 import april.jmat.*;
@@ -14,7 +14,7 @@ import april.util.*;
 import april.vis.*;
 
 /** Camera calibrator class. Takes a list of full-length class names (e.g.
- * april.camera.CaltechCalibration) an AprilTag family for tag detection,
+ * april.camera.cal.CaltechCalibration) an AprilTag family for tag detection,
  * and (optionally) a VisWorld for debugging. Once instantiated, add sets of
  * images (one image per camera) with the addImages method.
  */
@@ -295,7 +295,7 @@ public class CameraCalibrator
 
     private ParameterizableCalibration getDefaultCalibration(String classname, int width, int height)
     {
-        if (classname.equals("april.camera.CaltechCalibration")) {
+        if (classname.equals("april.camera.cal.CaltechCalibration")) {
 
             double fc[] = new double[] { 500, 500 };
             double cc[] = new double[] { width/2, height/2 };
@@ -305,7 +305,7 @@ public class CameraCalibrator
             return new CaltechCalibration(fc, cc, kc, skew, width, height);
         }
 
-        if (classname.equals("april.camera.SimpleCaltechCalibration")) {
+        if (classname.equals("april.camera.cal.SimpleCaltechCalibration")) {
 
             // XXX cheating
             //double fc[] = new double[] { 650, 650 };

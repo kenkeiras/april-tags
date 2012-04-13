@@ -1,10 +1,10 @@
-package april.camera;
+package april.camera.cal;
 
 import april.config.*;
 import april.jmat.*;
 import april.util.*;
 
-public class CaltechCalibration implements Calibration, ParameterizableCalibration
+public class SimpleCaltechCalibration implements Calibration, ParameterizableCalibration
 {
     // XXX change this to run until convergence
     static final int num_iterations = 5;
@@ -12,14 +12,11 @@ public class CaltechCalibration implements Calibration, ParameterizableCalibrati
     // required calibration parameter lengths
     static final public int LENGTH_FC = 2;
     static final public int LENGTH_CC = 2;
-    static final public int LENGTH_KC = 5;
+    static final public int LENGTH_KC = 2;
 
     // indices for lookup in kc[]
     static final public int KC1 = 0; // r^2
     static final public int KC2 = 1; // r^4
-    static final public int KC3 = 2; // tangential
-    static final public int KC4 = 3; // tangential
-    static final public int KC5 = 4; // r^6
 
     // Focal length, in pixels
     private double[]        fc;
@@ -28,10 +25,7 @@ public class CaltechCalibration implements Calibration, ParameterizableCalibrati
     private double[]        cc;
 
     // Distortion
-    private double[]        kc; // [kc1 kc2 kc3 kc4 kc5 kc6]
-
-    // Skew
-    private double          skew;
+    private double[]        kc; // [kc1 kc2]
 
     // Intrinsics matrix
     private double[][]      K;
@@ -41,13 +35,12 @@ public class CaltechCalibration implements Calibration, ParameterizableCalibrati
     private int             width;
     private int             height;
 
-    public CaltechCalibration(double fc[], double cc[], double kc[], double skew,
+    public SimpleCaltechCalibration(double fc[], double cc[], double kc[],
                               int width, int height)
     {
         this.fc     = LinAlg.copy(fc);
         this.cc     = LinAlg.copy(cc);
         this.kc     = LinAlg.copy(kc);
-        this.skew   = skew;
 
         this.width  = width;
         this.height = height;
@@ -55,12 +48,11 @@ public class CaltechCalibration implements Calibration, ParameterizableCalibrati
         createIntrinsicsMatrix();
     }
 
-    public CaltechCalibration(Config config)
+    public SimpleCaltechCalibration(Config config)
     {
         this.fc     = config.requireDoubles("intrinsics.fc");
         this.cc     = config.requireDoubles("intrinsics.cc");
         this.kc     = config.requireDoubles("intrinsics.kc");
-        this.skew   = config.requireDouble("intrinsics.skew");
 
         this.width  = config.requireInt("width");
         this.height = config.requireInt("height");
@@ -74,9 +66,9 @@ public class CaltechCalibration implements Calibration, ParameterizableCalibrati
         assert(kc.length == LENGTH_KC);
         assert(cc.length == LENGTH_CC);
 
-        K = new double[][] { { fc[0],  skew*fc[0], cc[0] } ,
-                             {   0.0,       fc[1], cc[1] } ,
-                             {   0.0,         0.0,   1.0 } };
+        K = new double[][] { { fc[0],   0.0, cc[0] } ,
+                             {   0.0, fc[1], cc[1] } ,
+                             {   0.0,   0.0,   1.0 } };
         Kinv = LinAlg.inverse(K);
     }
 
@@ -136,11 +128,9 @@ public class CaltechCalibration implements Calibration, ParameterizableCalibrati
 
     public String getCacheString()
     {
-        return String.format("%.12f %.12f %.12f %.12f %.12f %.12f %.12f %.12f %.12f %.12f %d %d",
+        return String.format("%.12f %.12f %.12f %.12f %.12f %.12f %d %d",
                              fc[0], fc[1],
                              cc[0], cc[1],
-                             kc[0], kc[1], kc[2], kc[3], kc[4],
-                             skew,
                              width, height);
     }
 
@@ -148,7 +138,7 @@ public class CaltechCalibration implements Calibration, ParameterizableCalibrati
     // Parameterizable interface methods
     public double[] getParameterization()
     {
-        int len = LENGTH_FC + LENGTH_CC + LENGTH_KC + 1;
+        int len = LENGTH_FC + LENGTH_CC + LENGTH_KC;
 
         double params[] = new double[len];
 
@@ -160,18 +150,13 @@ public class CaltechCalibration implements Calibration, ParameterizableCalibrati
 
         params[4] = kc[0];
         params[5] = kc[1];
-        params[6] = kc[2];
-        params[7] = kc[3];
-        params[8] = kc[4];
-
-        params[9] = skew;
 
         return params;
     }
 
     public void resetParameterization(double params[])
     {
-        assert(params.length == (LENGTH_FC + LENGTH_CC + LENGTH_KC + 1));
+        assert(params.length == (LENGTH_FC + LENGTH_CC + LENGTH_KC));
 
         fc = new double[LENGTH_FC];
         fc[0] = params[0];
@@ -184,11 +169,6 @@ public class CaltechCalibration implements Calibration, ParameterizableCalibrati
         kc = new double[LENGTH_KC];
         kc[0] = params[4];
         kc[1] = params[5];
-        kc[2] = params[6];
-        kc[3] = params[7];
-        kc[4] = params[8];
-
-        skew = params[9];
 
         createIntrinsicsMatrix();
     }
@@ -227,17 +207,12 @@ public class CaltechCalibration implements Calibration, ParameterizableCalibrati
 
         double r2 = x*x + y*y;
         double r4 = r2*r2;
-        double r6 = r4*r2;
 
         double multiplier = 1 + kc[KC1] * r2
-                              + kc[KC2] * r4
-                              + kc[KC5] * r6 ;
+                              + kc[KC2] * r4;
 
-        double dx[] = new double[] {2*kc[KC3]*x*y + kc[KC4]*(r2 + 2*x*x),
-                                    kc[KC3]*(r2 + 2*y*y) + 2*kc[KC4]*x*y};
-
-        double xy_dn[] = new double[] { x*multiplier + dx[0] ,
-                                        y*multiplier + dx[1] };
+        double xy_dn[] = new double[] { x*multiplier ,
+                                        y*multiplier };
         return xy_dn;
     }
 
@@ -250,17 +225,12 @@ public class CaltechCalibration implements Calibration, ParameterizableCalibrati
         for (int i=0; i < num_iterations; i++) {
             double r2 = x*x + y*y;
             double r4 = r2 * r2;
-            double r6 = r4 * r2;
 
             double multiplier = 1 + kc[KC1] * r2
-                                  + kc[KC2] * r4
-                                  + kc[KC5] * r6 ;
+                                  + kc[KC2] * r4;
 
-            double dx[] = new double[] {2*kc[KC3]*x*y + kc[KC4]*(r2 + 2*x*x),
-                                        kc[KC3]*(r2 + 2*y*y) + 2*kc[KC4]*x*y};
-
-            x = (xy_dn[0] - dx[0]) / multiplier;
-            y = (xy_dn[1] - dx[1]) / multiplier;
+            x = (xy_dn[0]) / multiplier;
+            y = (xy_dn[1]) / multiplier;
         }
 
         return new double[] { x, y };
