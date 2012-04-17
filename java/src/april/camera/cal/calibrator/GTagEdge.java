@@ -63,6 +63,22 @@ public class GTagEdge extends GEdge
         return pixel_observations.size()*2;
     }
 
+    public double[] getResidualExternal(Graph g)
+    {
+        assert(g.nodes.get(this.nodes[CI]) instanceof GIntrinsicsNode);
+        if (hasCameraExtrinsics)
+            assert(g.nodes.get(this.nodes[CE]) instanceof GExtrinsicsNode);
+        assert(g.nodes.get(this.nodes[ME]) instanceof GExtrinsicsNode);
+
+        GIntrinsicsNode cameraIntrinsics = (GIntrinsicsNode) g.nodes.get(this.nodes[CI]);
+        GExtrinsicsNode cameraExtrinsics = null;
+        if (hasCameraExtrinsics)
+            cameraExtrinsics = (GExtrinsicsNode) g.nodes.get(this.nodes[CE]);
+        GExtrinsicsNode mosaicExtrinsics = (GExtrinsicsNode) g.nodes.get(this.nodes[ME]);
+
+        return getResidual(cameraIntrinsics, cameraExtrinsics, mosaicExtrinsics);
+    }
+
     private double[] getResidual(GIntrinsicsNode cameraIntrinsics,
                                  GExtrinsicsNode cameraExtrinsics,
                                  GExtrinsicsNode mosaicExtrinsics)
