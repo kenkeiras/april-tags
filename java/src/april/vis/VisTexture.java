@@ -42,25 +42,7 @@ public class VisTexture implements VisSerializable
 
     public VisTexture(BufferedImage input, int flags)
     {
-        if ((flags & NO_ALPHA_MASK) != 0)
-            alphaMask = false;
-        if ((flags & ALPHA_MASK) != 0)
-            alphaMask = true;
-
-        if ((flags & NO_MIN_FILTER) != 0)
-            minFilter = false;
-        if ((flags & MIN_FILTER) != 0)
-            minFilter = true;
-
-        if ((flags & NO_MAG_FILTER) != 0)
-            magFilter = false;
-        if ((flags & MAG_FILTER) != 0)
-            magFilter = true;
-
-        if ((flags & NO_REPEAT) != 0)
-            repeat = false;
-        if ((flags & REPEAT) != 0)
-            repeat = true;
+        setFlags(flags);
 
         BufferedImage im = null;
 
@@ -162,6 +144,29 @@ public class VisTexture implements VisSerializable
         return height;
     }
 
+    private void setFlags(int flags)
+    {
+        if ((flags & NO_ALPHA_MASK) != 0)
+            alphaMask = false;
+        if ((flags & ALPHA_MASK) != 0)
+            alphaMask = true;
+
+        if ((flags & NO_MIN_FILTER) != 0)
+            minFilter = false;
+        if ((flags & MIN_FILTER) != 0)
+            minFilter = true;
+
+        if ((flags & NO_MAG_FILTER) != 0)
+            magFilter = false;
+        if ((flags & MAG_FILTER) != 0)
+            magFilter = true;
+
+        if ((flags & NO_REPEAT) != 0)
+            repeat = false;
+        if ((flags & REPEAT) != 0)
+            repeat = true;
+    }
+
     public VisTexture(ObjectReader ins)
     {
     }
@@ -175,7 +180,12 @@ public class VisTexture implements VisSerializable
         outs.writeInt(width);
         outs.writeInt(height);
 
-        outs.writeByte(alphaMask ? 1 : 0);
+        int flags = ((alphaMask ? ALPHA_MASK  : NO_ALPHA_MASK) |
+                     (repeat    ? REPEAT      : NO_REPEAT    ) |
+                     (magFilter ? MAG_FILTER  : NO_MAG_FILTER) |
+                     (minFilter ? MIN_FILTER  : NO_MIN_FILTER));
+
+        outs.writeInt(flags);
         outs.writeInts(idata);
         outs.writeBytes(bdata);
     }
@@ -189,7 +199,7 @@ public class VisTexture implements VisSerializable
         width = ins.readInt();
         height = ins.readInt();
 
-        alphaMask = (ins.readByte() != 0) ? true : false;
+        setFlags(ins.readInt());
         idata = ins.readInts();
         bdata = ins.readBytes();
     }
