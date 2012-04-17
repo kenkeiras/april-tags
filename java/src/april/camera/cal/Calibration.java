@@ -27,6 +27,11 @@ public interface Calibration
       */
     public double[]     project(double xyz_camera[]);
 
+    /** Return a string representing this object that can be placed directly
+      * into a configuration block.
+      */
+    public String       getCalibrationString();
+
     /** Return a string of all critical parameters for caching data based
       * on a calibration (e.g. lookup tables).
       */

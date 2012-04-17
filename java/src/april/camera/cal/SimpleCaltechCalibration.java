@@ -126,6 +126,22 @@ public class SimpleCaltechCalibration implements Calibration, ParameterizableCal
         return this.normalizedToPixels(xy_dn);
     }
 
+    public String getCalibrationString()
+    {
+        String s;
+
+        s = String.format(  "        class = \"%s\";\n\n", this.getClass().getName());
+        s = String.format("%s        width = %d;\n", s, width);
+        s = String.format("%s        height = %d;\n\n", s, height);
+        s = String.format("%s        intrinsics {\n", s);
+        s = String.format("%s            fc = [%11.6f,%11.6f ];\n", s, fc[0], fc[1]);
+        s = String.format("%s            cc = [%11.6f,%11.6f ];\n", s, cc[0], cc[1]);
+        s = String.format("%s            kc = [%11.6f,%11.6f ];\n", s, kc[0], kc[1]);
+        s = String.format("%s        }\n", s);
+
+        return s;
+    }
+
     public String getCacheString()
     {
         return String.format("%.12f %.12f %.12f %.12f %.12f %.12f %d %d",

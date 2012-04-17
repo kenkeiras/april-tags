@@ -42,6 +42,11 @@ public class CameraCalibrator
     ArrayList<TagConstraint> constraints = new ArrayList<TagConstraint>();
     ArrayList<Integer> mosaicExtrinsicsIndices = new ArrayList<Integer>();
 
+    double Tvis[][] = new double[][] { {  0,  0,  1,  0 },
+                                       { -1,  0,  0,  0 } ,
+                                       {  0, -1,  0,  0 } ,
+                                       {  0,  0,  0,  1 } };
+
     private static class CameraWrapper
     {
         public ParameterizableCalibration cal;
@@ -88,10 +93,12 @@ public class CameraCalibrator
         this.vl = vl;
         this.vw = vl.world;
         ((DefaultCameraManager) vl.cameraManager).interfaceMode = 3.0;
-        vl.cameraManager.setDefaultPosition(new double[] {  0.1, -0.7, -0.1},  // eye
-                                            new double[] {  0.2,  0.1,  0.3},  // lookAt
-                                            new double[] { -0.0, -0.5,  0.9}); // up
-        vl.backgroundColor = new java.awt.Color(20, 20, 20);
+        vl.cameraManager.uiLookAt(new double[] { 1.5, 0.03, 4.75000 },
+                                  new double[] { 1.5, 0.03, 0.00000 },
+                                  new double[] { 1.0, 0.00, 0.00000 },
+                                  true);
+        vl.cameraManager.getCameraTarget().perspectiveness = 0;
+        VzGrid.addGrid(vw);
 
         g = new Graph();
         solver = new CholeskySolver(g, new MinimumDegreeOrdering());
@@ -202,11 +209,35 @@ public class CameraCalibrator
                 B2G = LinAlg.identity(4);
 
 
-            vb.addBack(new VisChain(B2G,
+            vb.addBack(new VisChain(Tvis,
+                                    B2G,
                                     LinAlg.scale(0.05, 0.05, 0.05),
                                     new VzAxes()));
         }
         vb.swap();
+
+        double XY0[] = null;
+        double XY1[] = null;
+
+        for (TagConstraint tc : constraints) {
+
+            if (XY0 == null && XY1 == null) {
+                XY0 = new double[2];
+                XY0[0] = tc.xyz_m[0];
+                XY0[1] = tc.xyz_m[1];
+
+                XY1 = new double[2];
+                XY1[0] = tc.xyz_m[0];
+                XY1[1] = tc.xyz_m[1];
+
+                continue;
+            }
+
+            XY0[0] = Math.min(XY0[0], tc.xyz_m[0]);
+            XY0[1] = Math.min(XY0[1], tc.xyz_m[1]);
+            XY1[0] = Math.max(XY1[0], tc.xyz_m[0]);
+            XY1[1] = Math.max(XY1[1], tc.xyz_m[1]);
+        }
 
         vb = vw.getBuffer("Extrinsics - mosaics");
         for (int index : mosaicExtrinsicsIndices) {
@@ -216,8 +247,11 @@ public class CameraCalibrator
 
             java.awt.Color c = ColorUtil.seededColor(index);
 
-            vb.addBack(new VisChain(B2G,
-                                    new VzRectangle(0.25, 0.25, // XXX use actual mosaic bounds
+            vb.addBack(new VisChain(Tvis,
+                                    B2G,
+                                    LinAlg.translate((XY0[0]+XY1[0])/2.0, (XY0[1]+XY1[1])/2.0, 0),
+                                    new VzRectangle(XY1[0] - XY0[0],
+                                                    XY1[1] - XY0[1],
                                                     new VzLines.Style(c, 2))));
         }
         vb.swap();
@@ -231,19 +265,53 @@ public class CameraCalibrator
 
         solver.iterate();
 
-        for (int i=0; i < cameras.size(); i++) {
-            CameraWrapper cam = cameras.get(i);
-            System.out.printf("Current state for camera %d:\n", i);
-            LinAlg.printTranspose(g.nodes.get(cam.cameraIntrinsicsIndex).state);
-            if (cam.cameraExtrinsics != null) {
-                double s[] = LinAlg.copy(g.nodes.get(cam.cameraExtrinsicsIndex).state);
-                for (int si=3; si<6; si++)
-                    s[si] *= 180/3.14159;
-                LinAlg.printTranspose(s);
-            }
-        }
+        printCalibrationBlock();
 
         draw();
+    }
+
+    public void printCalibrationBlock()
+    {
+        // start block
+        System.out.println("cameraCalibration {\n");
+
+        // print name list
+        String names = "    names = [";
+        for (int i=0; i+1 < cameras.size(); i++) {
+            CameraWrapper cam = cameras.get(i);
+            names = String.format("%s %s,", names, cam.name);
+        }
+        names = String.format("%s %s ];", names, cameras.get(cameras.size()-1).name);
+        System.out.println(names);
+
+        // print cameras
+        for (int i=0; i < cameras.size(); i++) {
+
+            CameraWrapper cam = cameras.get(i);
+
+            System.out.println();
+            System.out.printf("    %s {\n", cam.name);
+
+            System.out.println(cam.cal.getCalibrationString());
+
+            double state[] = new double[6];
+            if (cam.cameraExtrinsics != null)
+                state = LinAlg.copy(g.nodes.get(cam.cameraExtrinsicsIndex).state);
+
+            String s;
+            s = String.format(  "        extrinsics {\n");
+            s = String.format("%s            // Camera-To-Global coordinate transformation\n", s);
+            s = String.format("%s            position = [%11.6f,%11.6f,%11.6f ];\n", s, state[0], state[1], state[2]);
+            s = String.format("%s            rollpitchyaw_degrees = [%11.6f,%11.6f,%11.6f ];\n",
+                              s, state[3]*180/Math.PI, state[4]*180/Math.PI, state[5]*180/Math.PI);
+            s = String.format("%s        }\n", s);
+            System.out.printf("%s", s);
+
+            System.out.printf("    }\n");
+        }
+
+        // end block
+        System.out.println("}");
     }
 
     private void initCameras(List<BufferedImage> newImages)
