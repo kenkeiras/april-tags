@@ -1,6 +1,6 @@
 package april.camera.cal;
 
-public interface SyntheticView extends Calibration
+public interface SyntheticView extends View
 {
     // Extends calibration, so includes getWidth, getHeight,
     // distort, rectify, and project methods. Not totally sure
