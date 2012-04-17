@@ -16,12 +16,12 @@ public class VisSceneViewer
 {
     JFrame jf;
 
-    public VisSceneViewer(String name, VisCanvas vc)
+    public VisSceneViewer(String name, VisCanvas vc, int width, int height)
     {
         jf = new JFrame(name);
         jf.setLayout(new BorderLayout());
         jf.add(vc, BorderLayout.CENTER);
-        jf.setSize(600,400);
+        jf.setSize(width,height+23);
         jf.setVisible(true);
     }
 
@@ -30,11 +30,12 @@ public class VisSceneViewer
         try {
             long time0 = System.currentTimeMillis();
             ObjectReader ins = new ObjectReader(args[0]);
+            int width = ins.readInt(), height = ins.readInt();
             VisCanvas vc = (VisCanvas) ins.readObject();
             long time1 = System.currentTimeMillis();
 
             System.out.printf("Time to load scene: %15.3f s\n", (time1 - time0) / 1000.0);
-            new VisSceneViewer(args[0], vc);
+            new VisSceneViewer(args[0], vc, width, height);
         } catch (IOException ex) {
             System.out.println("ex: "+ex);
         }
