@@ -12,10 +12,6 @@ public class VzCircle implements VisObject, VisSerializable
     // Synchronized on lineMap to access both
     public static HashMap<Integer, VzLines> lineMap = new HashMap<Integer, VzLines>();
     public static HashMap<Integer, VzMesh> meshMap = new HashMap<Integer, VzMesh>();
-    static {
-        synchronized(lineMap) {
-        }
-    }
 
     double r;
     Style styles[];
