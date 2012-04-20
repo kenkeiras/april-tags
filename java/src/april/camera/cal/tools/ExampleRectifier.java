@@ -7,16 +7,19 @@ import javax.imageio.*;
 import april.camera.cal.*;
 import april.config.*;
 import april.jcam.*;
+import april.jmat.*;
 import april.util.*;
 
 public class ExampleRectifier
 {
-    Calibration     cal;
-    SyntheticView   view;
+    View input;
+    View output;
     Rasterizer      rasterizer;
 
     public ExampleRectifier(Config config, String imagepath) throws IOException
     {
+        ////////////////////////////////////////
+        // Get output image path
         String toks[] = imagepath.split("\\.");
         String newpath = toks[0];
         for (int i=1; i+1 < toks.length; i++)
@@ -24,24 +27,38 @@ public class ExampleRectifier
         newpath = String.format("%s.rectified.%s", newpath, toks[toks.length-1]);
         System.out.printf("Output image path: '%s'\n", newpath);
 
+        ////////////////////////////////////////
+        // Load image
         System.out.println("Reading input image");
         BufferedImage in = ImageIO.read(new File(imagepath));
         in = ImageConvert.convertImage(in, BufferedImage.TYPE_INT_RGB);
 
+        ////////////////////////////////////////
+        // Input view
         System.out.println("Creating camera calibration");
-        cal = new CaltechCalibration(config);
+        input = new SimpleCaltechCalibration(config);
+        //input = new ScaledView(0.5, input);
 
+        ////////////////////////////////////////
+        // Output view
         System.out.println("Creating rectified view");
-        //view = new MaxInscribedRectifiedView(cal);
-        view = new MaxRectifiedView(cal);
+        output = new MaxRectifiedView(input);
+        //output = new MaxInscribedRectifiedView(input);
+        //output = new ScaledView(2, output);
 
+        ////////////////////////////////////////
+        // Make rasterizer
         System.out.println("Creating rasterizer");
-        //rasterizer = new BilinearRasterizer(view);
-        rasterizer = new NearestNeighborRasterizer(view);
+        //rasterizer = new BilinearRasterizer(input, output);
+        rasterizer = new NearestNeighborRasterizer(input, output);
 
+        ////////////////////////////////////////
+        // Rasterize image
         System.out.println("Rasterizing image");
         BufferedImage out = rasterizer.rectifyImage(in);
 
+        ////////////////////////////////////////
+        // Write image
         System.out.println("Writing image to file");
         ImageIO.write(out, "png", new File(newpath));
 

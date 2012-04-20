@@ -2,25 +2,29 @@ package april.camera.cal;
 
 public interface View
 {
-    /** Return max width. Usually from calibration.
+    /** Return max width. Valid pixel values for this
+      * view range from 0 to width.
       */
     public int          getWidth();
 
-    /** Return max height. Usually from calibration.
+    /** Return max height. Valid pixel values for this
+      * view range from 0 to height.
       */
     public int          getHeight();
 
     /** Return intrinsics matrix.
       */
-    public double[][]   getIntrinsics();
+    public double[][]   copyIntrinsics();
 
-    /** Rectified pixel coordinates to distorted pixel coordinates.
+    /** Convert a 2D double { X/Z, Y/Z } to pixel coordinates in this view,
+      * applying distortion if appropriate.
       */
-    public double[]     distort(double xy_rp[]);
+    public double[]     normToPixels(double xy_n[]);
 
-    /** Distorted pixel coordinates to rectified pixel coordinates.
+    /** Convert a 2D pixel coordinate in this view to normalized coordinates,
+      * { X/Z, Y/Z }, removing distortion if appropriate.
       */
-    public double[]     rectify(double xy_dp[]);
+    public double[]     pixelsToNorm(double xy_p[]);
 
     /** Project a 3D point in the appropriate coordinate frame to distorted
       * pixel coordinates.

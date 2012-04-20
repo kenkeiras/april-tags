@@ -21,14 +21,17 @@ import javax.swing.*;
 public class ExampleStereoRectifier
 {
     CameraSet cameras;
-    ArrayList<SyntheticView> views = new ArrayList<SyntheticView>();
+    ArrayList<View> views;
     ArrayList<Rasterizer> rasterizers = new ArrayList<Rasterizer>();
+    ArrayList<double[][]> extrinsics;
+    View leftView;
+    View rightView;
 
     public ExampleStereoRectifier(Config config, boolean inscribed,
                                   String leftImagePath, String rightImagePath) throws IOException
     {
-        String leftOutputPath = newPathName(leftImagePath);
-        String rightOutputPath = newPathName(rightImagePath);
+        String leftOutputPath = newPathName(leftImagePath, inscribed);
+        String rightOutputPath = newPathName(rightImagePath, inscribed);
 
         // load images
         BufferedImage leftImage = loadImage(leftImagePath);
@@ -37,29 +40,53 @@ public class ExampleStereoRectifier
         // load calibrations
         cameras = new CameraSet(config);
 
+        leftView = cameras.getCalibration(0);
+        rightView = cameras.getCalibration(1);
+
+        //rightView = new ScaledView(0.5, rightView); // for testing
+        //System.out.println(rightView.getCacheString());
+
         // make views
         createViewsExternal(inscribed);
 
         assert(cameras.getSize() == views.size());
 
         // make rasterizers
-        for (SyntheticView view : views)
-            rasterizers.add(new BilinearRasterizer(view));
+        {
+            View input = leftView;
+            View output = views.get(0);
+            double C2G_input[][] = cameras.getExtrinsicsMatrix(0);
+            double C2G_output[][] = extrinsics.get(0);
 
+            rasterizers.add(new BilinearRasterizer(input, LinAlg.inverse(C2G_input),
+                                                   output, LinAlg.inverse(C2G_output))); // XXX change cameraset to G2C?
+        }
+        {
+            View input = rightView;
+            View output = views.get(1);
+            double C2G_input[][] = cameras.getExtrinsicsMatrix(1);
+            double C2G_output[][] = extrinsics.get(1);
+
+            rasterizers.add(new BilinearRasterizer(input, LinAlg.inverse(C2G_input),
+                                                   output, LinAlg.inverse(C2G_output))); // XXX change cameraset to G2C?
+        }
         assert(cameras.getSize() == rasterizers.size());
 
         // output images
-        rasterizeImage( leftImage, 0,  leftOutputPath);
-        rasterizeImage(rightImage, 1, rightOutputPath);
+        rasterizeImage( leftImage, rasterizers.get(0),  leftOutputPath);
+        rasterizeImage(rightImage, rasterizers.get(1), rightOutputPath);
     }
 
-    private String newPathName(String path)
+    private String newPathName(String path, boolean inscribed)
     {
         String toks[] = path.split("\\.");
         String newpath = toks[0];
         for (int i=1; i+1 < toks.length; i++)
             newpath = String.format("%s.%s", newpath, toks[i]);
-        newpath = String.format("%s.stereo_rectified.%s", newpath, toks[toks.length-1]);
+        if (inscribed)
+            newpath = String.format("%s.stereo_rectified_inscribed.%s", newpath, toks[toks.length-1]);
+        else
+            newpath = String.format("%s.stereo_rectified.%s", newpath, toks[toks.length-1]);
         return newpath;
     }
 
@@ -79,24 +106,24 @@ public class ExampleStereoRectifier
         StereoRectification sr;
 
         if (inscribed)
-            sr = StereoRectification.getMaxInscribedSR(cameras.getCalibration(0),
-                                                       cameras.getCalibration(1),
+            sr = StereoRectification.getMaxInscribedSR(leftView,
+                                                       rightView,
                                                        cameras.getExtrinsicsMatrix(0),
                                                        cameras.getExtrinsicsMatrix(1));
         else
-            sr = StereoRectification.getMaxSR(cameras.getCalibration(0),
-                                              cameras.getCalibration(1),
+            sr = StereoRectification.getMaxSR(leftView,
+                                              rightView,
                                               cameras.getExtrinsicsMatrix(0),
                                               cameras.getExtrinsicsMatrix(1));
 
         sr.showDebuggingGUI();
 
         views = sr.getViews();
+        extrinsics = sr.getExtrinsics();
     }
 
-    private void rasterizeImage(BufferedImage im, int index, String outputPath) throws IOException
+    private void rasterizeImage(BufferedImage im, Rasterizer rasterizer, String outputPath) throws IOException
     {
-        Rasterizer rasterizer = rasterizers.get(index);
         BufferedImage out = rasterizer.rectifyImage(im);
 
         // horizontal lines for debugging

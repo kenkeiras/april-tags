@@ -55,7 +55,7 @@ public class TestCameraSet
             System.out.printf("Camera %d of %d (name: '%s')\n",
                               i+1, size, name);
             System.out.println("Intrinsics matrix");
-            LinAlg.print(cal.getIntrinsics());
+            LinAlg.print(cal.copyIntrinsics());
             System.out.println("Extrinsics matrix");
             LinAlg.print(extrinsics);
             System.out.println();

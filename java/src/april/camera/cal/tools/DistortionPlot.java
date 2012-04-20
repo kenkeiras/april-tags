@@ -24,8 +24,8 @@ public class DistortionPlot
     VisWorld.Buffer vb;
 
     Config config;
-    Calibration cal;
-    SyntheticView view;
+    View input;
+    View output;
 
     int stepsize = 2;
 
@@ -33,22 +33,59 @@ public class DistortionPlot
     {
         this.config = config;
 
-        // XXX only use first camera
-        cal = new CameraSet(config).getCalibration(0);
-        view = new MaxInscribedRectifiedView(cal);
+        input = new CameraSet(config).getCalibration(0); // first camera only
+        LinAlg.print(input.copyIntrinsics());
+        //input = new ScaledView(0.5, input);
+        //LinAlg.print(input.copyIntrinsics());
+
+        output = new MaxInscribedRectifiedView(input);
+        LinAlg.print(output.copyIntrinsics());
+        output = new ScaledView(0.5, output);
+        LinAlg.print(output.copyIntrinsics());
 
         setupGUI();
 
         plot();
     }
 
+    private void setupGUI()
+    {
+        // vis
+        vw = new VisWorld();
+        vl = new VisLayer(vw);
+        vc = new VisCanvas(vl);
+
+        vl.backgroundColor = Color.black;
+        VzGrid.addGrid(vw);
+
+        // gui tools
+        pg = new ParameterGUI();
+        LayerBufferPanel bufferPanel = new LayerBufferPanel(vc);
+
+        // jframe
+        jf = new JFrame("Distortion plot");
+        jf.setLayout(new BorderLayout());
+
+        JSplitPane jspv = new JSplitPane(JSplitPane.VERTICAL_SPLIT, vc, pg);
+        jspv.setDividerLocation(1.0);
+        jspv.setResizeWeight(1.0);
+
+        JSplitPane jsph = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, jspv, bufferPanel);
+        jsph.setDividerLocation(0.9);
+        jsph.setResizeWeight(0.9);
+
+        jf.add(jsph, BorderLayout.CENTER);
+        jf.setSize(1200, 700);
+        jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        jf.setVisible(true);
+    }
+
     private void plot()
     {
-        int width = cal.getWidth();
-        int height = cal.getHeight();
-
-        double XY0[] = new double[] {     0,      0 };
-        double XY1[] = new double[] { width, height };
+        int inputWidth   = input.getWidth();
+        int inputHeight  = input.getHeight();
+        int outputWidth  = output.getWidth();
+        int outputHeight = output.getHeight();
 
         {
             double minx = Double.MAX_VALUE;
@@ -62,12 +99,12 @@ public class DistortionPlot
             ArrayList<double[]> points_r1 = new ArrayList<double[]>();
             ArrayList<double[]> points_d2 = new ArrayList<double[]>();
 
-            for (int y=0; y < height; y+=stepsize) {
-                for (int x=0; x < width; x+=stepsize) {
+            for (int y=0; y < inputHeight; y+=stepsize) {
+                for (int x=0; x < inputWidth; x+=stepsize) {
 
                     double xy1_dp[] = new double[] {x, y};
-                    double xy1_rp[] = cal.rectify(xy1_dp);
-                    double xy2_dp[] = cal.distort(xy1_rp);
+                    double xy1_rp[] = output.normToPixels(input.pixelsToNorm(xy1_dp));
+                    double xy2_dp[] = input.normToPixels(output.pixelsToNorm(xy1_rp));
 
                     points_d1.add(xy1_dp);
                     points_r1.add(xy1_rp);
@@ -122,16 +159,16 @@ public class DistortionPlot
             ArrayList<double[]> points_r1 = new ArrayList<double[]>();
             ArrayList<double[]> points_d1 = new ArrayList<double[]>();
 
-            for (int y = -height; y < height*2; y+=stepsize) {
-                for (int x = -width; x < width*2; x+=stepsize) {
+            for (int y = -inputHeight; y < inputHeight*2; y+=stepsize) {
+                for (int x = -inputWidth; x < inputWidth*2; x+=stepsize) {
 
                     double xy_rp[] = new double[] {x, y};
-                    double xy_dp[] = cal.distort(xy_rp);
+                    double xy_dp[] = input.normToPixels(output.pixelsToNorm(xy_rp));
 
                     int ix = (int) Math.floor(xy_dp[0]);
                     int iy = (int) Math.floor(xy_dp[1]);
 
-                    if (ix < 0 || ix >= width || iy < 0 || iy >= height)
+                    if (ix < 0 || ix >= inputWidth || iy < 0 || iy >= inputHeight)
                         continue;
 
                     points_r1.add(xy_rp);
@@ -158,14 +195,11 @@ public class DistortionPlot
             ArrayList<double[]> points_r1 = new ArrayList<double[]>();
             ArrayList<double[]> points_d1 = new ArrayList<double[]>();
 
-            int viewHeight = view.getHeight();
-            int viewWidth  = view.getWidth();
-
-            for (int y=0; y < viewHeight; y+=stepsize) {
-                for (int x=0; x < viewWidth; x+=stepsize) {
+            for (int y=0; y < outputHeight; y+=stepsize) {
+                for (int x=0; x < outputWidth; x+=stepsize) {
 
                     double xy_rp[] = new double[] { x, y };
-                    double xy_dp[] = view.distort(xy_rp);
+                    double xy_dp[] = input.normToPixels(output.pixelsToNorm(xy_rp));
 
                     points_r1.add(xy_rp);
                     points_d1.add(xy_dp);
@@ -186,69 +220,6 @@ public class DistortionPlot
                                                      new VzPoints.Style(Color.blue, 1))));
             vb.swap();
         }
-
-        {
-            ArrayList<double[]> points_r1 = new ArrayList<double[]>();
-            ArrayList<double[]> points_d1 = new ArrayList<double[]>();
-
-            int viewHeight = view.getHeight();
-            int viewWidth  = view.getWidth();
-
-            for (int y=0; y < height; y+=stepsize) {
-                for (int x=0; x < width; x+=stepsize) {
-
-                    double xy_dp[] = new double[] { x, y };
-                    double xy_rp[] = view.rectify(xy_dp);
-
-                    points_d1.add(xy_dp);
-                    points_r1.add(xy_rp);
-                }
-            }
-
-            // D
-            vb = vw.getBuffer("4a. Points (distorted)");
-            vb.addBack(new VisChain(LinAlg.scale(1, -1, 1),
-                                        new VzPoints(new VisVertexData(points_d1),
-                                                     new VzPoints.Style(Color.pink, 1))));
-            vb.swap();
-
-            // R
-            vb = vw.getBuffer("4b. Points (distorted -> max rectified)");
-            vb.addBack(new VisChain(LinAlg.scale(1, -1, 1),
-                                        new VzPoints(new VisVertexData(points_r1),
-                                                     new VzPoints.Style(Color.green, 1))));
-            vb.swap();
-        }
-    }
-
-    private void setupGUI()
-    {
-        // vis
-        vw = new VisWorld();
-        vl = new VisLayer(vw);
-        vc = new VisCanvas(vl);
-        vl.backgroundColor = Color.black;
-
-        // gui tools
-        pg = new ParameterGUI();
-        LayerBufferPanel bufferPanel = new LayerBufferPanel(vc);
-
-        // jframe
-        jf = new JFrame("Distortion plot");
-        jf.setLayout(new BorderLayout());
-
-        JSplitPane jspv = new JSplitPane(JSplitPane.VERTICAL_SPLIT, vc, pg);
-        jspv.setDividerLocation(1.0);
-        jspv.setResizeWeight(1.0);
-
-        JSplitPane jsph = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, jspv, bufferPanel);
-        jsph.setDividerLocation(0.9);
-        jsph.setResizeWeight(0.9);
-
-        jf.add(jsph, BorderLayout.CENTER);
-        jf.setSize(1200, 700);
-        jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        jf.setVisible(true);
     }
 
     public static void main(String args[])
@@ -257,7 +228,7 @@ public class DistortionPlot
 
         opts.addBoolean('h',"help",false,"See this help screen");
         opts.addString('c',"config","","Config file path");
-        opts.addString('s',"child","","Child string");
+        opts.addString('s',"child","aprilCameraCalibration","Child string");
 
         if (!opts.parse(args)) {
             System.out.println("Option error: "+opts.getReason());

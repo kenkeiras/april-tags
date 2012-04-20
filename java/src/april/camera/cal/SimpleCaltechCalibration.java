@@ -79,39 +79,39 @@ public class SimpleCaltechCalibration implements Calibration, ParameterizableCal
       */
     public int getWidth()
     {
-        return this.width;
+        return width;
     }
 
     /** Return image height from calibration.
       */
     public int getHeight()
     {
-        return this.height;
+        return height;
     }
 
     /** Return intrinsics matrix from calibration.
       */
-    public double[][] getIntrinsics()
+    public double[][] copyIntrinsics()
     {
         return LinAlg.copy(K);
     }
 
-    /** Rectified pixel coordinates to distorted pixel coordinates.
+    /** Convert a 2D double { X/Z, Y/Z } to pixel coordinates in this view,
+      * applying distortion if appropriate.
       */
-    public double[] distort(double xy_rp[])
+    public double[] normToPixels(double xy_rn[])
     {
-        double xy_rn[] = this.pixelsToNormalized(xy_rp);
-        double xy_dn[] = this.distortNormalized(xy_rn);
-        return this.normalizedToPixels(xy_dn);
+        double xy_dn[] = distortNormalized(xy_rn);
+        return CameraMath.pixelTransform(K, xy_dn);
     }
 
-    /** Distorted pixel coordinates to rectified pixel coordinates.
+    /** Convert a 2D pixel coordinate in this view to normalized coordinates,
+      * { X/Z, Y/Z }, removing distortion if appropriate.
       */
-    public double[] rectify(double xy_dp[])
+    public double[] pixelsToNorm(double xy_dp[])
     {
-        double xy_dn[] = this.pixelsToNormalized(xy_dp);
-        double xy_rn[] = this.rectifyNormalized(xy_dn);
-        return this.normalizedToPixels(xy_rn);
+        double xy_dn[] = CameraMath.pixelTransform(Kinv, xy_dp);
+        return rectifyNormalized(xy_dn);
     }
 
     /** Project a 3D point in the appropriate coordinate frame to distorted
@@ -121,11 +121,12 @@ public class SimpleCaltechCalibration implements Calibration, ParameterizableCal
     {
         double xy_rn[] = new double[] { xyz_camera[0] / xyz_camera[2] ,
                                         xyz_camera[1] / xyz_camera[2] };
-
-        double xy_dn[] = this.distortNormalized(xy_rn);
-        return this.normalizedToPixels(xy_dn);
+        return normToPixels(xy_rn);
     }
 
+    /** Return a string of all critical parameters for caching data based
+      * on a calibration (e.g. lookup tables).
+      */
     public String getCalibrationString()
     {
         String s;
@@ -147,6 +148,7 @@ public class SimpleCaltechCalibration implements Calibration, ParameterizableCal
         return String.format("%.12f %.12f %.12f %.12f %.12f %.12f %d %d",
                              fc[0], fc[1],
                              cc[0], cc[1],
+                             kc[0], kc[1],
                              width, height);
     }
 
@@ -191,29 +193,6 @@ public class SimpleCaltechCalibration implements Calibration, ParameterizableCal
 
     ////////////////////////////////////////////////////////////////////////////////
     // Private methods
-
-    // Convert from normalized to pixel coordinates
-    private double[] normalizedToPixels(double xy_n[])
-    {
-        double xy_p[][] = LinAlg.matrixAB(K,
-                                          new double[][] { { xy_n[0] },
-                                                           { xy_n[1] },
-                                                           {       1 } });
-        return new double[] { xy_p[0][0] / xy_p[2][0] ,
-                              xy_p[1][0] / xy_p[2][0] };
-
-    }
-
-    // Convert from pixel to normalized coordinates
-    private double[] pixelsToNormalized(double xy_p[])
-    {
-        double xy_n[][] = LinAlg.matrixAB(Kinv,
-                                          new double[][] { { xy_p[0] },
-                                                           { xy_p[1] },
-                                                           {       1 } });
-        return new double[] { xy_n[0][0] / xy_n[2][0] ,
-                              xy_n[1][0] / xy_n[2][0] };
-    }
 
     // Perform distortion in normalized coordinates
     private double[] distortNormalized(double xy_rn[])

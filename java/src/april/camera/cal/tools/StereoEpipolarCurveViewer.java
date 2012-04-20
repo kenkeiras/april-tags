@@ -7,6 +7,7 @@ import java.awt.image.*;
 import java.awt.event.*;
 
 import javax.swing.*;
+import javax.imageio.*;
 
 import april.config.*;
 import april.camera.cal.*;
@@ -14,11 +15,14 @@ import april.vis.*;
 import april.util.*;
 import april.jmat.*;
 import april.jmat.geom.*;
+import april.jcam.*;
 
 public class StereoEpipolarCurveViewer implements ParameterListener
 {
     Config config;
     CameraSet cameras;
+    View leftView;
+    View rightView;
 
     JFrame jf;
     VisWorld vw;
@@ -30,7 +34,7 @@ public class StereoEpipolarCurveViewer implements ParameterListener
 
     ParameterGUI pg;
 
-    public StereoEpipolarCurveViewer(Config config)
+    public StereoEpipolarCurveViewer(Config config, String leftPath, String rightPath)
     {
         if (config == null) {
             System.err.println("Config object is null. Exiting.");
@@ -40,7 +44,12 @@ public class StereoEpipolarCurveViewer implements ParameterListener
         this.config = config;
         this.cameras = new CameraSet(config);
 
+        leftView = cameras.getCalibration(0);
+        rightView = cameras.getCalibration(1);
+
         setupGUI();
+
+        showImages(leftPath, rightPath);
     }
 
     private void setupGUI()
@@ -76,6 +85,46 @@ public class StereoEpipolarCurveViewer implements ParameterListener
 
         jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         jf.setVisible(true);
+    }
+
+    private BufferedImage loadImage(String path) throws IOException
+    {
+        BufferedImage im = ImageIO.read(new File(path));
+        im = ImageConvert.convertImage(im, BufferedImage.TYPE_INT_RGB);
+
+        return im;
+    }
+
+    private void showImages(String leftPath, String rightPath)
+    {
+        VisWorld.Buffer vb = vw.getBuffer("Images");
+        vb.setDrawOrder(-100);
+
+        try {
+            double XY0[] = getXY(0, "left");
+            double XY1[] = getXY(1, "left");
+            BufferedImage im = loadImage(leftPath);
+            vb.addBack(new VisChain(LinAlg.translate(XY0[0], XY0[1], 0),
+                                    LinAlg.scale((XY1[0]-XY0[0])/im.getWidth(),
+                                                 (XY1[1]-XY0[1])/im.getHeight(), 1),
+                                    new VzImage(im, VzImage.FLIP)));
+
+        } catch (IOException ex) {
+        }
+
+        try {
+            double XY0[] = getXY(0, "right");
+            double XY1[] = getXY(1, "right");
+            BufferedImage im = loadImage(rightPath);
+            vb.addBack(new VisChain(LinAlg.translate(XY0[0], XY0[1], 0),
+                                    LinAlg.scale((XY1[0]-XY0[0])/im.getWidth(),
+                                                 (XY1[1]-XY0[1])/im.getHeight(), 1),
+                                    new VzImage(im, VzImage.FLIP)));
+
+        } catch (IOException ex) {
+        }
+
+        vb.swap();
     }
 
     public void parameterChanged(ParameterGUI pg, String name)
@@ -115,8 +164,8 @@ public class StereoEpipolarCurveViewer implements ParameterListener
                 redraw(vbleft, vbright,
                        leftXY0, leftXY1, rightXY0, rightXY1,
                        corrected_xy, im_xy,
-                       cameras.getCalibration(0), cameras.getExtrinsicsMatrix(0),
-                       cameras.getCalibration(1), cameras.getExtrinsicsMatrix(1));
+                       leftView, cameras.getExtrinsicsMatrix(0),
+                       rightView, cameras.getExtrinsicsMatrix(1));
 
                 return true;
             }
@@ -134,8 +183,8 @@ public class StereoEpipolarCurveViewer implements ParameterListener
                 redraw(vbright, vbleft,
                        rightXY0, rightXY1, leftXY0, leftXY1,
                        corrected_xy, im_xy,
-                       cameras.getCalibration(1), cameras.getExtrinsicsMatrix(1),
-                       cameras.getCalibration(0), cameras.getExtrinsicsMatrix(0));
+                       rightView, cameras.getExtrinsicsMatrix(1),
+                       leftView, cameras.getExtrinsicsMatrix(0));
 
                 return true;
             }
@@ -147,10 +196,10 @@ public class StereoEpipolarCurveViewer implements ParameterListener
 
     private double[] getXY(int zeroone, String leftright)
     {
-        int leftWidth   = cameras.getCalibration(0).getWidth();
-        int leftHeight  = cameras.getCalibration(0).getHeight();
-        int rightWidth  = cameras.getCalibration(1).getWidth();
-        int rightHeight = cameras.getCalibration(1).getHeight();
+        int leftWidth   = leftView.getWidth();
+        int leftHeight  = leftView.getHeight();
+        int rightWidth  = rightView.getWidth();
+        int rightHeight = rightView.getHeight();
 
         switch(zeroone) {
             case 0:
@@ -178,14 +227,14 @@ public class StereoEpipolarCurveViewer implements ParameterListener
                        double activeXY0[],       double activeXY1[],
                        double passiveXY0[],      double passiveXY1[],
                        double active_xy[],       double im_xy[],
-                       Calibration activeCal,    double activeC2G[][],
-                       Calibration passiveCal,   double passiveC2G[][])
+                       View activeCal,    double activeC2G[][],
+                       View passiveCal,   double passiveC2G[][])
     {
         drawBox(vbactive, activeXY0, activeXY1, Color.blue);
         drawBox(vbpassive, passiveXY0, passiveXY1, Color.red);
 
         vbactive.addBack(new VzPoints(new VisVertexData(LinAlg.add(activeXY0, active_xy)),
-                                      new VzPoints.Style(Color.green, 8)));
+                                      new VzPoints.Style(Color.green, 4)));
 
         drawEpipolarCurve(vbpassive, passiveXY0, passiveXY1, im_xy,
                           activeCal, activeC2G,
@@ -209,26 +258,16 @@ public class StereoEpipolarCurveViewer implements ParameterListener
     }
 
     public void drawEpipolarCurve(VisWorld.Buffer vb, double XY0[], double XY1[], double xy_dp[],
-                                  Calibration activeCal,    double activeC2G[][],
-                                  Calibration passiveCal,   double passiveC2G[][])
+                                  View activeCal,    double activeC2G[][],
+                                  View passiveCal,   double passiveC2G[][])
     {
+        double xy_rn[] = activeCal.pixelsToNorm(xy_dp);
+
+        // sample depths from 0 to zmax meters
+        double zmax = 10;
         ArrayList<double[]> points = new ArrayList<double[]>();
-
-        double xy_rp[] = activeCal.rectify(xy_dp);
-
-        double K[][] = activeCal.getIntrinsics();
-
-        double _xy_rn[][] = LinAlg.matrixAB(LinAlg.inverse(K),
-                                            new double[][] { { xy_rp[0] } ,
-                                                             { xy_rp[1] } ,
-                                                             {        1 } });
-        double xy_rn[] = new double[] { _xy_rn[0][0] / _xy_rn[2][0] ,
-                                        _xy_rn[1][0] / _xy_rn[2][0] };
-
-        ArrayList<double[]> points_global = new ArrayList<double[]>();
-
-        // sample depths from 0 to 100 meters
-        for (double z=0.0; z < 100; z += 0.02) {
+        ArrayList<double[]> depths = new ArrayList<double[]>();
+        for (double z=0.0; z < zmax; z += 0.02) {
 
             double xyz_cam[] = new double[] { xy_rn[0]*z ,
                                               xy_rn[1]*z ,
@@ -236,7 +275,6 @@ public class StereoEpipolarCurveViewer implements ParameterListener
 
             double xyz_global[] = LinAlg.transform(activeC2G,
                                                    xyz_cam);
-            points_global.add(xyz_global);
 
             double xy[] = passiveCal.project(LinAlg.transform(LinAlg.inverse(passiveC2G),
                                                               xyz_global));
@@ -246,16 +284,13 @@ public class StereoEpipolarCurveViewer implements ParameterListener
             {
                 xy[1] = passiveCal.getHeight() - xy[1];
                 points.add(xy);
+                depths.add(new double[] {z});
             }
         }
 
-        //vb.addBack(new VzLines(new VisVertexData(LinAlg.transform(LinAlg.translate(XY0[0], XY0[1], 0),
-        //                                                          points)),
-        //                       VzLines.LINE_STRIP,
-        //                       new VzLines.Style(Color.green, 1)));
         vb.addBack(new VzPoints(new VisVertexData(LinAlg.transform(LinAlg.translate(XY0[0], XY0[1], 0),
                                                                   points)),
-                                new VzPoints.Style(Color.green, 1)));
+                                new VzPoints.Style(ColorMapper.makeJet(0, zmax).makeColorData(depths, 0), 2)));
     }
 
     public static void main(String args[])
@@ -265,6 +300,8 @@ public class StereoEpipolarCurveViewer implements ParameterListener
         opts.addBoolean('h',"help",false,"See this help screen");
         opts.addString('c',"config","","StereoCamera config");
         opts.addString('s',"child","cameraCalibration","Camera calibration config child");
+        opts.addString('l',"leftimage","","Left image path");
+        opts.addString('r',"rightimage","","Right image path");
 
         if (!opts.parse(args)) {
             System.out.println("option error: "+opts.getReason());
@@ -272,6 +309,8 @@ public class StereoEpipolarCurveViewer implements ParameterListener
 
         String configstr = opts.getString("config");
         String childstr = opts.getString("child");
+        String leftimagepath = opts.getString("leftimage");
+        String rightimagepath = opts.getString("rightimage");
 
         if (opts.getBoolean("help") || configstr.isEmpty()){
             System.out.println("Usage:");
@@ -282,7 +321,8 @@ public class StereoEpipolarCurveViewer implements ParameterListener
         try {
             Config config = new ConfigFile(configstr);
 
-            new StereoEpipolarCurveViewer(config.getChild(childstr));
+            new StereoEpipolarCurveViewer(config.getChild(childstr),
+                                          leftimagepath, rightimagepath);
         } catch (IOException e) {
             System.err.println("ERR: "+e);
             System.exit(-1);
