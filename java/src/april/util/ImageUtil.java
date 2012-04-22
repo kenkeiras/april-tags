@@ -118,7 +118,7 @@ public class ImageUtil
             BufferedImage im2 = new BufferedImage(width, height, im.getType());
             int imdata2[] = ((DataBufferInt) (im2.getRaster().getDataBuffer())).getData();
 
-            int stride = im.getWidth();
+            int stride = width;
             for (int y = 0; y < height; y++)
                 System.arraycopy(imdata, y*stride, imdata2, (height-1-y)*stride, stride);
 
@@ -131,7 +131,23 @@ public class ImageUtil
             BufferedImage im2 = new BufferedImage(width, height, im.getType());
             byte imdata2[] = ((DataBufferByte) (im2.getRaster().getDataBuffer())).getData();
 
-            int stride = 3 * im.getWidth();
+            int bytes_per_pixel = 0;
+            switch(im.getType()) {
+                case BufferedImage.TYPE_4BYTE_ABGR:
+                case BufferedImage.TYPE_4BYTE_ABGR_PRE:
+                    bytes_per_pixel = 4;
+                    break;
+                case BufferedImage.TYPE_3BYTE_BGR:
+                    bytes_per_pixel = 3;
+                    break;
+                case BufferedImage.TYPE_BYTE_GRAY:
+                    bytes_per_pixel = 1;
+                    break;
+                case BufferedImage.TYPE_BYTE_BINARY:
+                case BufferedImage.TYPE_BYTE_INDEXED:
+                    return null; //XXX These types are not supported by this method
+            }
+            int stride = bytes_per_pixel * width;
             for (int y = 0; y < height; y++)
                 System.arraycopy(imdata, y*stride, imdata2, (height-1-y)*stride, stride);
 
