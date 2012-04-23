@@ -1,4 +1,4 @@
-package april.image;
+package april.util;
 
 import java.util.*;
 
