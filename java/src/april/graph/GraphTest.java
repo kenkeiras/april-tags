@@ -36,6 +36,16 @@ public class GraphTest implements ParameterListener
 
         try {
             Graph g = new Graph(args[0]);
+
+            ArrayList<Graph> components = g.getConnectedComponents();
+            if (components.size() > 0) {
+                System.out.println("WARNING: Graph is disconnected. Picking the largest connected component.");
+
+                g = components.get(0);
+                for (Graph tg : components)
+                    if (tg.nodes.size() > g.nodes.size())
+                        g = tg;
+            }
             new GraphTest(g);
         } catch (IOException ex) {
             System.out.println("Ex: " + ex);
