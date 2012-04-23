@@ -30,7 +30,7 @@ ensure that we are never performing synchronous calls while the thread
 is running.
 
 */
-#define REQUEST_TIMEOUT_MS 0
+#define REQUEST_TIMEOUT_MS 100
 #define TIMEOUT_MS 0
 
 #define IMAGE_SOURCE_UTILS
@@ -39,6 +39,23 @@ is running.
 #define IMPL_TYPE 0x7123b65a
 
 static int debug = 0;
+
+struct feature
+{
+    char   *name;
+    int    (*is_available)(image_source_t *isrc, struct feature *f);
+    char*  (*get_type)(image_source_t *isrc, struct feature *f);
+    double (*get_value)(image_source_t *isrc, struct feature *f);
+    int   (*set_value)(image_source_t *isrc, struct feature *f, double v);
+
+    int value_lsb;
+    int value_size;
+
+    uint32_t user_addr;
+    void   *user_ptr;
+
+    uint32_t absolute_csr;
+};
 
 struct image_info
 {
@@ -105,6 +122,11 @@ struct impl_pgusb
     volatile int transfers_submitted;
 
     volatile int consume_transfers_flag;
+
+
+    struct feature *features;
+    int nfeatures;
+
 };
 
 struct format_priv
@@ -315,9 +337,18 @@ static int do_read(libusb_device_handle *handle, uint64_t address, uint32_t *qua
 
     // IEEE 1394 address reads are mapped to USB control transfers as
     // shown here.
+retry: ;
     int ret = libusb_control_transfer (handle, 0xc0, request,
                                        address & 0xffff, (address >> 16) & 0xffff,
                                        buf, num_quads * 4, REQUEST_TIMEOUT_MS);
+
+    if (ret == LIBUSB_ERROR_TIMEOUT) {
+        printf("pgusb timeout...\n");
+
+//        libusb_reset_device(handle);
+        goto retry;
+    }
+
     if (ret < 0)
         return -1;
 
@@ -353,9 +384,17 @@ static int do_write(libusb_device_handle *handle, uint64_t address, uint32_t *qu
 
     // IEEE 1394 address writes are mapped to USB control transfers as
     // shown here.
+retry: ;
+
     int ret = libusb_control_transfer (handle, 0x40, request,
                                        address & 0xffff, (address >> 16) & 0xffff,
                                        buf, num_quads * 4, REQUEST_TIMEOUT_MS);
+
+    if (ret == LIBUSB_ERROR_TIMEOUT) {
+        printf("pgusb timeout...\n");
+        goto retry;
+    }
+
     if (ret < 0)
         return -1;
     return ret / 4;
@@ -539,8 +578,11 @@ static int set_named_format(image_source_t *isrc, const char *desired_format)
 
 static int num_features(image_source_t *isrc)
 {
+    assert(isrc->impl_type == IMPL_TYPE);
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+
     // don't forget: feature index starts at 0
-    return 0;
+    return impl->nfeatures;
 }
 
 static void stop_callback(struct libusb_transfer *transfer)
@@ -1083,6 +1125,434 @@ static int my_close(image_source_t *isrc)
     return 0;
 }
 
+static void append_feature(impl_pgusb_t *impl, struct feature f)
+{
+    impl->nfeatures++;
+    impl->features = realloc(impl->features, impl->nfeatures * sizeof(struct feature));
+    impl->features[impl->nfeatures-1] = f;
+}
+
+/////////////////////////////////////////////////////////
+// 0 : Off
+// 1 : Auto
+// 2 : Manual
+// 3 : One-push ("one shot")
+static int simple_mode_is_available(image_source_t *isrc, struct feature *f)
+{
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    uint32_t d;
+    if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr, &d, 1) != 1)
+        return 0;
+
+    if ((d & (1<<31)) == 0)
+        return 0;
+
+    if ((d & (1<<28)) || (d & (1<<26)) || (d & (1<<25)) || (d & (1<<24)))
+        return 1;
+
+    return 0;
+}
+
+static char *simple_mode_get_type(image_source_t *isrc, struct feature *f)
+{
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    uint32_t d;
+    if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr, &d, 1) != 1)
+        return NULL;
+
+    // feature not present.
+    if ((d & (1<<31)) == 0)
+        return NULL;
+
+    // if the feature supports one-shot, on-off, auto, or manual, then
+    // enable the feature-mode control.
+    int oneshot = 0, onoff = 0, automode = 0, manual = 0;
+
+    if (d & (1<<28))
+        oneshot = 1;
+    if (d & (1<<26))
+        onoff = 1;
+    if (d & (1<<25))
+        automode = 1;
+    if (d & (1<<24))
+        manual = 1;
+
+    char buf[1024];
+    sprintf(buf, "c,%s%s%s%s",
+            onoff ? "0=off," : "",
+            automode ? "1=auto," : "",
+            manual ? "2=manual," : "",
+            oneshot ? "3=one-shot," : "");
+
+    return strdup(buf);
+}
+
+static double simple_mode_get_value(image_source_t *isrc, struct feature *f)
+{
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    uint32_t d;
+    if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr + 0x300, &d, 1) != 1)
+        return 0;
+
+    int onepush = (d & (1<<26)) ? 1 : 0;
+    int onoff = (d & (1<<25)) ? 1 : 0;
+    int automanual = (d & (1<<24)) ? 1 : 0;
+
+    // this logic taken from IIDC spec.
+    if (!onoff)
+        return 0;
+    if (automanual)
+        return 1;
+    if (!onepush)
+        return 2;
+    return 3;
+}
+
+static int simple_mode_set_value(image_source_t *isrc, struct feature *f, double _v)
+{
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    int v = (int) _v;
+
+    uint32_t d;
+
+    if (v == 0) {
+        // off
+        d = 0;
+    } else if (v == 1) {
+        // auto
+        d = (1<<25) | (1<<24);
+    } else if (v == 2) {
+        // manual
+        d = (1<<25);
+    } else if (v == 3) {
+        // one-shot
+        d = (1<<25) | (1<<26);
+    } else
+        return -1;
+
+    if (do_write(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr + 0x300, &d, 1) != 1)
+        return 0;
+
+
+    return 0;
+}
+
+/////////////////////////////////////////////////////////
+// BEWARE: IIDC 1.31 documentation has bit positions in wrong place
+// register 0x500:          register 0x800
+// 31: presence             31: presence
+// 30: abs_control          30: abs_control
+// 29                       26: one-push
+// 28: one-push             25: onoff
+// 27: read-out             24: automanual
+// 26: on/off               0-11: value
+// 25: auto_inq
+// 24: manual
+// 12-23: min value
+// 0-11: max value
+static int simple_value_is_available(image_source_t *isrc, struct feature *f)
+{
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    uint32_t d;
+    if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr, &d, 1) != 1)
+        return 0;
+
+    return (d & (1<<31)) ? 1 : 0;
+}
+
+static char* simple_value_get_type(image_source_t *isrc, struct feature *f)
+{
+    if (!simple_value_is_available(isrc, f))
+        return 0;
+
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    uint32_t d;
+    if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr, &d, 1) != 1)
+        return 0;
+
+    // note: these offsets don't depend on value_lsb/value_size
+    int min = (d>>12)&0xfff;
+    int max = d & 0xfff;
+
+    char buf[1024];
+    sprintf(buf, "i,%d,%d", min, max);
+
+    return strdup(buf);
+}
+
+static uint32_t float_to_uint32(float f)
+{
+    uint32_t *i = (uint32_t*) &f;
+    return *i;
+}
+
+static double uint32_to_float(uint32_t v)
+{
+    float *f = (float*) &v;
+    return (double) *f;
+}
+
+static char* simple_value_get_absolute_type(image_source_t *isrc, struct feature *f)
+{
+    assert(simple_value_is_available(isrc, f));
+
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    uint32_t imin, imax;
+
+    int res = do_read(impl->handle, CONFIG_ROM_BASE + f->absolute_csr, &imin, 1);
+    assert(res==1);
+
+    res = do_read(impl->handle, CONFIG_ROM_BASE + f->absolute_csr + 4, &imax, 1);
+    assert(res==1);
+
+    float min = uint32_to_float(imin);
+    float max = uint32_to_float(imax);
+
+    char buf[1024];
+    sprintf(buf, "f,%.15f,%.15f", min, max);
+
+    return strdup(buf);
+}
+
+static double simple_value_get_absolute_value(image_source_t *isrc, struct feature *f)
+{
+    assert(simple_value_is_available(isrc, f));
+
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    uint32_t ival;
+
+    int res = do_read(impl->handle, CONFIG_ROM_BASE + f->absolute_csr + 8, &ival, 1);
+    assert(res==1);
+
+    return uint32_to_float(ival);
+}
+
+static int simple_value_set_absolute_value(image_source_t *isrc, struct feature *f, double v)
+{
+    assert(simple_value_is_available(isrc, f));
+
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    uint32_t iv = float_to_uint32((float) v);
+
+    int res = do_write(impl->handle, CONFIG_ROM_BASE + f->absolute_csr + 8, &iv, 1);
+    assert (res == 1);
+
+    uint32_t d = (1 << 25) | (1 << 30); // manual control with absolute
+    if (do_write(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr + 0x300, &d, 1) != 1)
+        return -1;
+
+    return 0;
+}
+
+static double simple_value_get_value(image_source_t *isrc, struct feature *f)
+{
+    if (!simple_value_is_available(isrc, f))
+        return 0;
+
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    uint32_t d;
+    if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr + 0x300, &d, 1) != 1)
+        return 0;
+
+    uint32_t mask = ((1<<f->value_size) - 1) << f->value_lsb;
+
+    return (d & mask) >> f->value_lsb;
+}
+
+static int simple_value_set_value(image_source_t *isrc, struct feature *f, double v)
+{
+    if (!simple_value_is_available(isrc, f))
+        return 0;
+
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    uint32_t old;
+    if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr + 0x300, &old, 1) != 1)
+        return 0;
+
+    uint32_t value_mask = ((1<<f->value_size) - 1) << f->value_lsb;
+
+    uint32_t preserve_mask = 0x30ffffff ^ value_mask; // all reserved/value bits. preserve values here that we aren't rewriting.
+
+    uint32_t d = (1 << 25) | (old & preserve_mask) | ((((int) v) << f->value_lsb) & value_mask);
+
+    if (do_write(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr + 0x300, &d, 1) != 1)
+        return -1;
+
+    return 0;
+}
+
+// addr should be around 0x500. Other related registers are computed
+// by adding appropriate offsets.
+void add_simple_feature(image_source_t *isrc, const char *name, uint32_t addr)
+{
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    uint32_t d;
+    if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + addr, &d, 1) != 1)
+        return;
+
+    // feature not present.
+    if ((d & (1<<31)) == 0)
+        return;
+
+    int absolute = (d & (1<<30)) ? 1 : 0;
+    uint32_t absolute_csr;
+
+    if (absolute) {
+        if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + addr + 0x200, &absolute_csr, 1) != 1)
+            return;
+
+        absolute_csr *= 4;
+
+        uint32_t foo;
+        if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + 0x480, &foo, 1) != 1)
+            return;
+
+        printf("ABSOLUTE %08x %08x\n", absolute_csr, foo);
+    }
+
+    // create a feature to control the mode
+    if (1) {
+        struct feature f;
+        char buf[128];
+        sprintf(buf, "%s-mode", name);
+        f.name = strdup(buf);
+        f.user_addr = addr;
+        f.is_available = simple_mode_is_available;
+        f.get_type = simple_mode_get_type;
+        f.get_value = simple_mode_get_value;
+        f.set_value = simple_mode_set_value;
+        f.absolute_csr = absolute_csr;
+        append_feature(impl, f);
+    }
+
+    // if it supports manual mode...
+    if (addr==0x50c) {
+        // hack for white balance, which has two features.
+
+        struct feature f;
+        char buf[128];
+        sprintf(buf, "%s-ub", name);
+        f.name = strdup(buf);
+        f.user_addr = addr;
+        f.is_available = simple_value_is_available;
+        f.get_value = absolute ? simple_value_get_absolute_value : simple_value_get_value;
+        f.set_value = absolute ? simple_value_set_absolute_value : simple_value_set_value;
+        f.get_type = absolute ? simple_value_get_absolute_type : simple_value_get_type;
+        f.absolute_csr = absolute_csr;
+        f.value_lsb = 0;
+        f.value_size = 12;
+        append_feature(impl, f);
+
+        sprintf(buf, "%s-vr", name);
+        f.name = strdup(buf);
+        f.user_addr = addr;
+        f.is_available = simple_value_is_available;
+        f.get_value = absolute ? simple_value_get_absolute_value : simple_value_get_value;
+        f.set_value = absolute ? simple_value_set_absolute_value : simple_value_set_value;
+        f.get_type = absolute ? simple_value_get_absolute_type : simple_value_get_type;
+        f.absolute_csr = absolute_csr;
+        f.value_lsb = 12;
+        f.value_size = 12;
+        append_feature(impl, f);
+
+    } else {
+
+        if ((d & (1 << 24))) {
+            struct feature f;
+            char buf[128];
+            sprintf(buf, "%s", name);
+            f.name = strdup(buf);
+            f.user_addr = addr;
+            f.is_available = simple_value_is_available;
+            f.get_value = absolute ? simple_value_get_absolute_value : simple_value_get_value;
+            f.set_value = absolute ? simple_value_set_absolute_value : simple_value_set_value;
+            f.get_type = absolute ? simple_value_get_absolute_type : simple_value_get_type;
+            f.absolute_csr = absolute_csr;
+            f.value_lsb = 0;
+            f.value_size = 12;
+            append_feature(impl, f);
+        }
+    }
+
+    printf("FEATURE %-15s: %08x [%s] [%s] [%s] [%s] [%s] [%s] [%s]\n",
+           name, d,
+           (d & (1<<31)) ? "present" : "not present",
+           (d & (1<<30)) ? "abs": "no abs",
+           (d & (1<<28)) ? "one-shot" : "no one-shot",
+           (d & (1<<27)) ? "read" : "write-only",
+           (d & (1<<26)) ? "on-off" : "no on-off",
+           (d & (1<<25)) ? "auto" : "no auto",
+           (d & (1<<24)) ? "manual" : "no manual"
+        );
+
+//    printf("FEATURE %-15s: is_available: %1d, min %8.0f, max %8.0f, value %8.0f\n",
+//           name, f.is_available(isrc, &f), f.get_min(isrc, &f), f.get_max(isrc, &f), f.get_value(isrc, &f));
+    return;
+}
+
+static const char* get_feature_name(image_source_t *isrc, int idx)
+{
+    assert(isrc->impl_type == IMPL_TYPE);
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+
+    assert(idx < impl->nfeatures);
+    return impl->features[idx].name;
+}
+
+// static double get_feature_min(image_source_t *isrc, int idx)
+// {
+//     assert(isrc->impl_type == IMPL_TYPE);
+//     impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+
+//     assert(idx < impl->nfeatures);
+//     return impl->features[idx].get_min(isrc, &impl->features[idx]);
+// }
+
+// static double get_feature_max(image_source_t *isrc, int idx)
+// {
+//     assert(isrc->impl_type == IMPL_TYPE);
+//     impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+
+//     assert(idx < impl->nfeatures);
+//     return impl->features[idx].get_max(isrc, &impl->features[idx]);
+// }
+
+static int is_feature_available(image_source_t *isrc, int idx)
+{
+    assert(isrc->impl_type == IMPL_TYPE);
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+
+    assert(idx < impl->nfeatures);
+    return impl->features[idx].is_available(isrc, &impl->features[idx]);
+}
+
+static char *get_feature_type(image_source_t *isrc, int idx)
+{
+    assert(isrc->impl_type == IMPL_TYPE);
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+
+    assert(idx < impl->nfeatures);
+    return impl->features[idx].get_type(isrc, &impl->features[idx]);
+}
+
+static double get_feature_value(image_source_t *isrc, int idx)
+{
+    assert(isrc->impl_type == IMPL_TYPE);
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+
+    assert(idx < impl->nfeatures);
+    return impl->features[idx].get_value(isrc, &impl->features[idx]);
+}
+
+static int set_feature_value(image_source_t *isrc, int idx, double v)
+{
+    assert(isrc->impl_type == IMPL_TYPE);
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+
+    assert(idx < impl->nfeatures);
+    return impl->features[idx].set_value(isrc, &impl->features[idx], v);
+}
+
 image_source_t *image_source_pgusb_open(url_parser_t *urlp)
 {
     const char *location = url_parser_get_location(urlp);
@@ -1144,6 +1614,7 @@ image_source_t *image_source_pgusb_open(url_parser_t *urlp)
 
     impl->context = context;
     impl->dev = dev;
+
 
     pthread_cond_init(&impl->queue_cond, NULL);
     pthread_mutex_init(&impl->queue_mutex, NULL);
@@ -1273,6 +1744,29 @@ image_source_t *image_source_pgusb_open(url_parser_t *urlp)
         }
     }
 
+    impl->nfeatures = 0;
+    impl->features = NULL;
+    add_simple_feature(isrc, "brightness", 0x500);
+    add_simple_feature(isrc, "exposure", 0x504);
+    add_simple_feature(isrc, "sharpness", 0x508);
+    add_simple_feature(isrc, "white balance", 0x50c);
+    add_simple_feature(isrc, "hue", 0x510);
+    add_simple_feature(isrc, "saturation", 0x514);
+    add_simple_feature(isrc, "gamma", 0x518);
+    add_simple_feature(isrc, "shutter", 0x51c);
+    add_simple_feature(isrc, "gain", 0x520);
+    add_simple_feature(isrc, "iris", 0x524);
+    add_simple_feature(isrc, "focus", 0x528);
+    add_simple_feature(isrc, "frame rate", 0x53c);
+    add_simple_feature(isrc, "zoom", 0x580);
+    add_simple_feature(isrc, "pan", 0x584);
+    add_simple_feature(isrc, "tilt", 0x588);
+    add_simple_feature(isrc, "optical filter", 0x58c);
+    add_simple_feature(isrc, "capture size", 0x5c0);
+    add_simple_feature(isrc, "capture quality", 0x5c4);
+//    add_simple_feature(isrc, "trigger", 0x530);
+
+
     isrc->num_formats = num_formats;
     isrc->get_format = get_format;
     isrc->get_current_format = get_current_format;
@@ -1280,12 +1774,12 @@ image_source_t *image_source_pgusb_open(url_parser_t *urlp)
     isrc->set_named_format = set_named_format;
 
     isrc->num_features = num_features;
-/*    isrc->get_feature_name = get_feature_name;
-    isrc->get_feature_min = get_feature_min;
-    isrc->get_feature_max = get_feature_max;
+    isrc->get_feature_name = get_feature_name;
+    isrc->get_feature_type = get_feature_type;
+    isrc->is_feature_available = is_feature_available;
     isrc->get_feature_value = get_feature_value;
     isrc->set_feature_value = set_feature_value;
-*/
+
     isrc->start = start;
     isrc->get_frame = get_frame;
     isrc->release_frame = release_frame;

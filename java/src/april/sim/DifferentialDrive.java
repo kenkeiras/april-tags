@@ -80,8 +80,11 @@ public class DifferentialDrive
                 double dl_truth = (dleft + dright) / 2;
                 double dtheta_truth = (dright - dleft) / baseline;
 
-                double dl_odom = dl_truth + translation_noise*r.nextGaussian()*Math.abs(dl_truth);
-                double dtheta_odom = dtheta_truth + rotation_noise*r.nextGaussian()*Math.abs(dtheta_truth);
+                double r1 = MathUtil.clamp( r.nextGaussian(),-3.0, 3.0); // Safe random
+                double r2 = MathUtil.clamp( r.nextGaussian(),-3.0, 3.0);
+
+                double dl_odom = dl_truth + translation_noise*r1*Math.abs(dl_truth);
+                double dtheta_odom = dtheta_truth + rotation_noise*r2*Math.abs(dtheta_truth);
 
                 double dpos_truth[]  = LinAlg.quatRotate(poseTruth.orientation, new double[] { dl_truth, 0, 0 });
                 double dquat_truth[] = LinAlg.rollPitchYawToQuat(new double[] {0, 0, dtheta_truth});

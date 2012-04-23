@@ -1,31 +1,35 @@
 package april.dynamixel;
 
+import april.jmat.MathUtil;
+
+/////////// MX-28 Servo Control Table ///////////
+// Bytes 0x00 - 0x18: EEPROM                   //
+// Bytes 0x19 - 0x31: RAM                      //
+/////////////////////////////////////////////////
 public class MX28Servo extends AbstractServo
 {
     public MX28Servo(AbstractBus bus, int id)
     {
         super(bus, id);
 
-        bus.sendCommand(id,
-                        AbstractBus.INST_WRITE_DATA,
-                        new byte[] { 18, 4 },
-                        true );
+        // Return delay time
+        byte delay = 0x02;  // each unit = 2 usec
+        ensureEEPROM(new byte[] { 0x5, delay });
 
-/*
-  // PID
-  bus.sendCommand(id,
-                        AbstractBus.INST_WRITE_DATA,
-                        new byte[] { 26, 16, 10 },
-                        true );
+        // Set Alarm Shutdown (EEPROM)
+        ensureEEPROM(new byte[] { 18, 36 } );
 
-                        // punch
-        bus.sendCommand(id,
-                        AbstractBus.INST_WRITE_DATA,
-                        new byte[] { 48, 64, 0 },
-                        true );
-*/
+        // PID (RAM)
+        // byte p = 16;
+        // byte i = 10;
+        // byte d = 0;
+        // writeToRAM(new byte[] { 26, p, i, d }, true );
     }
 
+    public boolean isAddressEEPROM(int address)
+    {
+        return address < 0x19;
+    }
 
     public double getMinimumPositionRadians()
     {
@@ -37,42 +41,22 @@ public class MX28Servo extends AbstractServo
         return Math.PI;
     }
 
+    public void setPID(byte p, byte i, byte d)
+    {
+        writeToRAM(new byte[] { 26, p, i, d}, true);
+    }
+
     public void setGoal(double radians, double speedfrac, double torquefrac)
     {
-        int posv = ((int) ((radians+Math.PI)/(2*Math.PI)*4096)) & 0xfff;
+        radians = MathUtil.mod2pi(radians);
+        int posv = ((int) ((radians + Math.PI) / (2 * Math.PI) * 4096)) & 0xfff;
         int speedv = (int) (0x3ff * speedfrac);
         int torquev = (int) (0x3ff * torquefrac);
 
-        bus.sendCommand(id,
-                        AbstractBus.INST_WRITE_DATA,
-                        new byte[] { 0x1e,
-                                     (byte) (posv & 0xff), (byte) (posv >> 8),
-                                     (byte) (speedv & 0xff), (byte) (speedv >> 8),
-                                     (byte) (torquev & 0xff), (byte) (torquev >> 8) },
-                        true);
-
-/*
-        byte resp[] = bus.sendCommand(id,
-                                      AbstractBus.INST_READ_DATA,
-                                      new byte[] { 0x1e, 6 },
-                                      true);
-
-        resp = bus.sendCommand(id,
-                                      AbstractBus.INST_READ_DATA,
-                                      new byte[] { 14, 6 },
-                                      true);
-
-        dump(resp);
-        assert(false);
-
-*/
-    }
-    static void dump(byte buf[])
-    {
-        for (int i = 0; i < buf.length; i++)
-            System.out.printf("%02x ", buf[i] & 0xff);
-
-        System.out.printf("\n");
+        writeToRAM(new byte[] { 0x1e,
+                                (byte) (posv & 0xff), (byte) (posv >> 8),
+                                (byte) (speedv & 0xff), (byte) (speedv >> 8),
+                                (byte) (torquev & 0xff), (byte) (torquev >> 8) }, true);
     }
 
     /** Get servo status **/
@@ -110,3 +94,4 @@ public class MX28Servo extends AbstractServo
         return st;
      }
 }
+

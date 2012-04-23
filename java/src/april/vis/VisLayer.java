@@ -148,7 +148,7 @@ public class VisLayer implements Comparable<VisLayer>, VisSerializable
         if (showCameraPosition) {
 
             VisObject vo = new VisDepthTest(false,
-                                            new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.BOTTOM_RIGHT,
+                                            new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_RIGHT,
                                                                     new VzText(VzText.ANCHOR.BOTTOM_RIGHT_ROUND,
                                                                                "<<white,monospaced-12>>"+
                                                                                String.format("eye:    %15.5f %15.5f %15.5f\n" +

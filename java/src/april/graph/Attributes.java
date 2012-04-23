@@ -81,11 +81,20 @@ public class Attributes
         }
     }
 
+    public static Attributes copy(Attributes in)
+    {
+        // handle null check in one location
+        if (in  == null)
+            return null;
+
+        Attributes out = new Attributes();
+        out.attrs = (HashMap<String, Attr>) in.attrs.clone();
+        return out;
+    }
+
     public Attributes copy()
     {
-        Attributes a = new Attributes();
-        a.attrs = (HashMap<String, Attr>) attrs.clone();
-        return a;
+        return copy(this);
     }
 
     void setAttribute(String key, Object o)

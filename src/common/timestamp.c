@@ -29,7 +29,7 @@ void timestamp_to_timeval(int64_t v, struct timeval *tv)
     tv->tv_usec = timestamp_useconds(v);
 }
 
-void timestamp_to_timespec(int64_t v, struct timespec *ts) 
+void timestamp_to_timespec(int64_t v, struct timespec *ts)
 {
     ts->tv_sec  = timestamp_seconds(v);
     ts->tv_nsec = timestamp_useconds(v)*1000;
@@ -103,7 +103,7 @@ timestamp_sync (timestamp_sync_state_t * s, int64_t dev_ticks,
         s->sync_host_time = host_utime;
         s->dev_ticks_since_sync = 0;
         dev_utime = host_utime;
-    } 
+    }
     //printf ("%llu %llu %lld %lld\n", host_utime, dev_utime, time_err, dev_utime + s->time_offset);
 
     return dev_utime;

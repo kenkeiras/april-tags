@@ -73,7 +73,7 @@ public class VzCylinder implements VisObject, VisSerializable
     public void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl)
     {
         gl.glPushMatrix();
-        gl.glScaled(r, r, h);
+        gl.glScaled(r, r, h/2);
 
         for (Style style : styles) {
             if (style instanceof VzMesh.Style) {

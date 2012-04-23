@@ -31,41 +31,43 @@ public class Zoo
         VzLines.Style lineStyle = new VzLines.Style(Color.blue, 3);
         VzMesh.Style meshStyle = new VzMesh.Style(Color.red);
 
-        BufferedImage im = null;
+
+        ArrayList<VisObject>  objects = new ArrayList(Arrays.asList(new VisObject[] {
+                new VzAxes(),
+                new VzBox(lineStyle, meshStyle),
+                new VzCamera(),
+                new VzCircle(lineStyle, meshStyle),
+                new VzCone(meshStyle),
+                new VzCylinder(meshStyle),
+                new VzRobot(lineStyle, meshStyle),
+                new VzSphere(meshStyle),
+                new VzSquarePyramid(lineStyle, meshStyle),
+                new VzStar(lineStyle, meshStyle),
+                new VzText(VzText.ANCHOR.CENTER, "<<sansserif-10,scale=.1,dropshadow=false>>Hi!"),
+                new VzRectangle(1.6,1.0,lineStyle, meshStyle),
+                new VzTriangle(lineStyle, meshStyle),
+                }));
+
         try {
-            im = ImageIO.read(new File("/home/ebolson/earth.png"));
+            if (args.length > 0)
+                objects.add(new VzSphere(new VisTexture(ImageIO.read(new File(args[0])), VisTexture.REPEAT)));
         } catch (IOException ex) {
             System.out.println("ex: "+ex);
         }
 
-        VisObject objects[] = new VisObject[] { new VzAxes(),
-                                                new VzBox(lineStyle, meshStyle),
-                                                new VzCamera(),
-                                                new VzCircle(lineStyle, meshStyle),
-                                                new VzCone(meshStyle),
-                                                new VzCylinder(meshStyle),
-                                                new VzRobot(lineStyle, meshStyle),
-                                                new VzSphere(meshStyle),
-                                                //xxx Texture file missing new VzSphere(new VisTexture(im)),
-                                                new VzSquarePyramid(lineStyle, meshStyle),
-                                                new VzStar(lineStyle, meshStyle),
-                                                new VzText(VzText.ANCHOR.CENTER, "<<sansserif-10,scale=.1,dropshadow=false>>Hi!"),
-                                                new VzRectangle(1.6,1.0,lineStyle, meshStyle),
-                                                new VzTriangle(lineStyle, meshStyle),
-        };
 
         VisWorld.Buffer vb = vw.getBuffer("zoo");
-        int cols = (int) (Math.sqrt(objects.length) + 1);
-        int rows = objects.length / cols + 1;
+        int cols = (int) (Math.sqrt(objects.size()) + 1);
+        int rows = objects.size() / cols + 1;
         int grid = 10;
 
         for (int y = 0; y < rows; y++) {
             for (int x = 0; x < cols; x++) {
                 int idx = y*cols + x;
-                if (idx >= objects.length)
+                if (idx >= objects.size())
                     break;
 
-                VisObject vo = objects[idx];
+                VisObject vo = objects.get(idx);
 
                 vb.addBack(new VisChain(LinAlg.translate(x*grid + grid/2, rows*grid - (y*grid + grid/2), 0),
                                         new VisChain(LinAlg.translate(0,0,0.1),

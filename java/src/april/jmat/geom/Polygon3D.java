@@ -43,6 +43,12 @@ public class Polygon3D
         return poly2d.getTriangles();
     }
 
+    public int[] getTriangleIndices()
+    {
+        return poly2d.getTriangleIndices();
+    }
+
+
     public static void main(String args[])
     {
         ArrayList<double[]> points = new ArrayList<double[]>();

@@ -10,6 +10,7 @@ public class SimBus extends AbstractBus
 {
     Device devices[] = new Device[256];
     Timer timer = new Timer();
+    int messageDelay_ms;
 
     interface Device
     {
@@ -108,7 +109,7 @@ public class SimBus extends AbstractBus
                     registers[addr] = (byte) value;
                     if (addr == 31) {
                         int tmp = (registers[30] & 0xff) + ((registers[31]&0xff)<<8);
-                        radiansGoal = radiansRange * tmp / 1024.0;
+                        radiansGoal = radiansRange * tmp / (1.0*radiansQuant);
                     }
                     break;
 
@@ -143,6 +144,12 @@ public class SimBus extends AbstractBus
 
     public SimBus()
     {
+        messageDelay_ms = 10;
+    }
+
+    public SimBus(int messageDelay_ms)
+    {
+        this.messageDelay_ms = messageDelay_ms;
     }
 
     public void addAX12(int id)
@@ -184,6 +191,9 @@ public class SimBus extends AbstractBus
         if (dev == null)
             return null;
 
+        // delay as if a real command was sent
+        TimeUtil.sleep(messageDelay_ms);
+
         switch (instruction) {
             case AbstractBus.INST_PING:
                 break;
@@ -193,7 +203,8 @@ public class SimBus extends AbstractBus
                 int addr = parameters[0] & 0xff;
                 int length = parameters[1] & 0xff;
 
-                byte resp[] = new byte[length+1];
+                byte resp[] = new byte[length+2]; // [error, <data>, checksum]
+                resp[length+1] = 0;
 
                 synchronized(dev) {
                     for (int i = 0; i < length; i++)
@@ -209,7 +220,8 @@ public class SimBus extends AbstractBus
                 int addr = parameters[0] & 0xff;
                 int length = parameters.length - 1;
 
-                byte resp[] = new byte[1];
+                byte resp[] = new byte[2];  // [error, checksum]
+                resp[1] = 0;
 
                 int error = 0;
 

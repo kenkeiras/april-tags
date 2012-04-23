@@ -143,7 +143,7 @@ public class CholeskyDecomposition
 
     // Computes the determinant by squaring the product of the diagonals of L.
     // Returns 0 if the matrix A is not SPD
-    public double getDet()
+    public double det()
     {
         if (!isSpd)
             return 0;

@@ -225,7 +225,7 @@ public class VisCanvas extends JComponent implements VisSerializable
 
             vb.removeTemporary(lastResizeObject);
 
-            lastResizeObject = new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.CENTER_ROUND,
+            lastResizeObject = new VisPixCoords(VisPixCoords.ORIGIN.CENTER_ROUND,
                                                        new VisDepthTest(false,
                                                                         new VzText(VzText.ANCHOR.CENTER_ROUND,
                                                                                     "<<sansserif-12>>"+
@@ -363,7 +363,7 @@ public class VisCanvas extends JComponent implements VisSerializable
 
                 if (showFPS)
                     vb.addBack(new VisDepthTest(false,
-                                                new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.BOTTOM_LEFT,
+                                                new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT,
                                                                         new VzText(VzText.ANCHOR.BOTTOM_LEFT_ROUND,
                                                                                    "<<white,monospaced-12>>"+
                                                                                    String.format("%5.1f fps %c",

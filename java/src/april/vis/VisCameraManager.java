@@ -136,6 +136,9 @@ public interface VisCameraManager
     public void uiRotate(double q[]);
 
     public void goBookmark(CameraPosition pos);
+    public void goUI(CameraPosition pos);
+
+    public CameraPosition getCameraTarget();
 
     // Default the camera position to the default position
     public void uiDefault();

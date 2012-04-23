@@ -185,7 +185,7 @@ public class GraphTest implements ParameterListener
         }
 
         Graph.ErrorStats estats = g.getErrorStats();
-        vb.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.TOP_LEFT,
+        vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.TOP_LEFT,
                                            new VzText(VzText.ANCHOR.TOP_LEFT,
                                                        String.format("<<monospaced-12>>chi^2:   %15f\nchi^2/s: %15f\nMSE(xy): %15f",
                                                                      estats.chi2, estats.chi2normalized, estats.meanSquaredDistanceError))));

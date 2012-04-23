@@ -158,6 +158,10 @@ public class ParameterGUI extends JPanel
             boolean changed = v != value;
             value = v;
 
+            if (changed && jcb != null) {
+                jcb.setSelected(v);
+            }
+
             if (notifyIfChanged && changed)
                 notifyListeners(name);
         }

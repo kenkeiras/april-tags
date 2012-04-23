@@ -2,17 +2,29 @@ package april.vis;
 
 import java.awt.*;
 import java.io.*;
-
+import java.util.HashMap;
 /** A circle in the XY plane centered at zero. **/
 
 public class VzCircle implements VisObject, VisSerializable
 {
-    double r;
 
+    // Synchronized on lineMap to access both
+    public static HashMap<Integer, VzLines> lineMap = new HashMap<Integer, VzLines>();
+    public static HashMap<Integer, VzMesh> meshMap = new HashMap<Integer, VzMesh>();
+    static {
+        synchronized(lineMap) {
+        }
+    }
+
+
+    int npoints;
+    double r;
     Style styles[];
 
-    public static final VzLines lines = new VzLines(makeCircleOutline(16), VzLines.LINE_LOOP);
-    public static final VzMesh  mesh = new VzMesh(makeCircleFill(16), VzMesh.TRIANGLE_FAN);
+    private VzLines lines;
+    private VzMesh  mesh;
+
+
 
     public VzCircle(Style ... styles)
     {
@@ -22,8 +34,27 @@ public class VzCircle implements VisObject, VisSerializable
 
     public VzCircle(double r, Style ... styles)
     {
+        this(r, 16, styles); // Default points per circle is 16
+    }
+
+    public VzCircle(double r, int npoints, Style ... styles)
+    {
         this.r = r;
+        this.npoints = npoints;
         this.styles = styles;
+
+        synchronized(lineMap) {
+            lines = lineMap.get(npoints);
+            mesh = meshMap.get(npoints);
+
+            if (lines == null){
+                lineMap.put(npoints,new VzLines(makeCircleOutline(npoints), VzLines.LINE_LOOP));
+                meshMap.put(npoints,new VzMesh(makeCircleFill(npoints), VzMesh.TRIANGLE_FAN));
+
+                lines = lineMap.get(npoints);
+                mesh = meshMap.get(npoints);
+            }
+        }
     }
 
     public void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl, Style style)
@@ -46,7 +77,7 @@ public class VzCircle implements VisObject, VisSerializable
             render(vc, layer, rinfo, gl, style);
     }
 
-    static VisVertexData makeCircleOutline(int n)
+    public static VisVertexData makeCircleOutline(int n)
     {
         VisVertexData vd = new VisVertexData();
 
@@ -59,7 +90,7 @@ public class VzCircle implements VisObject, VisSerializable
         return vd;
     }
 
-    static VisVertexData makeCircleFill(int n)
+    public static VisVertexData makeCircleFill(int n)
     {
         VisVertexData vd = new VisVertexData();
 

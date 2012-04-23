@@ -69,7 +69,7 @@ get_unique_filename (const char * path, const char * basename,
 
     return filename;
 }
- 
+
 int write_fully(int fd, const void *b, int len)
 {
     int cnt=0;
@@ -119,7 +119,7 @@ int read_timeout(int fd, void *buf, int maxlen, int msTimeout)
     struct pollfd pfd;
     int len;
     int res;
-                                                                                             
+                                                                                            
     pfd.fd=fd;
     pfd.events=POLLIN;
 

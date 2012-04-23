@@ -55,8 +55,8 @@ public class ColorUtil
     }
 
     /**
-     * Converts a color to its hexadecimal string representation for VzText and
-     * HTML, e.g. #RRGGBBAA
+     * Converts a color to its hexadecimal string representation for VzText
+     * e.g. #AARRGGBB
      * @param Color
      */
     public static String toHexString(Color c)
@@ -76,12 +76,12 @@ public class ColorUtil
         if ( a.length() == 1)
             a = "0"+a;
 
-        return "#" + r + g + b + a;
+        return "#" + a + r + g + b;
     }
 
     /**
      * Converts a color to its hexadecimal string representation for VzText and
-     * HTML, e.g. #RRGGBBAA
+     * e.g. #AARRGGBB
      * @param int color in aarrggbb format (as from getRGB())
      */
     public static String toHexString(int color)
@@ -101,7 +101,7 @@ public class ColorUtil
         if ( a.length() == 1)
             a = "0"+a;
 
-        return "#" + r + g + b + a;
+        return "#" + a + r + g + b;
     }
 }
 

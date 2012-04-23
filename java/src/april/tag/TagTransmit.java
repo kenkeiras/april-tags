@@ -166,7 +166,7 @@ public class TagTransmit implements ParameterListener
                 vbOriginal.swap();
 
 
-                vbClock.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.BOTTOM_RIGHT,
+                vbClock.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_RIGHT,
                                                         new VzText(VzText.ANCHOR.BOTTOM_RIGHT,
                                                                     String.format("<<blue>>%8.2f ms", dt*1000))));
                 vbClock.swap();

@@ -114,6 +114,8 @@ public class JCamView
                              800 + (int) leftPanel.getPreferredSize().getWidth() + 30);
         jf.setSize(width,600);
         jf.setVisible(true);
+
+        new FeaturePollThread().start();
     }
 
     JPanel indentPanel(JComponent c)
@@ -189,6 +191,7 @@ public class JCamView
             }
         }
     }
+
     class PrintPanel extends JPanel
     {
         JButton printButton = new JButton("Print details");
@@ -376,118 +379,227 @@ public class JCamView
         }
     }
 
-    class FeatureControl extends JPanel implements ChangeListener, ActionListener
+    boolean recurse;
+
+    void featureChanged()
+    {
+        if (recurse)
+            return;
+
+        recurse = true;
+
+        for (Component jc : featurePanel.getComponents()) {
+            if (jc instanceof FeatureControl) {
+                ((FeatureControl) jc).updateDisplay();
+            }
+        }
+
+        recurse = false;
+    }
+
+    class FeaturePollThread extends Thread
+    {
+        public void run()
+        {
+            while (true) {
+                TimeUtil.sleep(250);
+
+                for (Component jc : featurePanel.getComponents()) {
+                    if (jc instanceof FeatureControl) {
+                        ((FeatureControl) jc).updateDisplay();
+                    }
+                }
+            }
+        }
+    }
+
+    class FeatureControl extends JPanel implements ChangeListener, ActionListener, FeedbackSlider.Listener
     {
         String name;
-        double min, max, value;
-        double scale = 100;
         ImageSource isrc;
         int idx;
 
         JLabel valueLabel = new JLabel();
-        JSlider js;
+
+        FeedbackSlider slider;
+//        JSlider jslider;
         JCheckBox jcb;
+        JComboBox jcombo;
+        ArrayList<FeatureChoice> choices = new ArrayList<FeatureChoice>();
+
+        static final int SLIDER_MAX = 1000;
 
         public FeatureControl(ImageSource isrc, int idx)
         {
             this.isrc = isrc;
             this.idx = idx;
 
-            min = isrc.getFeatureMin(idx);
-            max = isrc.getFeatureMax(idx);
-            value = isrc.getFeatureValue(idx);
-
-            if (gopt.getBoolean("verbose"))
-                System.out.printf("Feature %2d : %30s (%10.4f, %10.4f, %10.4f)\n", idx, isrc.getFeatureName(idx), min, max, value);
+            name = isrc.getFeatureName(idx);
 
             setLayout(new BorderLayout());
+            valueLabel.setVerticalAlignment(SwingConstants.NORTH);
 
-            if (min==0 && max==1) {
+            rebuild();
+            featureChanged();
+        }
+
+        class FeatureChoice
+        {
+            double value;
+            String name;
+
+            public String toString()
+            {
+                return name;
+            }
+        }
+
+        void rebuild()
+        {
+            String type = isrc.getFeatureType(idx);
+            double value = isrc.getFeatureValue(idx);
+
+            removeAll();
+
+            if (type.startsWith("c")) {
+                add(new JLabel(name), BorderLayout.WEST);
+                String tt[] = type.split(",");
+
+                int selectedIndex = 0;
+
+                choices.clear();
+
+                for (int idx = 1; idx < tt.length; idx++) {
+                    String toks[] = tt[idx].split("=");
+                    if (toks.length==2) {
+                        FeatureChoice choice = new FeatureChoice();
+                        choice.value = Double.parseDouble(toks[0]);
+                        choice.name = toks[1];
+
+                        if (choice.value == value)
+                            selectedIndex = choices.size();
+
+                        choices.add(choice);
+
+                        System.out.println(toks[1]);
+                    }
+                }
+
+                jcombo = new JComboBox(choices.toArray(new FeatureChoice[0]));
+
+                if (choices.size() == 0) {
+                    setVisible(false);
+                    return;
+                }
+                jcombo.setSelectedIndex(selectedIndex);
+                jcombo.addActionListener(this);
+                add(jcombo, BorderLayout.EAST);
+            } else if (type.startsWith("b")) {
+                // special case: boolean
                 jcb = new JCheckBox(isrc.getFeatureName(idx), value==1);
                 jcb.addActionListener(this);
                 add(jcb, BorderLayout.CENTER);
-            } else {
-                double safeValue = Math.min(Math.max(value, min), max);
-                js = new JSlider((int) (min*scale), (int) (max*scale), (int) (safeValue*scale));
-                updateSlider();
+            } else if (type.startsWith("i")) {
+                String tt[] = type.split(",");
+                int min = Integer.parseInt(tt[1]);
+                int max = Integer.parseInt(tt[2]);
 
-                js.addChangeListener(this);
+                slider = new FeedbackSlider(min, max, value, value, true);
+                slider.minFormatPosition = 0;
+                slider.maxFormatPosition = 1;
+                slider.actualFormatPosition = .5;
+                slider.goalFormatPosition = -1;
+                slider.addListener(this);
                 add(new JLabel(isrc.getFeatureName(idx)), BorderLayout.NORTH);
-                add(js, BorderLayout.CENTER);
+                add(slider, BorderLayout.CENTER);
                 add(valueLabel, BorderLayout.EAST);
-            }
+            } else if (type.startsWith("f")) {
+                String tt[] = type.split(",");
+                double min = Double.parseDouble(tt[1]);
+                double max = Double.parseDouble(tt[2]);
 
-            updateLabel();
+                slider = new FeedbackSlider(min, max, value, value, true);
+                slider.minFormatPosition = 0;
+                slider.minFormatString="%.3f";
+                slider.maxFormatString="%.3f";
+                slider.actualFormatString="%.3f";
+
+                slider.maxFormatPosition = 1;
+                slider.actualFormatPosition = .5;
+                slider.goalFormatPosition = -1;
+                slider.addListener(this);
+                add(new JLabel(isrc.getFeatureName(idx)), BorderLayout.NORTH);
+                add(slider, BorderLayout.CENTER);
+                add(valueLabel, BorderLayout.EAST);
+            } else {
+                System.out.println("Unknown feature type: "+type);
+            }
         }
 
-        void updateLabel()
+        void updateDisplay()
         {
-            value = isrc.getFeatureValue(idx);
-            if (value == (int) value)
-                valueLabel.setText(""+value);
-            else
-                valueLabel.setText(String.format("%.2f", value));
-            valueLabel.setVerticalAlignment(SwingConstants.NORTH);
+            if (slider != null) {
+                String type = isrc.getFeatureType(idx);
+                String tt[] = type.split(",");
+                double min = Double.parseDouble(tt[1]);
+                double max = Double.parseDouble(tt[2]);
+
+                slider.setMinimum(min);
+                slider.setMaximum(max);
+                slider.setActualValue(isrc.getFeatureValue(idx));
+            }
+
+/*            if (jcombo != null) {
+                int value = (int) isrc.getFeatureValue(idx);
+                for (int i = 0; i < choices.size(); i++) {
+                    if (choices.get(i).value == value)
+                        jcombo.setSelectedIndex(i);
+                        }
+                        }
+*/
+        }
+
+        public void goalValueChanged(FeedbackSlider ss, double goalvalue)
+        {
+            isrc.setFeatureValue(idx, goalvalue);
         }
 
         public void actionPerformed(ActionEvent e)
         {
+            if (jcombo != null) {
+                FeatureChoice choice = (FeatureChoice) jcombo.getSelectedItem();
+                int res = isrc.setFeatureValue(idx, choice.value);
+            }
+
             if (jcb != null) {
                 if (gopt.getBoolean("verbose"))
                     System.out.printf("isSelected: %s\n", jcb.isSelected() ? "yes" : "no");
                 int res = isrc.setFeatureValue(idx, jcb.isSelected() ? 1 : 0);
-                jcb.setSelected(isrc.getFeatureValue(idx) == 1 ? true : false);
                 if (res != 0)
                     System.out.println("Error setting feature");
             }
-            updateLabel();
-        }
 
-        private void updateSlider()
-        {
-            // extents
-            js.setMinimum((int) (min*scale));
-            js.setMaximum((int) (max*scale));
-
-            // label table
-            Hashtable labelTable = new Hashtable();
-
-            JLabel minLabel = new JLabel(String.format("%.2f", min));
-            JLabel maxLabel = new JLabel(String.format("%.2f", max));
-
-            Font f = minLabel.getFont();
-            f = new Font( f.getName(), f.getStyle(), f.getSize() - 3);
-            minLabel.setFont(f);
-            maxLabel.setFont(f);
-
-            labelTable.put(new Integer((int) (min*scale)), minLabel);
-            labelTable.put(new Integer((int) (max*scale)), maxLabel);
-
-            js.setLabelTable(labelTable);
-            js.setPaintLabels(true);
+            featureChanged();
         }
 
         public void stateChanged(ChangeEvent e)
         {
-            if (js != null) {
-                int res = isrc.setFeatureValue(idx, js.getValue()/scale);
+            if (slider != null) {
+                double min = isrc.getFeatureMin(idx);
+                double max = isrc.getFeatureMax(idx);
 
-                min = isrc.getFeatureMin(idx);
-                max = isrc.getFeatureMax(idx);
+                slider.setMaximum(max);
+                slider.setMinimum(min);
+                slider.setActualValue(isrc.getFeatureValue(idx));
 
-                updateSlider();
-
-                if (gopt.getBoolean("verbose"))
-                    System.out.printf("%s: value: desired %f actual %f min/max: (%f, %f)\n",
-                                      isrc.getFeatureName(idx),
-                                      js.getValue()/scale,
-                                      isrc.getFeatureValue(idx),
-                                      min, max);
-                if (res != 0)
-                    System.out.println("Error setting feature");
+//                double v = jslider.getValue(); //min + (max-min)*jslider.getValue() / SLIDER_MAX;
+//                System.out.printf("setting %15f\n", v);
+//                int res = isrc.setFeatureValue(idx, v);
+//                if (res != 0)
+//                    System.out.println("Error setting feature");
             }
 
-            updateLabel();
+            featureChanged();
         }
     }
 
@@ -511,9 +623,20 @@ public class JCamView
         if (true) {
             featurePanel.removeAll();
             int nfeatures = isrc.getNumFeatures();
-            featurePanel.setLayout(new GridLayout(nfeatures, 1));
+            featurePanel.setLayout(new VFlowLayout());
 
             for (int i = 0; i < nfeatures; i++) {
+
+                if (i > 0) {
+                    String name0 = isrc.getFeatureName(i-1);
+                    String name1 = isrc.getFeatureName(i);
+
+                    String nt0[] = name0.split("-");
+                    String nt1[] = name1.split("-");
+                    if (!(nt0[0].equals(nt1[0])))
+                        featurePanel.add(new JSeparator());
+                }
+
                 featurePanel.add(new FeatureControl(isrc, i));
             }
 

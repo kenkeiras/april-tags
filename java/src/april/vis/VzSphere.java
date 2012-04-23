@@ -204,11 +204,13 @@ public class VzSphere implements VisObject, VisSerializable
         this.meshStyle = meshStyle;
     }
 
+    // Make sure VisTexture.REPEAT is enabled
     public VzSphere(VisTexture texture)
     {
         this(1, texture);
     }
 
+    // Make sure VisTexture.REPEAT is enabled
     public VzSphere(double r, VisTexture texture)
     {
         this.r = r;

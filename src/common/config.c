@@ -443,7 +443,7 @@ parse_right_side (Parser * p, ConfigElement * el)
         print_msg (p, "Error: unexpected token \"%s\", expected semicolon\n", str);
         goto fail;
     }
-    
+   
     return 0;
 
 fail:
@@ -606,7 +606,7 @@ config_parse_default (void)
     return conf;
 }
 
-int 
+int
 config_get_default_src (char *buf, int buflen)
 {
     char * path = getenv ("DGC_CONFIG_PATH");
@@ -697,7 +697,7 @@ cast_to_double (const char * key, const char * val, double * out)
     err("WARNING: Config: could not find key %s!\n", (key));
 
 
-int 
+int
 config_has_key (Config *conf, const char *key)
 {
     return (find_key (conf->root, key, 1) != NULL);
@@ -940,7 +940,7 @@ config_get_str_array (Config * conf, const char * key, char ** vals, int len)
     return i;
 }
 
-int 
+int
 config_get_array_len (Config *conf, const char * key)
 {
     ConfigElement * el = find_key (conf->root, key, 1);
@@ -960,7 +960,7 @@ config_get_str_array_alloc (Config * conf, const char * key)
 
     // + 1 so that the list is null terminated.
     char **data = calloc(el->num_values + 1, sizeof(char*));
-    
+   
     int i;
     for (i = 0; i < el->num_values; i++) {
         data[i] = strdup(el->values[i]);

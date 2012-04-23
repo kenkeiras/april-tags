@@ -54,6 +54,9 @@ public abstract class ImageSource
         return getFormat(getCurrentFormatIndex());
     }
 
+    public abstract boolean isFeatureAvailable(int idx);
+    public abstract String getFeatureType(int idx);
+
     public int getNumFeatures()
     {
         return 0;
@@ -66,11 +69,13 @@ public abstract class ImageSource
 
     public double getFeatureMin(int idx)
     {
+        assert(false); //deprecated
         return 0;
     }
 
     public double getFeatureMax(int idx)
     {
+        assert(false); //deprecated
         return 0;
     }
 

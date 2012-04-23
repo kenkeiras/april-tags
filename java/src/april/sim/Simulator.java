@@ -304,7 +304,7 @@ public class Simulator implements VisConsole.Listener
                 }
             }
             if (collide)
-                vb.addBack(new VisPixelCoordinates(VisPixelCoordinates.ORIGIN.BOTTOM_RIGHT,
+                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_RIGHT,
                                                    new VzText(VzText.ANCHOR.BOTTOM_RIGHT, "<<blue,monospaced-12>>Collision")));
 
             vb.swap();

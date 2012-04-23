@@ -50,7 +50,8 @@ public class VisVertexData implements VisAbstractVertexData, VisSerializable
 
     public VisVertexData(ArrayList<double[]> d)
     {
-        add(d);
+        if (d.size() > 0)
+            add(d);
     }
 
     /** Add a single vertex: PERFORMANCE WARNING. **/
@@ -304,6 +305,9 @@ public class VisVertexData implements VisAbstractVertexData, VisSerializable
             id = VisUtil.allocateID();
 
         Block b = blocks.get(0);
+        if (b.nv == 0)/*XXX: No vertices to render*/
+            return;
+
         if (b.vf != null)
             gl.gldBind(GL.VBO_TYPE_VERTEX, id, b.nv, b.dim, b.vf);
         else

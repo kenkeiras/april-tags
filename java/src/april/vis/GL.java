@@ -87,7 +87,8 @@ public class GL
     public static final int GL_BLEND=0x0be2, GL_SRC_ALPHA=0x0302, GL_ONE_MINUS_SRC_ALPHA=0x303, GL_ZERO = 0, GL_ONE=1;
 
     // polygon mode
-    public static final int GL_FILL = 0x1b02, GL_FRONT=0x0404, GL_BACK=0x0405;
+    public static final int GL_POINT = 0x1b00, GL_LINE = 0x1b01, GL_FILL = 0x1b02, GL_FRONT=0x0404, GL_BACK=0x0405;
+
     public static final int GL_POLYGON_OFFSET_FILL = 0x8037, GL_POLYGON_OFFSET_LINE = 0x2a02;
 
     public static final int GL_POINT_SMOOTH = 0x0b10;

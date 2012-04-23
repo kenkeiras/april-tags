@@ -31,6 +31,7 @@ public class DynamixelGUI
 
         jf = new JFrame("DynamixelGUI");
         jf.setLayout(new BorderLayout());
+        jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         if (bus instanceof SerialBus) {
             jf.add(new SerialBusPanel(), BorderLayout.NORTH);

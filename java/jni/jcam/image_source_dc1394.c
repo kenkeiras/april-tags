@@ -1738,8 +1738,8 @@ image_source_t *image_source_dc1394_open(url_parser_t *urlp)
     isrc->set_named_format = set_named_format;
     isrc->num_features = num_features;
     isrc->get_feature_name = get_feature_name;
-    isrc->get_feature_min = get_feature_min;
-    isrc->get_feature_max = get_feature_max;
+//    isrc->get_feature_min = get_feature_min;
+//    isrc->get_feature_max = get_feature_max;
     isrc->get_feature_value = get_feature_value;
     isrc->set_feature_value = set_feature_value;
     isrc->start = start;
