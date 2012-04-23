@@ -40,7 +40,7 @@ public class ExampleStereoRectifier
         // load calibrations
         cameras = new CameraSet(config);
 
-        leftView = cameras.getCalibration(0);
+        leftView  = cameras.getCalibration(0);
         rightView = cameras.getCalibration(1);
 
         //rightView = new ScaledView(0.5, rightView); // for testing
@@ -49,7 +49,7 @@ public class ExampleStereoRectifier
         // make views
         createViewsExternal(inscribed);
 
-        assert(cameras.getSize() == views.size());
+        assert(cameras.size() == views.size());
 
         // make rasterizers
         {
@@ -58,8 +58,8 @@ public class ExampleStereoRectifier
             double C2G_input[][] = cameras.getExtrinsicsMatrix(0);
             double C2G_output[][] = extrinsics.get(0);
 
-            rasterizers.add(new BilinearRasterizer(input, LinAlg.inverse(C2G_input),
-                                                   output, LinAlg.inverse(C2G_output))); // XXX change cameraset to G2C?
+            rasterizers.add(new BilinearRasterizer(input, C2G_input,
+                                                   output, C2G_output)); // XXX change cameraset to G2C?
         }
         {
             View input = rightView;
@@ -67,10 +67,10 @@ public class ExampleStereoRectifier
             double C2G_input[][] = cameras.getExtrinsicsMatrix(1);
             double C2G_output[][] = extrinsics.get(1);
 
-            rasterizers.add(new BilinearRasterizer(input, LinAlg.inverse(C2G_input),
-                                                   output, LinAlg.inverse(C2G_output))); // XXX change cameraset to G2C?
+            rasterizers.add(new BilinearRasterizer(input, C2G_input,
+                                                   output, C2G_output)); // XXX change cameraset to G2C?
         }
-        assert(cameras.getSize() == rasterizers.size());
+        assert(cameras.size() == rasterizers.size());
 
         // output images
         rasterizeImage( leftImage, rasterizers.get(0),  leftOutputPath);
@@ -100,8 +100,8 @@ public class ExampleStereoRectifier
 
     private void createViewsExternal(boolean inscribed)
     {
-        System.out.printf("Got %d cameras\n", cameras.getSize());
-        assert(cameras.getSize() == 2);
+        System.out.printf("Got %d cameras\n", cameras.size());
+        assert(cameras.size() == 2);
 
         StereoRectification sr;
 

@@ -109,7 +109,7 @@ public class CameraSet
     ////////////////////////////////////////////////////////////////////////////////
     // Get data
 
-    public int getSize()
+    public int size()
     {
         return cameras.size();
     }

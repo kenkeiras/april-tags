@@ -36,8 +36,9 @@ public class SingleCameraCalibrator implements ParameterListener
     // Calibrator
     CameraCalibrator    calibrator;
     boolean             capture = false;
+    boolean             captureOnce = false;
 
-    public SingleCameraCalibrator(String url)
+    public SingleCameraCalibrator(String url, double tagSpacing_m)
     {
         ////////////////////////////////////////////////////////////////////////////////
         // GUI setup
@@ -49,7 +50,7 @@ public class SingleCameraCalibrator implements ParameterListener
         vc2 = new VisCanvas(vl2);
 
         pg = new ParameterGUI();
-        pg.addButtons("capture","Toggle image capturing");
+        pg.addButtons("captureOnce","Capture once","capture","Toggle image capturing");
         pg.addListener(this);
 
         jf = new JFrame("Single camera calibrator");
@@ -84,7 +85,7 @@ public class SingleCameraCalibrator implements ParameterListener
         classnames.add("april.camera.cal.SimpleCaltechCalibration");
 
         calibrator = new CameraCalibrator(classnames, new Tag36h11(),
-                                          0.0254, vl2);
+                                          tagSpacing_m, vl2);
 
         // Threads
         new ProcessingThread().start();
@@ -107,6 +108,23 @@ public class SingleCameraCalibrator implements ParameterListener
                 vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.TOP_LEFT,
                                             new VzText(VzText.ANCHOR.TOP_LEFT,
                                                        "<<monospaced-12,green>>Capturing enabled")));
+            }
+            vb.swap();
+        }
+
+        if (name.equals("captureOnce")) {
+            vb = vw1.getBuffer("HUD");
+
+            if (captureOnce) {
+                captureOnce = false;
+                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.TOP_LEFT,
+                                            new VzText(VzText.ANCHOR.TOP_LEFT,
+                                                       "<<monospaced-12,red>>Capturing disabled")));
+            } else {
+                captureOnce = true;
+                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.TOP_LEFT,
+                                            new VzText(VzText.ANCHOR.TOP_LEFT,
+                                                       "<<monospaced-12,green>>Waiting to capture")));
             }
             vb.swap();
         }
@@ -153,8 +171,16 @@ public class SingleCameraCalibrator implements ParameterListener
 
                 draw(im);
 
-                if (capture)
+                if (capture || captureOnce) {
                     process(im);
+
+                    if (captureOnce) {
+                        captureOnce = false;
+                        vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.TOP_LEFT,
+                                                    new VzText(VzText.ANCHOR.TOP_LEFT,
+                                                               "<<monospaced-12,red>>Capturing disabled")));
+                    }
+                }
                 TimeUtil.sleep(100);
             }
         }
@@ -187,13 +213,24 @@ public class SingleCameraCalibrator implements ParameterListener
 
     class GraphUpdateThread extends Thread
     {
+        long last = 0;
+
         public void run()
         {
             while (true) {
-                if (calibrator != null)
-                    calibrator.iterate();
+                if (calibrator == null) {
+                    TimeUtil.sleep(33);
+                    continue;
+                }
 
-                TimeUtil.sleep(33);
+                calibrator.iterate();
+
+                long now = TimeUtil.utime();
+                double dt = (now - last) * 1.0E-6;
+                if (dt > 0.030) {
+                    calibrator.draw();
+                    last = now;
+                }
             }
         }
     }
@@ -204,12 +241,14 @@ public class SingleCameraCalibrator implements ParameterListener
 
         opts.addBoolean('h',"help",false,"See this help screen");
         opts.addString('u',"url","","Camera URL");
+        opts.addDouble('m',"spacing",0.0254,"Spacing between tags (meters)");
 
         if (!opts.parse(args)) {
             System.out.println("Option error: "+opts.getReason());
 	    }
 
         String url = opts.getString("url");
+        double spacing = opts.getDouble("spacing");
 
         if (opts.getBoolean("help") || url.isEmpty()){
             System.out.println("Usage:");
@@ -217,6 +256,6 @@ public class SingleCameraCalibrator implements ParameterListener
             System.exit(1);
         }
 
-        new SingleCameraCalibrator(url);
+        new SingleCameraCalibrator(url, spacing);
     }
 }

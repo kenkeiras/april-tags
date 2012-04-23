@@ -116,10 +116,17 @@ public class GTagEdge extends GEdge
                                             GNode            gn,
                                             double[][]       Jn)
     {
+
+        double eps = 0.01;
+        if (gn == cameraIntrinsics)
+            eps = 0.01;
+        else if (gn == cameraExtrinsics)
+            eps = 0.1;
+        else if (gn == mosaicExtrinsics)
+            eps = 0.1;
+
         final double s[] = LinAlg.copy(gn.state);
         for (int i=0; i < s.length; i++) {
-
-            double eps = 0.0001;
 
             gn.state[i] = s[i] + eps;
             double res_plus[] = getResidual(cameraIntrinsics, cameraExtrinsics, mosaicExtrinsics);

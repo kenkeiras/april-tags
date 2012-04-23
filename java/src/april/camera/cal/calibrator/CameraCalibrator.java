@@ -47,6 +47,8 @@ public class CameraCalibrator
                                        {  0, -1,  0,  0 } ,
                                        {  0,  0,  0,  1 } };
 
+    int counter = 0;
+
     private static class CameraWrapper
     {
         public ParameterizableCalibration cal;
@@ -101,7 +103,9 @@ public class CameraCalibrator
         VzGrid.addGrid(vw);
 
         g = new Graph();
-        solver = new CholeskySolver(g, new MinimumDegreeOrdering());
+        CholeskySolver gs = new CholeskySolver(g, new MinimumDegreeOrdering());
+        gs.verbose = false;
+        solver = gs;
 
         generateTagPositions(tf, metersPerTag);
     }
@@ -198,6 +202,10 @@ public class CameraCalibrator
 
     public void draw()
     {
+        // don't try to draw until we have a few images
+        if (images.size() < 3)
+            return;
+
         vb = vw.getBuffer("Extrinsics - cameras");
         for (CameraWrapper cam : cameras) {
 
@@ -286,9 +294,9 @@ public class CameraCalibrator
 
         solver.iterate();
 
-        printCalibrationBlock();
-
-        draw();
+        if ((counter % 100) == 0)
+            printCalibrationBlock();
+        counter++;
     }
 
     public void printCalibrationBlock()
