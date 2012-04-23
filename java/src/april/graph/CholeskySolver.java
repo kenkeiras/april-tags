@@ -119,9 +119,7 @@ public class CholeskySolver implements GraphSolver
                                   A.getNz(),
                                   A.getNzFrac()*100);
 
-            CholeskyDecomposition cd = new CholeskyDecomposition(A, verbose);
-            L = cd.getL();
-            x = cd.solve(B);
+            x = solveForX(A, B);
 
         } else {
             Matrix SA = makeSymbolicA();
@@ -183,14 +181,12 @@ public class CholeskySolver implements GraphSolver
                                   PAP.getNz(),
                                   PAP.getNzFrac()*100);
 
-            CholeskyDecomposition cd = new CholeskyDecomposition(PAP, verbose);
-            L = cd.getL();
-            x = cd.solve(PB);
+            x = solveForX(PAP, PB);
             x.inversePermuteRows(perm);
 
             if (false) {
                 /** Verify that matrix is sparse where it's supposed to be. **/
-                Matrix U = cd.getL().transpose();
+                Matrix U = L.transpose();
                 for (int row = 0; row < U.getRowDimension(); row++) {
                     CSRVec csr = (CSRVec) U.getRow(row);
                     csr.filterZeros(0.0000001);
@@ -214,9 +210,15 @@ public class CholeskySolver implements GraphSolver
             System.out.printf("Total      : %15.5f\n\n", tic.totalTime());
 
     }
-
     public Matrix getR()
     {
         return L;
+    }
+
+    Matrix solveForX(Matrix PAP, Matrix PB)
+    {
+        CholeskyDecomposition cd = new CholeskyDecomposition(PAP, verbose);
+        L = cd.getL();
+        return cd.solve(PB);
     }
 }
