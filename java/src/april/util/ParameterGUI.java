@@ -564,6 +564,8 @@ public class ParameterGUI extends JPanel
     public void addInt(String name, String desc, int min, int max, int value)
     {
         IntegerValue val = new IntegerValue(name, desc, min, max, value);
+
+        assert(parammap.get(name) == null);
         parammap.put(name, val);
 
         gA.gridy = row;
@@ -577,6 +579,8 @@ public class ParameterGUI extends JPanel
     public void addIntSlider(String name, String desc, int min, int max, int value)
     {
         IntegerValue val = new IntegerValue(name, desc, min, max, value);
+
+        assert(parammap.get(name) == null);
         parammap.put(name, val);
 
         gA.gridy = row;
@@ -599,6 +603,8 @@ public class ParameterGUI extends JPanel
     public void addDouble(String name, String desc, double min, double max, double value)
     {
         DoubleValue val = new DoubleValue(name, desc, min, max, value);
+
+        assert(parammap.get(name) == null);
         parammap.put(name, val);
 
         gA.gridy = row;
@@ -612,6 +618,8 @@ public class ParameterGUI extends JPanel
     public void addDoubleSlider(String name, String desc, double min, double max, double value)
     {
         DoubleValue val = new DoubleValue(name, desc, min, max, value);
+
+        assert(parammap.get(name) == null);
         parammap.put(name, val);
 
         gA.gridy = row;
@@ -628,6 +636,8 @@ public class ParameterGUI extends JPanel
     public void addString(String name, String desc, String value)
     {
         StringValue val = new StringValue(name, desc, null, value);
+
+        assert(parammap.get(name) == null);
         parammap.put(name, val);
 
         gA.gridy = row;
@@ -644,6 +654,8 @@ public class ParameterGUI extends JPanel
     public void addChoice(String name, String desc, String values[], int value)
     {
         StringValue val = new StringValue(name, desc, values, values[value]);
+
+        assert(parammap.get(name) == null);
         parammap.put(name, val);
 
         gA.gridy = row;
@@ -658,6 +670,8 @@ public class ParameterGUI extends JPanel
     public void addBoolean(String name, String desc, boolean value)
     {
         BooleanValue val = new BooleanValue(name, desc, value);
+
+        assert(parammap.get(name) == null);
         parammap.put(name, val);
 
         gA.gridy = row;
@@ -679,6 +693,8 @@ public class ParameterGUI extends JPanel
 
             String name = (String) args[i*2];
             String desc = (String) args[i*2+1];
+
+            assert(parammap.get(name) == null);
 
             JButton button = new JButton(desc);
             button.addActionListener(new ActionNotifier(name));
@@ -708,6 +724,8 @@ public class ParameterGUI extends JPanel
             boolean value = (Boolean) args[i*3+2];
 
             BooleanValue bv = new BooleanValue(name, desc, value);
+
+            assert(parammap.get(name) == null);
             parammap.put(name, bv);
 
             p.add(bv.getCheckBox());
