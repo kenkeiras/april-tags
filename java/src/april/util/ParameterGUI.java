@@ -25,6 +25,8 @@ public class ParameterGUI extends JPanel
     GridBagConstraints gA, gB, gC, gD, gBC, gCD, gBCD, gABCD;
     ArrayList<ParameterListener> listeners = new ArrayList<ParameterListener>();
 
+    HashMap<String, JButton> buttonmap = null;  // buttons are special case (no value)
+
     // If setDepth > 0, we are programmatically setting a
     // parameter. We use this to inhibit notifyListeners. This is an
     // integer, rather than a flag, so that if one parameter ends up
@@ -681,6 +683,9 @@ public class ParameterGUI extends JPanel
             JButton button = new JButton(desc);
             button.addActionListener(new ActionNotifier(name));
 
+            if (buttonmap == null)
+                buttonmap = new HashMap<String, JButton>();
+            buttonmap.put(name, button);
             p.add(button);
         }
 
@@ -847,8 +852,14 @@ public class ParameterGUI extends JPanel
     public void setEnabled(String name, boolean e)
     {
         PValue p = parammap.get(name);
-        assert(p!=null);
-        p.setEnabled(e);
+        if (p == null) {
+            JButton button = null;
+            if (buttonmap != null)
+                button = buttonmap.get(name);
+            assert(button != null);
+            button.setEnabled(e);
+        } else
+            p.setEnabled(e);
     }
 
     /** Deprecated. **/
