@@ -1,6 +1,7 @@
 package april.image;
 
 import april.jmat.*;
+import april.util.*;
 
 import java.util.*;
 

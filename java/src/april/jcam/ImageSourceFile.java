@@ -93,6 +93,18 @@ public class ImageSourceFile extends ImageSource
     {
     }
 
+    public String getFeatureType(int idx)
+    {
+        assert(false); // not implemented
+        return null;
+    }
+
+    public boolean isFeatureAvailable(int idx)
+    {
+        assert(false); // not implemented
+        return false;
+    }
+
     // ignores timeout.
     public byte[] getFrame()
     {
