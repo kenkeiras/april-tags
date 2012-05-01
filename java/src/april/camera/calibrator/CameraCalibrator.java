@@ -1,9 +1,9 @@
-package april.camera.cal.calibrator;
+package april.camera.calibrator;
 
 import java.awt.image.*;
 import java.util.*;
 
-import april.camera.cal.*;
+import april.camera.*;
 import april.config.*;
 import april.graph.*;
 import april.jmat.*;
@@ -14,7 +14,7 @@ import april.util.*;
 import april.vis.*;
 
 /** Camera calibrator class. Takes a list of full-length class names (e.g.
- * april.camera.cal.CaltechCalibration) an AprilTag family for tag detection,
+ * april.camera.CaltechCalibration) an AprilTag family for tag detection,
  * and (optionally) a VisWorld for debugging. Once instantiated, add sets of
  * images (one image per camera) with the addImages method.
  */
@@ -324,12 +324,16 @@ public class CameraCalibrator
             System.out.println(cam.cal.getCalibrationString());
 
             double state[] = new double[6];
-            if (cam.cameraExtrinsics != null)
+            if (cam.cameraExtrinsics != null) {
                 state = LinAlg.copy(g.nodes.get(cam.cameraExtrinsicsIndex).state);
+                double C2L[][] = LinAlg.xyzrpyToMatrix(state);
+                double L2C[][] = LinAlg.inverse(C2L);
+                state = LinAlg.matrixToXyzrpy(L2C);
+            }
 
             String s;
             s = String.format(  "        extrinsics {\n");
-            s = String.format("%s            // Camera-To-Global coordinate transformation\n", s);
+            s = String.format("%s            // Global-To-Camera coordinate transformation\n", s);
             s = String.format("%s            position = [%11.6f,%11.6f,%11.6f ];\n", s, state[0], state[1], state[2]);
             s = String.format("%s            rollpitchyaw_degrees = [%11.6f,%11.6f,%11.6f ];\n",
                               s, state[3]*180/Math.PI, state[4]*180/Math.PI, state[5]*180/Math.PI);
@@ -392,7 +396,7 @@ public class CameraCalibrator
 
     private ParameterizableCalibration getDefaultCalibration(String classname, int width, int height)
     {
-        if (classname.equals("april.camera.cal.CaltechCalibration")) {
+        if (classname.equals("april.camera.CaltechCalibration")) {
 
             // XXX cheating
             //double fc[] = new double[] { 650, 650 };
@@ -406,7 +410,7 @@ public class CameraCalibrator
             return new CaltechCalibration(fc, cc, kc, skew, width, height);
         }
 
-        if (classname.equals("april.camera.cal.SimpleCaltechCalibration")) {
+        if (classname.equals("april.camera.SimpleCaltechCalibration")) {
 
             // XXX cheating
             //double fc[] = new double[] { 650, 650 };

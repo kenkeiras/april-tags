@@ -1,4 +1,4 @@
-package april.camera.cal;
+package april.camera;
 
 import java.util.*;
 
@@ -7,7 +7,7 @@ import april.jmat.*;
 import april.util.*;
 
 /** Container class for camera calibration results. Includes both the
-  * intrinsics and extrinsics of the calibrated cameras.
+  * intrinsics and extrinsics (local to camera) of the calibrated cameras.
   */
 public class CameraSet
 {
@@ -18,7 +18,7 @@ public class CameraSet
     {
         public String       name;
         public Calibration  cal;
-        public double[][]   extrinsics;
+        public double[][]   L2C;
     }
 
     public CameraSet()
@@ -57,7 +57,7 @@ public class CameraSet
                                                                   rpy[0]*Math.PI/180 ,
                                                                   rpy[1]*Math.PI/180 ,
                                                                   rpy[2]*Math.PI/180 });
-            cam.extrinsics = ext;
+            cam.L2C = ext;
 
             // Add to list
             cameras.add(cam);
@@ -79,7 +79,7 @@ public class CameraSet
 
         cam.name = name;
         cam.cal = cal;
-        cam.extrinsics = ext;
+        cam.L2C = ext;
 
         cameras.add(cam);
 
@@ -90,30 +90,17 @@ public class CameraSet
     }
 
     ////////////////////////////////////////////////////////////////////////////////
-    // Set internals
-    public void setName(int idx, String name)
-    {
-        cameras.get(idx).name = name;
-    }
-
-    public void setCalibration(int idx, Calibration cal)
-    {
-        cameras.get(idx).cal = cal;
-    }
-
-    public void setExtrinsicsMatrix(int idx, double ext[][])
-    {
-        cameras.get(idx).extrinsics = ext;
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////
     // Get data
 
+    /** Number of cameras.
+      */
     public int size()
     {
         return cameras.size();
     }
 
+    /** Find the index for this camera name.
+      */
     public int getIndex(String name)
     {
         Integer idx = nameMap.get(name);
@@ -123,11 +110,15 @@ public class CameraSet
         return idx;
     }
 
+    /** Get the name of this camera.
+      */
     public String getName(int idx)
     {
         return cameras.get(idx).name;
     }
 
+    /** Get Calibration object for this camera.
+      */
     public Calibration getCalibration(String name)
     {
         Integer idx = nameMap.get(name);
@@ -137,22 +128,30 @@ public class CameraSet
         return getCalibration(idx);
     }
 
+    /** Get Calibration object for this camera.
+      */
     public Calibration getCalibration(int idx)
     {
         return cameras.get(idx).cal;
     }
 
-    public double[][] getExtrinsicsMatrix(String name)
+    /** Extrinsics matrix to transform from the local frame (shared between cameras)
+      * to the coordinate frame of this camera.
+      */
+    public double[][] getExtrinsicsL2C(String name)
     {
         Integer idx = nameMap.get(name);
         if (idx == null)
             return null;
 
-        return getExtrinsicsMatrix(idx);
+        return getExtrinsicsL2C(idx);
     }
 
-    public double[][] getExtrinsicsMatrix(int idx)
+    /** Extrinsics matrix to transform from the local frame (shared between cameras)
+      * to the coordinate frame of this camera.
+      */
+    public double[][] getExtrinsicsL2C(int idx)
     {
-        return cameras.get(idx).extrinsics;
+        return cameras.get(idx).L2C;
     }
 }

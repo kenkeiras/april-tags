@@ -1,9 +1,9 @@
-package april.camera.cal.calibrator;
+package april.camera.calibrator;
 
 import java.io.*;
 import java.util.*;
 
-import april.camera.cal.*;
+import april.camera.*;
 import april.graph.*;
 import april.jmat.*;
 import april.util.*;

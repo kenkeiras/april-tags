@@ -1,4 +1,4 @@
-package april.camera.cal.tools;
+package april.camera.tools;
 
 import java.io.*;
 import java.awt.image.*;
@@ -7,7 +7,6 @@ import java.util.*;
 import javax.imageio.*;
 
 import april.camera.*;
-import april.camera.cal.*;
 import april.config.*;
 import april.jcam.*;
 import april.jmat.*;
@@ -55,20 +54,20 @@ public class ExampleStereoRectifier
         {
             View input = leftView;
             View output = views.get(0);
-            double C2G_input[][] = cameras.getExtrinsicsMatrix(0);
-            double C2G_output[][] = extrinsics.get(0);
+            double G2C_input[][] = cameras.getExtrinsicsL2C(0);
+            double G2C_output[][] = extrinsics.get(0);
 
-            rasterizers.add(new BilinearRasterizer(input, C2G_input,
-                                                   output, C2G_output)); // XXX change cameraset to G2C?
+            rasterizers.add(new BilinearRasterizer(input, G2C_input,
+                                                   output, G2C_output)); // XXX change cameraset to G2C?
         }
         {
             View input = rightView;
             View output = views.get(1);
-            double C2G_input[][] = cameras.getExtrinsicsMatrix(1);
-            double C2G_output[][] = extrinsics.get(1);
+            double G2C_input[][] = cameras.getExtrinsicsL2C(1);
+            double G2C_output[][] = extrinsics.get(1);
 
-            rasterizers.add(new BilinearRasterizer(input, C2G_input,
-                                                   output, C2G_output)); // XXX change cameraset to G2C?
+            rasterizers.add(new BilinearRasterizer(input, G2C_input,
+                                                   output, G2C_output)); // XXX change cameraset to G2C?
         }
         assert(cameras.size() == rasterizers.size());
 
@@ -108,18 +107,18 @@ public class ExampleStereoRectifier
         if (inscribed)
             sr = StereoRectification.getMaxInscribedSR(leftView,
                                                        rightView,
-                                                       cameras.getExtrinsicsMatrix(0),
-                                                       cameras.getExtrinsicsMatrix(1));
+                                                       cameras.getExtrinsicsL2C(0),
+                                                       cameras.getExtrinsicsL2C(1));
         else
             sr = StereoRectification.getMaxSR(leftView,
                                               rightView,
-                                              cameras.getExtrinsicsMatrix(0),
-                                              cameras.getExtrinsicsMatrix(1));
+                                              cameras.getExtrinsicsL2C(0),
+                                              cameras.getExtrinsicsL2C(1));
 
         sr.showDebuggingGUI();
 
         views = sr.getViews();
-        extrinsics = sr.getExtrinsics();
+        extrinsics = sr.getExtrinsicsL2C();
     }
 
     private void rasterizeImage(BufferedImage im, Rasterizer rasterizer, String outputPath) throws IOException

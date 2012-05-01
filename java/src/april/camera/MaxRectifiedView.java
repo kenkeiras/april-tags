@@ -1,10 +1,10 @@
-package april.camera.cal;
+package april.camera;
 
 import java.util.*;
 
 import april.jmat.*;
 
-public class MaxInscribedRectifiedView implements View
+public class MaxRectifiedView implements View
 {
     double[][]  K;
     double[][]  Kinv;
@@ -16,13 +16,13 @@ public class MaxInscribedRectifiedView implements View
 
     String      viewCacheString;
 
-    public MaxInscribedRectifiedView(View view)
+    public MaxRectifiedView(View view)
     {
-        computeMaxInscribedRectifiedRectangle(view);
+        computeMaxRectifiedRectangle(view);
         viewCacheString = view.getCacheString();
     }
 
-    private void computeMaxInscribedRectifiedRectangle(View view)
+    private void computeMaxRectifiedRectangle(View view)
     {
         int x_dp, y_dp;
 
@@ -38,7 +38,7 @@ public class MaxInscribedRectifiedView implements View
         for (x_dp = 0; x_dp < view.getWidth(); x_dp++) {
 
             double xy_rp[] = CameraMath.pixelTransform(K, view.pixelsToNorm(new double[] { x_dp, y_dp }));
-            Rb = Math.max(Rb, xy_rp[1]);
+            Rb = Math.min(Rb, xy_rp[1]);
             //System.out.printf("%6.1f %6.1f - %6.1f\n", xy_rp[0], xy_rp[1], Rb);
         }
 
@@ -47,7 +47,7 @@ public class MaxInscribedRectifiedView implements View
         for (y_dp = 0; y_dp < view.getHeight(); y_dp++) {
 
             double xy_rp[] = CameraMath.pixelTransform(K, view.pixelsToNorm(new double[] { x_dp, y_dp }));
-            Rr = Math.min(Rr, xy_rp[0]);
+            Rr = Math.max(Rr, xy_rp[0]);
             //System.out.printf("%6.1f %6.1f - %6.1f\n", xy_rp[0], xy_rp[1], Rr);
         }
 
@@ -56,7 +56,7 @@ public class MaxInscribedRectifiedView implements View
         for (x_dp = view.getWidth()-1; x_dp >= 0; x_dp--) {
 
             double xy_rp[] = CameraMath.pixelTransform(K, view.pixelsToNorm(new double[] { x_dp, y_dp }));
-            Rt = Math.min(Rt, xy_rp[1]);
+            Rt = Math.max(Rt, xy_rp[1]);
             //System.out.printf("%6.1f %6.1f - %6.1f\n", xy_rp[0], xy_rp[1], Rt);
         }
 
@@ -65,13 +65,13 @@ public class MaxInscribedRectifiedView implements View
         for (y_dp = view.getHeight()-1; y_dp >= 0; y_dp--) {
 
             double xy_rp[] = CameraMath.pixelTransform(K, view.pixelsToNorm(new double[] { x_dp, y_dp }));
-            Rl = Math.max(Rl, xy_rp[0]);
+            Rl = Math.min(Rl, xy_rp[0]);
             //System.out.printf("%6.1f %6.1f - %6.1f\n", xy_rp[0], xy_rp[1], Rl);
         }
 
         System.out.printf("Bottom: %5.1f Right: %5.1f Top: %5.1f Left: %5.1f\n", Rb, Rr, Rt, Rl);
 
-        ////////////////////////////////////////////////////////////////////////////////
+        ////////////////////////////////////////
         // transformation matrix
         K[0][2] -= Rl;
         K[1][2] -= Rb;
@@ -109,13 +109,6 @@ public class MaxInscribedRectifiedView implements View
         return CameraMath.pixelTransform(Kinv, xy_rp);
     }
 
-    public double[] project(double xyz_camera[])
-    {
-        double xy_rn[] = new double[] { xyz_camera[0] / xyz_camera[2] ,
-                                        xyz_camera[1] / xyz_camera[2] };
-        return normToPixels(xy_rn);
-    }
-
     public String getCacheString()
     {
         return String.format("%s %.12f %.12f %.12f %.12f %d %d",
@@ -124,3 +117,4 @@ public class MaxInscribedRectifiedView implements View
                              width, height);
     }
 }
+

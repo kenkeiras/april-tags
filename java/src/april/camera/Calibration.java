@@ -1,4 +1,4 @@
-package april.camera.cal;
+package april.camera;
 
 public interface Calibration extends View
 {

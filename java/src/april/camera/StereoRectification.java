@@ -1,4 +1,4 @@
-package april.camera.cal;
+package april.camera;
 
 import java.awt.*;
 import java.util.*;
@@ -12,13 +12,13 @@ public class StereoRectification
     // inputs
     View cal_A;
     View cal_B;
-    double  C2G_A[][];
-    double  C2G_B[][];
+    double  G2C_A[][];
+    double  G2C_B[][];
 
     // internal
     double  K[][];
-    double  C2G_A_new[][];
-    double  C2G_B_new[][];
+    double  G2C_A_new[][];
+    double  G2C_B_new[][];
     double  R_N2O_A[][];
     double  R_N2O_B[][];
 
@@ -27,19 +27,19 @@ public class StereoRectification
     StereoRectifiedView viewB;
 
     private StereoRectification(View cal_A, View cal_B,
-                                double[][] camToGlobal_A, double[][] camToGlobal_B)
+                                double[][] GlobalToCam_A, double[][] GlobalToCam_B)
     {
         this.cal_A = cal_A;
         this.cal_B = cal_B;
 
-        this.C2G_A = camToGlobal_A;
-        this.C2G_B = camToGlobal_B;
+        this.G2C_A = GlobalToCam_A;
+        this.G2C_B = GlobalToCam_B;
     }
 
     public static StereoRectification getMaxInscribedSR(View cal_A, View cal_B,
-                                                        double[][] camToGlobal_A, double[][] camToGlobal_B)
+                                                        double[][] GlobalToCam_A, double[][] GlobalToCam_B)
     {
-        StereoRectification sr = new StereoRectification(cal_A, cal_B, camToGlobal_A, camToGlobal_B);
+        StereoRectification sr = new StereoRectification(cal_A, cal_B, GlobalToCam_A, GlobalToCam_B);
         sr.computeTransformations();
         sr.createMaxInscribedSRViews();
 
@@ -47,9 +47,9 @@ public class StereoRectification
     }
 
     public static StereoRectification getMaxSR(View cal_A, View cal_B,
-                                               double[][] camToGlobal_A, double[][] camToGlobal_B)
+                                               double[][] GlobalToCam_A, double[][] GlobalToCam_B)
     {
-        StereoRectification sr = new StereoRectification(cal_A, cal_B, camToGlobal_A, camToGlobal_B);
+        StereoRectification sr = new StereoRectification(cal_A, cal_B, GlobalToCam_A, GlobalToCam_B);
         sr.computeTransformations();
         sr.createMaxSRViews();
 
@@ -68,6 +68,9 @@ public class StereoRectification
 
         ////////////////////////////////////////////////////////////////////////////////
         // Compute rotation
+        double C2G_A[][] = LinAlg.inverse(G2C_A);
+        double C2G_B[][] = LinAlg.inverse(G2C_B);
+
         double c1[] = LinAlg.transform(C2G_A, new double[] { 0, 0, 0 });
         double c2[] = LinAlg.transform(C2G_B, new double[] { 0, 0, 0 });
 
@@ -94,32 +97,24 @@ public class StereoRectification
                                                 { C2G_B[2][0], C2G_B[2][1], C2G_B[2][2], 0 },
                                                 {           0,           0,           0, 1 } };
 
-        C2G_A_new = LinAlg.multiplyMany(C2G_A,
-                                        R_N2O_A);
+        double C2G_A_new[][] = LinAlg.multiplyMany(C2G_A,
+                                                   R_N2O_A);
 
-        C2G_B_new = LinAlg.multiplyMany(C2G_B,
-                                        LinAlg.inverse(C2G_B_rot),
-                                        C2G_A_rot,
-                                        R_N2O_A);
+        double C2G_B_new[][] = LinAlg.multiplyMany(C2G_B,
+                                                   LinAlg.inverse(C2G_B_rot),
+                                                   C2G_A_rot,
+                                                   R_N2O_A);
 
-        this.R_N2O_A = LinAlg.select(LinAlg.matrixAB(LinAlg.inverse(C2G_A),
+        this.G2C_A_new = LinAlg.inverse(C2G_A_new);
+        this.G2C_B_new = LinAlg.inverse(C2G_B_new);
+
+        this.R_N2O_A = LinAlg.select(LinAlg.matrixAB(G2C_A,
                                                      C2G_A_new),
                                      0, 2, 0, 2);
 
-        this.R_N2O_B = LinAlg.select(LinAlg.matrixAB(LinAlg.inverse(C2G_B),
+        this.R_N2O_B = LinAlg.select(LinAlg.matrixAB(G2C_B,
                                                      C2G_B_new),
                                      0, 2, 0, 2);
-
-        /*
-        T_N2O_A = LinAlg.multiplyMany(K_A,
-                                      R_N2O_A,
-                                      LinAlg.inverse(K));
-        T_N2O_B = LinAlg.multiplyMany(K_B,
-                                      LinAlg.inverse(LinAlg.select(C2G_B, 0, 2, 0, 2)),
-                                      LinAlg.select(C2G_A, 0, 2, 0, 2),
-                                      R_N2O_A,
-                                      LinAlg.inverse(K));
-        */
     }
 
     public void showDebuggingGUI()
@@ -140,25 +135,25 @@ public class StereoRectification
 
         vb = vw.getBuffer("initial axes");
 
-        vb.addBack(new VisChain(C2G_A,
+        vb.addBack(new VisChain(LinAlg.inverse(G2C_A),
                                 LinAlg.scale(0.05, 0.05, 0.05),
                                 new VzAxes()));
-        vb.addBack(new VisChain(C2G_B,
+        vb.addBack(new VisChain(LinAlg.inverse(G2C_B),
                                 LinAlg.scale(0.05, 0.05, 0.05),
                                 new VzAxes()));
         vb.swap();
 
         vb = vw.getBuffer("new axes");
-        vb.addBack(new VisChain(C2G_A_new,
+        vb.addBack(new VisChain(LinAlg.inverse(G2C_A_new),
                                 LinAlg.scale(0.05, 0.05, 0.05),
                                 new VzAxes()));
 
-        vb.addBack(new VisChain(C2G_B_new,
+        vb.addBack(new VisChain(LinAlg.inverse(G2C_B_new),
                                 LinAlg.scale(0.05, 0.05, 0.05),
                                 new VzAxes()));
 
-        double c1[] = LinAlg.transform(C2G_A_new, new double[] { 0, 0, 0 });
-        double c2[] = LinAlg.transform(C2G_B_new, new double[] { 0, 0, 0 });
+        double c1[] = LinAlg.transform(LinAlg.inverse(G2C_A_new), new double[] { 0, 0, 0 });
+        double c2[] = LinAlg.transform(LinAlg.inverse(G2C_B_new), new double[] { 0, 0, 0 });
         vb.addBack(new VzLines(new VisVertexData(new double[][] {c1, c2}),
                                VzLines.LINE_STRIP,
                                new VzLines.Style(Color.white, 1)));
@@ -176,11 +171,11 @@ public class StereoRectification
         return views;
     }
 
-    public ArrayList<double[][]> getExtrinsics()
+    public ArrayList<double[][]> getExtrinsicsL2C()
     {
         ArrayList<double[][]> extrinsics = new ArrayList<double[][]>();
-        extrinsics.add(C2G_A_new);
-        extrinsics.add(C2G_B_new);
+        extrinsics.add(G2C_A_new);
+        extrinsics.add(G2C_B_new);
         return extrinsics;
     }
 

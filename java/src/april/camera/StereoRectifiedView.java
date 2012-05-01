@@ -1,4 +1,4 @@
-package april.camera.cal;
+package april.camera;
 
 import java.util.*;
 
@@ -60,13 +60,6 @@ public class StereoRectifiedView implements View
     public double[] pixelsToNorm(double xy_rp[])
     {
         return CameraMath.pixelTransform(Kinv, xy_rp);
-    }
-
-    public double[] project(double xyz_camera[])
-    {
-        double xy_rn[] = new double[] { xyz_camera[0] / xyz_camera[2] ,
-                                        xyz_camera[1] / xyz_camera[2] };
-        return normToPixels(xy_rn);
     }
 
     public String getCacheString()

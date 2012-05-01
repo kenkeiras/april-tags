@@ -1,4 +1,4 @@
-package april.camera.cal;
+package april.camera;
 
 import java.awt.image.*;
 
@@ -16,8 +16,8 @@ public class NearestNeighborRasterizer implements Rasterizer
         this(input, null, output, null);
     }
 
-    public NearestNeighborRasterizer(View input, double C2G_input[][],
-                                     View output, double C2G_output[][])
+    public NearestNeighborRasterizer(View input, double G2C_input[][],
+                                     View output, double G2C_output[][])
     {
         ////////////////////////////////////////
         inputWidth  = input.getWidth();
@@ -32,9 +32,9 @@ public class NearestNeighborRasterizer implements Rasterizer
         ////////////////////////////////////////
         // compute rotation to convert from "output" orientation to "input" orientation
         double R_OutToIn[][] = LinAlg.identity(3);
-        if (C2G_input != null && C2G_output != null)
-            R_OutToIn = LinAlg.matrixAB(LinAlg.inverse(LinAlg.select(C2G_input, 0, 2, 0, 2)),
-                                        LinAlg.select(C2G_output, 0, 2, 0, 2));
+        if (G2C_input != null && G2C_output != null)
+            R_OutToIn = LinAlg.matrixAB(LinAlg.select(G2C_input, 0, 2, 0, 2),
+                                        LinAlg.inverse(LinAlg.select(G2C_output, 0, 2, 0, 2)));
 
         ////////////////////////////////////////
         // build table

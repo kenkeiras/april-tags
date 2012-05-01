@@ -1,4 +1,4 @@
-package april.camera.cal;
+package april.camera;
 
 public interface View
 {
@@ -25,11 +25,6 @@ public interface View
       * { X/Z, Y/Z }, removing distortion if appropriate.
       */
     public double[]     pixelsToNorm(double xy_p[]);
-
-    /** Project a 3D point in the appropriate coordinate frame to distorted
-      * pixel coordinates.
-      */
-    public double[]     project(double xyz_camera[]);
 
     /** Return a string of all critical parameters for caching data based
       * on a calibration (e.g. lookup tables).

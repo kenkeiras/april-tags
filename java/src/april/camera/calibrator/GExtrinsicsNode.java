@@ -1,9 +1,9 @@
-package april.camera.cal.calibrator;
+package april.camera.calibrator;
 
 import java.io.*;
 import java.util.*;
 
-import april.camera.cal.*;
+import april.camera.*;
 import april.graph.*;
 import april.jmat.*;
 import april.util.*;
@@ -12,7 +12,7 @@ public class GExtrinsicsNode extends GNode
 {
     // inherited: init, state, truth, attributes
 
-    // init, state, truth all represent the "body to global" transformation
+    // init, state, truth all represent the "camera to global" transformation
 
     public GExtrinsicsNode()
     {

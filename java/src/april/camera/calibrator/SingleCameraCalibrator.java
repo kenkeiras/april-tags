@@ -1,4 +1,4 @@
-package april.camera.cal.calibrator;
+package april.camera.calibrator;
 
 import java.io.*;
 import java.awt.*;
@@ -7,8 +7,7 @@ import java.util.*;
 
 import javax.swing.*;
 
-import april.camera.cal.*;
-import april.camera.cal.*;
+import april.camera.*;
 import april.jcam.*;
 import april.tag.*;
 import april.util.*;
@@ -82,7 +81,7 @@ public class SingleCameraCalibrator implements ParameterListener
 
         // Calibrator setup
         ArrayList<String> classnames = new ArrayList<String>();
-        classnames.add("april.camera.cal.SimpleCaltechCalibration");
+        classnames.add("april.camera.SimpleCaltechCalibration");
 
         calibrator = new CameraCalibrator(classnames, new Tag36h11(),
                                           tagSpacing_m, vl2);

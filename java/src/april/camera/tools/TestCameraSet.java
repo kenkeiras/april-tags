@@ -1,8 +1,8 @@
-package april.camera.cal.tools;
+package april.camera.tools;
 
 import java.io.*;
 
-import april.camera.cal.*;
+import april.camera.*;
 import april.config.*;
 import april.jmat.*;
 import april.util.*;
@@ -50,13 +50,13 @@ public class TestCameraSet
 
             String name = cs.getName(i);
             Calibration cal = cs.getCalibration(i);
-            double extrinsics[][] = cs.getExtrinsicsMatrix(i);
+            double extrinsics[][] = cs.getExtrinsicsL2C(i);
 
             System.out.printf("Camera %d of %d (name: '%s')\n",
                               i+1, size, name);
             System.out.println("Intrinsics matrix");
             LinAlg.print(cal.copyIntrinsics());
-            System.out.println("Extrinsics matrix");
+            System.out.println("Extrinsics matrix (Local To Camera)");
             LinAlg.print(extrinsics);
             System.out.println();
         }

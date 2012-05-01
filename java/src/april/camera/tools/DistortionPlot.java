@@ -1,4 +1,4 @@
-package april.camera.cal.tools;
+package april.camera.tools;
 
 import java.io.*;
 import java.util.*;
@@ -7,7 +7,7 @@ import java.awt.*;
 import javax.swing.*;
 
 import april.config.*;
-import april.camera.cal.*;
+import april.camera.*;
 import april.jmat.*;
 import april.vis.*;
 import april.util.*;

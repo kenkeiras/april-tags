@@ -1,9 +1,9 @@
-package april.camera.cal.calibrator;
+package april.camera.calibrator;
 
 import java.io.*;
 import java.util.*;
 
-import april.camera.cal.*;
+import april.camera.*;
 import april.graph.*;
 import april.jmat.*;
 import april.util.*;
@@ -41,7 +41,7 @@ public class GIntrinsicsNode extends GNode
 
     public double[] project(double xyz_camera[])
     {
-        return cal.project(xyz_camera);
+        return CameraMath.project(cal, null, xyz_camera);
     }
 
     public int getDOF()

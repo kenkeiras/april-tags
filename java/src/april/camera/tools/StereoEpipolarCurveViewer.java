@@ -1,4 +1,4 @@
-package april.camera.cal.tools;
+package april.camera.tools;
 
 import java.util.*;
 import java.io.*;
@@ -10,7 +10,7 @@ import javax.swing.*;
 import javax.imageio.*;
 
 import april.config.*;
-import april.camera.cal.*;
+import april.camera.*;
 import april.vis.*;
 import april.util.*;
 import april.jmat.*;
@@ -164,8 +164,8 @@ public class StereoEpipolarCurveViewer implements ParameterListener
                 redraw(vbleft, vbright,
                        leftXY0, leftXY1, rightXY0, rightXY1,
                        corrected_xy, im_xy,
-                       leftView, cameras.getExtrinsicsMatrix(0),
-                       rightView, cameras.getExtrinsicsMatrix(1));
+                       leftView, cameras.getExtrinsicsL2C(0),
+                       rightView, cameras.getExtrinsicsL2C(1));
 
                 return true;
             }
@@ -183,8 +183,8 @@ public class StereoEpipolarCurveViewer implements ParameterListener
                 redraw(vbright, vbleft,
                        rightXY0, rightXY1, leftXY0, leftXY1,
                        corrected_xy, im_xy,
-                       rightView, cameras.getExtrinsicsMatrix(1),
-                       leftView, cameras.getExtrinsicsMatrix(0));
+                       rightView, cameras.getExtrinsicsL2C(1),
+                       leftView, cameras.getExtrinsicsL2C(0));
 
                 return true;
             }
@@ -227,8 +227,8 @@ public class StereoEpipolarCurveViewer implements ParameterListener
                        double activeXY0[],       double activeXY1[],
                        double passiveXY0[],      double passiveXY1[],
                        double active_xy[],       double im_xy[],
-                       View activeCal,    double activeC2G[][],
-                       View passiveCal,   double passiveC2G[][])
+                       View activeCal,    double activeG2C[][],
+                       View passiveCal,   double passiveG2C[][])
     {
         drawBox(vbactive, activeXY0, activeXY1, Color.blue);
         drawBox(vbpassive, passiveXY0, passiveXY1, Color.red);
@@ -237,8 +237,8 @@ public class StereoEpipolarCurveViewer implements ParameterListener
                                       new VzPoints.Style(Color.green, 4)));
 
         drawEpipolarCurve(vbpassive, passiveXY0, passiveXY1, im_xy,
-                          activeCal, activeC2G,
-                          passiveCal, passiveC2G);
+                          activeCal, activeG2C,
+                          passiveCal, passiveG2C);
 
         vbactive.swap();
         vbpassive.swap();
@@ -258,8 +258,8 @@ public class StereoEpipolarCurveViewer implements ParameterListener
     }
 
     public void drawEpipolarCurve(VisWorld.Buffer vb, double XY0[], double XY1[], double xy_dp[],
-                                  View activeCal,    double activeC2G[][],
-                                  View passiveCal,   double passiveC2G[][])
+                                  View activeCal,    double activeG2C[][],
+                                  View passiveCal,   double passiveG2C[][])
     {
         double xy_rn[] = activeCal.pixelsToNorm(xy_dp);
 
@@ -273,11 +273,10 @@ public class StereoEpipolarCurveViewer implements ParameterListener
                                               xy_rn[1]*z ,
                                                        z };
 
-            double xyz_global[] = LinAlg.transform(activeC2G,
+            double xyz_global[] = LinAlg.transform(LinAlg.inverse(activeG2C),
                                                    xyz_cam);
 
-            double xy[] = passiveCal.project(LinAlg.transform(LinAlg.inverse(passiveC2G),
-                                                              xyz_global));
+            double xy[] = CameraMath.project(passiveCal, passiveG2C, xyz_global);
 
             if (xy[0] >= 0 && xy[0] < passiveCal.getWidth() &&
                 xy[1] >= 0 && xy[1] < passiveCal.getHeight())
