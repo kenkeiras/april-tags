@@ -40,8 +40,8 @@ public class DistortionPlot
 
         output = new MaxInscribedRectifiedView(input);
         LinAlg.print(output.copyIntrinsics());
-        output = new ScaledView(0.5, output);
-        LinAlg.print(output.copyIntrinsics());
+        //output = new ScaledView(0.5, output);
+        //LinAlg.print(output.copyIntrinsics());
 
         setupGUI();
 
