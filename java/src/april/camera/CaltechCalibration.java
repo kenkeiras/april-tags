@@ -6,8 +6,10 @@ import april.util.*;
 
 public class CaltechCalibration implements Calibration, ParameterizableCalibration
 {
-    // XXX change this to run until convergence
-    static final int num_iterations = 5;
+    // constants for iteratively rectifying coordinates (e.g. max allowed error)
+    private static final int max_iterations = 20;
+    private static final double max_pixel_error = 0.01;
+    private double max_sqerr;
 
     // required calibration parameter lengths
     static final public int LENGTH_FC = 2;
@@ -78,6 +80,9 @@ public class CaltechCalibration implements Calibration, ParameterizableCalibrati
                              {   0.0,       fc[1], cc[1] } ,
                              {   0.0,         0.0,   1.0 } };
         Kinv = LinAlg.inverse(K);
+
+        // compute the max square error for iterative rectification in normalized units
+        max_sqerr = Math.pow(max_pixel_error / Math.max(fc[0], fc[1]), 2);
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -230,11 +235,11 @@ public class CaltechCalibration implements Calibration, ParameterizableCalibrati
     // Perform iterative rectification in normalized coordinates
     private double[] rectifyNormalized(double xy_dn[])
     {
-        double x = xy_dn[0];
-        double y = xy_dn[1];
+        double x_rn = xy_dn[0];
+        double y_rn = xy_dn[1];
 
-        for (int i=0; i < num_iterations; i++) {
-            double r2 = x*x + y*y;
+        for (int i=0; i < max_iterations; i++) {
+            double r2 = x_rn*x_rn + y_rn*y_rn;
             double r4 = r2 * r2;
             double r6 = r4 * r2;
 
@@ -242,13 +247,20 @@ public class CaltechCalibration implements Calibration, ParameterizableCalibrati
                                   + kc[KC2] * r4
                                   + kc[KC5] * r6 ;
 
-            double dx[] = new double[] {2*kc[KC3]*x*y + kc[KC4]*(r2 + 2*x*x),
-                                        kc[KC3]*(r2 + 2*y*y) + 2*kc[KC4]*x*y};
+            double dx[] = new double[] {2*kc[KC3]*x_rn*y_rn + kc[KC4]*(r2 + 2*x_rn*x_rn),
+                                        kc[KC3]*(r2 + 2*y_rn*y_rn) + 2*kc[KC4]*x_rn*y_rn};
 
-            x = (xy_dn[0] - dx[0]) / multiplier;
-            y = (xy_dn[1] - dx[1]) / multiplier;
+            double x_sqerr = xy_dn[0] - (x_rn*multiplier + dx[0]);
+            double y_sqerr = xy_dn[1] - (y_rn*multiplier + dx[1]);
+            double sqerr = x_sqerr*x_sqerr + y_sqerr*y_sqerr;
+
+            x_rn = (xy_dn[0] - dx[0]) / multiplier;
+            y_rn = (xy_dn[1] - dx[1]) / multiplier;
+
+            if (sqerr < this.max_sqerr)
+                break;
         }
 
-        return new double[] { x, y };
+        return new double[] { x_rn, y_rn };
     }
 }

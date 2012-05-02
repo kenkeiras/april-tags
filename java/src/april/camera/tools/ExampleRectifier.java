@@ -49,8 +49,10 @@ public class ExampleRectifier
         ////////////////////////////////////////
         // Make rasterizer
         System.out.println("Creating rasterizer");
-        //rasterizer = new BilinearRasterizer(input, output);
-        rasterizer = new NearestNeighborRasterizer(input, output);
+        Tic tic = new Tic();
+        rasterizer = new BilinearRasterizer(input, output);
+        System.out.printf("Took %.3f seconds to build rasterizer\n", tic.toc());
+        //rasterizer = new NearestNeighborRasterizer(input, output);
 
         ////////////////////////////////////////
         // Rasterize image
