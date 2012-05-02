@@ -104,4 +104,29 @@ public class CameraMath
                                         xyz_camera[1] / xyz_camera[2] };
         return view.normToPixels(xy_rn);
     }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    public final static double[][] makeVisPlottingTransform(View view, double XY0[], double XY1[], boolean flip)
+    {
+        return makeVisPlottingTransform(view.getWidth(), view.getHeight(), XY0, XY1, flip);
+    }
+
+    public final static double[][] makeVisPlottingTransform(int imwidth, int imheight,
+                                                            double XY0[], double XY1[], boolean flip)
+    {
+        double viswidth = XY1[0] - XY0[0];
+        double visheight = XY1[1] - XY0[1];
+
+        double T[][] = LinAlg.matrixAB(LinAlg.translate(XY0[0], XY1[1], 0),
+                                       LinAlg.scale(viswidth / imwidth,
+                                                    visheight / imheight,
+                                                    1));
+
+        if (flip)
+            return LinAlg.matrixAB(T,
+                                   LinAlg.scale(1, -1, 1));
+        else
+            return T;
+    }
 }
