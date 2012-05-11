@@ -77,12 +77,41 @@ public class CameraCalibrator
         public double   xyz_m[];
     }
 
+    /** The constructor for the somewhat-general camera calibrator.  This
+     * calibrator has been tested on single cameras and stereo camera pairs.
+     *
+     * @param classnames - A list of classes (one per camera) that specify
+     * which Calibration class to use for each camera (e.g.
+     * SimpleCaltechCalibration)
+     * @param tf - The family of AprilTags (in april.tag) used on the tag
+     * mosaic, e.g. Tag36h11.
+     * @param metersPerTag - The spacing on the tag mosaic. This is <b>not</b>
+     * the width of the tag -- it is the distance between a point on one tag
+     * (e.g. top left corner) to the same point on the adjacent tag.
+     * Effectively, the tag width including part of the white border.
+     */
     public CameraCalibrator(List<String> classnames, TagFamily tf,
                             double metersPerTag)
     {
         this(classnames, tf, metersPerTag, null);
     }
 
+    /** The constructor for the somewhat-general camera calibrator.  This
+     * calibrator has been tested on single cameras and stereo camera pairs.
+     *
+     * @param classnames - A list of classes (one per camera) that specify
+     * which Calibration class to use for each camera (e.g.
+     * SimpleCaltechCalibration)
+     * @param tf - The family of AprilTags (in april.tag) used on the tag
+     * mosaic, e.g. Tag36h11.
+     * @param metersPerTag - The spacing on the tag mosaic. This is <b>not</b>
+     * the width of the tag -- it is the distance between a point on one tag
+     * (e.g. top left corner) to the same point on the adjacent tag.
+     * Effectively, the tag width including part of the white border.
+     * @param vl - VisLayer for plotting the current state of the graph. This
+     * includes 3D rig positions (drawn with VzAxes) and VzRectangles for each
+     * position of the tag mosaic
+     */
     public CameraCalibrator(List<String> classnames, TagFamily tf,
                             double metersPerTag, VisLayer vl)
     {
@@ -131,6 +160,11 @@ public class CameraCalibrator
         }
     }
 
+    /** Add sets of images, <b>exactly one image per camera</b>, for
+     * calibration. The mosaic and cameras must not move within the list of
+     * images provided. <b>addImages</b> should be called multiple times (at
+     * least three) no matter how many cameras are present.
+     */
     public synchronized void addImages(List<BufferedImage> newImages)
     {
         if (cameras == null)

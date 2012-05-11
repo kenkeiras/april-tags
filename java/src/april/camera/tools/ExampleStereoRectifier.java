@@ -27,7 +27,8 @@ public class ExampleStereoRectifier
     View rightView;
 
     public ExampleStereoRectifier(Config config, boolean inscribed,
-                                  String leftImagePath, String rightImagePath) throws IOException
+                                  String leftImagePath, String rightImagePath,
+                                  boolean drawGuidelines) throws IOException
     {
         String leftOutputPath = newPathName(leftImagePath, inscribed);
         String rightOutputPath = newPathName(rightImagePath, inscribed);
@@ -72,8 +73,8 @@ public class ExampleStereoRectifier
         assert(cameras.size() == rasterizers.size());
 
         // output images
-        rasterizeImage( leftImage, rasterizers.get(0),  leftOutputPath);
-        rasterizeImage(rightImage, rasterizers.get(1), rightOutputPath);
+        rasterizeImage( leftImage, rasterizers.get(0),  leftOutputPath, drawGuidelines);
+        rasterizeImage(rightImage, rasterizers.get(1), rightOutputPath, drawGuidelines);
     }
 
     private String newPathName(String path, boolean inscribed)
@@ -121,19 +122,22 @@ public class ExampleStereoRectifier
         extrinsics = sr.getExtrinsicsL2C();
     }
 
-    private void rasterizeImage(BufferedImage im, Rasterizer rasterizer, String outputPath) throws IOException
+    private void rasterizeImage(BufferedImage im, Rasterizer rasterizer,
+                                String outputPath, boolean lines) throws IOException
     {
         BufferedImage out = rasterizer.rectifyImage(im);
 
-        // horizontal lines for debugging
-        int raster[] = ((DataBufferInt) (out.getRaster().getDataBuffer())).getData();
-        int width = out.getWidth();
-        int height = out.getHeight();
+        if (lines) {
+            // horizontal lines for debugging
+            int raster[] = ((DataBufferInt) (out.getRaster().getDataBuffer())).getData();
+            int width = out.getWidth();
+            int height = out.getHeight();
 
-        for (double yfrac = 0.05; yfrac < 1; yfrac += 0.05) {
-            int y = (int) (height * yfrac);
-            for (int x = 0; x < width; x++)
-                raster[y*width + x] = (int) (0xFFFF0000);
+            for (double yfrac = 0.05; yfrac < 1; yfrac += 0.05) {
+                int y = (int) (height * yfrac);
+                for (int x = 0; x < width; x++)
+                    raster[y*width + x] = (int) (0xFFFF0000);
+            }
         }
 
         ImageIO.write(out, "png", new File(outputPath));
@@ -149,6 +153,7 @@ public class ExampleStereoRectifier
         opts.addString('l',"leftimage","","Left image path");
         opts.addString('r',"rightimage","","Right image path");
         opts.addBoolean('i',"inscribed",false,"Use inscribed rectangle");
+        opts.addBoolean((char) 0,"nolines",false,"Do not draw red guidelines");
 
         if (!opts.parse(args)) {
             System.out.println("Option error: " + opts.getReason());
@@ -159,6 +164,7 @@ public class ExampleStereoRectifier
         String leftimagepath = opts.getString("leftimage");
         String rightimagepath = opts.getString("rightimage");
         boolean inscribed = opts.getBoolean("inscribed");
+        boolean nolines = opts.getBoolean("nolines");
 
         if (opts.getBoolean("help") || configpath.isEmpty() || childstring.isEmpty() ||
             leftimagepath.isEmpty() || rightimagepath.isEmpty())
@@ -172,7 +178,7 @@ public class ExampleStereoRectifier
             Config config = new ConfigFile(configpath);
             Config child = config.getChild(childstring);
 
-            new ExampleStereoRectifier(child, inscribed, leftimagepath, rightimagepath);
+            new ExampleStereoRectifier(child, inscribed, leftimagepath, rightimagepath, !nolines);
 
         } catch (IOException ex) {
             System.err.println("Exception: " + ex);
