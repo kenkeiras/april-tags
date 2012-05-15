@@ -1,5 +1,6 @@
 package april.camera.calibrator;
 
+import java.awt.Color;
 import java.awt.image.*;
 import java.util.*;
 
@@ -317,6 +318,88 @@ public class CameraCalibrator
                                     new VzText(VzText.ANCHOR.TOP_RIGHT,
                        String.format("<<monospaced-14,white>>Mean reprojection error: %8.6f pixels",
                                      reprojError / numObs))));
+        vb.swap();
+
+        ////////////////////////////////////////
+        vb = vw.getBuffer("Distortion");
+
+        for (int idx = 0; idx < cameras.size(); idx++) {
+
+            CameraWrapper wrapper = cameras.get(idx);
+            View cal = wrapper.cal;
+
+            double K[][] = cal.copyIntrinsics();
+            double Kinv[][] = LinAlg.inverse(K);
+            int width = cal.getWidth();
+            int height = cal.getHeight();
+
+            double maxRadius = 0;
+
+            // top left
+            {
+                double radius = Math.sqrt(Math.pow(       0 - K[0][2] , 2)
+                                        + Math.pow(       0 - K[1][2] , 2));
+                maxRadius = Math.max(maxRadius, radius);
+            }
+
+            // top right
+            {
+                double radius = Math.sqrt(Math.pow( width-1 - K[0][2] , 2)
+                                        + Math.pow(       0 - K[1][2] , 2));
+                maxRadius = Math.max(maxRadius, radius);
+            }
+
+            // bottom left
+            {
+                double radius = Math.sqrt(Math.pow(       0 - K[0][2] , 2)
+                                        + Math.pow(height-1 - K[1][2] , 2));
+                maxRadius = Math.max(maxRadius, radius);
+            }
+
+            // bottom right
+            {
+                double radius = Math.sqrt(Math.pow( width-1 - K[0][2] , 2)
+                                        + Math.pow(height-1 - K[1][2] , 2));
+                maxRadius = Math.max(maxRadius, radius);
+            }
+
+            ArrayList<double[]> points = new ArrayList<double[]>();
+            int radius = (int) Math.ceil(2 * maxRadius); // XXX is this far enough?
+            double max = 0;
+            for (int r=0; r < radius; r++) {
+                double xy_rp[] = new double[] { K[0][2] + r, K[1][2] };
+
+                double xy_rn[] = CameraMath.pixelTransform(Kinv, xy_rp);
+
+                double xy_dp[] = cal.normToPixels(xy_rn);
+
+                double dr = xy_dp[0] - K[0][2];
+
+                points.add(new double[] { r, dr });
+
+                max = Math.max(max, dr);
+            }
+
+            boolean good = max > maxRadius;
+            String uistring = String.format("<<monospaced-10,%s>>Distortion defined up to %.0f of %.0f pixels (%s)",
+                                            good ? "white" : "red",
+                                            max,
+                                            maxRadius,
+                                            good ? "good" : "add images near image border");
+
+            vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT,
+                                        new VisChain(LinAlg.translate(100, 50, 0),
+                                                     new VzRectangle(200, 100, new VzMesh.Style(new Color(20, 20, 20)))),
+                                        new VisChain(LinAlg.scale(100 / maxRadius,
+                                                                  100 / maxRadius,
+                                                                  1),
+                                                     new VzLines(new VisVertexData(points),
+                                                                 VzLines.LINE_STRIP,
+                                                                 new VzLines.Style(Color.red, 1))),
+                                        new VisChain(LinAlg.translate(0, 100, 0),
+                                                     new VzText(VzText.ANCHOR.BOTTOM_LEFT, uistring))));
+        }
+
         vb.swap();
     }
 

@@ -150,9 +150,7 @@ public class DistortionPlot
                                                      new VzPoints.Style(Color.green, 1))));
             vb.swap();
 
-            vl.cameraManager.fit2D(new double[] {minx, Math.min(-miny, -maxy)},
-                                   new double[] {maxx, Math.max(-miny, -maxy)},
-                                   true);
+            vl.cameraManager.fit2D(new double[] {0, -inputHeight}, new double[] {inputWidth, 0}, true);
         }
 
         {

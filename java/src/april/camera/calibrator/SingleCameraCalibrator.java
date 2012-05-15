@@ -81,7 +81,7 @@ public class SingleCameraCalibrator implements ParameterListener
 
         // Calibrator setup
         ArrayList<String> classnames = new ArrayList<String>();
-        classnames.add("april.camera.SimpleCaltechCalibration");
+        classnames.add("april.camera.CaltechCalibration");
 
         calibrator = new CameraCalibrator(classnames, new Tag36h11(),
                                           tagSpacing_m, vl2);
