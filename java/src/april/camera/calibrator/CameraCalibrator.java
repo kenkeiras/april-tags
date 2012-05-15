@@ -381,22 +381,24 @@ public class CameraCalibrator
             }
 
             boolean good = max > maxRadius;
-            String uistring = String.format("<<monospaced-10,%s>>Distortion defined up to %.0f of %.0f pixels (%s)",
+            String uistring = String.format("<<monospaced-10,%s>>%s: Lens distortion defined up to %.0f of %.0f pixels (%s)",
                                             good ? "white" : "red",
+                                            wrapper.name,
                                             max,
                                             maxRadius,
                                             good ? "good" : "add images near image border");
 
             vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT,
-                                        new VisChain(LinAlg.translate(100, 50, 0),
-                                                     new VzRectangle(200, 100, new VzMesh.Style(new Color(20, 20, 20)))),
-                                        new VisChain(LinAlg.scale(100 / maxRadius,
+                                        new VisChain(LinAlg.translate(100, 50 + 100*idx, 0),
+                                                     new VzRectangle(200, 100, new VzMesh.Style(new Color(10*idx, 10*idx, 10*idx)))),
+                                        new VisChain(LinAlg.translate(0, 100*idx, 0),
+                                                     LinAlg.scale(100 / maxRadius,
                                                                   100 / maxRadius,
                                                                   1),
                                                      new VzLines(new VisVertexData(points),
                                                                  VzLines.LINE_STRIP,
                                                                  new VzLines.Style(Color.red, 1))),
-                                        new VisChain(LinAlg.translate(0, 100, 0),
+                                        new VisChain(LinAlg.translate(0, 100*idx, 0),
                                                      new VzText(VzText.ANCHOR.BOTTOM_LEFT, uistring))));
         }
 
