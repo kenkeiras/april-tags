@@ -149,7 +149,7 @@ public class ExampleStereoRectifier
 
         opts.addBoolean('h',"help",false,"See the help screen");
         opts.addString('c',"config","","Config file path");
-        opts.addString('s',"childstring","","Child name");
+        opts.addString('s',"childstring","aprilCameraCalibration","Child name (e.g. aprilCameraCalibration)");
         opts.addString('l',"leftimage","","Left image path");
         opts.addString('r',"rightimage","","Right image path");
         opts.addBoolean('i',"inscribed",false,"Use inscribed rectangle");

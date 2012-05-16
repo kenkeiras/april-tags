@@ -226,7 +226,7 @@ public class DistortionPlot
 
         opts.addBoolean('h',"help",false,"See this help screen");
         opts.addString('c',"config","","Config file path");
-        opts.addString('s',"child","aprilCameraCalibration","Child string");
+        opts.addString('s',"child","aprilCameraCalibration","Child string (e.g. aprilCameraCalibration)");
 
         if (!opts.parse(args)) {
             System.out.println("Option error: "+opts.getReason());

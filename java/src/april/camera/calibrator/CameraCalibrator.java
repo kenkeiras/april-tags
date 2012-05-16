@@ -162,7 +162,8 @@ public class CameraCalibrator
     }
 
     /** Add sets of images, <b>exactly one image per camera</b>, for
-     * calibration. The mosaic and cameras must not move within the list of
+     * calibration in the same order as initialization. The mosaic and
+     * cameras must not move within the list of
      * images provided. <b>addImages</b> should be called multiple times (at
      * least three) no matter how many cameras are present.
      */

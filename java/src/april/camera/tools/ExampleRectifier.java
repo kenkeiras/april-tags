@@ -73,7 +73,7 @@ public class ExampleRectifier
 
         opts.addBoolean('h',"help",false,"See the help screen");
         opts.addString('c',"config","","Config file path");
-        opts.addString('s',"childstring","","Child name");
+        opts.addString('s',"childstring","aprilCameraCalibration","CameraSet child name (e.g. aprilCameraCalibration.camera0)");
         opts.addString('i',"image","","Image path");
 
         if (!opts.parse(args)) {

@@ -298,9 +298,9 @@ public class StereoEpipolarCurveViewer implements ParameterListener
 
         opts.addBoolean('h',"help",false,"See this help screen");
         opts.addString('c',"config","","StereoCamera config");
-        opts.addString('s',"child","cameraCalibration","Camera calibration config child");
-        opts.addString('l',"leftimage","","Left image path");
-        opts.addString('r',"rightimage","","Right image path");
+        opts.addString('s',"child","aprilCameraCalibration","Camera calibration child (e.g. aprilCameraCalibration)");
+        opts.addString('l',"leftimage","","Left image path (optional)");
+        opts.addString('r',"rightimage","","Right image path (optional)");
 
         if (!opts.parse(args)) {
             System.out.println("option error: "+opts.getReason());
