@@ -15,13 +15,17 @@ import april.util.*;
 import april.vis.*;
 
 /** Camera calibrator class. Takes a list of full-length class names (e.g.
- * april.camera.CaltechCalibration) an AprilTag family for tag detection,
- * and (optionally) a VisWorld for debugging. Once instantiated, add sets of
- * images (one image per camera) with the addImages method.
+ * april.camera.CaltechCalibration), an AprilTag family for tag detection, and
+ * the distance between tags on the calibration mosaic (see constructor for
+ * details). It also takes two optional parameters: a VisLayer for debugging
+ * and a list of initial parameter values for the camera intrinsics. Once
+ * instantiated, add sets of images (one image per camera) with the addImages
+ * method.
  */
 public class CameraCalibrator
 {
     List<String>                classnames  = null;
+    List<double[]>              initialParameters = null;
     List<List<BufferedImage>>   images      = new ArrayList<List<BufferedImage>>();
 
     List<CameraWrapper>         cameras     = null;
@@ -63,7 +67,6 @@ public class CameraCalibrator
 
         String name;
         String classname;
-
     }
 
     private static class TagConstraint
@@ -80,16 +83,7 @@ public class CameraCalibrator
 
     /** The constructor for the somewhat-general camera calibrator.  This
      * calibrator has been tested on single cameras and stereo camera pairs.
-     *
-     * @param classnames - A list of classes (one per camera) that specify
-     * which Calibration class to use for each camera (e.g.
-     * SimpleCaltechCalibration)
-     * @param tf - The family of AprilTags (in april.tag) used on the tag
-     * mosaic, e.g. Tag36h11.
-     * @param metersPerTag - The spacing on the tag mosaic. This is <b>not</b>
-     * the width of the tag -- it is the distance between a point on one tag
-     * (e.g. top left corner) to the same point on the adjacent tag.
-     * Effectively, the tag width including part of the white border.
+     * Camera intrinsics are initialized to sane default values.
      */
     public CameraCalibrator(List<String> classnames, TagFamily tf,
                             double metersPerTag)
@@ -99,24 +93,37 @@ public class CameraCalibrator
 
     /** The constructor for the somewhat-general camera calibrator.  This
      * calibrator has been tested on single cameras and stereo camera pairs.
+     * Camera intrinsics are initialized to sane default values.
+     */
+    public CameraCalibrator(List<String> classnames, TagFamily tf,
+                            double metersPerTag, VisLayer vl)
+    {
+        this(classnames, null, tf, metersPerTag, vl);
+    }
+
+    /** The constructor for the somewhat-general camera calibrator.  This
+     * calibrator has been tested on single cameras and stereo camera pairs.
      *
      * @param classnames - A list of classes (one per camera) that specify
      * which Calibration class to use for each camera (e.g.
      * SimpleCaltechCalibration)
+     * @param initialParameters - (Optional) A list of double vectors (one per camera)
+     * that specify initial values for the calibration object parameters.
      * @param tf - The family of AprilTags (in april.tag) used on the tag
      * mosaic, e.g. Tag36h11.
      * @param metersPerTag - The spacing on the tag mosaic. This is <b>not</b>
      * the width of the tag -- it is the distance between a point on one tag
      * (e.g. top left corner) to the same point on the adjacent tag.
      * Effectively, the tag width including part of the white border.
-     * @param vl - VisLayer for plotting the current state of the graph. This
+     * @param vl - (Optional) VisLayer for plotting the current state of the graph. This
      * includes 3D rig positions (drawn with VzAxes) and VzRectangles for each
      * position of the tag mosaic
      */
-    public CameraCalibrator(List<String> classnames, TagFamily tf,
-                            double metersPerTag, VisLayer vl)
+    public CameraCalibrator(List<String> classnames, List<double[]> initialParameters,
+                            TagFamily tf, double metersPerTag, VisLayer vl)
     {
         this.classnames = classnames;
+        this.initialParameters = initialParameters;
 
         this.tf = tf;
         this.detector = new TagDetector(this.tf);
@@ -138,6 +145,39 @@ public class CameraCalibrator
         solver = gs;
 
         generateTagPositions(tf, metersPerTag);
+    }
+
+    public synchronized void setCalibrationParameters(int cameraIndex, double params[])
+    {
+        if (cameras == null)
+            System.out.println("ERROR: Must call addImages() once before calling setCalibrationParameters(). Throwing exception.");
+
+        assert(cameraIndex >= 0 && cameraIndex < cameras.size());
+        cameras.get(cameraIndex).cal.resetParameterization(params);
+    }
+
+    /** Return list of double-vectors for all cameras using the getParameterization method of
+     * the ParameterizableCalibration interface.
+     */
+    public synchronized List<double[]> getCalibrationParameters()
+    {
+        ArrayList<double[]> parameters = new ArrayList<double[]>();
+
+        for (CameraWrapper cam : cameras)
+            parameters.add(cam.cal.getParameterization());
+
+        return parameters;
+    }
+
+    /** Return vector of doubles for this camera using the getParameterization method of
+     * the ParameterizableCalibration interface.
+     */
+    public synchronized double[] getCalibrationParameters(int cameraIndex)
+    {
+        assert(cameraIndex >= 0 && cameraIndex < cameras.size());
+
+        CameraWrapper cam = cameras.get(cameraIndex);
+        return cam.cal.getParameterization();
     }
 
     private void generateTagPositions(TagFamily tf, double metersPerTag)
@@ -481,6 +521,12 @@ public class CameraCalibrator
 
             String name     = String.format("camera%d", i);
             ParameterizableCalibration cal = getDefaultCalibration(classname, im.getWidth(), im.getHeight());
+
+            // if specified, initialize the camera parameters to the provided values
+            if (initialParameters != null && initialParameters.size() == classnames.size()) {
+                double params[] = initialParameters.get(i);
+                cal.resetParameterization(params);
+            }
 
             GIntrinsicsNode cameraIntrinsics = new GIntrinsicsNode(cal);
             System.out.println("Initialized camera intrinsics to:"); LinAlg.print(cameraIntrinsics.init);
