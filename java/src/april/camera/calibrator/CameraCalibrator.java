@@ -400,24 +400,10 @@ public class CameraCalibrator
         vb.swap();
 
         vb = vw.getBuffer("HUD");
-        double reprojError = 0;
-        int numObs = 0;
-        for (GEdge e : g.edges) {
-            assert(e instanceof GTagEdge);
-            GTagEdge edge = (GTagEdge) e;
-
-            double res[] = edge.getResidualExternal(g);
-            assert((res.length & 0x1) == 0);
-
-            int len = res.length / 2;
-            for (int i=0; i < len; i+=2)
-                reprojError += Math.sqrt(res[i]*res[i] + res[i+1]*res[i+1]);
-            numObs += len;
-        }
         vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.TOP_RIGHT,
                                     new VzText(VzText.ANCHOR.TOP_RIGHT,
                        String.format("<<monospaced-14,white>>Mean reprojection error: %8.6f pixels",
-                                     reprojError / numObs))));
+                                     getMRE()))));
         vb.swap();
 
         ////////////////////////////////////////
@@ -516,6 +502,26 @@ public class CameraCalibrator
         if ((counter % 100) == 0)
             printCalibrationBlock();
         counter++;
+    }
+
+    // Returns mean reprojections error
+    public synchronized double getMRE()
+    {
+        double reprojError = 0;
+        int numObs = 0;
+        for (GEdge e : g.edges) {
+            assert(e instanceof GTagEdge);
+            GTagEdge edge = (GTagEdge) e;
+
+            double res[] = edge.getResidualExternal(g);
+            assert((res.length & 0x1) == 0);
+
+            int len = res.length / 2;
+            for (int i=0; i < len; i+=2)
+                reprojError += Math.sqrt(res[i]*res[i] + res[i+1]*res[i+1]);
+            numObs += len;
+        }
+        return reprojError / numObs;
     }
 
     public void printCalibrationBlock()
