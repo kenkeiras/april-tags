@@ -26,6 +26,7 @@ public class CameraCalibrator
 {
     List<String>                classnames  = null;
     List<double[]>              initialParameters = null;
+    List<double[]>              initialExtrinsics = null;
     List<List<BufferedImage>>   images      = new ArrayList<List<BufferedImage>>();
 
     List<CameraWrapper>         cameras     = null;
@@ -93,22 +94,10 @@ public class CameraCalibrator
 
     /** The constructor for the somewhat-general camera calibrator.  This
      * calibrator has been tested on single cameras and stereo camera pairs.
-     * Camera intrinsics are initialized to sane default values.
-     */
-    public CameraCalibrator(List<String> classnames, TagFamily tf,
-                            double metersPerTag, VisLayer vl)
-    {
-        this(classnames, null, tf, metersPerTag, vl);
-    }
-
-    /** The constructor for the somewhat-general camera calibrator.  This
-     * calibrator has been tested on single cameras and stereo camera pairs.
      *
      * @param classnames - A list of classes (one per camera) that specify
      * which Calibration class to use for each camera (e.g.
      * SimpleCaltechCalibration)
-     * @param initialParameters - (Optional) A list of double vectors (one per camera)
-     * that specify initial values for the calibration object parameters.
      * @param tf - The family of AprilTags (in april.tag) used on the tag
      * mosaic, e.g. Tag36h11.
      * @param metersPerTag - The spacing on the tag mosaic. This is <b>not</b>
@@ -119,11 +108,10 @@ public class CameraCalibrator
      * includes 3D rig positions (drawn with VzAxes) and VzRectangles for each
      * position of the tag mosaic
      */
-    public CameraCalibrator(List<String> classnames, List<double[]> initialParameters,
+    public CameraCalibrator(List<String> classnames,
                             TagFamily tf, double metersPerTag, VisLayer vl)
     {
         this.classnames = classnames;
-        this.initialParameters = initialParameters;
 
         this.tf = tf;
         this.detector = new TagDetector(this.tf);
@@ -147,13 +135,60 @@ public class CameraCalibrator
         generateTagPositions(tf, metersPerTag);
     }
 
-    public synchronized void setCalibrationParameters(int cameraIndex, double params[])
+    /** Set the camera intrinsics for each camera. If the cameras haven't been
+      * initialized, we save this setting for later. Otherwise, we apply it now
+      * and edit the underlying graph.
+      */
+    public synchronized void setCalibrationParameters(List<double[]> parameters)
     {
-        if (cameras == null)
-            System.out.println("ERROR: Must call addImages() once before calling setCalibrationParameters(). Throwing exception.");
+        assert(parameters.size() == classnames.size());
 
-        assert(cameraIndex >= 0 && cameraIndex < cameras.size());
-        cameras.get(cameraIndex).cal.resetParameterization(params);
+        // prepare the parameters for initialization when we call addImages()
+        // and return
+        if (cameras == null) {
+            initialParameters = parameters;
+            return;
+        }
+
+        // reset each camera's intrinsics
+        for (int i=0; i < cameras.size(); i++) {
+            CameraWrapper cam = cameras.get(i);
+
+            double params[] = parameters.get(i);
+
+            cam.cal.resetParameterization(params);
+            cam.cameraIntrinsics.state = LinAlg.copy(params);
+        }
+    }
+
+    /** Set the extrinsic parameters for each camera relative to the first camera.
+      * If the cameras haven't been initialized, we'll save this state for later.
+      * Otherwise, we apply it now and edit the underlying graph.
+      *
+      * @param xyzrpys - An XYZRPY double for each camera <b>except</b> the
+      * first camera which is "privileged" and located at the origin. Be sure
+      * to specify the "camera to global" transformation.
+      */
+    public synchronized void setRelativeExtrinsicsCameraToGlobal(List<double[]> xyzrpys)
+    {
+        assert(xyzrpys.size() == (classnames.size() - 1));
+
+        // prepare the extrinsics for the first call to addImages()
+        // and return;
+        if (cameras == null) {
+            initialExtrinsics = xyzrpys;
+            return;
+        }
+
+        // reset each camera's intrinsics
+        for (int i=0; i < xyzrpys.size(); i++) {
+
+            double xyzrpy[] = xyzrpys.get(i);
+
+            int cameraIndex = i + 1;
+            CameraWrapper cam = cameras.get(cameraIndex);
+            cam.cameraExtrinsics.state = LinAlg.copy(xyzrpy);
+        }
     }
 
     /** Return list of double-vectors for all cameras using the getParameterization method of
@@ -178,6 +213,21 @@ public class CameraCalibrator
 
         CameraWrapper cam = cameras.get(cameraIndex);
         return cam.cal.getParameterization();
+    }
+
+    /** Return the XYZRPY camera-to-global representation of the extrinsics
+      * for the specified camera.
+      */
+    public synchronized double[] getCalibrationExtrinsics(int cameraIndex)
+    {
+        assert(cameraIndex >= 0 && cameraIndex < cameras.size());
+
+        if (cameraIndex == 0)
+            return new double[6];
+
+        CameraWrapper cam = cameras.get(cameraIndex);
+
+        return LinAlg.copy(cam.cameraExtrinsics.state);
     }
 
     private void generateTagPositions(TagFamily tf, double metersPerTag)
@@ -252,18 +302,27 @@ public class CameraCalibrator
 
             } else if (!camera.extrinsicsInitialized) {
 
-                double mosaicToCamera[][] = estimateMosaicExtrinsics(detections);
-
-                // should been initialized by camera 0
-                double mosaicToGlobal[][] = LinAlg.xyzrpyToMatrix(mosaicExtrinsics.state);
-
-                double cameraToGlobal[][] = LinAlg.matrixAB(mosaicToGlobal,
-                                                            LinAlg.inverse(mosaicToCamera));
-
                 GExtrinsicsNode camExtrinsics = camera.cameraExtrinsics;
-                camExtrinsics.init = LinAlg.matrixToXyzrpy(cameraToGlobal);
-                camExtrinsics.state = LinAlg.copy(camExtrinsics.init);
 
+                // Initialize camera extrinsics with the provided values
+                if (initialExtrinsics != null) {
+                    double xyzrpy[] = initialExtrinsics.get(cameraIndex);
+                    camExtrinsics.init = LinAlg.copy(xyzrpy);
+
+                // Initialize camera extrinsics with our best guess
+                } else {
+                    double mosaicToCamera[][] = estimateMosaicExtrinsics(detections);
+
+                    // should been initialized by camera 0
+                    double mosaicToGlobal[][] = LinAlg.xyzrpyToMatrix(mosaicExtrinsics.state);
+
+                    double cameraToGlobal[][] = LinAlg.matrixAB(mosaicToGlobal,
+                                                                LinAlg.inverse(mosaicToCamera));
+
+                    camExtrinsics.init = LinAlg.matrixToXyzrpy(cameraToGlobal);
+                }
+
+                camExtrinsics.state = LinAlg.copy(camExtrinsics.init);
                 camera.extrinsicsInitialized = true;
             }
 
