@@ -833,6 +833,7 @@ public class VisCanvas extends JComponent implements VisSerializable
                     public void actionPerformed(ActionEvent e) {
                         try {
                             popupMovie.close();
+                            popupMovie = null;
                             System.out.println("movie ended");
                         } catch (IOException ex) {
                             System.out.println("ex: "+ex);

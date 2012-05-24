@@ -16,11 +16,23 @@ public final class UnionFindSimple
     {
         data = new int[maxid*SZ];
 
-        for (int i = 0; i < maxid; i++) {
+        reset();
+    }
+
+    // initializes each node to it's cluster
+    public void reset()
+    {
+
+        for (int i = 0; i < data.length/SZ; i++) {
             // everyone is their own cluster of size 1
             data[SZ*i+0] = i;
             data[SZ*i+1] = 1;
         }
+    }
+
+    public int size()
+    {
+        return data.length/SZ;
     }
 
     public int getSetSize(int id)
