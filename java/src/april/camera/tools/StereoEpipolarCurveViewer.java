@@ -34,6 +34,8 @@ public class StereoEpipolarCurveViewer implements ParameterListener
 
     ParameterGUI pg;
 
+    BufferedImage leftIm, rightIm;
+
     public StereoEpipolarCurveViewer(Config config, String leftPath, String rightPath)
     {
         if (config == null) {
@@ -108,6 +110,7 @@ public class StereoEpipolarCurveViewer implements ParameterListener
                                     LinAlg.scale((XY1[0]-XY0[0])/im.getWidth(),
                                                  (XY1[1]-XY0[1])/im.getHeight(), 1),
                                     new VzImage(im, VzImage.FLIP)));
+            leftIm = im;
 
         } catch (IOException ex) {
         }
@@ -120,6 +123,7 @@ public class StereoEpipolarCurveViewer implements ParameterListener
                                     LinAlg.scale((XY1[0]-XY0[0])/im.getWidth(),
                                                  (XY1[1]-XY0[1])/im.getHeight(), 1),
                                     new VzImage(im, VzImage.FLIP)));
+            rightIm = im;
 
         } catch (IOException ex) {
         }
@@ -162,6 +166,7 @@ public class StereoEpipolarCurveViewer implements ParameterListener
                                                 leftXY1[1] -  vis_xy[1] };
 
                 redraw(vbleft, vbright,
+                       leftIm, rightIm,
                        leftXY0, leftXY1, rightXY0, rightXY1,
                        corrected_xy, im_xy,
                        leftView, cameras.getExtrinsicsL2C(0),
@@ -181,6 +186,7 @@ public class StereoEpipolarCurveViewer implements ParameterListener
                                                 rightXY1[1] -   vis_xy[1] };
 
                 redraw(vbright, vbleft,
+                       rightIm, leftIm,
                        rightXY0, rightXY1, leftXY0, leftXY1,
                        corrected_xy, im_xy,
                        rightView, cameras.getExtrinsicsL2C(1),
@@ -224,11 +230,12 @@ public class StereoEpipolarCurveViewer implements ParameterListener
     }
 
     public void redraw(VisWorld.Buffer vbactive, VisWorld.Buffer vbpassive,
+                       BufferedImage activeIm,   BufferedImage passiveIm,
                        double activeXY0[],       double activeXY1[],
                        double passiveXY0[],      double passiveXY1[],
                        double active_xy[],       double im_xy[],
-                       View activeCal,    double activeG2C[][],
-                       View passiveCal,   double passiveG2C[][])
+                       View activeCal,           double activeG2C[][],
+                       View passiveCal,          double passiveG2C[][])
     {
         drawBox(vbactive, activeXY0, activeXY1, Color.blue);
         drawBox(vbpassive, passiveXY0, passiveXY1, Color.red);
@@ -238,7 +245,8 @@ public class StereoEpipolarCurveViewer implements ParameterListener
 
         drawEpipolarCurve(vbpassive, passiveXY0, passiveXY1, im_xy,
                           activeCal, activeG2C,
-                          passiveCal, passiveG2C);
+                          passiveCal, passiveG2C,
+                          activeIm, passiveIm);
 
         vbactive.swap();
         vbpassive.swap();
@@ -258,16 +266,20 @@ public class StereoEpipolarCurveViewer implements ParameterListener
     }
 
     public void drawEpipolarCurve(VisWorld.Buffer vb, double XY0[], double XY1[], double xy_dp[],
-                                  View activeCal,    double activeG2C[][],
-                                  View passiveCal,   double passiveG2C[][])
+                                  View activeCal,           double activeG2C[][],
+                                  View passiveCal,          double passiveG2C[][],
+                                  BufferedImage activeIm,   BufferedImage passiveIm)
     {
         double xy_rn[] = activeCal.pixelsToNorm(xy_dp);
 
-        // sample depths from 0 to zmax meters
-        double zmax = 10;
         ArrayList<double[]> points = new ArrayList<double[]>();
         ArrayList<double[]> depths = new ArrayList<double[]>();
-        for (double z=0.0; z < zmax; z += 0.02) {
+        ArrayList<double[]> colorError = new ArrayList<double[]>();
+
+        // sample depths from 0 to zmax meters
+        double zmax = 10;
+        double lastvisxy[] = null;
+        for (double z=0.0; z < zmax; z += 0.01) {
 
             double xyz_cam[] = new double[] { xy_rn[0]*z ,
                                               xy_rn[1]*z ,
@@ -281,15 +293,85 @@ public class StereoEpipolarCurveViewer implements ParameterListener
             if (xy[0] >= 0 && xy[0] < passiveCal.getWidth() &&
                 xy[1] >= 0 && xy[1] < passiveCal.getHeight())
             {
-                xy[1] = passiveCal.getHeight() - xy[1];
-                points.add(xy);
+                double visxy[] = new double[] { xy[0],
+                                                passiveCal.getHeight() - xy[1] };
+
+                if ((lastvisxy != null) && (LinAlg.distance(visxy, lastvisxy) < 1))
+                    continue;
+
+                points.add(visxy);
                 depths.add(new double[] {z});
+
+                if (activeIm != null && passiveIm != null) {
+                    colorError.add(getColorError(activeIm, passiveIm,
+                                                 xy_dp, xy, z));
+                }
+
+                lastvisxy = visxy;
             }
         }
 
+
+        VisColorData colors = ColorMapper.makeJet(0, zmax).makeColorData(depths, 0);
         vb.addBack(new VzPoints(new VisVertexData(LinAlg.transform(LinAlg.translate(XY0[0], XY0[1], 0),
                                                                   points)),
-                                new VzPoints.Style(ColorMapper.makeJet(0, zmax).makeColorData(depths, 0), 2)));
+                                new VzPoints.Style(colors, 2)));
+
+        if (activeIm != null && passiveIm != null) {
+            double maxDepth = 0;
+            double maxError = 0;
+
+            for (double de[] : colorError) {
+                maxDepth = Math.max(maxDepth, de[0]);
+                maxError = Math.max(maxError, de[1]);
+            }
+
+            String str = "<<monospaced-12,white>>Color error (Y) as a function of depth (X)";
+            vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT,
+                                        new VisChain(LinAlg.translate(200, 100, 0),
+                                                     new VzRectangle(400, 200, new VzMesh.Style(new Color(10, 10, 10)))),
+                                        new VisChain(LinAlg.scale(400 / maxDepth,
+                                                                  200 / maxError,
+                                                                  1),
+                                                     new VzLines(new VisVertexData(colorError),
+                                                                 VzLines.LINE_STRIP,
+                                                                 new VzLines.Style(colors, 1))),
+                                        new VisChain(LinAlg.translate(0, 200, 0),
+                                                     new VzText(VzText.ANCHOR.BOTTOM_LEFT, str))));
+        }
+    }
+
+    public double[] getColorError(BufferedImage activeIm, BufferedImage passiveIm,
+                                  double xy_active[], double xy_passive[], double depth)
+    {
+        int activeBuf[] = ((DataBufferInt) (activeIm.getRaster().getDataBuffer())).getData();
+        int activeWidth = activeIm.getWidth();
+        int activeHeight = activeIm.getHeight();
+        int xactive = (int) xy_active[0];
+        int yactive = (int) xy_active[1];
+
+        int passiveBuf[] = ((DataBufferInt) (passiveIm.getRaster().getDataBuffer())).getData();
+        int passiveWidth = passiveIm.getWidth();
+        int passiveHeight = passiveIm.getHeight();
+        int xpassive = (int) xy_passive[0];
+        int ypassive = (int) xy_passive[1];
+
+        int vactive = activeBuf[yactive * activeWidth + xactive];
+        int vpassive = passiveBuf[ypassive * passiveWidth + xpassive];
+
+        int ractive = ((vactive >> 16) & 0xFF);
+        int gactive = ((vactive >>  8) & 0xFF);
+        int bactive = ((vactive      ) & 0xFF);
+
+        int rpassive = ((vpassive >> 16) & 0xFF);
+        int gpassive = ((vpassive >>  8) & 0xFF);
+        int bpassive = ((vpassive      ) & 0xFF);
+
+        double error = Math.sqrt(Math.pow(ractive - rpassive, 2) +
+                                 Math.pow(gactive - gpassive, 2) +
+                                 Math.pow(bactive - bpassive, 2) );
+
+        return new double[] { depth, error };
     }
 
     public static void main(String args[])
