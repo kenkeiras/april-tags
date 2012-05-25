@@ -527,7 +527,7 @@ public class CameraCalibrator
     public void printCalibrationBlock()
     {
         // start block
-        System.out.println("cameraCalibration {\n");
+        System.out.println("aprilCameraCalibration {\n");
 
         // print name list
         String names = "    names = [";
