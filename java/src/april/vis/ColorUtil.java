@@ -34,6 +34,11 @@ public class ColorUtil
         return new Color(255- c.getRed(), 255-c.getGreen(), 255-c.getBlue());
     }
 
+    public static int swapRedBlue(int c)
+    {
+        return (c & 0xff000000) | ((c & 0xff) << 16)  | (c & 0x00ff00) | ((c >> 16) & 0xff);
+    }
+
     public static Color fromAARRGGBB(int aarrggbb)
     {
         return new Color((aarrggbb >> 16) & 0xff,
