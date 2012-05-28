@@ -32,6 +32,11 @@ public class ColorMapper implements VisSerializable
         this.maxval = maxval;
     }
 
+    public double[] getMinMax()
+    {
+        return new double[]{minval,maxval};
+    }
+
     public void setOpaqueMax(double opaqueMax)
     {
         this.opaqueMax = opaqueMax;
