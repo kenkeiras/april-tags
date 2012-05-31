@@ -26,10 +26,19 @@ public class ColorMapper implements VisSerializable
         this.maxval=maxval;
     }
 
+    private ColorMapper()
+    {
+    }
+
     public void setMinMax(double minval, double maxval)
     {
         this.minval = minval;
         this.maxval = maxval;
+    }
+
+    public double[] getMinMax()
+    {
+        return new double[]{minval,maxval};
     }
 
     public void setOpaqueMax(double opaqueMax)
@@ -47,6 +56,22 @@ public class ColorMapper implements VisSerializable
         if (v > opaqueMax || v < opaqueMin)
             return false;
         return true;
+    }
+
+    // Returns a new colormapper which swaps R and B channels This is
+    // useful for plotting VBOs in openGL, which use BGR by default
+    public ColorMapper swapRedBlue()
+    {
+        ColorMapper other = new ColorMapper();
+        other.colors = new int[this.colors.length];
+        for (int i = 0; i < this.colors.length; i++)
+            other.colors[i] = ColorUtil.swapRedBlue(this.colors[i]);
+
+        other.minval = this.minval;
+        other.maxval = this.maxval;
+        other.opaqueMin = this.opaqueMin;
+        other.opaqueMax = this.opaqueMax;
+        return other;
     }
 
     public VisColorData makeColorData(List<double[]> data, int color_index)
@@ -97,7 +122,7 @@ public class ColorMapper implements VisSerializable
     public Color mapColor(double vin)
     {
         int v = map(vin);
-        return new Color((v>>16)&0xff, (v>>8)&0xff, (v>>0)&0xff);
+        return new Color((v>>16)&0xff, (v>>8)&0xff, (v>>0)&0xff, (v>>24)&0xff);
     }
 
     public int map(double v)
