@@ -21,9 +21,9 @@ public class ExpiringMessageCache<T>
         this.maxAge = maxAge;
     }
 
-    public void put(T t, long utime)
+    public boolean put(T t, long utime)
     {
-        put(t, utime, utime);
+        return put(t, utime, utime);
     }
 
     /**
