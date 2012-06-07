@@ -3,8 +3,6 @@ include ../common.mk
 SUFFIXES += .java .lcm .c .h .o
 
 LCMTYPES_DIR  = ../../lcmtypes/
-CFLAGS  = $(CFLAGS_STD) $(CFLAGS_LC) -I.. -O4 -fPIC
-LDFLAGS = $(LDFLAGS_STD) $(LDFLAGS_LC)
 
 LCMTYPES_LCM = $(shell ls $(LCMTYPES_DIR)/*.lcm)
 LCMTYPES     = $(notdir $(LCMTYPES_LCM))
