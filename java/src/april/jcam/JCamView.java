@@ -18,6 +18,7 @@ public class JCamView
 {
     JFrame jf;
     JImage jim;
+    JImage hist;
     JList  cameraList;
     JList  formatList;
     JPanel featurePanel;
@@ -37,7 +38,7 @@ public class JCamView
     JPanel leftPanel;
 
     RecordPanel  recordPanel = new RecordPanel();
-    PrintPanel   printPanel = new PrintPanel();
+    InfoPanel   infoPanel = new InfoPanel();
     JPanel     triggerPanel = makeChoicePanel("Software trigger thread", new TriggerPanel());
 
     GetOpt gopt;
@@ -52,6 +53,7 @@ public class JCamView
         jf.setLayout(new BorderLayout());
 
         jim = new JImage();
+
         mainPanel = new JPanel();
         mainPanel.setLayout(new BorderLayout());
         mainPanel.add(jim, BorderLayout.CENTER);
@@ -95,7 +97,7 @@ public class JCamView
         leftPanel.add(Box.createVerticalStrut(vspace));
         leftPanel.add(makeChoicePanel("Record", recordPanel));
         leftPanel.add(Box.createVerticalStrut(vspace));
-        leftPanel.add(makeChoicePanel("Camera Info", printPanel));
+        leftPanel.add(makeChoicePanel("Camera Info", infoPanel));
 
         leftPanel.add(triggerPanel);
 
@@ -110,9 +112,9 @@ public class JCamView
 
         jf.add(jsp, BorderLayout.CENTER);
 
-        int width = Math.min(1000,
+        int width = Math.min(1200,
                              800 + (int) leftPanel.getPreferredSize().getWidth() + 30);
-        jf.setSize(width,600);
+        jf.setSize(width,800);
         jf.setVisible(true);
 
         new FeaturePollThread().start();
@@ -192,17 +194,19 @@ public class JCamView
         }
     }
 
-    class PrintPanel extends JPanel
+    class InfoPanel extends JPanel
     {
         JButton printButton = new JButton("Print details");
         JButton printURLButton = new JButton("Print camera URL");
+        JButton histogramButton = new JButton("Show image histogram");
 
-        public PrintPanel()
+        public InfoPanel()
         {
             setLayout(new VFlowLayout());
 
             add(printButton);
             add(printURLButton);
+            add(histogramButton);
 
             printButton.addActionListener(new ActionListener() {
                 public void actionPerformed(ActionEvent e) {
@@ -230,7 +234,85 @@ public class JCamView
 
                     System.out.printf("Camera url: \"%s\"\n", url);
                 }});
+
+            histogramButton.addActionListener(new ActionListener() {
+                public void actionPerformed(ActionEvent e) {
+                    JFrame hf = new JFrame("Histogram");
+                    hf.setLayout(new BorderLayout());
+
+                    hist = new JImage();
+                    hist.setFlipY(true);
+
+                    hf.add(hist, BorderLayout.CENTER);
+
+                    hf.addWindowListener(new WindowAdapter() {
+                        @Override
+                        public synchronized void windowClosing(WindowEvent we) {
+                            hist = null;
+                        }
+                    });
+
+
+                    hf.setSize(600, 300);
+                    hf.setVisible(true);
+            }});
         }
+    }
+
+    private synchronized void drawHist(BufferedImage image)
+    {
+        BufferedImage histim = new BufferedImage(256*2, 200, BufferedImage.TYPE_INT_RGB);
+        int h[] = ((DataBufferInt) (histim.getRaster().getDataBuffer())).getData();
+
+        int rhist[] = new int[256];
+        int ghist[] = new int[256];
+        int bhist[] = new int[256];
+
+        int im[] = ((DataBufferInt) (image.getRaster().getDataBuffer())).getData();
+
+        int width = image.getWidth();
+        int height = image.getHeight();
+        for (int y=0; y < height; y++) {
+            for (int x=0; x < width; x++) {
+                int v = im[y*width+x];
+
+                int r = (v >> 16) & 0xFF;
+                int g = (v >>  8) & 0xFF;
+                int b = (v      ) & 0xFF;
+
+                rhist[r]++;
+                ghist[g]++;
+                bhist[b]++;
+            }
+        }
+
+        int max = 0;
+        for (int i=5; i < 250; i++) {
+            max = Math.max(max, rhist[i]);
+            max = Math.max(max, ghist[i]);
+            max = Math.max(max, bhist[i]);
+        }
+        max = max * 2;
+
+        Graphics2D g = histim.createGraphics();
+        g.setBackground(Color.black);
+
+        g.setColor(Color.red);
+        for (int i=0; i+1 < 256; i++)
+            g.drawLine(2*(i  ), rhist[i  ]*199/max,
+                       2*(i+1), rhist[i+1]*199/max);
+
+        g.setColor(Color.green);
+        for (int i=0; i+1 < 256; i++)
+            g.drawLine(2*(i  ), ghist[i  ]*199/max,
+                       2*(i+1), ghist[i+1]*199/max);
+
+        g.setColor(Color.blue);
+        for (int i=0; i+1 < 256; i++)
+            g.drawLine(2*(i  ), bhist[i  ]*199/max,
+                       2*(i+1), bhist[i+1]*199/max);
+
+        hist.setImage(histim);
     }
 
     class RecordPanel extends JPanel implements ActionListener, ChangeListener
@@ -782,6 +864,9 @@ public class JCamView
 
                 jim.setImage(im);
                 recordPanel.handleImage(im, ifmt, imbuf);
+
+                if (hist != null)
+                    drawHist(im);
 
                 if (true) {
                     long frame_mtime = System.currentTimeMillis();
