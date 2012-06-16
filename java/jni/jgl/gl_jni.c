@@ -678,3 +678,5 @@ JNIEXPORT jint JNICALL Java_april_vis_GL_gl_1get_1double_1v
     (*jenv)->ReleasePrimitiveArrayCritical(jenv, jdata, data, 0);
     return 0;
 }
+
+
