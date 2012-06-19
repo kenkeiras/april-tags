@@ -9,6 +9,22 @@ import lcm.lcm.*;
 import lcm.util.*;
 import april.lcmtypes.*;
 
+/** EXPERIMENTAL LCM-based ISLog ImageSource. This ImageSource will read frames
+  * when directed to by LCM via a message (a url_t) that specifies the name of the
+  * ImageSourceLog (ISLog) and the location of the frame within the log.
+  * <br>
+  * <br>
+  * <font color=red><b>CAVEATS</b>:</font>
+  * <br>
+  * The ImageSource API does not provide a mechanism to return a frame and an
+  * ImageSourceFormat at the same time. However, ISLogs contain an
+  * ImageSourceFormat for every image and this format could change over time.
+  * Therefore, the user must call getFormat() after every successful getFrame()
+  * call in order to know the format for image decoding. The ImageSource API
+  * also does not provide a mechanism for returning timestamps, whereas they
+  * are available in the ISLog event. The user may call getTimestamp() after
+  * every successful getFrame() call, as well.
+  */
 public class ImageSourceISLogLCM extends ImageSource implements LCMSubscriber
 {
     LCM lcm = LCM.getSingleton();
@@ -16,24 +32,13 @@ public class ImageSourceISLogLCM extends ImageSource implements LCMSubscriber
     String basepath = null;
     String channel = null;
 
-    BlockingSingleQueue<ISLog.ISEvent> queue = new BlockingSingleQueue<ISLog.ISEvent>();
+    BlockingSingleQueue<url_t> queue = new BlockingSingleQueue<url_t>();
 
     ISLog log = null;
     ISLog.ISEvent lastEvent = null;
 
     boolean warned = false;
 
-    /** EXPERIMENTAL LCM-based ISLog reader.<br>
-      * <br>
-      * CAVEATS:<br>
-      * - The ImageSource API does not provide a mechanism to return a frame
-      * and an ImageSourceFormat at the same time. However, ISLogs can contain
-      * a different ImageSourceFormat for every image. Therefore, the user must
-      * call getFormat() after every successful getFrame() call in order to
-      * know the format for image decoding.<br>
-      * - The ImageSource API also does not provide a mechanism for returning
-      * timestamps, whereas they are actually available in the ISLog event.
-      */
     public ImageSourceISLogLCM(String url)
     {
         URLParser up = new URLParser(url);
@@ -58,7 +63,7 @@ public class ImageSourceISLogLCM extends ImageSource implements LCMSubscriber
     {
         try {
             if (channel.equals(this.channel))
-                readImage(new url_t(ins));
+                queue.put(new url_t(ins));
 
         } catch (IOException ex) {
             System.err.println("ImageSourceISLogLCM messageReceived IOException: " + ex);
@@ -67,7 +72,7 @@ public class ImageSourceISLogLCM extends ImageSource implements LCMSubscriber
         }
     }
 
-    private void readImage(url_t url) throws IOException, IllegalArgumentException
+    private ISLog.ISEvent readImage(url_t url) throws IOException, IllegalArgumentException
     {
         URLParser parser = new URLParser(url.url);
 
@@ -79,8 +84,7 @@ public class ImageSourceISLogLCM extends ImageSource implements LCMSubscriber
         assert(offsetStr != null);
 
         // read the frame
-        ISLog.ISEvent event = log.readAtPosition(Long.valueOf(offsetStr));
-        queue.put(event);
+        return log.readAtPosition(Long.valueOf(offsetStr));
     }
 
     private void ensureLogOpen(URLParser up) throws IOException
@@ -107,27 +111,50 @@ public class ImageSourceISLogLCM extends ImageSource implements LCMSubscriber
         }
     }
 
+    /** Wait for a new image or use the last unused image if one exists. Return the
+      * byte buffer and save ImageSourceFormat and timestamp for later.
+      * <br>
+      * TODO return a struct instead (containing the buffer, format, and timestamp)
+      */
     public byte[] getFrame()
     {
-        ISLog.ISEvent event = queue.get();
+        // get latest image url
+        url_t url = queue.get();
 
+        // actually read the image
+        ISLog.ISEvent event = null;
+        try {
+            event = readImage(url);
+        } catch (Exception ex) {
+            System.err.println("ImageSourceISLogLCM exception while reading image: " + ex);
+        }
+
+        // save this for later XXX this is a hack until the API changes
         lastEvent = event;
 
+        if (event == null)
+            return null;
+
+        // return the image buffer
         return event.buf;
     }
 
     /** Returns the LAST image's format. Returns null if no image has been read.
       * This is part of the experimental API that will be fixed in future versions.
+      * <br>
+      * TODO return a struct instead (containing the buffer, format, and timestamp)
       */
     public ImageSourceFormat getFormat(int idx)
     {
         assert(idx == 0);
 
+        // if we don't have a format, we have to return null
         if (lastEvent == null) {
             if (!warned) {
                 warned = true;
                 System.out.println("Warning: ImageSourceISLogLCM.getFormat() returning null because no frame has been received");
             }
+
             return null;
         }
 
@@ -136,9 +163,12 @@ public class ImageSourceISLogLCM extends ImageSource implements LCMSubscriber
 
     /** Returns the LAST image's timestamp. Returns null if no image has been read.
       * This is part of the experimental API that will be fixed in future versions.
+      * <br>
+      * TODO return a struct instead (containing the buffer, format, and timestamp)
       */
     public Long getTimestamp()
     {
+        // if we don't have an event, we can't return a utime
         if (lastEvent == null)
             return null;
 
