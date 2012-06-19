@@ -11,6 +11,9 @@ public abstract class ImageSource
         if (url.startsWith("file:") || url.startsWith("dir:"))
             return new ImageSourceFile(url);
 
+        if (url.startsWith("islog-lcm:"))
+            return new ImageSourceISLogLCM(url);
+
         return new ImageSourceNative(url);
     }
 
