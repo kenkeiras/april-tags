@@ -100,17 +100,15 @@ public class CornerTest implements ParameterListener
     {
         public void run()
         {
-            ImageSourceFormat ifmt = isrc.getCurrentFormat();
             boolean first = true;
-
             isrc.start();
 
             while (true) {
-                byte imbuf[] = isrc.getFrame();
-
-                im = ImageConvert.convertToImage(ifmt.format, ifmt.width, ifmt.height, imbuf);
-                if (im == null)
+                FrameData frmd = isrc.getFrame();
+                if (frmd == null)
                     continue;
+
+                im = ImageConvert.convertToImage(frmd);
 
                 if (first) {
                     vl.cameraManager.fit2D(new double[] {0, im.getHeight()}, new double[] {im.getWidth(), 0}, true);

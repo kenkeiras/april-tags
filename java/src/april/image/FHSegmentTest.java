@@ -127,14 +127,13 @@ public class FHSegmentTest implements ParameterListener
         public void run()
         {
             is.start();
-            ImageSourceFormat fmt = is.getCurrentFormat();
 
             while (true) {
-                byte buf[] = is.getFrame();
-                if (buf == null)
+                FrameData frmd = is.getFrame();
+                if (frmd == null)
                     continue;
 
-                BufferedImage im = ImageConvert.convertToImage(fmt.format, fmt.width, fmt.height, buf);
+                BufferedImage im = ImageConvert.convertToImage(frmd);
                 handleImage(im);
             }
         }

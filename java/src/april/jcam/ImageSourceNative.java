@@ -14,7 +14,7 @@ public class ImageSourceNative extends ImageSource
     protected static native int image_source_set_format_jni(int isrc, int idx);
     protected static native int image_source_get_current_format_jni(int isrc);
     protected static native int image_source_start_jni(int isrc);
-    protected static native byte[] image_source_get_frame_jni(int isrc);
+    protected static native FrameData image_source_get_frame_jni(int isrc);
     protected static native int image_source_stop_jni(int isrc);
     protected static native int image_source_close_jni(int isrc);
     protected static native int image_source_get_num_features(int isrc);
@@ -58,11 +58,7 @@ public class ImageSourceNative extends ImageSource
     /** Will return null in the event of an I/O error. **/
     public FrameData getFrame()
     {
-        FrameData frmd = new FrameData();
-        frmd.utime = april.util.TimeUtil.utime();
-        frmd.data = image_source_get_frame_jni(srcid);
-        frmd.ifmt = getCurrentFormat();
-        return frmd;
+        return image_source_get_frame_jni(srcid);
     }
 
     public synchronized int getNumFormats()

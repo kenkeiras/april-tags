@@ -52,20 +52,14 @@ public class ISLogViewer
         setupGUI();
 
         while (true) {
-            byte buf[] = isrc.getFrame();
+            FrameData frmd = isrc.getFrame();
 
-            if (buf == null) {
+            if (frmd == null) {
                 TimeUtil.sleep(10);
                 continue;
             }
 
-            ImageSourceFormat ifmt = isrc.getFormat(isrc.getCurrentFormatIndex());
-
-            long utime = TimeUtil.utime();
-            if (isrc instanceof ImageSourceISLogLCM)
-                utime = ((ImageSourceISLogLCM) isrc).getTimestamp();
-
-            plotFrame(buf, ifmt, utime);
+            plotFrame(frmd);
         }
     }
 
@@ -86,18 +80,18 @@ public class ISLogViewer
         jf.setVisible(true);
     }
 
-    public void plotFrame(byte buf[], ImageSourceFormat ifmt, long utime)
+    public void plotFrame(FrameData frmd)
     {
         // Image
-        BufferedImage im = ImageConvert.convertToImage(ifmt.format, ifmt.width,
-                                                       ifmt.height, buf);
+        BufferedImage im = ImageConvert.convertToImage(frmd.ifmt.format, frmd.ifmt.width,
+                                                       frmd.ifmt.height, frmd.data);
 
         VisWorld.Buffer vbim  = vw.getBuffer("images");
         vbim.addBack(new VisLighting(false, new VzImage(im, VzImage.FLIP)));
 
         if (once) {
             once = false;
-            vl.cameraManager.fit2D(new double[2], new double[]{ifmt.width, ifmt.height}, true);
+            vl.cameraManager.fit2D(new double[2], new double[]{frmd.ifmt.width, frmd.ifmt.height}, true);
         }
 
         // switch
