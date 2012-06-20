@@ -26,7 +26,7 @@ public abstract class ImageSource
 
     public abstract void stop();
 
-    public abstract byte[] getFrame();
+    public abstract FrameData getFrame();
 
     public abstract int getNumFormats();
 

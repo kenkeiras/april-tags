@@ -35,7 +35,7 @@ public class ImageSourceISLogLCM extends ImageSource implements LCMSubscriber
     BlockingSingleQueue<url_t> queue = new BlockingSingleQueue<url_t>();
 
     ISLog log = null;
-    ISLog.ISEvent lastEvent = null;
+    ImageSourceFormat lastIfmt = null;
 
     boolean warned = false;
 
@@ -114,9 +114,8 @@ public class ImageSourceISLogLCM extends ImageSource implements LCMSubscriber
     /** Wait for a new image or use the last unused image if one exists. Return the
       * byte buffer and save ImageSourceFormat and timestamp for later.
       * <br>
-      * TODO return a struct instead (containing the buffer, format, and timestamp)
       */
-    public byte[] getFrame()
+    public FrameData getFrame()
     {
         // get latest image url
         url_t url = queue.get();
@@ -127,29 +126,27 @@ public class ImageSourceISLogLCM extends ImageSource implements LCMSubscriber
             event = readImage(url);
         } catch (Exception ex) {
             System.err.println("ImageSourceISLogLCM exception while reading image: " + ex);
+            return null;
         }
 
-        // save this for later XXX this is a hack until the API changes
-        lastEvent = event;
+        lastIfmt = event.ifmt;
 
-        if (event == null)
-            return null;
+        FrameData frmd = new FrameData();
+        frmd.ifmt = event.ifmt;
+        frmd.data = event.buf;
+        frmd.utime = event.utime;
 
-        // return the image buffer
-        return event.buf;
+        return frmd;
     }
 
     /** Returns the LAST image's format. Returns null if no image has been read.
-      * This is part of the experimental API that will be fixed in future versions.
-      * <br>
-      * TODO return a struct instead (containing the buffer, format, and timestamp)
       */
     public ImageSourceFormat getFormat(int idx)
     {
         assert(idx == 0);
 
         // if we don't have a format, we have to return null
-        if (lastEvent == null) {
+        if (lastIfmt == null) {
             if (!warned) {
                 warned = true;
                 System.out.println("Warning: ImageSourceISLogLCM.getFormat() returning null because no frame has been received");
@@ -158,21 +155,7 @@ public class ImageSourceISLogLCM extends ImageSource implements LCMSubscriber
             return null;
         }
 
-        return lastEvent.ifmt;
-    }
-
-    /** Returns the LAST image's timestamp. Returns null if no image has been read.
-      * This is part of the experimental API that will be fixed in future versions.
-      * <br>
-      * TODO return a struct instead (containing the buffer, format, and timestamp)
-      */
-    public Long getTimestamp()
-    {
-        // if we don't have an event, we can't return a utime
-        if (lastEvent == null)
-            return null;
-
-        return lastEvent.utime;
+        return lastIfmt;
     }
 
     ////////////////////////////////////////////////////////////////////////////////

@@ -94,7 +94,7 @@ public class ImageSourceFile extends ImageSource
     }
 
     // ignores timeout.
-    public byte[] getFrame()
+    public FrameData getFrame()
     {
         /////////////////////////////////////
         // wait until it's time to produce a frame.
@@ -123,18 +123,23 @@ public class ImageSourceFile extends ImageSource
 
             BufferedImage im = ImageIO.read(new File(paths.get(pos++)));
             int width = im.getWidth(), height = im.getHeight();
-            byte b[] = new byte[width*height*3];
+
+            FrameData frmd = new FrameData();
+            frmd.ifmt = ifmt;
+            frmd.data = new byte[width*height*3];
+            frmd.utime = lastmtime*1000; // XXX Return the utime we are providing the image at
+
             int bpos = 0;
             for (int y = 0; y < height; y++) {
                 for (int x = 0; x < width; x++) {
                     int rgb = im.getRGB(x, y);
-                    b[bpos++] = (byte) ((rgb>>16)&0xff);
-                    b[bpos++] = (byte) ((rgb>>8)&0xff);
-                    b[bpos++] = (byte) ((rgb)&0xff);
+                    frmd.data[bpos++] = (byte) ((rgb>>16)&0xff);
+                    frmd.data[bpos++] = (byte) ((rgb>>8)&0xff);
+                    frmd.data[bpos++] = (byte) ((rgb)&0xff);
                 }
             }
 
-            return b;
+            return frmd;
 
         } catch (IOException ex) {
             System.out.println("ImageSourceFile exception: "+ex);

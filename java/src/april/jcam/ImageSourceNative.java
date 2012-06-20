@@ -56,11 +56,13 @@ public class ImageSourceNative extends ImageSource
     }
 
     /** Will return null in the event of an I/O error. **/
-    public byte[] getFrame()
+    public FrameData getFrame()
     {
-        byte b[] = image_source_get_frame_jni(srcid);
-
-        return b;
+        FrameData frmd = new FrameData();
+        frmd.utime = april.util.TimeUtil.utime();
+        frmd.data = image_source_get_frame_jni(srcid);
+        frmd.ifmt = getCurrentFormat();
+        return frmd;
     }
 
     public synchronized int getNumFormats()
