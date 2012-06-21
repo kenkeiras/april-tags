@@ -261,6 +261,7 @@ public class JCamView
 
     private synchronized void drawHist(BufferedImage image)
     {
+        image = ImageConvert.convertImage(image, BufferedImage.TYPE_INT_RGB);
         BufferedImage histim = new BufferedImage(256*2, 200, BufferedImage.TYPE_INT_RGB);
         int h[] = ((DataBufferInt) (histim.getRaster().getDataBuffer())).getData();
 
@@ -286,7 +287,7 @@ public class JCamView
             }
         }
 
-        int max = 0;
+        int max = 1; // avoid div zero
         for (int i=5; i < 250; i++) {
             max = Math.max(max, rhist[i]);
             max = Math.max(max, ghist[i]);

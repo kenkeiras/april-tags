@@ -15,6 +15,8 @@ import april.util.*;
  * color-space conversion. **/
 public class ImageConvert
 {
+    static boolean warnSlow = true;
+
     /** Returns an image of half the original resolution. **/
     public static BufferedImage debayerGBRGhalf(String format, int width, int height, byte d[])
     {
@@ -414,7 +416,10 @@ public class ImageConvert
         if (in.getType()==type)
             return in;
 
-        System.out.println("ImageConvert: Performing slow image type conversion");
+        if (warnSlow) {
+            System.out.println("ImageConvert: Performing slow image type conversion");
+            warnSlow = false;
+        }
 
         int w = in.getWidth();
         int h = in.getHeight();
