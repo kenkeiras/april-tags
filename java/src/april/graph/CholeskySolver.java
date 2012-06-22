@@ -10,6 +10,8 @@ public class CholeskySolver implements GraphSolver
 
     public static boolean verbose = true;
 
+    public int matrixType = Matrix.SPARSE;
+
     public Ordering ordering;
 
     Matrix L;
@@ -28,7 +30,7 @@ public class CholeskySolver implements GraphSolver
 
     public Matrix makeSymbolicA()
     {
-        Matrix A = new Matrix(g.nodes.size(), g.nodes.size(), Matrix.SPARSE);
+        Matrix A = new Matrix(g.nodes.size(), g.nodes.size(), matrixType);
 
         for (GEdge ge : g.edges) {
             for (int i = 0; i < ge.nodes.length; i++)
@@ -49,7 +51,7 @@ public class CholeskySolver implements GraphSolver
         Tic tic = new Tic();
 
         int n = g.getStateLength();
-        Matrix A = new Matrix(n, n, Matrix.SPARSE);
+        Matrix A = new Matrix(n, n, matrixType);
         Matrix B = new Matrix(n, 1);
 
         // Computing A directly, rather than computing J'J, is hugely

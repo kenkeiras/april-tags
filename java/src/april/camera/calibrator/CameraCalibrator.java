@@ -128,8 +128,10 @@ public class CameraCalibrator
         VzGrid.addGrid(vw);
 
         g = new Graph();
-        CholeskySolver gs = new CholeskySolver(g, new MinimumDegreeOrdering());
-        gs.verbose = false;
+
+        CholeskySolver gs   = new CholeskySolver(g, new MinimumDegreeOrdering());
+        gs.verbose          = false;
+        gs.matrixType       = Matrix.SPARSE;
         solver = gs;
 
         generateTagPositions(tf, metersPerTag);
@@ -499,8 +501,31 @@ public class CameraCalibrator
 
         solver.iterate();
 
-        if ((counter % 100) == 0)
+        if ((counter % 100) == 0) {
             printCalibrationBlock();
+
+            //int numTagEdges = 0;
+            //for (GEdge e : g.edges)
+            //    if (e instanceof GTagEdge)
+            //        numTagEdges++;
+
+            //System.out.printf("Time data:\n");
+            //System.out.printf("%s %12.6f seconds\n",
+            //                  "    Linearization            ",
+            //                  1.0e-9 * numTagEdges * GTagEdge.time_linearize / GTagEdge.time_number_of_linearizations);
+            //System.out.printf("%s %12.6f seconds\n",
+            //                  "        Residual             ",
+            //                  1.0e-9 * numTagEdges * GTagEdge.time_residual / GTagEdge.time_number_of_linearizations);
+            //System.out.printf("%s %12.6f seconds\n",
+            //                  "        Jacobian (intrinsics)",
+            //                  1.0e-9 * numTagEdges * GTagEdge.time_jacobian_intrinsics / GTagEdge.time_number_of_linearizations);
+            //System.out.printf("%s %12.6f seconds\n",
+            //                  "        Jacobian (extrinsics)",
+            //                  1.0e-9 * numTagEdges * GTagEdge.time_jacobian_extrinsics / GTagEdge.time_number_of_linearizations);
+            //System.out.printf("%s %12.6f seconds\n",
+            //                  "        Jacobian (mosaics)   ",
+            //                  1.0e-9 * numTagEdges * GTagEdge.time_jacobian_mosaics / GTagEdge.time_number_of_linearizations);
+        }
         counter++;
     }
 
@@ -653,6 +678,14 @@ public class CameraCalibrator
             double kc[] = new double[] { 0, 0 };
 
             return new SimpleCaltechCalibration(fc, cc, kc, width, height);
+        }
+
+        if (classname.equals("april.camera.DistortionFreeCalibration")) {
+
+            double fc[] = new double[] { 500, 500 };
+            double cc[] = new double[] { width/2, height/2 };
+
+            return new DistortionFreeCalibration(fc, cc, width, height);
         }
 
         assert(false);

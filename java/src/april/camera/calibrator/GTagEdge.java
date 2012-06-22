@@ -10,6 +10,13 @@ import april.util.*;
 
 public class GTagEdge extends GEdge
 {
+    //public static long time_linearize = 0;
+    //public static long time_residual = 0;
+    //public static long time_jacobian_intrinsics = 0;
+    //public static long time_jacobian_extrinsics = 0;
+    //public static long time_jacobian_mosaics = 0;
+    //public static long time_number_of_linearizations = 0;
+
     // inherited: nodes
     ArrayList<double[]> pixel_observations = new ArrayList<double[]>();
     ArrayList<double[]> mosaic_coordinates = new ArrayList<double[]>();
@@ -143,6 +150,7 @@ public class GTagEdge extends GEdge
 
     public Linearization linearize(Graph g, Linearization lin)
     {
+        //long time_linearize0 = System.nanoTime();
         assert(g.nodes.get(this.nodes[CI]) instanceof GIntrinsicsNode);
         if (hasCameraExtrinsics)
             assert(g.nodes.get(this.nodes[CE]) instanceof GExtrinsicsNode);
@@ -165,17 +173,35 @@ public class GTagEdge extends GEdge
             lin.W = LinAlg.identity(this.getDOF()); // XXX use something more principled?
         }
 
+        //long time_residual0 = System.nanoTime();
         lin.R = getResidual(cameraIntrinsics, cameraExtrinsics, mosaicExtrinsics);
+        //long time_residual1 = System.nanoTime();
+        //time_residual += time_residual1 - time_residual0;
 
+        //long time_jacobian_intrinsics0 = System.nanoTime();
         computeJacobianNumerically(cameraIntrinsics, cameraExtrinsics, mosaicExtrinsics,
                                    cameraIntrinsics, lin.J.get(CI));
+        //long time_jacobian_intrinsics1 = System.nanoTime();
+        //time_jacobian_intrinsics += time_jacobian_intrinsics1 - time_jacobian_intrinsics0;
 
-        if (hasCameraExtrinsics)
+        if (hasCameraExtrinsics) {
+            //long time_jacobian_extrinsics0 = System.nanoTime();
             computeJacobianNumerically(cameraIntrinsics, cameraExtrinsics, mosaicExtrinsics,
                                        cameraExtrinsics, lin.J.get(CE));
+            //long time_jacobian_extrinsics1 = System.nanoTime();
+            //time_jacobian_extrinsics += time_jacobian_extrinsics1 - time_jacobian_extrinsics0;
+        }
 
+        //long time_jacobian_mosaics0 = System.nanoTime();
         computeJacobianNumerically(cameraIntrinsics, cameraExtrinsics, mosaicExtrinsics,
                                    mosaicExtrinsics, lin.J.get(ME));
+        //long time_jacobian_mosaics1 = System.nanoTime();
+        //time_jacobian_mosaics += time_jacobian_mosaics1 - time_jacobian_mosaics0;
+
+        //long time_linearize1 = System.nanoTime();
+        //time_linearize += time_linearize1 - time_linearize0;
+
+        //time_number_of_linearizations++;
 
         return lin;
     }

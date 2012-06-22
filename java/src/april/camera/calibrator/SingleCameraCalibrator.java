@@ -37,7 +37,7 @@ public class SingleCameraCalibrator implements ParameterListener
     boolean             capture = false;
     boolean             captureOnce = false;
 
-    public SingleCameraCalibrator(String url, double tagSpacing_m)
+    public SingleCameraCalibrator(String cameraClass, String url, double tagSpacing_m)
     {
         ////////////////////////////////////////////////////////////////////////////////
         // GUI setup
@@ -81,7 +81,7 @@ public class SingleCameraCalibrator implements ParameterListener
 
         // Calibrator setup
         ArrayList<String> classnames = new ArrayList<String>();
-        classnames.add("april.camera.CaltechCalibration");
+        classnames.add(cameraClass);
 
         calibrator = new CameraCalibrator(classnames, new Tag36h11(),
                                           tagSpacing_m, vl2);
@@ -240,6 +240,7 @@ public class SingleCameraCalibrator implements ParameterListener
 
         opts.addBoolean('h',"help",false,"See this help screen");
         opts.addString('u',"url","","Camera URL");
+        opts.addString('c',"class","april.camera.CaltechCalibration","Calibration class");
         opts.addDouble('m',"spacing",0.0254,"Spacing between tags (meters)");
 
         if (!opts.parse(args)) {
@@ -247,6 +248,7 @@ public class SingleCameraCalibrator implements ParameterListener
 	    }
 
         String url = opts.getString("url");
+        String camclass = opts.getString("class");
         double spacing = opts.getDouble("spacing");
 
         if (opts.getBoolean("help") || url.isEmpty()){
@@ -255,6 +257,6 @@ public class SingleCameraCalibrator implements ParameterListener
             System.exit(1);
         }
 
-        new SingleCameraCalibrator(url, spacing);
+        new SingleCameraCalibrator(camclass, url, spacing);
     }
 }
