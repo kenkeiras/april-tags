@@ -16,7 +16,7 @@ import april.tag.*;
 import april.util.*;
 import april.vis.*;
 
-public class IntrinsicsEstimate implements ParameterListener
+public class EstimateIntrinsics implements ParameterListener
 {
     ArrayList<String>                   paths           = new ArrayList<String>();
     ArrayList<BufferedImage>            images          = new ArrayList<BufferedImage>();
@@ -38,7 +38,7 @@ public class IntrinsicsEstimate implements ParameterListener
     double XY1[];
     double PixelsToVis[][];
 
-    public IntrinsicsEstimate(String dirpath, TagFamily tf)
+    public EstimateIntrinsics(String dirpath, TagFamily tf)
     {
         // check directory
         File dir = new File(dirpath);
@@ -232,6 +232,6 @@ public class IntrinsicsEstimate implements ParameterListener
             System.exit(-1);
         }
 
-        new IntrinsicsEstimate(dir, tf);
+        new EstimateIntrinsics(dir, tf);
     }
 }
