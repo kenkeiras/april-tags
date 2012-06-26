@@ -60,6 +60,82 @@ public class CameraMath
         return LinAlg.matrixAB(K, LinAlg.select(L2C, 0, 2, 0, 3));
     }
 
+    /** Estimate the camera intrinsics matrix K from a list of vanishing point pairs (two vanishing points per image).
+      *
+      * @param vanishingPointPairs - A list of vanishing point pairs {{u0, v0}, {u1, v1}, {u2, v2}, ...} specified
+      * as two vanishing points per plane in the image (e.g. an AprilTag or tag calibration mosaic). At least 3 planar
+      * observations are required to estimate the intrinsics.
+      */
+    public final static double[][] estimateIntrinsicsFromVanishingPoints(ArrayList<double[][]> vanishingPointPairs)
+    {
+        if (vanishingPointPairs.size() < 3)
+            return null;
+
+        double A[][] = new double[vanishingPointPairs.size()+2][];
+
+        // vanishing points
+        int i=0;
+        for (int n=0; n < vanishingPointPairs.size(); n++) {
+            double vp[][] = vanishingPointPairs.get(n);
+
+            double u[] = new double[] { vp[0][0], vp[0][1], 1 };
+            double v[] = new double[] { vp[1][0], vp[1][1], 1 };
+
+            // normalization is essential for good estimates
+            u = LinAlg.normalize(u);
+            v = LinAlg.normalize(v);
+
+            double u1 = u[0];
+            double u2 = u[1];
+            double u3 = u[2];
+
+            double v1 = v[0];
+            double v2 = v[1];
+            double v3 = v[2];
+
+            double row[] = new double[] { u1*v1,
+                                          u1*v2 + u2*v1,
+                                          u2*v2,
+                                          u1*v3 + u3*v1,
+                                          u2*v3 + u3*v2,
+                                          u3*v3 };
+
+            A[i++] = row;
+        }
+
+        // zero skew
+        A[i++] = new double[] { 0, 1, 0, 0, 0, 0 };
+
+        // similar focal lengths
+        A[i++] = new double[] { 1, 0,-1, 0, 0, 0 };
+
+        SingularValueDecomposition SVD = new SingularValueDecomposition(new Matrix(A));
+        Matrix V = SVD.getV();
+        double w[] = V.getColumn(V.getColumnDimension()-1).getDoubles();
+
+        double omega[][] = new double[3][3];
+        omega[0][0] = w[0];
+        omega[0][1] = w[1];
+        omega[0][2] = w[3];
+        omega[1][0] = w[1];
+        omega[1][1] = w[2];
+        omega[1][2] = w[4];
+        omega[2][0] = w[3];
+        omega[2][1] = w[4];
+        omega[2][2] = w[5];
+
+        CholeskyDecomposition cd = new CholeskyDecomposition(new Matrix(omega));
+        if (!cd.isSPD())
+            cd = new CholeskyDecomposition(new Matrix(LinAlg.scale(omega, -1)));
+
+        double Kinv[][] = cd.getL().transpose().copyArray();
+        Kinv = LinAlg.scale(Kinv, 1.0 / Kinv[2][2]);
+
+        double K[][] = LinAlg.inverse(Kinv);
+
+        return K;
+    }
+
     ////////////////////////////////////////////////////////////////////////////////
     // Projection methods for 3D points
 
