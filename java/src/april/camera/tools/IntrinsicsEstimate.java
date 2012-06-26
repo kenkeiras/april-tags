@@ -18,15 +18,11 @@ import april.vis.*;
 
 public class IntrinsicsEstimate implements ParameterListener
 {
-    ArrayList<String> paths = new ArrayList<String>();
-    ArrayList<BufferedImage> images = new ArrayList<BufferedImage>();
-    ArrayList<ArrayList<TagDetection>> allDetections = new ArrayList<ArrayList<TagDetection>>();
+    ArrayList<String>                   paths           = new ArrayList<String>();
+    ArrayList<BufferedImage>            images          = new ArrayList<BufferedImage>();
+    ArrayList<ArrayList<TagDetection>>  allDetections   = new ArrayList<ArrayList<TagDetection>>();
 
-    ArrayList<Integer> goodIndices = new ArrayList<Integer>();
-    ArrayList<ArrayList<double[][]>> allFitLines = new ArrayList<ArrayList<double[][]>>();
-    ArrayList<double[][]> vanishingPoints = new ArrayList<double[][]>();
-
-    ArrayList<int[]> tagRowCol;   // the row and column for every tag id
+    IntrinsicsEstimator ie;
 
     TagFamily tf;
     TagDetector td;
@@ -38,9 +34,9 @@ public class IntrinsicsEstimate implements ParameterListener
     ParameterGUI    pg;
     VisWorld.Buffer vb;
 
-    double K[][];
-
-    boolean once = true;
+    double XY0[];
+    double XY1[];
+    double PixelsToVis[][];
 
     public IntrinsicsEstimate(String dirpath, TagFamily tf)
     {
@@ -76,17 +72,13 @@ public class IntrinsicsEstimate implements ParameterListener
         for (BufferedImage im : images)
             allDetections.add(td.process(im, new double[] { im.getWidth()/2, im.getHeight()/2 }));
 
-        // generate tag positions
-        generateTagPositions(tf);
-
-        // create lines and compute vanishing points
-        computeVanishingPoints();
-
         // setup GUI
         setupGUI();
 
-        // estimate K
-        K = CameraMath.estimateIntrinsicsFromVanishingPoints(vanishingPoints);
+        // estimate the intrinsics
+        ie = new IntrinsicsEstimator(allDetections, this.tf);
+
+        double K[][] = ie.getIntrinsics();
 
         if (K == null) {
             System.out.println("Could not estimate intrinsics - K returned from CameraMath is null");
@@ -102,8 +94,11 @@ public class IntrinsicsEstimate implements ParameterListener
 
     private void setupGUI()
     {
+        assert(images.size() == paths.size());
+        assert(images.size() == allDetections.size());
+
         pg = new ParameterGUI();
-        pg.addIntSlider("image", "Selected image", 0, goodIndices.size()-1, 0);
+        pg.addIntSlider("image", "Selected image", 0, images.size()-1, 0);
         pg.addListener(this);
 
         vw = new VisWorld();
@@ -121,25 +116,13 @@ public class IntrinsicsEstimate implements ParameterListener
         jf.setSize(1200, 600);
         jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         jf.setVisible(true);
-    }
 
-    private void generateTagPositions(TagFamily tf)
-    {
-        tagRowCol = new ArrayList<int[]>();
-
-        // TODO Add a method to TagFamily that returns this grid?
-        int mosaicWidth     = (int) Math.sqrt(tf.codes.length);
-        int mosaicHeight    = tf.codes.length / mosaicWidth + 1;
-
-        for (int y=0; y < mosaicHeight; y++) {
-            for (int x=0; x < mosaicWidth; x++) {
-                int id = y*mosaicWidth + x;
-                if (id >= tf.codes.length)
-                    continue;
-
-                tagRowCol.add(new int[] { y, x });
-            }
-        }
+        BufferedImage image = images.get(0);
+        XY0 = new double[2];
+        XY1 = new double[] { image.getWidth(), image.getHeight() };
+        PixelsToVis = CameraMath.makeVisPlottingTransform(image.getWidth(), image.getHeight(),
+                                                          XY0, XY1, true);
+        vl.cameraManager.fit2D(XY0, XY1, true);
     }
 
     public void parameterChanged(ParameterGUI pg, String name)
@@ -148,207 +131,17 @@ public class IntrinsicsEstimate implements ParameterListener
             draw();
     }
 
-    private void computeVanishingPoints()
-    {
-        for (int i=0; i < images.size(); i++) {
-            BufferedImage image = images.get(i);
-            ArrayList<TagDetection> detections = allDetections.get(i);
-
-            if (detections.size() == 0)
-                continue;
-
-            goodIndices.add(i);
-
-            if (detections.size() == 1)
-                computeSingleTagVanishingPoints(image, detections.get(0));
-            else if (detections.size() > 1)
-                computeTagMosaicVanishingPoints(image, detections);
-        }
-    }
-
-    private void computeSingleTagVanishingPoints(BufferedImage image, TagDetection d)
-    {
-        int width = image.getWidth();
-        int height = image.getHeight();
-
-        // lines on tag
-        GLine2D bottom = new GLine2D(d.p[0], d.p[1]);
-        GLine2D right  = new GLine2D(d.p[1], d.p[2]);
-        GLine2D top    = new GLine2D(d.p[2], d.p[3]);
-        GLine2D left   = new GLine2D(d.p[3], d.p[0]);
-
-        // add lines to rendering pool
-        ArrayList<double[][]> fitLines = new ArrayList<double[][]>();
-        fitLines.add(getLine(width, height, top   ));
-        fitLines.add(getLine(width, height, bottom));
-        fitLines.add(getLine(width, height, left  ));
-        fitLines.add(getLine(width, height, right ));
-        allFitLines.add(fitLines);
-
-        // intersect lines to compute vanishing points
-        vanishingPoints.add(new double[][] { bottom.intersectionWith(top) ,
-                                             left.intersectionWith(right) });
-    }
-
-    private void computeTagMosaicVanishingPoints(BufferedImage image, ArrayList<TagDetection> detections)
-    {
-        int width = image.getWidth();
-        int height = image.getHeight();
-
-        HashMap<Integer, ArrayList<TagDetection>> rowLists = new HashMap<Integer, ArrayList<TagDetection>>();
-        HashMap<Integer, ArrayList<TagDetection>> colLists = new HashMap<Integer, ArrayList<TagDetection>>();
-
-        ArrayList<double[][]> fitLines = new ArrayList<double[][]>();
-
-        // make lists of detections by mosaic row and column
-        for (int i=0; i < detections.size(); i++) {
-            TagDetection d = detections.get(i);
-
-            // mosaic positions
-            int rowcol[] = tagRowCol.get(d.id);
-            int row = rowcol[0];
-            int col = rowcol[1];
-
-            ArrayList<TagDetection> rowList = rowLists.get(row);
-            if (rowList == null)
-                rowList = new ArrayList<TagDetection>();
-
-            ArrayList<TagDetection> colList = colLists.get(col);
-            if (colList == null)
-                colList = new ArrayList<TagDetection>();
-
-            rowList.add(d);
-            colList.add(d);
-
-            rowLists.put(row, rowList);
-            colLists.put(col, colList);
-        }
-
-        // get observed row keys
-        Set<Integer> rows = rowLists.keySet();
-        Set<Integer> cols = colLists.keySet();
-
-        // add lines for rows
-        for (Integer row : rows) {
-            ArrayList<TagDetection> lineDetections = rowLists.get(row);
-            if (lineDetections.size() < 2)
-                continue;
-
-            ArrayList<double[]> centers = getDetectionCenters(lineDetections);
-            GLine2D line = GLine2D.lsqFit(centers);
-            fitLines.add(getLine(width, height, line));
-        }
-
-        // add lines for cols
-        for (Integer col: cols) {
-            ArrayList<TagDetection> lineDetections = colLists.get(col);
-            if (lineDetections.size() < 2)
-                continue;
-
-            ArrayList<double[]> centers = getDetectionCenters(lineDetections);
-            GLine2D line = GLine2D.lsqFit(centers);
-            fitLines.add(getLine(width, height, line));
-        }
-
-        // get min and max row and column for computing vanishing point
-        int minRow = Integer.MAX_VALUE;
-        int maxRow = Integer.MIN_VALUE;
-        int minCol = Integer.MAX_VALUE;
-        int maxCol = Integer.MIN_VALUE;
-
-        for (Integer row : rows) {
-            if (rowLists.get(row).size() < 2)
-                continue;
-
-            minRow = Math.min(minRow, row);
-            maxRow = Math.max(maxRow, row);
-        }
-
-        for (Integer col : cols) {
-            if (colLists.get(col).size() < 2)
-                continue;
-
-            minCol = Math.min(minCol, col);
-            maxCol = Math.max(maxCol, col);
-        }
-
-        double rowVanishingPoint[];
-        double colVanishingPoint[];
-
-        // rows
-        {
-            GLine2D minLine = GLine2D.lsqFit(getDetectionCenters(rowLists.get(minRow)));
-            GLine2D maxLine = GLine2D.lsqFit(getDetectionCenters(rowLists.get(maxRow)));
-
-            rowVanishingPoint = minLine.intersectionWith(maxLine);
-        }
-
-        // cols
-        {
-            GLine2D minLine = GLine2D.lsqFit(getDetectionCenters(colLists.get(minCol)));
-            GLine2D maxLine = GLine2D.lsqFit(getDetectionCenters(colLists.get(maxCol)));
-
-            colVanishingPoint = minLine.intersectionWith(maxLine);
-        }
-
-        vanishingPoints.add(new double[][] { rowVanishingPoint, colVanishingPoint });
-        allFitLines.add(fitLines);
-    }
-
-    private ArrayList<double[]> getDetectionCenters(ArrayList<TagDetection> lineDetections)
-    {
-        ArrayList<double[]> centers = new ArrayList<double[]>();
-        for (TagDetection d : lineDetections)
-            centers.add(d.cxy);
-
-        return centers;
-    }
-
-    private double[][] getLine(double width, double height, GLine2D line)
-    {
-        double p0[] = null;
-        double p1[] = null;
-
-        double dx = line.getDx();
-        double dy = line.getDy();
-        double p[] = line.getPoint();
-        double t = line.getTheta();
-        t = MathUtil.mod2pi(t);
-
-        double pi = Math.PI;
-        // mostly horizontal
-        if ((t < -3*pi/4) || (t > -pi/4 && t < pi/4) || (t > 3*pi/4)) {
-            p0 = new double[] {     0, p[1] + (    0 - p[0])*dy/dx };
-            p1 = new double[] { width, p[1] + (width - p[0])*dy/dx };
-        }
-        // mostly vertical
-        else {
-            p0 = new double[] { p[0] + (     0 - p[1])*dx/dy,      0 };
-            p1 = new double[] { p[0] + (height - p[1])*dx/dy, height };
-        }
-
-        return new double[][] { p0, p1 };
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////////////////////////////
-
     private void draw()
     {
         int n = pg.gi("image");
-        int m = goodIndices.get(n);
 
-        String path                         = paths.get(m);
-        BufferedImage image                 = images.get(m);
-        ArrayList<TagDetection> detections  = allDetections.get(m);
+        String path                         = paths.get(n);
+        BufferedImage image                 = images.get(n);
+        ArrayList<TagDetection> detections  = allDetections.get(n);
 
-        ArrayList<double[][]> fitLines      = allFitLines.get(n);
-        double vp[][]                       = vanishingPoints.get(n);
-
-        double XY0[] = new double[2];
-        double XY1[] = new double[] { image.getWidth(), image.getHeight() };
-        double PixelsToVis[][] = CameraMath.makeVisPlottingTransform(image.getWidth(), image.getHeight(),
-                                                                     XY0, XY1, true);
+        assert(images.size() == ie.getVanishingPoints().size());
+        double vp[][]                   = ie.getVanishingPoints().get(n);
+        ArrayList<double[][]> fitLines  = ie.getFitLines(n);
 
         vb = vw.getBuffer("Image");
         vb.addBack(new VisChain(PixelsToVis,
@@ -360,6 +153,15 @@ public class IntrinsicsEstimate implements ParameterListener
                                     new VzText(VzText.ANCHOR.TOP_LEFT,
                                                String.format("<<monospaced-12>>%s\n%d detections",
                                                              path, detections.size()))));
+        vb.swap();
+
+        vb = vw.getBuffer("Fit lines");
+        if (fitLines != null)
+            for (double line[][] : fitLines)
+                vb.addBack(new VisChain(PixelsToVis,
+                                        new VzLines(new VisVertexData(line),
+                                                    VzLines.LINE_STRIP,
+                                                    new VzLines.Style(Color.yellow, 2))));
         vb.swap();
 
         vb = vw.getBuffer("Detections");
@@ -382,38 +184,24 @@ public class IntrinsicsEstimate implements ParameterListener
         }
         vb.swap();
 
-        vb = vw.getBuffer("Fit lines");
-        for (double line[][] : fitLines)
+        vb = vw.getBuffer("Vanishing points");
+        if (vp != null) {
             vb.addBack(new VisChain(PixelsToVis,
-                                    new VzLines(new VisVertexData(line),
-                                                VzLines.LINES,
-                                                new VzLines.Style(Color.yellow, 2))));
-        vb.addBack(new VisChain(PixelsToVis,
-                                new VzPoints(new VisVertexData(vp[0]),
-                                             new VzPoints.Style(Color.red, 8))));
-        vb.addBack(new VisChain(PixelsToVis,
-                                new VzPoints(new VisVertexData(vp[1]),
-                                             new VzPoints.Style(Color.green, 8))));
-        vb.swap();
-
-        vb = vw.getBuffer("Vanishing lines");
-        vb.addBack(new VisChain(PixelsToVis,
-                                new VzLines(new VisVertexData(vp),
-                                            VzLines.LINE_STRIP,
-                                            new VzLines.Style(new Color(170, 100, 10), 1))));
-        if (K != null)
+                                    new VzPoints(new VisVertexData(vp[0]),
+                                                 new VzPoints.Style(Color.green, 8))));
             vb.addBack(new VisChain(PixelsToVis,
-                                    new VzLines(new VisVertexData(new double[][] { vp[0],
-                                                                                   new double[] { K[0][2], K[1][2] },
-                                                                                   vp[1] }),
-                                                VzLines.LINE_STRIP,
-                                                new VzLines.Style(new Color(10, 100, 170), 1))));
-        vb.swap();
-
-        if (once) {
-            once = false;
-            vl.cameraManager.fit2D(XY0, XY1, true);
+                                    new VzPoints(new VisVertexData(vp[1]),
+                                                 new VzPoints.Style(Color.red, 8))));
+        } else {
+            VzText text = new VzText(VzText.ANCHOR.CENTER,
+                                     "<<sansserif-20>>No vanishing points available for this frame");
+            vb.addBack(new VisChain(LinAlg.translate((XY1[0]+XY0[0])/2,
+                                                     (XY1[1]+XY0[1])/2, 0),
+                                    new VzRectangle(XY1[0]-XY0[0], XY1[1]-XY0[1],
+                                                    new VzMesh.Style(new Color(0, 0, 0, 200))),
+                                    text));
         }
+        vb.swap();
     }
 
     public static void main(String args[])

@@ -64,19 +64,27 @@ public class CameraMath
       *
       * @param vanishingPointPairs - A list of vanishing point pairs {{u0, v0}, {u1, v1}, {u2, v2}, ...} specified
       * as two vanishing points per plane in the image (e.g. an AprilTag or tag calibration mosaic). At least 3 planar
-      * observations are required to estimate the intrinsics.
+      * observations are required to estimate the intrinsics. Null vanishing points are allowed for convenience and
+      * will be skipped.
       */
     public final static double[][] estimateIntrinsicsFromVanishingPoints(ArrayList<double[][]> vanishingPointPairs)
     {
-        if (vanishingPointPairs.size() < 3)
+        int numVanishingPoints = 0;
+        for (double vp[][] : vanishingPointPairs)
+            if (vp != null)
+                numVanishingPoints++;
+
+        if (numVanishingPoints < 3)
             return null;
 
-        double A[][] = new double[vanishingPointPairs.size()+2][];
+        double A[][] = new double[numVanishingPoints+2][];
 
         // vanishing points
         int i=0;
         for (int n=0; n < vanishingPointPairs.size(); n++) {
             double vp[][] = vanishingPointPairs.get(n);
+            if (vp == null)
+                continue;
 
             double u[] = new double[] { vp[0][0], vp[0][1], 1 };
             double v[] = new double[] { vp[1][0], vp[1][1], 1 };
@@ -111,6 +119,7 @@ public class CameraMath
 
         SingularValueDecomposition SVD = new SingularValueDecomposition(new Matrix(A));
         Matrix V = SVD.getV();
+
         double w[] = V.getColumn(V.getColumnDimension()-1).getDoubles();
 
         double omega[][] = new double[3][3];
