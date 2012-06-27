@@ -9,6 +9,8 @@ import april.util.*;
 
 public class IntrinsicsEstimator
 {
+    public final static boolean verbose = true;
+
     private double K[][];
     private ArrayList<double[][]> vanishingPoints = new ArrayList<double[][]>();
     private ArrayList<ArrayList<double[][]>> allFitLines = new ArrayList<ArrayList<double[][]>>();
@@ -32,14 +34,16 @@ public class IntrinsicsEstimator
             }
         }
 
-        //for (int i=0; i < vanishingPoints.size(); i++) {
-        //    double vp[][] = vanishingPoints.get(i);
-        //    if (vp == null)
-        //        System.out.printf("Vanishing point %2d: null\n", i+1);
-        //    else
-        //        System.out.printf("Vanishing point %2d: (%8.1f, %8.1f) and (%8.1f, %8.1f)\n",
-        //                          i+1, vp[0][0], vp[0][1], vp[1][0], vp[1][1]);
-        //}
+        if (verbose) {
+            for (int i=0; i < vanishingPoints.size(); i++) {
+                double vp[][] = vanishingPoints.get(i);
+                if (vp == null)
+                    System.out.printf("Vanishing point %2d: null\n", i+1);
+                else
+                    System.out.printf("Vanishing point %2d: (%8.1f, %8.1f) and (%8.1f, %8.1f)\n",
+                                      i+1, vp[0][0], vp[0][1], vp[1][0], vp[1][1]);
+            }
+        }
 
         K = CameraMath.estimateIntrinsicsFromVanishingPoints(vanishingPoints);
     }
@@ -103,8 +107,9 @@ public class IntrinsicsEstimator
             TagMosaic.GroupedDetections gd = rowDetections.get(i);
             assert(gd.type == TagMosaic.GroupedDetections.ROW_GROUP);
 
-            //System.out.printf("Detection group %2d: type %1d index %2d #detections %3d\n",
-            //                  i, gd.type, gd.index, gd.detections.size());
+            if (verbose)
+                System.out.printf("Detection group %2d: type %1d index %2d #detections %3d\n",
+                                  i, gd.type, gd.index, gd.detections.size());
 
             if (gd.detections.size() < 2)
                 continue;
@@ -125,8 +130,9 @@ public class IntrinsicsEstimator
             TagMosaic.GroupedDetections gd = colDetections.get(i);
             assert(gd.type == TagMosaic.GroupedDetections.COL_GROUP);
 
-            //System.out.printf("Detection group %2d: type %1d index %2d #detections %3d\n",
-            //                  i, gd.type, gd.index, gd.detections.size());
+            if (verbose)
+                System.out.printf("Detection group %2d: type %1d index %2d #detections %3d\n",
+                                  i, gd.type, gd.index, gd.detections.size());
 
             if (gd.detections.size() < 2)
                 continue;
@@ -143,9 +149,10 @@ public class IntrinsicsEstimator
             }
         }
 
-        //System.out.printf("Row min %2d (%2d) max %2d (%2d) Col min %2d (%2d) max %2d (%2d)\n",
-        //                  minRow, minRowIndex, maxRow, maxRowIndex,
-        //                  minCol, minColIndex, maxCol, maxColIndex);
+        if (verbose)
+            System.out.printf("Row min %2d (%2d) max %2d (%2d) Col min %2d (%2d) max %2d (%2d)\n",
+                              minRow, minRowIndex, maxRow, maxRowIndex,
+                              minCol, minColIndex, maxCol, maxColIndex);
 
         GLine2D rowMinLine = rowDetections.get(minRowIndex).fitLine();
         GLine2D rowMaxLine = rowDetections.get(maxRowIndex).fitLine();
@@ -155,9 +162,10 @@ public class IntrinsicsEstimator
         double rowVanishingPoint[] = rowMinLine.intersectionWith(rowMaxLine);
         double colVanishingPoint[] = colMinLine.intersectionWith(colMaxLine);
 
-        //System.out.printf("Vanishing points (%7.1f, %7.1f) and (%7.1f, %7.1f)\n",
-        //                  rowVanishingPoint[0], rowVanishingPoint[1],
-        //                  colVanishingPoint[0], colVanishingPoint[1]);
+        if (verbose)
+            System.out.printf("Vanishing points (%7.1f, %7.1f) and (%7.1f, %7.1f)\n",
+                              rowVanishingPoint[0], rowVanishingPoint[1],
+                              colVanishingPoint[0], colVanishingPoint[1]);
 
         vanishingPoints.add(new double[][] { rowVanishingPoint, colVanishingPoint });
         allFitLines.add(fitLines);

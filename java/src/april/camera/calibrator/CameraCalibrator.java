@@ -24,10 +24,12 @@ import april.vis.*;
  */
 public class CameraCalibrator
 {
+    final int NUM_IMAGES_REQUIRED = 5;
+
     List<String>                classnames  = null;
     List<double[]>              initialParameters = null;
     List<double[]>              initialExtrinsics = null;
-    List<List<BufferedImage>>   images      = new ArrayList<List<BufferedImage>>();
+    List<List<ProcessedImage>>  images      = new ArrayList<List<ProcessedImage>>();
 
     List<CameraWrapper>         cameras     = null;
 
@@ -40,6 +42,7 @@ public class CameraCalibrator
     VisCanvas       vc;
     VisWorld.Buffer vb;
 
+    IntrinsicsEstimator ie;
     Graph g;
     GraphSolver solver;
 
@@ -54,6 +57,18 @@ public class CameraCalibrator
                                        {  0,  0,  0,  1 } };
 
     int counter = 0;
+
+    private static class ProcessedImage
+    {
+        public BufferedImage image;
+        public ArrayList<TagDetection> detections;
+
+        public ProcessedImage(BufferedImage image, ArrayList<TagDetection> detections)
+        {
+            this.image = image;
+            this.detections = detections;
+        }
+    }
 
     private static class CameraWrapper
     {
@@ -261,43 +276,69 @@ public class CameraCalibrator
      */
     public synchronized void addImages(List<BufferedImage> newImages)
     {
-        if (cameras == null)
-            initCameras(newImages);
+        assert(newImages.size() == classnames.size());
 
-        assert(newImages.size() == cameras.size());
-
-        ArrayList<ArrayList<TagDetection>> allDetections = new ArrayList<ArrayList<TagDetection>>();
+        ArrayList<ProcessedImage> processedImages = new ArrayList<ProcessedImage>();
         for (int cameraIndex = 0; cameraIndex < newImages.size(); cameraIndex++) {
 
             BufferedImage im = newImages.get(cameraIndex);
 
-            ArrayList<TagDetection> detections = detector.process(im, new double[] {im.getWidth()/2, im.getHeight()/2});
-            allDetections.add(detections);
+            // if we've already gotten a set of images, enforce that all images
+            // from a camera have the same size
+            if (this.images.size() > 0) {
+                List<ProcessedImage> firstImages = this.images.get(0);
+                ProcessedImage reference = firstImages.get(cameraIndex);
+                assert(reference.image.getWidth() == im.getWidth());
+                assert(reference.image.getHeight() == im.getHeight());
+            }
+
+            ArrayList<TagDetection> detections = detector.process(im,
+                                                    new double[] {im.getWidth()/2, im.getHeight()/2});
 
             // skip if we don't have a reasonable number of observed tags?
             // XXX is this the right thing to do? should we reject the whole image set?
             if (detections.size() < 8)
                 return;
+
+            processedImages.add(new ProcessedImage(im, detections));
         }
 
-        this.images.add(newImages);
-        int imagesetIndex = this.images.size() - 1;
+        this.images.add(processedImages);
 
+        // delay everything until we reach the required number of image sets so we can initialize
+        if (this.images.size() < NUM_IMAGES_REQUIRED)
+            return;
+
+        // initialize the cameras if we haven't provided we have the minimum number of images
+        if (cameras == null) {
+            initCameras();
+
+            for (int i=0; i < this.images.size(); i++)
+                addImageSet(this.images.get(i), i);
+        }
+        // otherwise, we just need to add the new set of images
+        else {
+            addImageSet(processedImages, this.images.size() - 1);
+        }
+    }
+
+    private void addImageSet(List<ProcessedImage> newImages, int imagesetIndex)
+    {
         GExtrinsicsNode mosaicExtrinsics = new GExtrinsicsNode();
         g.nodes.add(mosaicExtrinsics);
         System.out.printf("Added mosaic extrinsics. Graph contains %d nodes\n", g.nodes.size());
         int mosaicIndex = g.nodes.size() - 1;
         mosaicExtrinsicsIndices.add(mosaicIndex);
-        assert(mosaicExtrinsicsIndices.size() == this.images.size());
+        assert(mosaicExtrinsicsIndices.size() == imagesetIndex + 1);
 
         for (int cameraIndex = 0; cameraIndex < newImages.size(); cameraIndex++) {
 
-            ArrayList<TagDetection> detections = allDetections.get(cameraIndex);
-
+            ProcessedImage pim = newImages.get(cameraIndex);
             CameraWrapper camera = cameras.get(cameraIndex);
 
             if (cameraIndex == 0) {
-                double mosaicToGlobal_est[][] = estimateMosaicExtrinsics(detections);
+                double mosaicToGlobal_est[][] = estimateMosaicExtrinsics(camera.cal.copyIntrinsics(),
+                                                                         pim.detections);
                 // XXX update mosaic extrinsics estimate in a cleaner way
                 mosaicExtrinsics.init = LinAlg.matrixToXyzrpy(mosaicToGlobal_est);
                 mosaicExtrinsics.state = LinAlg.copy(mosaicExtrinsics.init);
@@ -313,7 +354,8 @@ public class CameraCalibrator
 
                 // Initialize camera extrinsics with our best guess
                 } else {
-                    double mosaicToCamera[][] = estimateMosaicExtrinsics(detections);
+                    double mosaicToCamera[][] = estimateMosaicExtrinsics(camera.cal.copyIntrinsics(),
+                                                                         pim.detections);
 
                     // should been initialized by camera 0
                     double mosaicToGlobal[][] = LinAlg.xyzrpyToMatrix(mosaicExtrinsics.state);
@@ -331,16 +373,16 @@ public class CameraCalibrator
             processImage(cameraIndex,
                          imagesetIndex,
                          mosaicIndex,
-                         detections);
+                         pim.detections);
         }
 
         draw();
     }
 
-    public void draw()
+    public synchronized void draw()
     {
         // don't try to draw until we have a few images
-        if (images.size() < 3)
+        if (images.size() < NUM_IMAGES_REQUIRED)
             return;
 
         vb = vw.getBuffer("Extrinsics - cameras");
@@ -496,7 +538,7 @@ public class CameraCalibrator
     public synchronized void iterate()
     {
         // don't try to optimize until we have a few images
-        if (images.size() < 3)
+        if (images.size() < NUM_IMAGES_REQUIRED)
             return;
 
         solver.iterate();
@@ -597,27 +639,37 @@ public class CameraCalibrator
         System.out.println("}");
     }
 
-    private void initCameras(List<BufferedImage> newImages)
+    private void initCameras()
     {
-        assert(newImages.size() == classnames.size());
+        assert(images.size() >= NUM_IMAGES_REQUIRED);
 
         cameras = new ArrayList<CameraWrapper>();
 
+        // get all of the images available for each camera
+        ArrayList<ArrayList<ProcessedImage>> imagesForEachCamera = new ArrayList<ArrayList<ProcessedImage>>();
         for (int i=0; i < classnames.size(); i++) {
 
-            BufferedImage im = newImages.get(i);
+            ArrayList<ProcessedImage> currentCameraImages = new ArrayList<ProcessedImage>();
+            for (int j=0; j < images.size(); j++)
+                currentCameraImages.add(images.get(j).get(i));
 
+            imagesForEachCamera.add(currentCameraImages);
+        }
+
+        for (int i=0; i < classnames.size(); i++) {
+
+            String name = String.format("camera%d", i);
             String classname = classnames.get(i);
+            ArrayList<ProcessedImage> currentCameraImages = imagesForEachCamera.get(i);
 
-            String name     = String.format("camera%d", i);
-            ParameterizableCalibration cal = getDefaultCalibration(classname, im.getWidth(), im.getHeight());
+            // create the calibration objects and initialize the calibrations using an IntrinsicsEstimator
+            ParameterizableCalibration cal = initializeCalibration(classname, currentCameraImages);
 
             // if specified, initialize the camera parameters to the provided values
-            if (initialParameters != null && initialParameters.size() == classnames.size()) {
-                double params[] = initialParameters.get(i);
-                cal.resetParameterization(params);
-            }
+            if (initialParameters != null && initialParameters.size() == classnames.size())
+                cal.resetParameterization(initialParameters.get(i));
 
+            // create graph intrinsics node
             GIntrinsicsNode cameraIntrinsics = new GIntrinsicsNode(cal);
             System.out.println("Initialized camera intrinsics to:"); LinAlg.print(cameraIntrinsics.init);
             g.nodes.add(cameraIntrinsics);
@@ -646,45 +698,38 @@ public class CameraCalibrator
 
             cameras.add(camera);
         }
-
-        assert(cameras.size() == newImages.size());
     }
 
-    private ParameterizableCalibration getDefaultCalibration(String classname, int width, int height)
+    private ParameterizableCalibration initializeCalibration(String classname,
+                                                             List<ProcessedImage> currentCameraImages)
     {
-        if (classname.equals("april.camera.CaltechCalibration")) {
+        int width = currentCameraImages.get(0).image.getWidth();
+        int height = currentCameraImages.get(0).image.getHeight();
 
-            // XXX cheating
-            //double fc[] = new double[] { 650, 650 };
-            //double cc[] = new double[] { width/2, height/2 };
-            //double kc[] = new double[] { -.4, .2, 0, 0, 0 };
-            double fc[] = new double[] { 500, 500 };
-            double cc[] = new double[] { width/2, height/2 };
+        double K[][] = estimateIntrinsics(currentCameraImages);
+
+        double fc[] = new double[] { K[0][0], K[1][1] };
+        //double cc[] = new double[] { K[0][2], K[1][2] };
+        // the focal center estimate from the IntrinsicsEstimator appears to
+        // cause problems with convergence, whereas the focal length used with
+        // the naive focal center works fine
+        double cc[] = new double[] { width/2, height/2 };
+
+        System.out.println("Initialized camera intrinsics using an IntrinsicsEstimator to:");
+        LinAlg.print(K);
+
+        if (classname.equals("april.camera.CaltechCalibration")) {
             double kc[] = new double[] { 0, 0, 0, 0, 0 };
             double skew = 0;
-
             return new CaltechCalibration(fc, cc, kc, skew, width, height);
         }
 
         if (classname.equals("april.camera.SimpleCaltechCalibration")) {
-
-            // XXX cheating
-            //double fc[] = new double[] { 650, 650 };
-            //double cc[] = new double[] { width/2, height/2 };
-            //double kc[] = new double[] { -.4, .2 };
-
-            double fc[] = new double[] { 500, 500 };
-            double cc[] = new double[] { width/2, height/2 };
             double kc[] = new double[] { 0, 0 };
-
             return new SimpleCaltechCalibration(fc, cc, kc, width, height);
         }
 
         if (classname.equals("april.camera.DistortionFreeCalibration")) {
-
-            double fc[] = new double[] { 500, 500 };
-            double cc[] = new double[] { width/2, height/2 };
-
             return new DistortionFreeCalibration(fc, cc, width, height);
         }
 
@@ -692,20 +737,30 @@ public class CameraCalibrator
         return null;
     }
 
-    private double[][] estimateMosaicExtrinsics(ArrayList<TagDetection> detections)
+    private double[][] estimateIntrinsics(List<ProcessedImage> currentCameraImages)
     {
-        // XXX better estimates?
-        double fx_est = 500;
-        double fy_est = 500;
+        ArrayList<ArrayList<TagDetection>> allDetections = new ArrayList<ArrayList<TagDetection>>();
+        for (ProcessedImage pim : currentCameraImages)
+            allDetections.add(pim.detections);
 
+        IntrinsicsEstimator estimator = new IntrinsicsEstimator(allDetections, this.tf);
+
+        return estimator.getIntrinsics();
+    }
+
+    private double[][] estimateMosaicExtrinsics(double K[][], List<TagDetection> detections)
+    {
         ArrayList<double[]> points_camera_est = new ArrayList<double[]>();
         ArrayList<double[]> points_mosaic = new ArrayList<double[]>();
+
+        // TODO fix this issue
+        System.out.println("Warning: CameraUtil.homographyToPose still does not take the optical center as a parameter, which means that the estimates must be incorrect");
 
         for (int i = 0; i < detections.size(); i++) {
 
             TagDetection d = detections.get(i);
 
-            double tagToCamera_est[][] = CameraUtil.homographyToPose(fx_est, fy_est,
+            double tagToCamera_est[][] = CameraUtil.homographyToPose(K[0][0], K[1][1],
                                                                      metersPerTag,
                                                                      d.homography);
             double tagPosition_est[] = LinAlg.select(LinAlg.matrixToXyzrpy(tagToCamera_est),

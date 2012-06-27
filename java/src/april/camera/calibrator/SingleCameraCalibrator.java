@@ -37,6 +37,8 @@ public class SingleCameraCalibrator implements ParameterListener
     boolean             capture = false;
     boolean             captureOnce = false;
 
+    boolean autoiterate = false;
+
     public SingleCameraCalibrator(String cameraClass, String url, double tagSpacing_m)
     {
         ////////////////////////////////////////////////////////////////////////////////
@@ -49,7 +51,8 @@ public class SingleCameraCalibrator implements ParameterListener
         vc2 = new VisCanvas(vl2);
 
         pg = new ParameterGUI();
-        pg.addButtons("captureOnce","Capture once","capture","Toggle image capturing");
+        pg.addButtons("captureOnce","Capture once","capture","Toggle image capturing",
+                      "iterateonce","Iterate once","iterate","Toggle auto iteration");
         pg.addListener(this);
 
         jf = new JFrame("Single camera calibrator");
@@ -127,6 +130,14 @@ public class SingleCameraCalibrator implements ParameterListener
             }
             vb.swap();
         }
+
+        if (name.equals("iterateonce")) {
+            if (calibrator != null)
+                calibrator.iterate();
+        }
+
+        if (name.equals("iterate"))
+            autoiterate = autoiterate ? false : true;
     }
 
     class AcquisitionThread extends Thread
@@ -171,14 +182,16 @@ public class SingleCameraCalibrator implements ParameterListener
                 draw(im);
 
                 if (capture || captureOnce) {
-                    process(im);
-
                     if (captureOnce) {
                         captureOnce = false;
+                        vb = vw1.getBuffer("HUD");
                         vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.TOP_LEFT,
                                                     new VzText(VzText.ANCHOR.TOP_LEFT,
                                                                "<<monospaced-12,red>>Capturing disabled")));
+                        vb.swap();
                     }
+
+                    process(im);
                 }
                 TimeUtil.sleep(100);
             }
@@ -222,11 +235,12 @@ public class SingleCameraCalibrator implements ParameterListener
                     continue;
                 }
 
-                calibrator.iterate();
+                if (autoiterate)
+                    calibrator.iterate();
 
                 long now = TimeUtil.utime();
                 double dt = (now - last) * 1.0E-6;
-                if (dt > 0.030) {
+                if (dt > 0.050) {
                     calibrator.draw();
                     last = now;
                 }
