@@ -19,7 +19,7 @@ public class RemoteLogEventHandler extends VisEventAdapter implements ViewObject
         this.vl = vl;
         this.name = name;
         this.config = config;
-        vl.addEventHandler(this);//vis2, 0);
+        vl.addEventHandler(this);
     }
 
     public RemoteLogEventHandler(Viewer viewer, String name, Config config)
@@ -41,7 +41,7 @@ public class RemoteLogEventHandler extends VisEventAdapter implements ViewObject
         }
     }
 
-    public boolean keyTyped(VisCanvas vc, VisLayer vl, KeyEvent e)
+    public boolean keyTyped(VisCanvas vc, VisLayer vl, VisCanvas.RenderInfo rinfo, KeyEvent e)
     {
         switch (e.getKeyChar())
         {

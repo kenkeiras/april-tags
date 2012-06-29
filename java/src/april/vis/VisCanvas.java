@@ -789,6 +789,8 @@ public class VisCanvas extends JComponent implements VisSerializable
                         try {
                             DataOutputStream outs = new DataOutputStream(new GZIPOutputStream(new BufferedOutputStream(new FileOutputStream(path))));
                             ObjectWriter ow = new ObjectWriter(outs);
+                            ow.writeInt(getWidth());
+                            ow.writeInt(getHeight());
                             ow.writeObject(VisCanvas.this);
                             outs.flush();
                             outs.close();
@@ -831,6 +833,7 @@ public class VisCanvas extends JComponent implements VisSerializable
                     public void actionPerformed(ActionEvent e) {
                         try {
                             popupMovie.close();
+                            popupMovie = null;
                             System.out.println("movie ended");
                         } catch (IOException ex) {
                             System.out.println("ex: "+ex);

@@ -33,7 +33,7 @@ public abstract class AbstractBus
         if (resp == null)
             return -1;
 
-        return (resp[1]&0xff) + ((resp[2]&0xff)<<8);
+        return (resp[1] & 0xff) + ((resp[2] & 0xff) << 8);
     }
 
     public AbstractServo getServo(int id)
@@ -48,6 +48,12 @@ public abstract class AbstractBus
 
             case 0x001d:
                 return new MX28Servo(this, id);
+
+            case 0x0136:
+                return new MX64Servo(this, id);
+
+            case 0x0140:
+                return new MX106Servo(this, id);
         }
 
         System.out.printf("AbstractBus: Unknown servo type %04x at id %d\n", model, id);

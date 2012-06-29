@@ -16,7 +16,7 @@ public class DynamixelGUI
 
     JPanel servoPane = new JPanel();
 
-    ServoPanel servoPanels[] = new ServoPanel[254];
+    ServoPanel servoPanels[] = new ServoPanel[255];
 
     JLabel pollLabel = new JLabel();
 
@@ -39,7 +39,7 @@ public class DynamixelGUI
 
         servoPane.setLayout(new VFlowLayout());
 
-        for (int i = 0; i < 254; i++) {
+        for (int i = 0; i < servoPanels.length; i++) {
             servoPanels[i] = new ServoPanel(i);
             servoPane.add(servoPanels[i]);
         }

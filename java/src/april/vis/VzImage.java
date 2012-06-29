@@ -1,11 +1,13 @@
 package april.vis;
 
+import java.io.IOException;
+
 import java.awt.*;
 import java.awt.image.*;
 
 import april.jmat.*;
 
-public class VzImage implements VisObject
+public class VzImage implements VisObject, VisSerializable
 {
     VisTexture texture;
     double vertices[][];
@@ -94,5 +96,34 @@ public class VzImage implements VisObject
         gl.glEnd();
 
         texture.unbind(gl);
+    }
+
+    public VzImage(ObjectReader ins)
+    {
+    }
+
+    public void writeObject(ObjectWriter outs) throws IOException
+    {
+        outs.writeObject(texture);
+        outs.writeDoubleMatrix(vertices);
+        outs.writeDoubleMatrix(texcoords);
+        if (modulateColor == null)
+            outs.writeByte(0);
+        else {
+            outs.writeByte(1);
+            outs.writeColor(modulateColor); //XXX null
+        }
+    }
+
+    public void readObject(ObjectReader ins) throws IOException
+    {
+        texture = (VisTexture)ins.readObject();
+        vertices = ins.readDoubleMatrix();
+        texcoords = ins.readDoubleMatrix();
+        int colNull = ins.readByte();
+        if (colNull != 0)
+            modulateColor = ins.readColor();
+        else
+            modulateColor = null;
     }
 }

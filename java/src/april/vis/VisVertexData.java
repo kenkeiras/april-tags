@@ -260,6 +260,11 @@ public class VisVertexData implements VisAbstractVertexData, VisSerializable
         if (id < 0)
             id = VisUtil.allocateID();
 
+        if (blocks.size() == 0) {
+            gl.gldBind(GL.VBO_TYPE_VERTEX, id, 0, 2, new float[0]);
+            return;
+        }
+
         Block b = blocks.get(0);
 
         if (b.vf != null)
@@ -279,6 +284,11 @@ public class VisVertexData implements VisAbstractVertexData, VisSerializable
 
         if (id < 0)
             id = VisUtil.allocateID();
+
+        if (blocks.size() == 0) {
+            gl.gldBind(GL.VBO_TYPE_NORMAL, id, 0, 2, new float[0]);
+            return;
+        }
 
         Block b = blocks.get(0);
 

@@ -164,6 +164,19 @@ public class MaxHeap<T>
         }
     }
 
+    // Performs a shallow copy of this max heap.
+    public MaxHeap<T> copy()
+    {
+        MaxHeap<T> other = new MaxHeap<T>();
+        other.objs = new Object[this.objs.length];
+        other.scores = new double[this.scores.length];
+        other.heapsize = this.heapsize;
+
+        System.arraycopy(this.objs,0,other.objs,0,this.heapsize);
+        System.arraycopy(this.scores,0,other.scores,0,this.heapsize);
+        return other;
+    }
+
     public static void main(String args[])
     {
         int cap = 1000;

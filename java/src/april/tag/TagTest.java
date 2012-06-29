@@ -36,30 +36,27 @@ public class TagTest implements ParameterListener
     // usage: TagTest <imagesource> [tagfamily class]
     public static void main(String args[])
     {
+        GetOpt opts  = new GetOpt();
+        opts.addBoolean('h',"help",false,"See this help screen");
+        opts.addString('u',"url","","Camera url");
+        opts.addString('t',"tagfamily","april.tag.Tag36h11","Tag family");
+
+        if (!opts.parse(args)) {
+            System.out.println("option error: "+opts.getReason());
+        }
+
+        String url = opts.getString("url");
+        String tagfamily = opts.getString("tagfamily");
+
+        if (opts.getBoolean("help") || url.isEmpty()){
+            System.out.println("Usage:");
+            opts.doHelp();
+            System.exit(1);
+        }
+
         try {
-            ArrayList<String> urls = ImageSource.getCameraURLs();
-
-            String url = null;
-            if (urls.size()==1)
-                url = urls.get(0);
-
-            if (args.length > 0)
-                url = args[0];
-
-            if (url == null) {
-                System.out.printf("Cameras found:\n");
-                for (String u : urls)
-                    System.out.printf("  %s\n", u);
-                System.out.printf("Please specify one on the command line.\n");
-                return;
-            }
-
             ImageSource is = ImageSource.make(url);
-
-            TagFamily tf = new Tag36h11();
-            if (args.length >= 2) {
-                tf = (TagFamily) ReflectUtil.createObject(args[1]);
-            }
+            TagFamily tf = (TagFamily) ReflectUtil.createObject(tagfamily);
 
             TagTest tt = new TagTest(is, tf);
 

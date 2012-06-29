@@ -79,9 +79,8 @@ public class VzCone implements VisObject, VisSerializable
 
                 if ((flags & BOTTOM) != 0) {
                     gl.glNormal3f(0, 0, -1);
-//                    gl.glTranslated(0, 0, -1);
+
                     circle.render(vc, layer, rinfo, gl, (VzMesh.Style) style);
-//                    gl.glTranslated(0, 0, 1);
                 }
             }
         }
