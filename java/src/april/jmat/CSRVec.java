@@ -59,7 +59,7 @@ public class CSRVec extends Vec
         for (int inpos = 0; inpos < nz; inpos++) {
             if (values[inpos]!=0) {
                 indices[outpos] = indices[inpos];
-                values[outpos] = values[outpos];
+                values[outpos] = values[inpos];
                 outpos++;
             }
         }
@@ -75,7 +75,7 @@ public class CSRVec extends Vec
         for (int inpos = 0; inpos < nz; inpos++) {
             if (Math.abs(values[inpos]) > eps) {
                 indices[outpos] = indices[inpos];
-                values[outpos] = values[outpos];
+                values[outpos] = values[inpos];
                 outpos++;
             }
         }
