@@ -92,9 +92,23 @@ public class FloatImage
      **/
     public FloatImage filterFactoredCentered(float fhoriz[], float fvert[])
     {
-        // do horizontal
-        float r[] = new float[d.length];
+        return filterFactoredCentered(fhoriz, fvert, null);
+    }
 
+    /** Perform 2D convolution using f as the factor of a separable
+     * filter, shifting the output by -f.length/2 so there is no net
+     * shift. Allows specifying the output buffer to prevent unnecessary data allocation.
+     *
+     **/
+    public FloatImage filterFactoredCentered(float fhoriz[], float fvert[], float r[])
+    {
+        if ( r == null)
+            r = new float[d.length];
+        else
+            assert(r.length == d.length);
+
+
+        // do horizontal
         for (int y = 0; y < height; y++) {
             SigProc.convolveSymmetricCentered(d, y*width, width, fhoriz, r, y*width);
         }
@@ -332,9 +346,17 @@ public class FloatImage
 
     public FloatImage subtract(FloatImage fim)
     {
+        return subtract(fim, null);
+    }
+
+    public FloatImage subtract(FloatImage fim, float r[])
+    {
         assert(width == fim.width && height == fim.height);
 
-        float r[] = new float[d.length];
+        if (r == null)
+            r = new float[d.length];
+        else
+            assert(r.length == d.length);
 
         for (int i = 0; i < d.length; i++)
             r[i] = d[i] - fim.d[i];
@@ -418,8 +440,16 @@ public class FloatImage
 
     public static float[] imageToFloats(BufferedImage im, int rightshift)
     {
+        return imageToFloats(im, rightshift, null);
+    }
+
+    public static float[] imageToFloats(BufferedImage im, int rightshift, float f[])
+    {
         int width = im.getWidth(), height = im.getHeight();
-        float f[] = new float[width * height];
+        if (f == null)
+            f = new float[width * height];
+        else
+            assert(f.length == width*height);
 
         int type = im.getType();
 
