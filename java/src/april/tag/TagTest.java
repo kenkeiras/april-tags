@@ -141,11 +141,11 @@ public class TagTest implements ParameterListener
             detector.debugLabels    = vw.getBuffer("labels");
 
             while (true) {
-                byte buf[] = is.getFrame();
-                if (buf == null)
+                FrameData frmd = is.getFrame();
+                if (frmd == null)
                     continue;
 
-                BufferedImage im = ImageConvert.convertToImage(fmt.format, fmt.width, fmt.height, buf);
+                BufferedImage im = ImageConvert.convertToImage(frmd);
 
                 tf.setErrorRecoveryBits(pg.gi("errorbits"));
 

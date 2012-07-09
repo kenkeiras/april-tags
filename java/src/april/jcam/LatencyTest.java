@@ -122,8 +122,8 @@ public class LatencyTest
         setColor(c);
 
         while (true) {
-            byte imbuf[] = isrc.getFrame();
-            if (imbuf==null) {
+            FrameData frmd = isrc.getFrame();
+            if (frmd == null) {
                 System.out.println("get_frame failed");
                 return 0;
             }
@@ -141,11 +141,10 @@ public class LatencyTest
 
             long nowtime = System.currentTimeMillis();
 
-            ImageSourceFormat ifmt = isrc.getCurrentFormat();
-            BufferedImage im = ImageConvert.convertToImage(ifmt.format, ifmt.width, ifmt.height, imbuf);
+            BufferedImage im = ImageConvert.convertToImage(frmd);
             jim.setImage(im);
 
-            int rgb = im.getRGB(ifmt.width/2, ifmt.height/2);
+            int rgb = im.getRGB(frmd.ifmt.width/2, frmd.ifmt.height/2);
 
             int g = (rgb>>8)&0xff;
 

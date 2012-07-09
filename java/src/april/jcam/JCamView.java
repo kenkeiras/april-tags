@@ -330,7 +330,7 @@ public class JCamView
             }
         }
 
-        public synchronized void handleImage(BufferedImage im, ImageSourceFormat ifmt, byte imbuf[])
+        public synchronized void handleImage(BufferedImage im, FrameData frmd)
         {
             if (!recording)
                 return;
@@ -343,7 +343,7 @@ public class JCamView
 
                 try {
                     if (formatComboBox.getSelectedIndex() == 0) {
-                        logWriter.write(ifmt, imbuf);
+                        logWriter.write(frmd.ifmt, frmd.data);
                     } else {
                         String path = String.format("%s/image_%06d.png", pathBox.getText(), nowms - firstms);
                         ImageIO.write(im, "png", new File(path));
@@ -638,27 +638,23 @@ public class JCamView
             double spf = 0;
             double spfAlpha = 0.95;
 
-            ImageSourceFormat ifmt = isrc.getCurrentFormat();
             long last_frame_mtime = System.currentTimeMillis();
 
             long last_info_mtime = System.currentTimeMillis();
 
             while (!stopRequest) {
-                byte imbuf[] = null;
-                BufferedImage im = null;
-
-                imbuf = isrc.getFrame();
-                if (imbuf == null) {
+                FrameData frmd = isrc.getFrame();
+                if (frmd == null) {
                     System.out.println("getFrame() failed");
                     continue;
                 }
 
-                im = ImageConvert.convertToImage(ifmt.format, ifmt.width, ifmt.height, imbuf);
+                BufferedImage im = ImageConvert.convertToImage(frmd);
                 if (im == null)
                     continue;
 
                 jim.setImage(im);
-                recordPanel.handleImage(im, ifmt, imbuf);
+                recordPanel.handleImage(im, frmd);
 
                 if (true) {
                     long frame_mtime = System.currentTimeMillis();
@@ -679,11 +675,6 @@ public class JCamView
                     }
 
                     last_frame_mtime = frame_mtime;
-                }
-
-                if (imbuf == null) {
-                    System.out.println("get frame failed");
-                    continue;
                 }
 
                 Thread.yield();

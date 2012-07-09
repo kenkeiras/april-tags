@@ -54,7 +54,8 @@ int main(int argc, char *argv[])
     while(1) {
         void *imbuf = NULL;
         int imbuflen = 0;
-        int res = isrc->get_frame(isrc, &imbuf, &imbuflen);
+        frame_data_t * frmd = calloc(1, sizeof(frame_data_t));
+        int res = isrc->get_frame(isrc, frmd);
         if (res < 0) {
             printf("get_frame fail: %d\n", res);
             continue;
@@ -62,9 +63,9 @@ int main(int argc, char *argv[])
             nframes++;
         }
 
-        printf("get_frame: res = %d count = %10d (%10d bytes)\r", res, nframes, imbuflen);
+        printf("get_frame: res = %d count = %10d (%10d bytes)\r", res, nframes, frmd->datalen);
         fflush(stdout);
-        isrc->release_frame(isrc, imbuf);
+        isrc->release_frame(isrc, frmd);
     }
     return 0;
 }

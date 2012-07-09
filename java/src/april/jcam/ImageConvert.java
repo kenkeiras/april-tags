@@ -215,6 +215,11 @@ public class ImageConvert
         return im;
     }
 
+    public static BufferedImage convertToImage(FrameData frmd)
+    {
+        return convertToImage(frmd.ifmt.format, frmd.ifmt.width, frmd.ifmt.height, frmd.data);
+    }
+
     public static BufferedImage convertToImage(String format, int width, int height, byte d[])
     {
         if (format.equals("BAYER_GBRG"))
