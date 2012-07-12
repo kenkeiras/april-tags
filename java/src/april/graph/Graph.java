@@ -319,7 +319,11 @@ public class Graph
             }
         }
 
+<<<<<<< HEAD
         System.out.printf("loaded %d nodes and %d edges\n", graph.nodes.size(), graph.edges.size());
+=======
+        System.out.printf("loaded %d nodes and %d edges\n", nodes.size(), edges.size());
+>>>>>>> origin/CameraCal2Vis2
     }
 
     // Returns a deep copy of this graph with the exception of a

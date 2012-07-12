@@ -90,7 +90,7 @@ public class Attributes
         return out;
     }
 
-    void setAttribute(String key, Object o)
+    public void setAttribute(String key, Object o)
     {
         StructureCoder coder = null;
         if (o instanceof Integer)
@@ -109,12 +109,12 @@ public class Attributes
     }
 
     // code can be null
-    void setAttribute(String key, Object o, StructureCoder coder)
+    public void setAttribute(String key, Object o, StructureCoder coder)
     {
         attrs.put(key, new Attr(o, coder));
     }
 
-    Object getAttribute(String key)
+    public Object getAttribute(String key)
     {
         Attr a = attrs.get(key);
         if (a == null)
