@@ -29,8 +29,7 @@ public class SingleCameraCalibrator implements ParameterListener
     // Camera
     String              url;
     ImageSource         isrc;
-    ImageSourceFormat   ifmt;
-    BlockingSingleQueue<byte[]> imageQueue = new BlockingSingleQueue<byte[]>();
+    BlockingSingleQueue<FrameData> imageQueue = new BlockingSingleQueue<FrameData>();
 
     // Calibrator
     CameraCalibrator    calibrator;
@@ -75,7 +74,7 @@ public class SingleCameraCalibrator implements ParameterListener
         // Camera setup
         try {
             isrc = ImageSource.make(url);
-            ifmt = isrc.getCurrentFormat();
+
         } catch (IOException ex) {
             System.err.println("Exception caught while making image source: " + ex);
             ex.printStackTrace();
@@ -159,11 +158,12 @@ public class SingleCameraCalibrator implements ParameterListener
             isrc.start();
 
             while (true) {
-                byte buf[] = isrc.getFrame();
-                if (buf == null)
-                    continue;
+                FrameData frmd = isrc.getFrame();
 
-                imageQueue.put(buf);
+                if (frmd == null)
+                    break;
+
+                imageQueue.put(frmd);
             }
         }
     }
@@ -175,9 +175,9 @@ public class SingleCameraCalibrator implements ParameterListener
         public void run()
         {
             while (true) {
-                byte buf[] = imageQueue.get();
+                FrameData frmd = imageQueue.get();
 
-                BufferedImage im = ImageConvert.convertToImage(ifmt.format, ifmt.width, ifmt.height, buf);
+                BufferedImage im = ImageConvert.convertToImage(frmd);
 
                 draw(im);
 
