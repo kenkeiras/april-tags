@@ -18,7 +18,7 @@ public class GXYTNode extends GNode
         if (truth != null)
             g.truth = LinAlg.copy(truth);
 
-        g.attributes = attributes.copy();
+        g.attributes = Attributes.copy(attributes);
 
         return g;
     }

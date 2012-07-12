@@ -1,2 +1,4 @@
 *.so
+*.jnilib
+*.dynlib
 *.a

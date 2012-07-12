@@ -129,7 +129,7 @@ public class Wavefront
             if (earlyExit && ix == goal_ix && iy == goal_iy)
                 break;
 
-//            System.out.printf("%3d %3d %15f\n", ix, iy, cost);
+            //            System.out.printf("%3d %3d %15f\n", ix, iy, cost);
 
             // pre-fetch cells around us. Our current position is c55, so left is c45, up is c54.
             int c44 = gm.getValueIndexSafe(ix - 1, iy - 1, 255);
@@ -273,13 +273,14 @@ public class Wavefront
 
     //////////////////////////////////////////////////////////////////////////////
     // Test code below
-    static class WavefrontTest extends VisCanvasEventAdapter implements ParameterListener
+    static class WavefrontTest extends VisEventAdapter implements ParameterListener
     {
         GridMap gm;
 
         JFrame jf;
         VisWorld vw = new VisWorld();
-        VisCanvas vc = new VisCanvas(vw);
+        VisLayer vl = new VisLayer(vw);
+        VisCanvas vc = new VisCanvas(vl);
 
         ArrayList<double[]> sinks = new ArrayList<double[]>();
         double source[];
@@ -296,11 +297,18 @@ public class Wavefront
             jf = new JFrame("Wavefront Test");
 
             VisWorld.Buffer vb = vw.getBuffer("image");
-            vb.addBuffered(new VisImage(new VisTexture(gm.makeBufferedImage()), gm.getXY0(), gm.getXY1()));
-            vb.switchBuffer();
 
-            vc.addEventHandler(this);
-            vc.getViewManager().viewGoal.fit2D(gm.getXY0(), gm.getXY1());
+            BufferedImage im = gm.makeBufferedImage();
+            double vertices [][] = {gm.getXY0(), {gm.getXY1()[0],gm.getXY0()[1]},
+                                    gm.getXY1(), {gm.getXY0()[0],gm.getXY1()[1]}};
+            double texcoords [][] = {{0,0}, {0,im.getHeight()},
+                                     {im.getWidth(),im.getHeight()}, {im.getWidth(),0}};
+            vb.addBack(new VzImage(new VisTexture(im), vertices, texcoords, null));
+
+            vb.swap();
+
+            vl.addEventHandler(this);
+            vl.cameraManager.fit2D(gm.getXY0(), gm.getXY1(),true);
 
             pg.addListener(this);
 
@@ -320,12 +328,7 @@ public class Wavefront
             redraw();
         }
 
-        public String getName()
-        {
-            return "Wavefront Test";
-        }
-
-        public boolean mousePressed(VisCanvas vc,  GRay3D ray, MouseEvent e)
+        public boolean mousePressed(VisCanvas vc,  VisLayer vl, GRay3D ray, MouseEvent e)
         {
             int mods=e.getModifiersEx();
             boolean shift=(mods&MouseEvent.SHIFT_DOWN_MASK)>0;
@@ -354,10 +357,12 @@ public class Wavefront
             if (true) {
                 VisWorld.Buffer vb = vw.getBuffer("sourcesink");
                 vb.setDrawOrder(50);
-                vb.addBuffered(new VisData(sinks, new VisDataPointStyle(Color.blue, 5)));
+                vb.addBack(new VzPoints(new VisVertexData(sinks),
+                                        new VzPoints.Style(Color.blue, 5)));
                 if (source != null)
-                    vb.addBuffered(new VisData(source, new VisDataPointStyle(Color.red, 8)));
-                vb.switchBuffer();
+                    vb.addBack(new VzPoints(new VisVertexData(source),
+                                            new VzPoints.Style(Color.red, 8)));
+                vb.swap();
             }
 
             if (sinks.size() == 0 || source == null)
@@ -372,21 +377,30 @@ public class Wavefront
             if (true) {
                 VisWorld.Buffer vb = vw.getBuffer("time");
                 vb.setDrawOrder(100);
-                vb.addBuffered(new VisText(VisText.ANCHOR.BOTTOM_RIGHT, String.format("%.2f ms\n", dt*1000)));
-                vb.switchBuffer();
+                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_RIGHT,
+                                                   new VzText(VzText.ANCHOR.BOTTOM_RIGHT,
+                                                               String.format("%.2f ms\n", dt*1000))));
+                vb.swap();
             }
 
             if (true) {
                 VisWorld.Buffer vb = vw.getBuffer("path");
                 vb.setDrawOrder(100);
-                vb.addBuffered(new VisData(path, new VisDataLineStyle(Color.yellow, 1)));
-                vb.switchBuffer();
+                vb.addBack(new VzLines(new VisVertexData(path),
+                                       VzLines.LINE_STRIP,
+                                       new VzLines.Style(Color.yellow, 1)));
+                vb.swap();
             }
 
             if (true) {
                 VisWorld.Buffer vb = vw.getBuffer("wavefront");
-                vb.addBuffered(new VisImage(new VisTexture(wf.makeBufferedImage()), gm.getXY0(), gm.getXY1()));
-                vb.switchBuffer();
+                BufferedImage im = wf.makeBufferedImage();
+                double vertices [][] = {gm.getXY0(), {gm.getXY1()[0],gm.getXY0()[1]},
+                                        gm.getXY1(), {gm.getXY0()[0],gm.getXY1()[1]}};
+                double texcoords [][] = {{0,0}, {0,im.getHeight()},
+                                         {im.getWidth(),im.getHeight()}, {im.getWidth(),0}};
+                vb.addBack(new VzImage(new VisTexture(im), vertices, texcoords, null));
+                vb.swap();
             }
         }
     }

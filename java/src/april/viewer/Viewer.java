@@ -23,6 +23,7 @@ public class Viewer
 {
     JFrame jf;
     VisWorld   vw;
+    VisLayer   vl;
     VisCanvas  vc;
     JPanel paramsPanel;
 
@@ -43,14 +44,14 @@ public class Viewer
      *
      * @param _config     file containing configuration information
      * @param _jf     JFrame from parent application (window)
-    public Viewer(Config _config, JFrame _jf)
-    {
-        vw = new VisWorld();
-        vc = new VisCanvas(vw);
-        jf = _jf;
+     public Viewer(Config _config, JFrame _jf)
+     {
+     vw = new VisWorld();
+     VisLayer vl = new VisLayer(vw);nvc = new VisCanvas(vl);
+     jf = _jf;
 
-        initialize(_config);
-    }
+     initialize(_config);
+     }
     */
 
     /**
@@ -61,7 +62,8 @@ public class Viewer
     public Viewer(Config _config)
     {
         vw = new VisWorld();
-        vc = new VisCanvas(vw);
+        vl = new VisLayer(vw);
+        vc = new VisCanvas(vl);
 
         jf = new JFrame("Viewer");
 
@@ -86,7 +88,7 @@ public class Viewer
     {
         this.config = _config.getChild("viewer");
 
-        vw.getBuffer("grid").addFront(new VisGrid());
+        vw.getBuffer("grid").addFront(new VzGrid());
 
         String viewobjects[] = config.requireStrings("viewobjects");
 
@@ -114,6 +116,11 @@ public class Viewer
     public VisCanvas getVisCanvas()
     {
         return vc;
+    }
+
+    public VisLayer getVisLayer()
+    {
+        return vl;
     }
 
     public void addParamPanel(JComponent c)

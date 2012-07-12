@@ -16,7 +16,7 @@ import april.util.*;
 public class ImageConvert
 {
     /** Returns an image of half the original resolution. **/
-    public static BufferedImage debayerGBRG(String format, int width, int height, byte d[])
+    public static BufferedImage debayerGBRGhalf(String format, int width, int height, byte d[])
     {
         int nwidth = width/2;
         int nheight = height/2;
@@ -41,34 +41,8 @@ public class ImageConvert
         return im;
     }
 
-    /** Returns an image of half the original resolution. **/
-    public static BufferedImage debayerRGGBhalf(String format, int width, int height, byte d[])
-    {
-        int nwidth = width/2;
-        int nheight = height/2;
-
-        BufferedImage im = new BufferedImage(nwidth, nheight, BufferedImage.TYPE_INT_RGB);
-        int i[] = ((DataBufferInt) (im.getRaster().getDataBuffer())).getData();
-
-        for (int y = 0; y < nheight; y++) {
-            for (int x = 0; x < nwidth; x++) {
-                int ix = x*2;
-                int iy = y*2;
-
-                int r1 = d[(iy+0)*width+ix+0]&0xff;
-                int g1 = d[(iy+0)*width+ix+1]&0xff;
-                int g2 = d[(iy+1)*width+ix+0]&0xff;
-                int b1 = d[(iy+1)*width+ix+1]&0xff;
-
-                i[y*nwidth+x+0] = (r1<<16) | (((g1+g2)/2)<<8) | (b1);
-            }
-        }
-
-        return im;
-    }
-
-    /** Returns an image of half the original resolution. **/
-    public static BufferedImage debayerRGGB(String format, int width, int height, byte d[])
+    /** Returns an image of the same resolution as the input. **/
+    public static BufferedImage debayerGBRG(String format, int width, int height, byte d[])
     {
         BufferedImage im = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         int out[] = ((DataBufferInt) (im.getRaster().getDataBuffer())).getData();
@@ -77,7 +51,7 @@ public class ImageConvert
         for (int y = 0; y < height; y+=2) {
             for (int x = 0; x < width; x+=2) {
 
-                int r, g, b;
+                int r = 0, g = 0, b = 0;
 
                 // compute indices into bayer pattern for the nine 2x2 blocks we'll use.
                 int X00 = (y-2)*width+(x-2);
@@ -112,54 +86,138 @@ public class ImageConvert
                     X22 -= 2;
                 }
 
-                // pull out the component values we'll be using.
-                int b00 = d[X00 + width + 1]&0xff;
-                int g01 = d[X01 + width + 0]&0xff;
-                int b02 = d[X01 + width + 1]&0xff;
-                int g03 = d[X02 + width + 0]&0xff;
-
-                int g10 = d[X10 + 1]&0xff;
-                int r11 = d[X11 + 0]&0xff;
-                int g12 = d[X11 + 1]&0xff;
-                int r13 = d[X12 + 0]&0xff;
-
-                int b20 = d[X10 + width + 1] &0xff;
-                int g21 = d[X11 + width + 0] &0xff;
-                int b22 = d[X11 + width + 1] &0xff;
-                int g23 = d[X12 + width + 0] &0xff;
-
-                int g30 = d[X20 + 1]&0xff;
-                int r31 = d[X21 + 0]&0xff;
-                int g32 = d[X21 + 1]&0xff;
-                int r33 = d[X22 + 0]&0xff;
-
-                // top left pixel (R)
-                r = r11;
-                g = (g10+g01+g12+g21)/4;
-                b = (b00+b02+b20+b22)/4;
+                // top left pixel (G)
+                r = ((d[X01+width]&0xff) + (d[X11+width]&0xff)) / 2;
+                g = d[X11]&0xff;
+                b = ((d[X10+1]&0xff) + (d[X11+1]&0xff)) / 2;;
                 out[y*width+x] = (r<<16)+(g<<8)+b;
 
-                // top right pixel (G)
-                r = (r11+r13)/2;
-                g = g12;
-                b = (b02+b22)/2;
+                // top right pixel (B)
+                r = ((d[X01+width]&0xff)+(d[X02+width]&0xff)+(d[X01+width]&0xff) + (d[X12+width]&0xff)) / 4;
+                g = ((d[X01+width+1]&0xff)+(d[X11]&0xff)+(d[X12]&0xff)+(d[X11+width+1]&0xff)) / 4;
+                b = (d[X11+1]&0xff);
                 out[y*width+x+1] = (r<<16)+(g<<8)+b;
 
-                // bottom left pixel (G)
-                r = (r11+r31)/2;
-                g = g21;
-                b = (b20+b22)/2;
+                // bottom left pixel (R)
+                r = (d[X11+width]&0xff);
+                g = ((d[X11]&0xff)+(d[X10+width+1]&0xff)+(d[X11+width+1]&0xff)+(d[X21]&0xff)) / 4;
+                b = ((d[X10+1]&0xff)+(d[X11+1]&0xff)+(d[X20+1]&0xff)+(d[X21+1]&0xff)) / 4;
                 out[y*width+width+x] = (r<<16)+(g<<8)+b;
 
-                // bottom right pixel (B)
-                r = (r11+r13+r31+r33)/4;
-                g = (g12+g21+g23+g32)/4;
-                b = b22;
+                // bottom right pixel (G)
+                r = ((d[X11+width]&0xff)+(d[X12+width]&0xff)) / 2;
+                g = (d[X11+width+1]&0xff);
+                b = ((d[X11+1]&0xff)+(d[X21+1]&0xff)) / 2;
                 out[y*width+width+x+1] = (r<<16)+(g<<8)+b;
             }
         }
 
         return im;
+    }
+
+    /** Returns an image of half the original resolution. **/
+    public static BufferedImage debayerRGGBhalf(String format, int width, int height, byte d[])
+    {
+        int nwidth = width/2;
+        int nheight = height/2;
+
+        BufferedImage im = new BufferedImage(nwidth, nheight, BufferedImage.TYPE_INT_RGB);
+        int i[] = ((DataBufferInt) (im.getRaster().getDataBuffer())).getData();
+
+        for (int y = 0; y < nheight; y++) {
+            for (int x = 0; x < nwidth; x++) {
+                int ix = x*2;
+                int iy = y*2;
+
+                int r1 = d[(iy+0)*width+ix+0]&0xff;
+                int g1 = d[(iy+0)*width+ix+1]&0xff;
+                int g2 = d[(iy+1)*width+ix+0]&0xff;
+                int b1 = d[(iy+1)*width+ix+1]&0xff;
+
+                i[y*nwidth+x+0] = (r1<<16) | (((g1+g2)/2)<<8) | (b1);
+            }
+        }
+
+        return im;
+    }
+
+    /** Returns an image of the same resolution as the input. **/
+    public static BufferedImage debayerRGGB(String format, int width, int height, byte d[])
+    {
+        BufferedImage im = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        int out[] = ((DataBufferInt) (im.getRaster().getDataBuffer())).getData();
+
+        // loop over each 2x2 bayer block and compute the pixel values for each element.
+        for (int y = 0; y < height; y+=2) {
+            for (int x = 0; x < width; x+=2) {
+
+                int r = 0, g = 0, b = 0;
+
+                // compute indices into bayer pattern for the nine 2x2 blocks we'll use.
+                int X00 = (y-2)*width+(x-2);
+                int X01 = (y-2)*width+(x+0);
+                int X02 = (y-2)*width+(x+2);
+                int X10 = (y+0)*width+(x-2);
+                int X11 = (y+0)*width+(x+0);
+                int X12 = (y+0)*width+(x+2);
+                int X20 = (y+2)*width+(x-2);
+                int X21 = (y+2)*width+(x+0);
+                int X22 = (y+2)*width+(x+2);
+
+                // handle the edges of the screen.
+                if (y < 2) {
+                    X00 += 2*width;
+                    X01 += 2*width;
+                    X02 += 2*width;
+                }
+                if (y+2 >= height) {
+                    X20 -= 2*width;
+                    X21 -= 2*width;
+                    X22 -= 2*width;
+                }
+                if (x < 2) {
+                    X00 += 2;
+                    X10 += 2;
+                    X20 += 2;
+                }
+                if (x+2 >= width) {
+                    X02 -= 2;
+                    X12 -= 2;
+                    X22 -= 2;
+                }
+
+                // top left pixel (R)
+                r = (d[X11]&0xff);
+                g = ((d[X01+width]&0xff)+(d[X10+1]&0xff)+(d[X11+1]&0xff)+(d[X11+width]&0xff)) / 4;
+                b = ((d[X00+width+1]&0xff)+(d[X10+width+1]&0xff)+(d[X10+width+1]&0xff)+(d[X11+width+1]&0xff)) / 4;
+                out[y*width+x] = (r<<16)+(g<<8)+b;
+
+                // top right pixel (G)
+                r = ((d[X11]&0xff)+(d[X12]&0xff)) / 2;
+                g = (d[X11+1]&0xff);
+                b = ((d[X01+width+1]&0xff)+(d[X11+width+1]&0xff)) / 2;
+                out[y*width+x+1] = (r<<16)+(g<<8)+b;
+
+                // bottom left pixel (G)
+                r = ((d[X11]&0xff)+(d[X21]&0xff)) / 2;
+                g = (d[X11+width]&0xff);
+                b = ((d[X10+width+1]&0xff)+(d[X11+width+1]&0xff)) / 2;
+                out[y*width+width+x] = (r<<16)+(g<<8)+b;
+
+                // bottom right pixel (B)
+                r = ((d[X11]&0xff)+(d[X12]&0xff)+(d[X21]&0xff)+(d[X22]&0xff)) / 4;
+                g = ((d[X11+1]&0xff)+(d[X11+width]&0xff)+(d[X12+width]&0xff)+(d[X21+1]&0xff))/ 4;
+                b = (d[X11+width+1]&0xff);
+                out[y*width+width+x+1] = (r<<16)+(g<<8)+b;
+            }
+        }
+
+        return im;
+    }
+
+    public static BufferedImage convertToImage(FrameData frmd)
+    {
+        return convertToImage(frmd.ifmt.format, frmd.ifmt.width, frmd.ifmt.height, frmd.data);
     }
 
     public static BufferedImage convertToImage(String format, int width, int height, byte d[])

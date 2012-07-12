@@ -19,10 +19,12 @@ public class TagTest implements ParameterListener
 {
     JFrame jf;
     VisWorld  vw = new VisWorld();
-    VisCanvas vc = new VisCanvas(vw);
+    VisLayer vl = new VisLayer(vw);
+    VisCanvas vc = new VisCanvas(vl);
 
     VisWorld vw2 = new VisWorld();
-    VisCanvas vc2 = new VisCanvas(vw2);
+    VisLayer vl2 = new VisLayer(vw2);
+    VisCanvas vc2 = new VisCanvas(vl2);
 
     ImageSource is;
 
@@ -34,30 +36,27 @@ public class TagTest implements ParameterListener
     // usage: TagTest <imagesource> [tagfamily class]
     public static void main(String args[])
     {
+        GetOpt opts  = new GetOpt();
+        opts.addBoolean('h',"help",false,"See this help screen");
+        opts.addString('u',"url","","Camera url");
+        opts.addString('t',"tagfamily","april.tag.Tag36h11","Tag family");
+
+        if (!opts.parse(args)) {
+            System.out.println("option error: "+opts.getReason());
+        }
+
+        String url = opts.getString("url");
+        String tagfamily = opts.getString("tagfamily");
+
+        if (opts.getBoolean("help") || url.isEmpty()){
+            System.out.println("Usage:");
+            opts.doHelp();
+            System.exit(1);
+        }
+
         try {
-            ArrayList<String> urls = ImageSource.getCameraURLs();
-
-            String url = null;
-            if (urls.size()==1)
-                url = urls.get(0);
-
-            if (args.length > 0)
-                url = args[0];
-
-            if (url == null) {
-                System.out.printf("Cameras found:\n");
-                for (String u : urls)
-                    System.out.printf("  %s\n", u);
-                System.out.printf("Please specify one on the command line.\n");
-                return;
-            }
-
             ImageSource is = ImageSource.make(url);
-
-            TagFamily tf = new Tag36h11();
-            if (args.length >= 2) {
-                tf = (TagFamily) ReflectUtil.createObject(args[1]);
-            }
+            TagFamily tf = (TagFamily) ReflectUtil.createObject(tagfamily);
 
             TagTest tt = new TagTest(is, tf);
 
@@ -96,16 +95,20 @@ public class TagTest implements ParameterListener
         jf.add(jsp, BorderLayout.CENTER);
         jf.add(pg, BorderLayout.SOUTH);
 
-        vc2.getViewManager().viewGoal.lookAt(new double[] {0, -2, 1.65},
-                                             new double[] {0, 2, 0},
-                                             new double[] {0, .37, 0.927});
+        vl2.cameraManager.uiLookAt(new double[] {0, -2, 1.65},
+                                   new double[] {0, 2, 0},
+                                   new double[] {0, .37, 0.927}, true);
         jf.setSize(800,600);
         jf.setVisible(true);
 
-        vc.getViewManager().viewGoal.fit2D(new double[] {0,0}, new double[] { 752, 480});
+        ImageSourceFormat ifmt = is.getCurrentFormat();
+        vl.cameraManager.fit2D(new double[] {0,0}, new double[] { ifmt.width, ifmt.height}, true);
+        ((DefaultCameraManager) vl.cameraManager).interfaceMode = 2.0;
+        vl.backgroundColor = new Color(128,128,128);
+
         new RunThread().start();
 
-        vw2.getBuffer("grid").addFront(new VisGrid());
+        VzGrid.addGrid(vw2);
         pg.addListener(this);
     }
 
@@ -138,11 +141,11 @@ public class TagTest implements ParameterListener
             detector.debugLabels    = vw.getBuffer("labels");
 
             while (true) {
-                byte buf[] = is.getFrame();
-                if (buf == null)
+                FrameData frmd = is.getFrame();
+                if (frmd == null)
                     continue;
 
-                BufferedImage im = ImageConvert.convertToImage(fmt.format, fmt.width, fmt.height, buf);
+                BufferedImage im = ImageConvert.convertToImage(frmd);
 
                 tf.setErrorRecoveryBits(pg.gi("errorbits"));
 
@@ -161,28 +164,29 @@ public class TagTest implements ParameterListener
                 double dt = tic.toc();
 
                 if (detector.debugInput!=null)
-                    vbInput.addBuffered(new VisDepthTest(false, new VisLighting(false, new VisImage(detector.debugInput))));
-                vbInput.switchBuffer();
+                    vbInput.addBack(new VisDepthTest(false, new VisLighting(false, new VzImage(detector.debugInput, VzImage.FLIP))));
+                vbInput.swap();
 
                 if (detector.debugSegmentation!=null)
-                    vbSegmentation.addBuffered(new VisLighting(false, new VisImage(detector.debugSegmentation)));
-                vbSegmentation.switchBuffer();
+                    vbSegmentation.addBack(new VisDepthTest(false, new VisLighting(false, new VzImage(detector.debugSegmentation, VzImage.FLIP))));
+                vbSegmentation.swap();
 
-                vbOriginal.addBuffered(new VisDepthTest(false, new VisLighting(false, new VisImage(im))));
-                vbOriginal.switchBuffer();
+
+                vbOriginal.addBack(new VisDepthTest(false, new VisLighting(false, new VzImage(im, VzImage.FLIP))));
+                vbOriginal.swap();
 
                 if (detector.debugTheta != null)
-                    vbThetas.addBuffered(new VisLighting(false, new VisImage(detector.debugTheta)));
-                vbThetas.switchBuffer();
+                    vbThetas.addBack(new VisDepthTest(false, new VisLighting(false, new VzImage(detector.debugTheta, VzImage.FLIP))));
+                vbThetas.swap();
 
                 if (detector.debugMag != null)
-                    vbMag.addBuffered(new VisLighting(false, new VisImage(detector.debugMag)));
-                vbMag.switchBuffer();
+                    vbMag.addBack(new VisDepthTest(false, new VisLighting(false, new VzImage(detector.debugMag, VzImage.FLIP))));
+                vbMag.swap();
 
-                vbClock.addBuffered(new VisText(VisText.ANCHOR.BOTTOM_RIGHT,
-                                                VisText.JUSTIFICATION.RIGHT,
-                                                String.format("<<blue>>%8.2f ms", dt*1000)));
-                vbClock.switchBuffer();
+                vbClock.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_RIGHT,
+                                                        new VzText(VzText.ANCHOR.BOTTOM_RIGHT,
+                                                                    String.format("<<cyan>>%8.2f ms", dt*1000))));
+                vbClock.swap();
 
                 for (TagDetection d : detections) {
                     double p0[] = d.interpolate(-1,-1);
@@ -190,13 +194,24 @@ public class TagTest implements ParameterListener
                     double p2[] = d.interpolate(1,1);
                     double p3[] = d.interpolate(-1,1);
 
-                    vbDetections.addBuffered(new VisChain(LinAlg.translate(0, im.getHeight(), 0),
-                                                          LinAlg.scale(1, -1, 1),
-                                                          new VisText(d.cxy, VisText.ANCHOR.CENTER,
-                                                                      String.format("<<center,blue>>id %3d\n(err=%d)\n", d.id, d.hammingDistance)),
-                                                          new VisData(new VisDataLineStyle(Color.blue, 4), p0, p1, p2, p3, p0),
-                                                          new VisData(new VisDataLineStyle(Color.green, 4), p0, p1), // x axis
-                                                          new VisData(new VisDataLineStyle(Color.red, 4), p0, p3))); // y axis
+                    double ymax = Math.max(Math.max(p0[1], p1[1]), Math.max(p2[1], p3[1]));
+
+                    vbDetections.addBack(new VisChain(LinAlg.translate(0, im.getHeight(), 0),
+                                                      LinAlg.scale(1, -1, 1),
+                                                      new VzLines(new VisVertexData(p0, p1, p2, p3, p0),
+                                                                  VzLines.LINE_STRIP,
+                                                                  new VzLines.Style(Color.blue, 4)),
+                                                      new VzLines(new VisVertexData(p0,p1),
+                                                                  VzLines.LINE_STRIP,
+                                                                  new VzLines.Style(Color.green, 4)),
+                                                      new VzLines(new VisVertexData(p0, p3),
+                                                                  VzLines.LINE_STRIP,
+                                                                  new VzLines.Style(Color.red, 4)),
+                                                      new VisChain(LinAlg.translate(d.cxy[0], ymax + 20, 0), //LinAlg.translate(d.cxy[0],d.cxy[1],0),
+                                                                   LinAlg.scale(1, -1, 1),
+                                                                   LinAlg.scale(.25, .25, .25),
+                                                                   new VzText(VzText.ANCHOR.CENTER,
+                                                                              String.format("<<sansserif-48,center,yellow,dropshadow=#88000000>>id %3d\n(err=%d)\n", d.id, d.hammingDistance)))));
 
                     // You need to adjust the tag size (measured
                     // across the whole tag in meters and the focal
@@ -206,19 +221,33 @@ public class TagTest implements ParameterListener
                     double aspect = 752.0 / 480.0;
                     double M[][] = CameraUtil.homographyToPose(f, f, tagsize_m, d.homography);
 
-                    vbTag3D.addBuffered(new VisChain(LinAlg.rotateX(Math.PI/2),
-                                                     M,
-                                                     new VisImage(new VisTexture(tf.makeImage(d.id)),
-                                                                  new double[] {-tagsize_m/2, -tagsize_m/2},
-                                                                  new double[] {tagsize_m/2, tagsize_m/2},
-                                                                  true)));
+                    BufferedImage tfimg = tf.makeImage(d.id);
+                    double vertices[][] = {{ -tagsize_m/2, -tagsize_m/2, 0},
+                                           { tagsize_m/2, -tagsize_m/2, 0},
+                                           { tagsize_m/2,  tagsize_m/2, 0},
+                                           { -tagsize_m/2,  tagsize_m/2, 0}};
+
+
+                    // same order as in vertices, but remember y flip.
+                    double texcoords [][] = { { 0, 1},
+                                              { 1, 1},
+                                              { 1, 0},
+                                              { 0, 0 } };
+
+                    vbTag3D.addBack(new VisChain(LinAlg.rotateX(Math.PI/2),
+                                                 M,
+                                                 new VzImage(new VisTexture(tfimg, VisTexture.NO_MIN_FILTER),
+                                                             vertices, texcoords, null)));
                 }
 
-                vbTag3D.addBuffered(new VisChain(LinAlg.rotateX(Math.PI/2),
-                                                 new VisCamera()));
-                vbTag3D.switchBuffer();
+                vbTag3D.addBack(new VisChain(LinAlg.rotateX(Math.PI/2),
+                                             new VzAxes()));
+                vbTag3D.addBack(new VisChain(LinAlg.rotateZ(Math.PI/2),
+                                             LinAlg.scale(.25, .25, .25),
+                                             new VzCamera()));
+                vbTag3D.swap();
 
-                vbDetections.switchBuffer();
+                vbDetections.swap();
             }
         }
     }

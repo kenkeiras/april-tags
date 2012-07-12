@@ -70,6 +70,31 @@ public class GetOpt
         }
     }
 
+    class SeparatorOpt extends GetOptOpt
+    {
+        SeparatorOpt()
+        {
+            sname='\0';
+            lname="";
+            helpMessage = "";
+        }
+
+        String eval(String equalString, ArgFeeder feeder)
+        {
+            return "";
+        }
+
+        String stringValue()
+        {
+            return "";
+        }
+
+        String stringDefaultValue()
+        {
+            return "";
+        }
+    }
+
     class StringOpt extends GetOptOpt
     {
         String value;
@@ -280,6 +305,12 @@ public class GetOpt
     public String getReason()
     {
         return reason;
+    }
+
+    // add a blank line to the help output
+    public void addSeparator()
+    {
+        optsHelp.add(new SeparatorOpt());
     }
 
     /** Add a string-type option. The value can be determined (after
@@ -644,6 +675,11 @@ public class GetOpt
 
         for (GetOptOpt goo : optsHelp)
 	    {
+            if (goo instanceof SeparatorOpt) {
+                outs.write("\n");
+                continue;
+            }
+
             // write the short option
             if (goo.sname!=0)
                 outs.write("-"+goo.sname);

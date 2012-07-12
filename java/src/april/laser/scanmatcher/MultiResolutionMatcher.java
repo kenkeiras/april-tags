@@ -44,7 +44,7 @@ public class MultiResolutionMatcher
     {
         gms = new GridMap[ndecimate];
 
-       // pad the gridmap with a border
+        // pad the gridmap with a border
         if (false) {
             int border = 512;
             GridMap gmc = GridMap.makePixels(gm0.x0 - border*gm0.metersPerPixel,
@@ -444,7 +444,8 @@ public class MultiResolutionMatcher
     {
         JFrame jf;
         VisWorld vw = new VisWorld();
-        VisCanvas vc = new VisCanvas(vw);
+        VisLayer vl = new VisLayer(vw);
+        VisCanvas vc = new VisCanvas(vl);
         ParameterGUI pg = new ParameterGUI();
 
         MultiResolutionMatcher matcher;
@@ -458,7 +459,7 @@ public class MultiResolutionMatcher
             pg.addIntSlider("tt", "user rotation (theta)", 0, 180, 1);
 
             vc.setBackground(Color.black);
-            vw.getBuffer("grid").addFront(new VisGrid());
+            vw.getBuffer("grid").addFront(new VzGrid());
 
             jf = new JFrame("ScanMatcher Debug");
             jf.setLayout(new BorderLayout());
@@ -488,8 +489,8 @@ public class MultiResolutionMatcher
 
             if (true) {
                 VisWorld.Buffer vb = vw.getBuffer("gridmap");
-                vb.addBuffered(new VisImage(new VisTexture(dbg.gm.makeBufferedImage()), dbg.gm.getXY0(), dbg.gm.getXY1()));
-                vb.switchBuffer();
+                vb.addBack(new VzImage(dbg.gm.makeBufferedImage()));
+                vb.swap();
             }
 
             // debug output
@@ -500,14 +501,20 @@ public class MultiResolutionMatcher
                     ps.add(new double[] { matcher.gms[0].x0 + matcher.gms[0].metersPerPixel*(pt.ix + dbg.n.tx0 + .5),
                                           matcher.gms[0].y0 + matcher.gms[0].metersPerPixel*(pt.iy + dbg.n.ty0 + .5) });
                 }
-                vb.addBuffered(new VisData(ps, new VisDataPointStyle(Color.black, 5), new VisDataPointStyle(Color.yellow, 2)));
-                vb.switchBuffer();
+                VisVertexData vvd = new VisVertexData(ps);
+                vb.addBack(new VzPoints(vvd,
+                                        new VzPoints.Style(Color.black, 5)));
+                vb.addBack(new VzPoints(vvd,
+                                        new VzPoints.Style(Color.yellow, 5)));
+                vb.swap();
 
                 vb = vw.getBuffer("score");
-                vb.addBuffered(new VisText(VisText.ANCHOR.BOTTOM_LEFT, String.format("<<yellow>>score %15f (%15f + %15f), npts %d\nswidth=%5d, sheight=%5d",
-                                                                                     Math.min(1E10,dbg.n.score), dbg.n.match_score, dbg.n.chi2_score,
-                                                                                     dbg.pts.size(), dbg.n.searchwidth, dbg.n.searchheight)));
-                vb.switchBuffer();
+                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT,
+                                                   new VzText(VzText.ANCHOR.BOTTOM_LEFT,
+                                                               String.format("<<yellow>>score %15f (%15f + %15f), npts %d\nswidth=%5d, sheight=%5d",
+                                                                             Math.min(1E10,dbg.n.score), dbg.n.match_score, dbg.n.chi2_score,
+                                                                             dbg.pts.size(), dbg.n.searchwidth, dbg.n.searchheight))));
+                vb.swap();
             }
 
             // user alignment output
@@ -524,15 +531,22 @@ public class MultiResolutionMatcher
                     ps.add(new double[] { matcher.gms[0].x0 + matcher.gms[0].metersPerPixel*(pt.ix + tx + .5),
                                           matcher.gms[0].y0 + matcher.gms[0].metersPerPixel*(pt.iy + ty + .5) });
                 }
-                vb.addBuffered(new VisData(ps, new VisDataPointStyle(Color.black, 5), new VisDataPointStyle(Color.red, 2)));
-                vb.switchBuffer();
+
+                VisVertexData vvd = new VisVertexData(ps);
+                vb.addBack(new VzPoints(vvd,
+                                        new VzPoints.Style(Color.black, 5)));
+                vb.addBack(new VzPoints(vvd,
+                                        new VzPoints.Style(Color.red, 5)));
+                vb.swap();
 
                 double score = dbg.gm.score(search.points, matcher.gms[0].metersPerPixel*(tx+.5), matcher.gms[0].metersPerPixel*(ty+.5), search.t0 + search.tres*tt, search.prior, search.priorinv);
 
                 vb = vw.getBuffer("userscore");
-                vb.addBuffered(new VisText(VisText.ANCHOR.BOTTOM_RIGHT, String.format("<<red>>score %15f",
-                                                                                      Math.min(1E10,score))));
-                vb.switchBuffer();
+                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_RIGHT,
+                                                   new VzText(VzText.ANCHOR.BOTTOM_RIGHT,
+                                                               String.format("<<red>>score %15f",
+                                                                             Math.min(1E10,score)))));
+                vb.swap();
             }
 
         }

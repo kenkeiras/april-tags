@@ -11,7 +11,7 @@ public class BinaryStructureWriter implements StructureWriter
     public static final long BRACKET_BEGIN = 0x18923349ab10ea9bL;
     public static final long BRACKET_END   = 0x18923349ab10ea9cL;
 
-    boolean warned = false;
+    static boolean warned = false;
 
     public BinaryStructureWriter(DataOutputStream outs)
     {

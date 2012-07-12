@@ -16,17 +16,13 @@ import april.jmat.geom.*;
 
 import lcm.util.*;
 
-import javax.media.opengl.*;
-import javax.media.opengl.glu.*;
-
 public class Simulator implements VisConsole.Listener
 {
-    JFrame jf;
-    public VisWorld vw = new VisWorld();
-    VisCanvas vc = new VisCanvas(vw);
-    VisConsole console = new VisConsole(vc, vw);
+    VisWorld vw;
+    VisLayer vl;
+    VisConsole console;
 
-    public SimWorld world;
+    SimWorld world;
     String worldFilePath = "/tmp/world.world";
 
     static final double MIN_SIZE = 0.25;
@@ -35,58 +31,86 @@ public class Simulator implements VisConsole.Listener
     SimObject selectedObject = null;
     FindSimObjects finder = new FindSimObjects();
 
-    GetOpt gopt;
+    KeyboardGamepad keygp = new KeyboardGamepad();
 
-    public Simulator(GetOpt gopt)
+    public Simulator(VisWorld vw, VisLayer vl, VisConsole console, SimWorld sw)
     {
-        this.gopt = gopt;
+        this.vw = vw;
+        this.vl = vl;
+        this.console = console;
+        this.world = sw;
 
-        try {
-            Config config = new Config();
-            if (gopt.wasSpecified("config"))
-                config = new ConfigFile(EnvUtil.expandVariables(gopt.getString("config")));
+        if (world.path != null)
+            worldFilePath = world.path;
 
-            if (gopt.getString("world").length() > 0) {
-                worldFilePath = EnvUtil.expandVariables(gopt.getString("world"));
-                this.world = new SimWorld(worldFilePath, config);
-            } else {
-                this.world = new SimWorld(config);
-            }
+        keygp.running = false;
+        new Thread(keygp).start();
 
-        } catch (IOException ex) {
-            System.out.println("ex: "+ex);
-            ex.printStackTrace();
-            return;
-        }
+        vl.addEventHandler(new MyEventHandler());
 
-        jf = new JFrame("Simulator");
-        jf.setLayout(new BorderLayout());
-        jf.add(vc, BorderLayout.CENTER);
-
-        jf.setSize(800,600);
-        jf.setVisible(true);
-        jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
-        vc.addEventHandler(new MyEventHandler());
-
-        vw.getBuffer("grid").addFront(new VisGrid());
-
+        VzGrid.addGrid(vw, new VzGrid(new VzLines.Style(Color.gray,1),
+                                      new VzMesh.Style(Color.white)));// = Color.white;//new java.awt.Color(255,255,255,0);
+        vl.backgroundColor = Color.white;
         if (true) {
             VisWorld.Buffer vb = vw.getBuffer("SimWorld");
-            vb.addBuffered(new VisSimWorld());
-            vb.switchBuffer();
+            vb.addBack(new VisSimWorld());
+            vb.swap();
         }
 
+        // Set the window size correctly
+        if (true) {
+            double max[] = {-Double.MAX_VALUE, - Double.MAX_VALUE,- Double.MAX_VALUE};
+            double min[] = {Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE};
+            for (SimObject so : world.objects) {
+                double T[][] = so.getPose();
+                Shape s = so.getShape();
+                if (s instanceof BoxShape) {
+                    BoxShape bs = (BoxShape) s;
+
+                    ArrayList<double[]> vertices = bs.getVertices();
+
+                    for (double vertex[] : vertices) {
+                        double global_v[] = LinAlg.transform(T, vertex);
+
+                        for (int l = 0; l < 3; l++) {
+                            max[l] = Math.max(global_v[l],max[l]);
+                            min[l] = Math.min(global_v[l],min[l]);
+                        }
+                    }
+
+                } else if (s instanceof SphereShape){
+                    SphereShape ss = (SphereShape) s;
+                    double r = ss.getRadius();
+                    for (int l = 0; l < 3; l++) {
+                        max[l] = Math.max(T[l][3] + r, max[l]);
+                        min[l] = Math.min(T[l][3] - r, min[l]);
+                    }
+
+                } else {
+                    for (int l = 0; l < 3; l++) {
+                        max[l] = Math.max(T[l][3],max[l]);
+                        min[l] = Math.min(T[l][3],min[l]);
+                    }
+                    System.out.println("WRN: Unsupported shape type: "+s.getClass().getName());
+                }
+
+
+            }
+
+            // XXX Might be good to add a bit of 'fudge' here, especially if we stick with perspective
+            vl.cameraManager.fit2D(LinAlg.resize(min,2),
+                                   LinAlg.resize(max,2),true);
+        }
+
+
+        //vis2
         console.addListener(this);
         console.addShortcut(VisConsole.Shortcut.makeCode("start", KeyEvent.VK_F1, 0));
         console.addShortcut(VisConsole.Shortcut.makeCode("stop", KeyEvent.VK_F2, 0));
+        console.addShortcut(VisConsole.Shortcut.makeCode("toggle-keyboard-gamepad", KeyEvent.VK_F5, 0));
+
         draw();
 
-        if (gopt.getBoolean("start")) {
-            world.setRunning(true);
-        }
-
-        vc.setTargetFPS(gopt.getInt("fps"));
 
         if (world.geoimage != null) {
 
@@ -108,16 +132,15 @@ public class Simulator implements VisConsole.Listener
             }
 
             VisTexture tex = new VisTexture(im);
-            tex.lock();
-            tex.setMagFilter(true);
-            vb.addBuffered(new VisChain(new VisDepthTest(false,
-                                                         new VisImage(tex,
-                                                                      world.geoimage.image2xy(new double[] {0,0}),
-                                                                      world.geoimage.image2xy(new double[] {im.getWidth()-1,
-                                                                                                            im.getHeight()-1})))));
-            vb.addBuffered(new VisData(new double[3], new VisDataPointStyle(Color.gray, 3)));
-
-            vb.switchBuffer();
+/*            tex.setMagFilter(true);
+              vb.addBack(new VisChain(new VisDepthTest(false,
+              new VzImage(tex,
+              world.geoimage.image2xy(new double[] {0,0}),
+              world.geoimage.image2xy(new double[] {im.getWidth()-1,
+              im.getHeight()-1})))));
+              vb.addBack(new VisData(new double[3], new VisDataPointStyle(Color.gray, 3)));
+*/
+            vb.swap();
         }
     }
 
@@ -168,13 +191,19 @@ public class Simulator implements VisConsole.Listener
             return true;
         }
 
+        if (toks[0].equals("toggle-keyboard-gamepad")) {
+            keygp.running = !keygp.running;
+            out.printf("Keyboard Gamepad "+(keygp.running? "running" : "off") + "\n");
+            return true;
+        }
+
         out.printf("Unknown command\n");
         return false;
     }
 
     public ArrayList<String> consoleCompletions(VisConsole vc, String prefix)
     {
-        String cs[] = new String[] { "save", "start", "stop" };
+        String cs[] = new String[] { "save", "start", "stop", "toggle-keyboard-gamepad"};
 
         ArrayList<String> as = new ArrayList<String>();
         for (String s: cs)
@@ -199,17 +228,55 @@ public class Simulator implements VisConsole.Listener
             return;
         }
 
-        Simulator editor = new Simulator(gopt);
+        SimWorld world;
+        try {
+            Config config = new Config();
+            if (gopt.wasSpecified("config"))
+                config = new ConfigFile(EnvUtil.expandVariables(gopt.getString("config")));
+
+            if (gopt.getString("world").length() > 0) {
+                String worldFilePath = EnvUtil.expandVariables(gopt.getString("world"));
+                world = new SimWorld(worldFilePath, config);
+            } else {
+                world = new SimWorld(config);
+            }
+
+        } catch (IOException ex) {
+            System.out.println("ex: "+ex);
+            ex.printStackTrace();
+            return;
+        }
+
+        VisWorld vw = new VisWorld();
+        VisLayer vl = new VisLayer(vw);
+        VisCanvas vc = new VisCanvas(vl);
+        vc.setTargetFPS(gopt.getInt("fps"));
+
+        JFrame jf = new JFrame("Simulator");
+        jf.setLayout(new BorderLayout());
+        jf.add(vc, BorderLayout.CENTER);
+
+        jf.setSize(800,600);
+        jf.setVisible(true);
+        jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+
+        Simulator editor = new Simulator(vw, vl, new VisConsole(vw,vl,vc), world);
+
+        if (gopt.getBoolean("start")) {
+            world.setRunning(true);
+        }
+
     }
 
     class VisSimWorld implements VisObject
     {
-        public void render(VisContext vc, GL gl, GLU glu)
+        public void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl)
         {
             synchronized(world) {
                 for (SimObject obj : world.objects) {
                     VisChain v = new VisChain(obj.getPose(), obj.getVisObject());
-                    v.render(vc, gl, glu);
+                    v.render(vc, layer, rinfo, gl);
                 }
             }
         }
@@ -237,13 +304,14 @@ public class Simulator implements VisConsole.Listener
                 }
             }
             if (collide)
-                vb.addBuffered(new VisText(VisText.ANCHOR.BOTTOM_RIGHT, "<<blue>>Collision"));
+                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_RIGHT,
+                                                   new VzText(VzText.ANCHOR.BOTTOM_RIGHT, "<<blue,monospaced-12>>Collision")));
 
-            vb.switchBuffer();
+            vb.swap();
         }
     }
 
-    class MyEventHandler extends VisCanvasEventAdapter
+    class MyEventHandler extends VisEventAdapter
     {
         double sz = 1;
         Color color = new Color(50,50,50);
@@ -253,37 +321,38 @@ public class Simulator implements VisConsole.Listener
         {
         }
 
-        public String getName()
+        public int getDispatchOrder()
         {
-            return "World Editor";
+            return -10;
         }
 
-        public void doHelp(HelpOutput houts)
-        {
-            houts.beginMouseCommands(this);
-            houts.addMouseCommand(this, HelpOutput.LEFT | HelpOutput.DRAG,
-								  "Move selected object (xy plane)");
-            houts.addMouseCommand(this, HelpOutput.LEFT | HelpOutput.CTRL | HelpOutput.DRAG,
-								  "Create or resize selected SimBox");
-            houts.addMouseCommand(this, HelpOutput.LEFT | HelpOutput.SHIFT | HelpOutput.DRAG,
-								  "Rotate selected object (xy plane)");
-            houts.addMouseCommand(this, HelpOutput.LEFT | HelpOutput.SHIFT | HelpOutput.ALT | HelpOutput.DRAG,
-								  "Rotate selected object (yz plane)");
-            houts.addMouseCommand(this, HelpOutput.RIGHT | HelpOutput.SHIFT | HelpOutput.DRAG,
-								  "Rotate selected object (zx plane)");
+        //vis2
+        // public void doHelp(HelpOutput houts)
+        // {
+        //     houts.beginMouseCommands(this);
+        //     houts.addMouseCommand(this, HelpOutput.LEFT | HelpOutput.DRAG,
+		// 						  "Move selected object (xy plane)");
+        //     houts.addMouseCommand(this, HelpOutput.LEFT | HelpOutput.CTRL | HelpOutput.DRAG,
+		// 						  "Create or resize selected SimBox");
+        //     houts.addMouseCommand(this, HelpOutput.LEFT | HelpOutput.SHIFT | HelpOutput.DRAG,
+		// 						  "Rotate selected object (xy plane)");
+        //     houts.addMouseCommand(this, HelpOutput.LEFT | HelpOutput.SHIFT | HelpOutput.ALT | HelpOutput.DRAG,
+		// 						  "Rotate selected object (yz plane)");
+        //     houts.addMouseCommand(this, HelpOutput.RIGHT | HelpOutput.SHIFT | HelpOutput.DRAG,
+		// 						  "Rotate selected object (zx plane)");
 
-            houts.beginKeyboardCommands(this);
-            houts.addKeyboardCommand(this, "r", 0, "Set color to Red");
-            houts.addKeyboardCommand(this, "g", 0, "Set color to Gray");
-            houts.addKeyboardCommand(this, "b", 0, "Set color to Blue");
-            houts.addKeyboardCommand(this, "m", 0, "Set color to Magenta");
-            houts.addKeyboardCommand(this, "c", 0, "Set color to Cyan");
-            houts.addKeyboardCommand(this, "[1-9]", 0, "Set selected SimBox size");
-            houts.addKeyboardCommand(this, "delete", 0, "Delete selected object");
-            houts.addKeyboardCommand(this, "backspace", 0, "Delete selected object");
-        }
+        //     houts.beginKeyboardCommands(this);
+        //     houts.addKeyboardCommand(this, "r", 0, "Set color to Red");
+        //     houts.addKeyboardCommand(this, "g", 0, "Set color to Gray");
+        //     houts.addKeyboardCommand(this, "b", 0, "Set color to Blue");
+        //     houts.addKeyboardCommand(this, "m", 0, "Set color to Magenta");
+        //     houts.addKeyboardCommand(this, "c", 0, "Set color to Cyan");
+        //     houts.addKeyboardCommand(this, "[1-9]", 0, "Set selected SimBox size");
+        //     houts.addKeyboardCommand(this, "delete", 0, "Delete selected object");
+        //     houts.addKeyboardCommand(this, "backspace", 0, "Delete selected object");
+        // }
 
-        public boolean mouseReleased(VisCanvas vc, GRay3D ray, MouseEvent e)
+        public boolean mouseReleased(VisCanvas vc, VisLayer vl, VisCanvas.RenderInfo rinfo, GRay3D ray, MouseEvent e)
         {
             lastxy = null;
             if (selectedObject == null)
@@ -295,7 +364,7 @@ public class Simulator implements VisConsole.Listener
             return true;
         }
 
-        public boolean mouseDragged(VisCanvas vc,  GRay3D ray, MouseEvent e)
+        public boolean mouseDragged(VisCanvas vc, VisLayer vl, VisCanvas.RenderInfo rinfo, GRay3D ray, MouseEvent e)
         {
             if (selectedObject == null)
                 return false;
@@ -384,7 +453,12 @@ public class Simulator implements VisConsole.Listener
             return true;
         }
 
-        public boolean keyPressed(VisCanvas vc, KeyEvent e)
+        public boolean keyReleased(VisCanvas vc, VisLayer vl, VisCanvas.RenderInfo rinfo, KeyEvent e)
+        {
+            keygp.keyReleased(e);
+            return false;
+        }
+        public boolean keyPressed(VisCanvas vc, VisLayer vl, VisCanvas.RenderInfo rinfo, KeyEvent e)
         {
             if (e.getKeyChar() >= '1' && e.getKeyChar() <= '9') {
                 sz = Double.parseDouble(""+e.getKeyChar());
@@ -435,10 +509,12 @@ public class Simulator implements VisConsole.Listener
                 draw();
                 return true;
             }
+
+            keygp.keyPressed(e);
             return false;
         }
 
-        public boolean mousePressed(VisCanvas vc,  GRay3D ray, MouseEvent e)
+        public boolean mousePressed(VisCanvas vc, VisLayer vl, VisCanvas.RenderInfo rinfo, GRay3D ray, MouseEvent e)
         {
             int mods = e.getModifiersEx();
             boolean shift = (mods&MouseEvent.SHIFT_DOWN_MASK)>0;
@@ -456,6 +532,8 @@ public class Simulator implements VisConsole.Listener
                 T[0][3] = xy[0];
                 T[1][3] = xy[1];
                 T[2][3] = sz/2;
+                if (selectedObject.getShape().getBoundingRadius() < 0)
+                    T[2][3] = 0;
                 selectedObject.setPose(T);
 
                 if (selectedObject instanceof SimBox) {

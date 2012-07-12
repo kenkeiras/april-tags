@@ -16,12 +16,12 @@ int serial_open(const char *port, int baud, int blocking);
 **/
 int serial_setbaud(int fd, int baudrate);
 
-/** Enable cts/rts flow control. 
-    Returns non-zero on error. 
+/** Enable cts/rts flow control.
+    Returns non-zero on error.
 **/
 int serial_enablectsrts(int fd);
-/** Enable xon/xoff flow control. 
-    Returns non-zero on error. 
+/** Enable xon/xoff flow control.
+    Returns non-zero on error.
 **/
 int serial_enablexon(int fd);
 

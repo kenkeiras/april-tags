@@ -4,7 +4,29 @@ LIBIMAGESOURCE_OBJS = image_source.o image_source_v4l2.o image_source_jni.o imag
 LIB=libimagesource.so
 DESTLIB=../../../lib/$(LIB)
 
-all: $(DESTLIB) istest
+ALL = $(DESTLIB) istest
+
+#############################################################
+# MacOS X
+ifeq "$(shell uname)" "Darwin"
+
+.phony: 
+	@echo "JCam is not supported on Darwin/MacOS."
+
+ALL = .phony
+
+endif
+
+#############################################################
+# Linux
+ifeq "$(shell uname)" "Linux"
+
+endif
+
+#############################################################
+
+
+all: $(ALL)
 
 
 istest: main.o $(LIBIMAGESOURCE_OBJS)

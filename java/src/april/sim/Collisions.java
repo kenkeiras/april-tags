@@ -13,6 +13,10 @@ public class Collisions
 
     public static boolean collision(Shape _sa, double Ta[][], Shape _sb, double Tb[][])
     {
+        // Do non-collidable check
+        if (_sa.getBoundingRadius() < 0 || _sb.getBoundingRadius() < 0)
+            return false;
+
         // do fast check first (must check scale on T also)
         double scaleA = Math.sqrt(LinAlg.sq(Ta[0][0]) + LinAlg.sq(Ta[1][0]) + LinAlg.sq(Ta[2][0]));
         double scaleB = Math.sqrt(LinAlg.sq(Tb[0][0]) + LinAlg.sq(Tb[1][0]) + LinAlg.sq(Tb[2][0]));

@@ -21,15 +21,18 @@ public class FeatureTest implements ParameterListener
 
     // map display
     VisWorld     vwm       = new VisWorld();
-    VisCanvas    vcm       = new VisCanvas(vwm);
+    VisLayer     vlm       = new VisLayer(vwm);
+    VisCanvas    vcm       = new VisCanvas(vlm);
 
     // display for 'a' slider data
     VisWorld     vwa       = new VisWorld();
-    VisCanvas    vca       = new VisCanvas(vwa);
+    VisLayer     vla       = new VisLayer(vwa);
+    VisCanvas    vca       = new VisCanvas(vla);
 
     // display for 'b' slider data
     VisWorld     vwb       = new VisWorld();
-    VisCanvas    vcb       = new VisCanvas(vwb);
+    VisLayer     vlb       = new VisLayer(vwb);
+    VisCanvas    vcb       = new VisCanvas(vlb);
 
     ParameterGUI pg = new ParameterGUI();
 
@@ -150,10 +153,11 @@ public class FeatureTest implements ParameterListener
             ArrayList<double[]> points = new ArrayList<double[]>();
             for (pose_t p : poses)
                 points.add(p.pos);
-            vb.addBuffered(new VisData(new VisDataPointStyle(Color.gray, 1), points));
-            vb.addBuffered(new VisChain(posea.orientation, posea.pos, new VisRobot(Color.blue)));
-            vb.addBuffered(new VisChain(poseb.orientation, poseb.pos, new VisRobot(Color.red)));
-            vb.switchBuffer();
+            vb.addBack(new VzPoints(new VisVertexData(points),
+                                    new VzPoints.Style(Color.gray, 1)));
+            vb.addBack(new VisChain(LinAlg.quatPosToMatrix(posea.orientation, posea.pos), new VzRobot(Color.blue)));
+            vb.addBack(new VisChain(LinAlg.quatPosToMatrix(poseb.orientation, poseb.pos), new VzRobot(Color.red)));
+            vb.swap();
         }
 
         for (FeatureTestComponent comp : components)
@@ -209,16 +213,18 @@ public class FeatureTest implements ParameterListener
                 // draw middle panel (laser scan a)
                 VisWorld.Buffer vb = vwa.getBuffer("points");
                 if (isEnabled())
-                    vb.addBuffered(new VisData(new VisDataPointStyle(Color.blue, 2), pointsa));
-                vb.switchBuffer();
+                    vb.addBack(new VzPoints(new VisVertexData(pointsa),
+                                            new VzPoints.Style(Color.blue, 2)));
+                vb.swap();
             }
 
             if (true) {
                 // draw right panel (laser scan b)
                 VisWorld.Buffer vb = vwb.getBuffer("points");
                 if (isEnabled())
-                    vb.addBuffered(new VisData(new VisDataPointStyle(Color.blue, 2), pointsb));
-                vb.switchBuffer();
+                    vb.addBack(new VzPoints(new VisVertexData(pointsb),
+                                            new VzPoints.Style(Color.blue, 2)));
+                vb.swap();
             }
         }
     }
@@ -277,11 +283,13 @@ public class FeatureTest implements ParameterListener
                 if (isEnabled()) {
                     ArrayList<ArrayList<double[]>> contours = contourExtractor.getContours(pointsa);
                     for (ArrayList<double[]> contour : contours) {
-                        vb.addBuffered(new VisData(new VisDataLineStyle(ColorUtil.randomColor(), 2), contour));
+                        vb.addBack(new VzLines(new VisVertexData(contour),
+                                               VzLines.LINE_STRIP,
+                                               new VzLines.Style(ColorUtil.randomColor(), 2)));
                     }
                 }
 
-                vb.switchBuffer();
+                vb.swap();
             }
 
             if (true) {
@@ -290,10 +298,12 @@ public class FeatureTest implements ParameterListener
                 if (isEnabled()) {
                     ArrayList<ArrayList<double[]>> contours = contourExtractor.getContours(pointsb);
                     for (ArrayList<double[]> contour : contours) {
-                        vb.addBuffered(new VisData(new VisDataLineStyle(ColorUtil.randomColor(), 2), contour));
+                        vb.addBack(new VzLines(new VisVertexData(contour),
+                                               VzLines.LINE_STRIP,
+                                               new VzLines.Style(ColorUtil.randomColor(), 2)));
                     }
                 }
-                vb.switchBuffer();
+                vb.swap();
             }
         }
     }
@@ -347,16 +357,20 @@ public class FeatureTest implements ParameterListener
                     for (LineFeature lf : linesa) {
                         Color color = ColorUtil.randomColor();
 
-                        vb.addBuffered(new VisData(lf.seg.p1, lf.seg.p2, new VisDataLineStyle(color, 2)));
+                        vb.addBack(new VzLines(new VisVertexData(lf.seg.p1, lf.seg.p2),
+                                               VzLines.LINE_STRIP,
+                                               new VzLines.Style(color, 2)));
                         double cx[] = new double[] {(lf.seg.p1[0] + lf.seg.p2[0]) / 2,
                                                     (lf.seg.p1[1] + lf.seg.p2[1]) / 2 };
-                        vb.addBuffered(new VisData(cx, LinAlg.add(cx, new double[] { sz*Math.cos(lf.normal),
-                                                                                     sz*Math.sin(lf.normal)}),
-                                new VisDataLineStyle(color, 1)));
+                        double nx[] = LinAlg.add(cx,new double[] { sz*Math.cos(lf.normal),
+                                                                   sz*Math.sin(lf.normal)});
+                        vb.addBack(new VzLines(new VisVertexData(cx,nx),
+                                               VzLines.LINE_STRIP,
+                                               new VzLines.Style(color, 1)));
                     }
                 }
 
-                vb.switchBuffer();
+                vb.swap();
             }
 
             if (true) {
@@ -367,16 +381,21 @@ public class FeatureTest implements ParameterListener
                     for (LineFeature lf : linesb) {
                         Color color = ColorUtil.randomColor();
 
-                        vb.addBuffered(new VisData(lf.seg.p1, lf.seg.p2, new VisDataLineStyle(color, 2)));
+                        vb.addBack(new VzLines(new VisVertexData(lf.seg.p1, lf.seg.p2),
+                                               VzLines.LINE_STRIP,
+                                               new VzLines.Style(color, 2)));
+
                         double cx[] = new double[] {(lf.seg.p1[0] + lf.seg.p2[0]) / 2,
                                                     (lf.seg.p1[1] + lf.seg.p2[1]) / 2 };
-                        vb.addBuffered(new VisData(cx, LinAlg.add(cx, new double[] { sz*Math.cos(lf.normal),
-                                                                                     sz*Math.sin(lf.normal)}),
-                                new VisDataLineStyle(color, 1)));
+                        double nx[] =  LinAlg.add(cx, new double[] { sz*Math.cos(lf.normal),
+                                                                     sz*Math.sin(lf.normal)});
+                        vb.addBack(new VzLines(new VisVertexData(cx, nx),
+                                               VzLines.LINE_STRIP,
+                                               new VzLines.Style(color, 1)));
                     }
                 }
 
-                vb.switchBuffer();
+                vb.swap();
             }
         }
     }

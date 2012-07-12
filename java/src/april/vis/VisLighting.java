@@ -1,64 +1,45 @@
 package april.vis;
 
-import javax.media.opengl.*;
-import javax.media.opengl.glu.*;
-
-import april.jmat.geom.*;
-
-import java.util.*;
 import java.io.*;
-import lcm.lcm.*;
 
-/** VisObject wrapper that manipulates whether lighting is performed. **/
-public class VisLighting implements VisObject, VisSerializable
+public class VisLighting extends VisChain
 {
-    VisObject os[];
-    boolean enable;
+    boolean enabled;
 
-    public VisLighting(boolean enable, VisObject ... os)
+    public VisLighting(boolean enabled, Object ... os)
     {
-        this.enable = enable;
-        this.os = os;
+        super (os);
+
+        this.enabled = enabled;
     }
 
-    public void render(VisContext vc, GL gl, GLU glu)
+    public void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl)
     {
         gl.glPushAttrib(gl.GL_ENABLE_BIT);
 
-        if (enable)
-            gl.glEnable(GL.GL_LIGHTING);
-        else
+        if (!enabled)
             gl.glDisable(GL.GL_LIGHTING);
+        else
+            gl.glEnable(GL.GL_LIGHTING);
 
-        for (VisObject vo : os)
-            vo.render(vc, gl, glu);
+        super.render(vc, layer, rinfo, gl);
 
         gl.glPopAttrib();
     }
 
-    public VisLighting()
+    public VisLighting(ObjectReader r)
     {
     }
 
-    public void serialize(LCMDataOutputStream out) throws IOException
+    public void writeObject(ObjectWriter outs) throws IOException
     {
-        out.writeBoolean(enable);
-        int count = 0;
-        for(VisObject o : os)
-            if (o instanceof VisSerializable)
-                count++;
-        out.writeInt(count);
-        for (VisObject o : os)
-            if (o instanceof VisSerializable)
-                VisSerialize.serialize((VisSerializable) o, out);
+        super.writeObject(outs);
+        outs.writeBoolean(enabled);
     }
 
-    public void unserialize(LCMDataInputStream in) throws IOException
+    public void readObject(ObjectReader ins) throws IOException
     {
-        enable = in.readBoolean();
-        os = new VisObject[in.readInt()];
-        for (int i = 0; i < os.length; i++)
-            os[i] = (VisObject)VisSerialize.unserialize(in);
+        super.readObject(ins);
+        enabled = ins.readBoolean();
     }
-
 }

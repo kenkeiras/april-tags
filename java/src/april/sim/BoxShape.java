@@ -60,6 +60,7 @@ public class BoxShape implements Shape
 
     public BoxShape(double sxyz[])
     {
+        boolean nonCollidable = (sxyz[2] <= 0);
         this.sxyz = LinAlg.copy(sxyz);
         planes = new ArrayList<double[]>();
         vertices = new ArrayList<double[]>();
@@ -85,6 +86,8 @@ public class BoxShape implements Shape
                                vertices.get(EDGE_PAIRS[i][1])));
 
         r = Math.sqrt(sxyz[0]*sxyz[0] + sxyz[1]*sxyz[1] + sxyz[2]*sxyz[2]) / 2;  // calculate once
+        if (nonCollidable)
+            r *= -1;
     }
 
     protected BoxShape()

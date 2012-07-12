@@ -560,6 +560,21 @@ public final class LinAlg
         return crossProduct(a, b, null);
     }
 
+    public static float[] crossProduct(float a[], float b[], float r[])
+    {
+        if(r == null)
+            r = new float[a.length];
+        r[0] = a[1] * b[2] - a[2] * b[1];
+        r[1] = a[2] * b[0] - a[0] * b[2];
+        r[2] = a[0] * b[1] - a[1] * b[0];
+        return r;
+    }
+
+    public static float[] crossProduct(float a[], float b[])
+    {
+        return crossProduct(a, b, null);
+    }
+
     /** Consider the directed 2D line that travels from p0 to p1. is q
      * on the left (or on the line)?
      **/
@@ -1248,6 +1263,20 @@ public final class LinAlg
         return xyt;
     }
 
+    public static double[] quatPosToXyzrpy(double q[], double pos[])
+    {
+        double xyzrpy[] = new double[6];
+        xyzrpy[0] = pos[0];
+        xyzrpy[1] = pos[1];
+        xyzrpy[2] = pos[2];
+        double rpy[] = quatToRollPitchYaw(q);
+        xyzrpy[3] = rpy[0];
+        xyzrpy[4] = rpy[1];
+        xyzrpy[5] = rpy[2];
+        return xyzrpy;
+    }
+
+
     /** v = v*a, storing result back into v **/
     public static void scaleEquals(double v[], double a)
     {
@@ -1309,6 +1338,13 @@ public final class LinAlg
             for (int j = 0; j < v[0].length; j++)
                 X[i][j] = v[i][j]*a;
         return X;
+    }
+
+    public static void scaleEquals(double v[][], double a)
+    {
+        for (int i = 0; i < v.length; i++)
+            for (int j = 0; j < v[0].length; j++)
+                v[i][j] *= a;
     }
 
     public static void printTranspose(byte v[])
@@ -2599,6 +2635,56 @@ public final class LinAlg
         assert(A.length == 2 && A[0].length == 2);
 
         return A[0][0]*A[1][1] - A[1][0] *A[0][1];
+    }
+
+    // computes A = U diag(sv) U^t in closed form. Derivation based on
+    // computing minima/maxima wrt. t of v^tv where v = [a b; b d]* [cos(t), sin(t)]^t
+    public static void svd22(double A[][],
+                             // Return vars:
+                             double sv[], double U[][])
+    {
+        final double a = A[0][0];
+        final double b = A[1][0];
+        final double d = A[1][1];
+
+        // Compute the theta which max/minimizes the multiplication against A
+        double theta = Math.atan2(2*b*(a + d), a*a - d*d)/2;
+        // note: There are only two distinct solutions for theta, one corresponding to the minimum eigenvalue
+        // and another to the maximum. We don't care which one we get, since it is easy to compute one from the other.
+
+        // Now we can compute the two perpendicular eigen vectors
+        double eva[] =  {Math.cos(theta), Math.sin(theta)};
+        double evb[] =  {-Math.sin(theta), Math.cos(theta)};
+
+        // Compute the eigenvalues by multiplying the eigen vectors by A
+        double evat[] = {a * eva[0] + b *eva[1],
+                         b * eva[0] + d *eva[1]};
+
+        double evbt[] = {a * evb[0] + b *evb[1],
+                         b * evb[0] + d *evb[1]};
+        double va = Math.sqrt((evat[0]*evat[0] + evat[1]*evat[1])/(eva[0]*eva[0] + eva[1]*eva[1]));
+        double vb = Math.sqrt((evbt[0]*evbt[0] + evbt[1]*evbt[1])/(evb[0]*evb[0] + evb[1]*evb[1]));
+
+        // sort the eigenvalues (& corresponding eigenvectors) by size
+        if (va  > vb) {
+            sv[0] = va;
+            sv[1] = vb;
+
+            U[0][0] = eva[0];
+            U[1][0] = eva[1];
+
+            U[0][1] = evb[0];
+            U[1][1] = evb[1];
+        } else {
+            sv[0] = vb;
+            sv[1] = va;
+
+            U[0][0] = evb[0];
+            U[1][0] = evb[1];
+
+            U[0][1] = eva[0];
+            U[1][1] = eva[1];
+        }
     }
 
 }

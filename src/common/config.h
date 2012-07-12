@@ -56,7 +56,7 @@ config_get_num_subkeys (Config * conf, const char * containerKey);
  */
 char **
 config_get_subkeys (Config * conf, const char * containerKey);
-                     
+                    
 
 
 /* These four functions search for a key (i.e. "sick.front.pos") and fetch
@@ -113,7 +113,7 @@ char **
 config_get_str_array_alloc (Config * conf, const char * key);
 
 void config_str_array_free ( char **data);
-  
+ 
 /* Creates a new config struct */
 Config *
 config_alloc( void );

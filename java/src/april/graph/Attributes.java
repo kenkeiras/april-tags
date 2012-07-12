@@ -9,7 +9,6 @@ import lcm.lcm.*;
 
 public class Attributes
 {
-
     public static class Attr
     {
         public Object          o;
@@ -23,7 +22,6 @@ public class Attributes
     }
 
     public HashMap<String, Attr> attrs = new HashMap<String, Attr>();
-
 
     public static Attributes read(StructureReader ins ) throws IOException
     {
@@ -81,11 +79,15 @@ public class Attributes
         }
     }
 
-    public Attributes copy()
+    public static Attributes copy(Attributes in)
     {
-        Attributes a = new Attributes();
-        a.attrs = (HashMap<String, Attr>) attrs.clone();
-        return a;
+        // handle null check in one location
+        if (in  == null)
+            return null;
+
+        Attributes out = new Attributes();
+        out.attrs = (HashMap<String, Attr>) in.attrs.clone();
+        return out;
     }
 
     void setAttribute(String key, Object o)

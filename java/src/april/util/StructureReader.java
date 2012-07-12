@@ -18,8 +18,6 @@ public interface StructureReader
     public double[] readDoubles() throws IOException;
     public double[][] readMatrix() throws IOException;
 
-    public StructureReader readBlock() throws IOException;
-
     public String readString() throws IOException;
 
     public byte[] readBytes() throws IOException;

@@ -22,7 +22,8 @@ public class FHSegmentTest implements ParameterListener
 {
     JFrame jf;
     VisWorld  vw = new VisWorld();
-    VisCanvas vc = new VisCanvas(vw);
+    VisLayer  vl = new VisLayer(vw);
+    VisCanvas vc = new VisCanvas(vl);
 
     ImageSource is;
 
@@ -75,7 +76,7 @@ public class FHSegmentTest implements ParameterListener
         jf.setSize(800,600);
         jf.setVisible(true);
 
-        vc.getViewManager().viewGoal.fit2D(new double[] {0,0}, new double[] { 752, 480});
+        vl.cameraManager.fit2D(new double[] {0,0}, new double[] { 752, 480}, true);
         new RunThread().start();
 
         pg.addListener(this);
@@ -106,30 +107,33 @@ public class FHSegmentTest implements ParameterListener
         {
             BufferedImage blurim = blurImage(im, pg.gd("sigma"));
 
+            int width = blurim.getWidth();
+            int height = blurim.getHeight();
+
             VisWorld.Buffer vb = vw.getBuffer("image");
-            vb.addBuffered(new VisImage(blurim));
-            vb.switchBuffer();
+
+            vb.addBack(new VzImage(blurim,VzImage.FLIP));
+            vb.swap();
 
             vb = vw.getBuffer("segment");
             long startmtime = System.currentTimeMillis();
             BufferedImage imseg = FHSegment.segment(blurim, pg.gi("k"), pg.gi("minsize"));
             long endmtime = System.currentTimeMillis();
             System.out.println(endmtime - startmtime);
-            vb.addBuffered(new VisImage(imseg));
-            vb.switchBuffer();
+            vb.addBack(new VzImage(imseg, VzImage.FLIP));
+            vb.swap();
         }
 
         public void run()
         {
             is.start();
-            ImageSourceFormat fmt = is.getCurrentFormat();
 
             while (true) {
-                byte buf[] = is.getFrame();
-                if (buf == null)
+                FrameData frmd = is.getFrame();
+                if (frmd == null)
                     continue;
 
-                BufferedImage im = ImageConvert.convertToImage(fmt.format, fmt.width, fmt.height, buf);
+                BufferedImage im = ImageConvert.convertToImage(frmd);
                 handleImage(im);
             }
         }

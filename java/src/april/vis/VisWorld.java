@@ -1,53 +1,63 @@
 package april.vis;
 
 import java.util.*;
-
-import javax.media.opengl.*;
-import javax.media.opengl.glu.*;
+import java.awt.*;
+import java.io.*;
 
 import april.util.*;
 
-/** Contains the VisObjects in a world. **/
-public class VisWorld
+/** A VisWorld represents a scene of objects. This scene could be
+ * rendered by one or more VisLayers.
+ **/
+public class VisWorld implements VisSerializable
 {
-    ArrayList<TemporaryObject> temporaryObjects = new ArrayList<TemporaryObject>();
-    ArrayList<VisLight> lights = new ArrayList<VisLight>();
-
-    HashMap<String, Buffer> bufferMap = new HashMap<String, Buffer>();
-    ArrayList<Buffer> buffers = new ArrayList<Buffer>();
-
-    ArrayList<VisWorldListener> listeners = new ArrayList<VisWorldListener>();
-    Timer timer = new Timer();
-
-    static final String UNBUFFERED = "__UNBUFFERED";
-    static final String DEFAULT = "__DEFAULT";
-
     static boolean debug = EnvUtil.getProperty("vis.debug", false);
 
-    static class TemporaryObject implements Comparable<TemporaryObject>
+    // synchrronize on 'buffers' before accessing.
+    ArrayList<Buffer> buffers = new ArrayList<Buffer>();
+
+    // 'bufferMap' is protected by synchronizing on 'buffers'.
+    HashMap<String, Buffer> bufferMap = new HashMap<String, Buffer>();
+
+    ArrayList<Listener> listeners = new ArrayList<Listener>();
+
+    public interface Listener
+    {
+        public void bufferAdded(VisWorld vw, String name);
+    }
+
+    static class TemporaryObject implements VisSerializable
     {
         VisObject vo;
-        long      expire_mtime;
+        long expireTime;
 
-        TemporaryObject(VisObject vo, long expire_mtime)
-	    {
-            this.vo = vo;
-            this.expire_mtime = expire_mtime;
-	    }
-
-        public int compareTo(TemporaryObject b)
+        TemporaryObject(VisObject vo, long expireTime)
         {
-            return (int) (expire_mtime - b.expire_mtime);
+            this.vo = vo;
+            this.expireTime = expireTime;
+        }
+
+        public void writeObject(ObjectWriter outs) throws IOException
+        {
+            outs.writeObject(vo);
+            outs.writeLong(expireTime);
+        }
+
+        public void readObject(ObjectReader ins) throws IOException
+        {
+            this.vo = (VisObject) ins.readObject();
+            this.expireTime = ins.readLong();
         }
     }
 
     public class Buffer implements Comparable<Buffer>
     {
-        private ArrayList<VisObject> back  = new ArrayList<VisObject>();
-        private ArrayList<VisObject> front = new ArrayList<VisObject>();
-        // we will generally want to ensure that other buffers draw on
-        // top; consequently, make the default that we draw very
-        // early.
+        // contents of 'front' and 'back' are protected by synchronizing on the buffer.
+        protected ArrayList<VisObject> back  = new ArrayList<VisObject>();
+        protected ArrayList<VisObject> front = new ArrayList<VisObject>();
+
+        protected ArrayList<TemporaryObject> temporaries = new ArrayList<TemporaryObject>();
+
         int drawOrder = -1;
         String name;
 
@@ -56,42 +66,57 @@ public class VisWorld
             this.name = name;
         }
 
-        public synchronized void addBuffered(VisObject vo)
+        public String getName()
         {
-            back.add(vo);
+            return name;
         }
+
+        public synchronized void addTemporary(VisObject vo, double dt)
+        {
+            if (vo == null)
+                return;
+
+            temporaries.add(new TemporaryObject(vo, (long)(System.currentTimeMillis() + 1000.0*dt)));
+        }
+
+        public void removeTemporary(VisObject vo)
+        {
+            if (vo == null)
+                return;
+
+            for (int idx = 0; idx < temporaries.size(); idx++) {
+                TemporaryObject to = temporaries.get(idx);
+                if (to.vo == vo) {
+                    temporaries.remove(idx);
+                    idx--;
+                }
+            }
+        }
+
+        public synchronized void addBack(VisObject vo)
+                                 {
+                                     back.add(vo);
+                                 }
 
         public synchronized void clear()
-        {
-            back.clear();
-            front.clear();
-            notifyListeners();
-        }
+                                 {
+                                     back.clear();
+                                     front.clear();
+                                     temporaries.clear();
+                                 }
 
-        public void addFront(VisObject vo)
-        {
-            synchronized(buffers) {
-                front.add(vo);
-                notifyListeners();
-            }
-        }
+        public synchronized void addFront(VisObject vo)
+                                 {
+                                     front.add(vo);
+                                 }
 
-        public void  switchBuffer()
-        {
-            synchronized (buffers) {
-                front = back;
-                // don't recycle: a previous front buffer
-                // could still have a reference somewhere.
-                back = new ArrayList<VisObject>();
-
-                notifyListeners();
-            }
-        }
-
-        ArrayList<VisObject> getFront()
-        {
-            return front;
-        }
+        public synchronized void swap()
+                                 {
+                                     front = back;
+                                     // don't recycle: a previous front buffer
+                                     // could still have a reference somewhere.
+                                     back = new ArrayList<VisObject>();
+                                 }
 
         public int compareTo(Buffer b)
         {
@@ -100,70 +125,18 @@ public class VisWorld
 
         public void setDrawOrder(int order)
         {
-            if (order != this.drawOrder) {
-                this.drawOrder = order;
-                synchronized(buffers) {
-                    Collections.sort(buffers);
-                }
-            }
+            this.drawOrder = order;
         }
     }
 
     public VisWorld()
     {
-        lights.add(new VisLight(new float[] { 100f, 150f, 120f, 1.0f },
-                                new float[] { .4f, .4f, .4f, 1.0f},
-                                new float[] { .8f, .8f, .8f, 1.0f },
-                                new float[] { .5f, .5f, .5f, 1.0f}));
-
-
-        lights.add(new VisLight(new float[] { -100f, -150f, 120f, 1.0f },
-                                new float[] { .1f, .1f, .1f, 1.0f},
-                                new float[] { .1f, .1f, .1f, 1.0f },
-                                new float[] { .5f, .5f, .5f, 1.0f}));
     }
 
-    public synchronized void clear()
+    public void addListener(Listener listener)
     {
-        synchronized(temporaryObjects) {
-            temporaryObjects.clear();
-        }
-        synchronized(buffers) {
-            bufferMap.clear();
-            buffers.clear();
-        }
-        notifyListeners();
-    }
-
-    public void addTemporary(VisObject vo, double seconds)
-    {
-        synchronized (temporaryObjects) {
-            temporaryObjects.add(new TemporaryObject(vo,
-                                                     (long) (System.currentTimeMillis() + seconds * 1000)));
-        }
-    }
-
-    public void removeTemporary(VisObject vo)
-    {
-        synchronized (temporaryObjects) {
-            TemporaryObject foundto = null;
-
-            for (TemporaryObject to : temporaryObjects) {
-                if (to.vo == vo) {
-                    foundto = to;
-                    break;
-                }
-            }
-
-            if (foundto != null)
-                temporaryObjects.remove(foundto);
-        }
-    }
-
-    protected void notifyListeners()
-    {
-        for (VisWorldListener listener : listeners)
-            listener.worldChanged(this);
+        if (!listeners.contains(listener))
+            listeners.add(listener);
     }
 
     public Buffer getBuffer(String name)
@@ -176,114 +149,90 @@ public class VisWorld
                 buffers.add(b);
                 Collections.sort(buffers);
             }
-            notifyListeners();
+            for (Listener listener : listeners)
+                listener.bufferAdded(this, name);
         }
 
         return b;
     }
 
-    public void addBuffered(String name, VisObject vo)
+    public void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl)
     {
-        Buffer b = getBuffer(name);
-        b.addBuffered(vo);
-    }
+        long now = System.currentTimeMillis();
 
-    public void switchBuffer(String name)
-    {
-        Buffer b = getBuffer(name);
-        b.switchBuffer();
-    }
-
-    public void addBuffered(VisObject vo)
-    {
-        addBuffered(DEFAULT, vo);
-    }
-
-    public void switchBuffer()
-    {
-        switchBuffer(DEFAULT);
-    }
-
-    public void addListener(VisWorldListener l)
-    {
-        listeners.add(l);
-    }
-
-    public void removeListener(VisWorldListener l)
-    {
-        if (listeners.contains(l))
-            listeners.remove(l);
-    }
-
-    private void renderPreserveState(VisContext vc, GL gl, GLU glu, VisObject vo)
-    {
-        vo.render(vc, gl, glu);
-
-        if (debug) {
-            int err = gl.glGetError();
-            if (err != gl.GL_NO_ERROR) {
-                System.out.println("GL Error while rendering "+vo+": "+glu.gluErrorString(err));
-            }
-        }
-    }
-
-    // called by VisCanvas (only)
-    void render(VisContext vc, GL gl, GLU glu)
-    {
         synchronized(buffers) {
+
+            Collections.sort(buffers);
+
             for (Buffer b : buffers) {
 
-                if (!vc.getViewManager().isBufferEnabled(b.name))
+                if (!layer.isBufferEnabled(b.name))
                     continue;
 
-                ArrayList<VisObject> obs = b.getFront();
+                synchronized(b) {
+                    for (VisObject vo : b.front) {
+                        if (vo != null)
+                            vo.render(vc, layer, rinfo, gl);
+                    }
 
-                for (VisObject vo : obs) {
-                    if (vo != null)
-                        renderPreserveState(vc, gl, glu, vo);
+                    for (int idx = 0; idx < b.temporaries.size(); idx++) {
+                        TemporaryObject to = b.temporaries.get(idx);
+                        if (to.expireTime < now) {
+                            b.temporaries.remove(idx);
+                            idx--;
+                        } else {
+                            to.vo.render(vc, layer, rinfo, gl);
+                        }
+                    }
                 }
             }
         }
-
-        // draw temporary objects last (highest priority)
-        // remove stale temporary objects
-        long mtime = System.currentTimeMillis();
-
-        long min_mtime = Long.MAX_VALUE;
-
-        synchronized (temporaryObjects) {
-            for (int i = 0; i < temporaryObjects.size(); i++) {
-                TemporaryObject to = temporaryObjects.get(i);
-
-                if (mtime > to.expire_mtime) {
-                    // delete this object by shuffling the last element into this position.
-                    temporaryObjects.set(i, temporaryObjects.get(temporaryObjects.size()-1));
-                    temporaryObjects.remove(temporaryObjects.size()-1);
-                    i--;
-                } else {
-                    renderPreserveState(vc, gl, glu, to.vo);
-
-                    min_mtime = Math.min(min_mtime, to.expire_mtime);
-                }
-            }
-        }
-
-        if (min_mtime < Long.MAX_VALUE)
-            timer.schedule(new RedrawTask(vc), min_mtime - mtime);
     }
 
-    class RedrawTask extends TimerTask
+    public VisWorld(ObjectReader r)
     {
-        VisContext vc;
+    }
 
-        RedrawTask(VisContext vc)
-        {
-            this.vc = vc;
+    public void writeObject(ObjectWriter outs) throws IOException
+    {
+        synchronized(buffers) {
+            outs.writeInt(buffers.size());
+            for (int bidx = 0; bidx < buffers.size(); bidx++) {
+                VisWorld.Buffer vb = buffers.get(bidx);
+
+                outs.writeUTF(vb.name);
+                outs.writeInt(vb.drawOrder);
+
+                outs.writeInt(vb.front.size());
+                for (int i = 0; i < vb.front.size(); i++)
+                    outs.writeObject(vb.front.get(i));
+
+                outs.writeInt(vb.temporaries.size());
+                for (int i = 0; i < vb.temporaries.size(); i++)
+                    outs.writeObject(vb.temporaries.get(i));
+            }
         }
+    }
 
-        public void run()
-        {
-            vc.draw();
+    public void readObject(ObjectReader ins) throws IOException
+    {
+        synchronized(buffers) {
+            int bsz = ins.readInt();
+
+            for (int bidx = 0; bidx < bsz; bidx++) {
+                String name = ins.readUTF();
+
+                VisWorld.Buffer vb = getBuffer(name);
+                vb.drawOrder = ins.readInt();
+
+                int n = ins.readInt();
+                for (int i = 0; i < n; i++)
+                    vb.front.add((VisObject) ins.readObject());
+
+                n = ins.readInt();
+                for (int i = 0; i < n; i++)
+                    vb.temporaries.add((TemporaryObject) ins.readObject());
+            }
         }
     }
 }

@@ -412,7 +412,7 @@ static dc1394feature_info_t *find_feature(image_source_t *isrc, dc1394feature_t 
 
 static uint32_t flip_endianness(uint32_t in)
 {
-    uint32_t out;
+    uint32_t out = 0;
 
     for (int i=0; i < 32; i++)
         out |= ((in >> (32 - (i+1))) & 0x1) << i;
@@ -1421,10 +1421,14 @@ fail:
     }
 }
 
-static int get_frame(image_source_t *isrc, void **imbuf, int *buflen)
+static int get_frame(image_source_t *isrc, frame_data_t * frmd)
 {
     assert(isrc->impl_type == IMPL_TYPE);
     impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
+
+    if (impl->started == 0) {
+        printf("image_source_dc1394: get_frame called on a source that has not been started. Crash imminent.\n");
+    }
 
     assert(impl->current_frame == NULL);
 
@@ -1443,13 +1447,15 @@ static int get_frame(image_source_t *isrc, void **imbuf, int *buflen)
         break;
     }
 
-    *imbuf = impl->current_frame->image;
-    *buflen = impl->current_frame->image_bytes;
+    frmd->data = impl->current_frame->image;
+    frmd->datalen= impl->current_frame->image_bytes;
+    frmd->ifmt = impl->formats[impl->current_format_idx];
+    frmd->utime = utime_now(); //XXX Can we use information from camera to improve this?
 
     return 0;
 }
 
-static int release_frame(image_source_t *isrc, void *imbuf)
+static int release_frame(image_source_t *isrc, frame_data_t * frmd)
 {
     assert(isrc->impl_type == IMPL_TYPE);
     impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
@@ -1793,11 +1799,9 @@ image_source_t *image_source_dc1394_open(url_parser_t *urlp)
         // third of a scanline.
         isrc->start(isrc);
 
-        void *imbuf = NULL;
-        int imbuflen = 0;
-
-        if (!isrc->get_frame(isrc, &imbuf, &imbuflen)) {
-            isrc->release_frame(isrc, imbuf);
+        frame_data_t *frmd = calloc(1, sizeof(frame_data_t));
+        if (!isrc->get_frame(isrc, frmd)) {
+            isrc->release_frame(isrc, frmd);
         }
 
         isrc->stop(isrc);

@@ -137,10 +137,15 @@ public class ISLog
 
     public synchronized long write(ImageSourceFormat ifmt, byte imbuf[]) throws IOException
     {
+        return write(ifmt, TimeUtil.utime(), imbuf);
+    }
+
+    public synchronized long write(ImageSourceFormat ifmt, long utime, byte imbuf[]) throws IOException
+    {
         long frameStartOffset = raf.getFilePointer();
 
         raf.writeLong(ISMAGIC);
-        raf.writeLong(TimeUtil.utime());
+        raf.writeLong(utime);
         raf.writeInt(ifmt.width);
         raf.writeInt(ifmt.height);
         raf.writeInt(ifmt.format.length());

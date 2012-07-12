@@ -6,11 +6,26 @@ import april.image.*;
 public class KanadeTomasi
 {
     int halfsize;
+    double sigma;
+    int scale;
 
-    /** @param halfsize Controls the window size; for 3x3 use 1. For
-     * 5x5 use 2, and so on. **/
-    public KanadeTomasi(int halfsize)
+    /**
+     * @param scale controls the distance used to compute
+     * gradients. (classically, should be 1. But larger numbers are
+     * akin to downsampling without losing spatial resolution.)
+     *
+     * @param sigma The filter to apply prior to sampling over the
+     * window size.
+     *
+     * @param halfsize Controls the window size; for 3x3 use 1. For
+     * 5x5 use 2, and so on.
+     *
+     **/
+
+    public KanadeTomasi(int scale, double sigma, int halfsize)
     {
+        this.scale = scale;
+        this.sigma = sigma;
         this.halfsize = halfsize;
     }
 
@@ -34,20 +49,20 @@ public class KanadeTomasi
         FloatImage fimIxIy = new FloatImage(width, height);
         FloatImage fimIy2 = new FloatImage(width, height);
 
-        for (int y = 1; y + 1 < height; y++) {
-            for (int x = 1; x + 1 < width; x++) {
-                float vp0 = data.d[y*width + x + 1];
-                float vn0 = data.d[y*width + x - 1];
-                float v0p = data.d[y*width + x + width];
-                float v0n = data.d[y*width + x - width];
+        for (int y = scale; y + scale < height; y++) {
+            for (int x = scale; x + scale < width; x++) {
+                float vp0 = data.d[y*width + x + scale];
+                float vn0 = data.d[y*width + x - scale];
+                float v0p = data.d[y*width + x + scale*width];
+                float v0n = data.d[y*width + x - scale*width];
                 float Ix = (vp0 - vn0);
                 float Iy = (v0p - v0n);
 
                 if (conf != null) {
-                    float cp0 = conf.d[y*width + x + 1];
-                    float cn0 = conf.d[y*width + x - 1];
-                    float c0p = conf.d[y*width + x + width];
-                    float c0n = conf.d[y*width + x - width];
+                    float cp0 = conf.d[y*width + x + scale];
+                    float cn0 = conf.d[y*width + x - scale];
+                    float c0p = conf.d[y*width + x + scale*width];
+                    float c0n = conf.d[y*width + x - scale*width];
 
                     Ix *= Math.min(cp0, cn0);
                     Iy *= Math.min(c0p, c0n);
@@ -61,9 +76,8 @@ public class KanadeTomasi
 
         ///////////////////////////////////////////////
         // Convolve with gaussian. This makes it rotationally invariant.
-        double sigma = 0.5 * halfsize;
-        float gaussian[] = SigProc.makeGaussianFilter(sigma, halfsize * 2 + 1);
-
+        int fsz = ((int) Math.max(3, 3*sigma)) | 1;
+        float gaussian[] = SigProc.makeGaussianFilter(sigma, fsz);
 
         fimIx2 = fimIx2.filterFactoredCentered(gaussian, gaussian);
         fimIxIy = fimIxIy.filterFactoredCentered(gaussian, gaussian);

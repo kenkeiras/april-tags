@@ -61,8 +61,8 @@ public class ImageUtil
         Graphics2D g = out.createGraphics();
 
         final Object interp = (newwidth < in.getWidth() && newheight < in.getHeight()) ?
-                    RenderingHints.VALUE_INTERPOLATION_BILINEAR :
-                    RenderingHints.VALUE_INTERPOLATION_BICUBIC;
+            RenderingHints.VALUE_INTERPOLATION_BILINEAR :
+            RenderingHints.VALUE_INTERPOLATION_BICUBIC;
 
         g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, interp);
         g.drawImage(in, 0, 0, out.getWidth(), out.getHeight(), null);
@@ -105,4 +105,57 @@ public class ImageUtil
 
         return out;
     }
+
+    public static BufferedImage flipVertical(BufferedImage im)
+    {
+        int height = im.getHeight();
+        int width = im.getWidth();
+
+        DataBuffer db = im.getRaster().getDataBuffer();
+        if (db instanceof DataBufferInt) {
+            int imdata[] = ((DataBufferInt) db).getData();
+
+            BufferedImage im2 = new BufferedImage(width, height, im.getType());
+            int imdata2[] = ((DataBufferInt) (im2.getRaster().getDataBuffer())).getData();
+
+            int stride = width;
+            for (int y = 0; y < height; y++)
+                System.arraycopy(imdata, y*stride, imdata2, (height-1-y)*stride, stride);
+
+            return im2;
+        }
+
+        if (db instanceof DataBufferByte) {
+            byte imdata[] = ((DataBufferByte) db).getData();
+
+            BufferedImage im2 = new BufferedImage(width, height, im.getType());
+            byte imdata2[] = ((DataBufferByte) (im2.getRaster().getDataBuffer())).getData();
+
+            int bytes_per_pixel = 0;
+            switch(im.getType()) {
+                case BufferedImage.TYPE_4BYTE_ABGR:
+                case BufferedImage.TYPE_4BYTE_ABGR_PRE:
+                    bytes_per_pixel = 4;
+                    break;
+                case BufferedImage.TYPE_3BYTE_BGR:
+                    bytes_per_pixel = 3;
+                    break;
+                case BufferedImage.TYPE_BYTE_GRAY:
+                    bytes_per_pixel = 1;
+                    break;
+                case BufferedImage.TYPE_BYTE_BINARY:
+                case BufferedImage.TYPE_BYTE_INDEXED:
+                    return null; //XXX These types are not supported by this method
+            }
+            int stride = bytes_per_pixel * width;
+            for (int y = 0; y < height; y++)
+                System.arraycopy(imdata, y*stride, imdata2, (height-1-y)*stride, stride);
+
+            return im2;
+        }
+
+        assert(false);
+        return null;
+    }
+
 }

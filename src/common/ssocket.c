@@ -157,7 +157,7 @@ ssocket_t *ssocket_accept(ssocket_t *s)
 {
 	int thesocket;
 	ssocket_t *cs = ssocket_create();
-       
+      
 	s->addrlen=sizeof(struct sockaddr);
 
 	if (s->type!=SSOCKET_SERVER_TYPE)

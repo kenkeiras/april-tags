@@ -28,7 +28,7 @@ public class VFlowLayout implements LayoutManager
             Dimension psize = comp.getPreferredSize();
 
             int thisheight = (int) psize.getHeight();
-            comp.setBounds(0, maxy, maxx, thisheight);
+            comp.setBounds(0, maxy, parent.getWidth(), thisheight);
             maxy += thisheight;
         }
     }

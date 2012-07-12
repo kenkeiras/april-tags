@@ -6,8 +6,11 @@ import java.util.*;
 
 public class VisConsole
 {
+    VisLayer vl;
     VisCanvas vc;
     VisWorld vw;
+
+    final int dispatchOrder; // can't change this after instantiation
 
     String command = null;
     int commandPos = 0;
@@ -29,11 +32,11 @@ public class VisConsole
     // how long to display stuff
     public int DISPLAY_MS = 5000;
 
-    static final String INPUT_STYLE = "<<blue, mono-large>>";
-    static final String INPUT_CURSOR_STYLE = "<<#ff3333, mono-large>>";
-    static final String OLD_INPUT_STYLE = "<<gray, mono-large>>";
-    static final String OUTPUT_STYLE = "<<black, mono-large>>";
-    static final String COMPLETION_STYLE = "<<#000077, mono-large>>";
+    static final String INPUT_STYLE = "<<blue, monospaced-14, left>>";
+    static final String INPUT_CURSOR_STYLE = "<<#ff3333, monospaced-14>>";
+    static final String OLD_INPUT_STYLE = "<<gray, monospaced-14,left>>";
+    static final String OUTPUT_STYLE = "<<black, monospaced-14>>";
+    static final String COMPLETION_STYLE = "<<#000077, monospaced-14>>";
 
     public static class Shortcut
     {
@@ -169,22 +172,24 @@ public class VisConsole
         }
     }
 
-    public VisConsole(VisCanvas vc, VisWorld vw)
+    public VisConsole(VisWorld vw, VisLayer vl, VisCanvas vc)
     {
-        this(vc, vw, 100000);
+        this(vw, vl, vc, -100000);
     }
 
-    public VisConsole(VisCanvas vc, VisWorld vw, int eventpriority)
+    public VisConsole(VisWorld vw, VisLayer vl, VisCanvas vc,  int dispatchOrder)
     {
+        this.vl = vl;
         this.vc = vc;
         this.vw = vw;
+        this.dispatchOrder = dispatchOrder;
 
         NonStupidPipe p = new NonStupidPipe();
         pouts = p.outputStream;
         pins = p.inputStream;
         ppouts = new PrintStream(new BufferedOutputStream(pouts));
 
-        vc.addEventHandler(new MyCommandPromptHandler(), eventpriority);
+        vl.addEventHandler(new MyCommandPromptHandler());
         new UpdateThread().start();
         new OutputThread().start();
     }
@@ -251,8 +256,9 @@ public class VisConsole
 
         VisWorld.Buffer vb = vw.getBuffer("command output");
         vb.setDrawOrder(drawOrder);
-        vb.addBuffered(new VisText(VisText.ANCHOR.BOTTOM_LEFT, VisText.JUSTIFICATION.LEFT, buffer));
-        vb.switchBuffer();
+        vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT,
+                                           new VzText(buffer)));
+        vb.swap();
     }
 
     class OutputThread extends Thread
@@ -313,14 +319,14 @@ public class VisConsole
         }
     }
 
-    class MyCommandPromptHandler extends VisCanvasEventAdapter
+    class MyCommandPromptHandler extends VisEventAdapter
     {
-        public String getName()
+        public int getDispatchOrder()
         {
-            return "Command Prompt";
+            return dispatchOrder;
         }
 
-        public boolean keyTyped(VisCanvas vc, KeyEvent e)
+        public boolean keyTyped(VisCanvas vc, VisLayer vl, VisCanvas.RenderInfo rinfo, KeyEvent e)
         {
             // consume keyTyped events if we're in the middle of a command.
             if (command != null)
@@ -329,14 +335,14 @@ public class VisConsole
             return false;
         }
 
-        public boolean keyPressed(VisCanvas vc, KeyEvent e)
+        public boolean keyPressed(VisCanvas vc, VisLayer vl, VisCanvas.RenderInfo rinfo, KeyEvent e)
         {
             synchronized(VisConsole.this) {
-                return keyPressedReal(vc, e);
+                return keyPressedReal(vc, vl, rinfo, e);
             }
         }
 
-        boolean keyPressedReal(VisCanvas vc, KeyEvent e)
+        boolean keyPressedReal(VisCanvas vc, VisLayer vl, VisCanvas.RenderInfo rinfo, KeyEvent e)
         {
             char c = e.getKeyChar();
             int code = e.getKeyCode();
@@ -623,7 +629,7 @@ public class VisConsole
 
             redraw();
 
-            vc.drawNow(); // make text input very responsive
+            vc.draw(); // make text input very responsive
             return true;
         }
     }

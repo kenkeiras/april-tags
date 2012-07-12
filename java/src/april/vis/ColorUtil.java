@@ -34,6 +34,11 @@ public class ColorUtil
         return new Color(255- c.getRed(), 255-c.getGreen(), 255-c.getBlue());
     }
 
+    public static int swapRedBlue(int c)
+    {
+        return (c & 0xff000000) | ((c & 0xff) << 16)  | (c & 0x00ff00) | ((c >> 16) & 0xff);
+    }
+
     public static Color fromAARRGGBB(int aarrggbb)
     {
         return new Color((aarrggbb >> 16) & 0xff,
@@ -55,11 +60,11 @@ public class ColorUtil
     }
 
     /**
-     * Converts a color to its String representation for VisText and
-     * HTML in the #RRGGBBAA format
+     * Converts a color to its hexadecimal string representation for VzText
+     * e.g. #AARRGGBB
      * @param Color
      */
-    public static String toHTMLString(Color c)
+    public static String toHexString(Color c)
     {
         // Either one or two characters long
         String r = Integer.toHexString(c.getRed());
@@ -76,15 +81,15 @@ public class ColorUtil
         if ( a.length() == 1)
             a = "0"+a;
 
-        return "#" + r + g + b + a;
+        return "#" + a + r + g + b;
     }
 
     /**
-     * Converts a color to its String representation for VisText and
-     * HTML in the #RRGGBBAA format
+     * Converts a color to its hexadecimal string representation for VzText and
+     * e.g. #AARRGGBB
      * @param int color in aarrggbb format (as from getRGB())
      */
-    public static String toHTMLString(int color)
+    public static String toHexString(int color)
     {
         // Either one or two characters long
         String r = Integer.toHexString((color >> 16) & 0xFF);
@@ -101,7 +106,7 @@ public class ColorUtil
         if ( a.length() == 1)
             a = "0"+a;
 
-        return "#" + r + g + b + a;
+        return "#" + a + r + g + b;
     }
 }
 
