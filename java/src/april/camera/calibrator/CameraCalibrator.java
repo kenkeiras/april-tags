@@ -544,6 +544,7 @@ public class CameraCalibrator
         solver.iterate();
 
         if ((counter % 100) == 0) {
+
             printCalibrationBlock();
 
             //int numTagEdges = 0;
@@ -613,6 +614,8 @@ public class CameraCalibrator
             System.out.println();
             System.out.printf("    %s {\n", cam.name);
 
+            // make sure ParameterizableCalibration is up to date and print it
+            cam.cal.resetParameterization(cam.cameraIntrinsics.state);
             System.out.println(cam.cal.getCalibrationString());
 
             double state[] = new double[6];
@@ -709,10 +712,12 @@ public class CameraCalibrator
         double K[][] = estimateIntrinsics(currentCameraImages);
 
         double fc[] = new double[] { K[0][0], K[1][1] };
-        //double cc[] = new double[] { K[0][2], K[1][2] };
+        //double fc[] = new double[] { 650, 650 };
+
         // the focal center estimate from the IntrinsicsEstimator appears to
         // cause problems with convergence, whereas the focal length used with
         // the naive focal center works fine
+        //double cc[] = new double[] { K[0][2], K[1][2] };
         double cc[] = new double[] { width/2, height/2 };
 
         System.out.println("Initialized camera intrinsics using an IntrinsicsEstimator to:");
@@ -731,6 +736,30 @@ public class CameraCalibrator
 
         if (classname.equals("april.camera.DistortionFreeCalibration")) {
             return new DistortionFreeCalibration(fc, cc, width, height);
+        }
+
+        if (classname.equals("april.camera.SimpleKannalaBrandtCalibration")) {
+            //double kc[] = new double[] { 1, 0, 0, 0, 0 };
+            double kc[] = new double[] { 1.0/3,
+                                         2.0/15,
+                                         17.0/315,
+                                         0.0 };
+
+            return new SimpleKannalaBrandtCalibration(fc, cc, kc, width, height);
+        }
+
+        if (classname.equals("april.camera.KannalaBrandtCalibration")) {
+            //double kc[] = new double[] { 1, 0, 0, 0, 0 };
+            double kc[] = new double[] { 1.0/3,
+                                         2.0/15,
+                                         17.0/315,
+                                         0.0 };
+            double lc[] = new double[] { 0.01, 0.01, 0.01 };
+            double ic[] = new double[] { 0.01, 0.01, 0.01, 0.01 };
+            double mc[] = new double[] { 0.01, 0.01, 0.01 };
+            double jc[] = new double[] { 0.01, 0.01, 0.01, 0.01 };
+
+            return new KannalaBrandtCalibration(fc, cc, kc, lc, ic, mc, jc, width, height);
         }
 
         assert(false);

@@ -36,7 +36,13 @@ public class ExampleRectifier
         ////////////////////////////////////////
         // Input view
         System.out.println("Creating camera calibration");
-        input = new SimpleCaltechCalibration(config);
+        String classname = config.requireString("class");
+
+        Object obj = ReflectUtil.createObject(classname, config);
+        assert(obj != null);
+        assert(obj instanceof Calibration);
+
+        input = (Calibration) obj;
         //input = new ScaledView(0.5, input);
 
         ////////////////////////////////////////
