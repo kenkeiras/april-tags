@@ -144,7 +144,8 @@ public class CameraCalibrator
 
         g = new Graph();
 
-        CholeskySolver gs   = new CholeskySolver(g, new MinimumDegreeOrdering());
+        //CholeskySolver gs   = new CholeskySolver(g, new MinimumDegreeOrdering());
+        LMSolver gs = new LMSolver(g, new MinimumDegreeOrdering(), 10e-1, 10e10, 10);
         gs.verbose          = false;
         gs.matrixType       = Matrix.SPARSE;
         solver = gs;
@@ -543,7 +544,8 @@ public class CameraCalibrator
 
         solver.iterate();
 
-        if ((counter % 100) == 0) {
+        //if ((counter % 100) == 0) {
+        if (true) {
 
             printCalibrationBlock();
 
@@ -711,8 +713,8 @@ public class CameraCalibrator
 
         double K[][] = estimateIntrinsics(currentCameraImages);
 
-        double fc[] = new double[] { K[0][0], K[1][1] };
-        //double fc[] = new double[] { 650, 650 };
+        // XXX double fc[] = new double[] { K[0][0], K[1][1] };
+        double fc[] = new double[] { 630, 630 };
 
         // the focal center estimate from the IntrinsicsEstimator appears to
         // cause problems with convergence, whereas the focal length used with
