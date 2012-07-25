@@ -10,7 +10,7 @@ ALL = $(DESTLIB)
 # MacOS X
 ifeq "$(shell uname)" "Darwin"
 
-.phony: 
+.phony:
 	@echo "JSerial is not supported on Darwin/MacOS."
 
 ALL = .phony
@@ -34,7 +34,7 @@ april_jserial_JSerial.h:
 clean:
 	rm -f $(LIB_APRIL_JSERIAL_OBJS) *~ april_jserial_JSerial.h *.so $(LIB) $(LDESTLIB)
 
-JNI_INCLUDES = -I/usr/lib/jvm/java-6-sun/include/ -I/usr/lib/jvm/java-6-sun/include/linux -I/usr/lib/jvm/java-6-openjdk/include/
+JNI_INCLUDES = -I/usr/lib/jvm/java-6-sun/include/ -I/usr/lib/jvm/java-6-sun/include/linux -I/usr/lib/jvm/java-6-openjdk/include/ -I/usr/lib/jvm/java-7-openjdk-amd64/include/
 
 %.o: %.c
 	$(GCC) -shared -O2 -c -fPIC -fno-omit-frame-pointer -fno-stack-protector -D_REENTRANT $< $(JNI_INCLUDES)
