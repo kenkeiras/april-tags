@@ -2,9 +2,12 @@ package april.camera.calibrator;
 
 import java.awt.Color;
 import java.awt.image.*;
+import java.io.*;
 import java.util.*;
+import javax.imageio.*;
 
 import april.camera.*;
+import april.camera.models.*;
 import april.config.*;
 import april.graph.*;
 import april.jmat.*;
@@ -140,7 +143,8 @@ public class CameraCalibrator
                                   new double[] { 1.0, 0.00, 0.00000 },
                                   true);
         vl.cameraManager.getCameraTarget().perspectiveness = 0;
-        VzGrid.addGrid(vw);
+        VzGrid.addGrid(vw, new VzGrid(new VzMesh.Style(new Color(32, 32, 32, 128)),
+                                      new VzLines.Style(new Color(128, 128, 128, 128), 1)));
 
         g = new Graph();
 
@@ -594,6 +598,9 @@ public class CameraCalibrator
 
     public void printCalibrationBlock()
     {
+        if (cameras == null || cameras.size() < 1)
+            return;
+
         // start block
         System.out.println("aprilCameraCalibration {\n");
 
@@ -640,6 +647,62 @@ public class CameraCalibrator
 
         // end block
         System.out.println("}");
+    }
+
+    public void saveImages()
+    {
+        saveImages("/tmp/CameraCalibration");
+    }
+
+    public void saveImages(String basepath)
+    {
+        if (images == null || images.size() < 1)
+            return;
+
+        // create directory for image dump
+        int dirNum = -1;
+        String dirName = null;
+        File dir = null;
+        do {
+            dirNum++;
+            dirName = String.format("%s/ImageSet%d/", basepath, dirNum);
+            dir = new File(dirName);
+        } while (dir.exists());
+
+        if (dir.mkdirs() != true) {
+            System.err.printf("CameraCalibrator: Failure to create directory '%s'\n", dirName);
+            return;
+        }
+
+
+        // dump images
+        for (int imageSetIndex = 0; imageSetIndex < images.size(); imageSetIndex++) {
+
+            List<ProcessedImage> imageSet = images.get(imageSetIndex);
+
+            // save images
+            for (int cameraIndex = 0; cameraIndex < imageSet.size(); cameraIndex++) {
+                ProcessedImage pim = imageSet.get(cameraIndex);
+
+                String fileName = String.format("%s/Camera%d_Image%d.png", dirName, cameraIndex, imageSetIndex);
+                File imageFile = new File(fileName);
+
+                System.out.printf("Filename '%s'\n", fileName);
+
+                try {
+                    ImageIO.write(pim.image, "png", imageFile);
+
+                } catch (IllegalArgumentException ex) {
+                    System.err.printf("CameraCalibrator: Failure to output images to %s\n", dirName);
+                    return;
+                } catch (IOException ex) {
+                    System.err.printf("CameraCalibrator: Failure to output images to %s\n", dirName);
+                    return;
+                }
+            }
+        }
+
+        System.out.printf("Successfully saved images to '%s'\n", dirName);
     }
 
     private void initCameras()
@@ -710,6 +773,7 @@ public class CameraCalibrator
         int height = currentCameraImages.get(0).image.getHeight();
 
         double K[][] = estimateIntrinsics(currentCameraImages);
+        assert(K != null); // throws assertion when estimate includes NaN values
 
         double fc[] = new double[] { K[0][0], K[1][1] };
         //double fc[] = new double[] { 650, 650 };
@@ -723,22 +787,22 @@ public class CameraCalibrator
         System.out.println("Initialized camera intrinsics using an IntrinsicsEstimator to:");
         LinAlg.print(K);
 
-        if (classname.equals("april.camera.CaltechCalibration")) {
+        if (classname.equals("april.camera.models.CaltechCalibration")) {
             double kc[] = new double[] { 0, 0, 0, 0, 0 };
             double skew = 0;
             return new CaltechCalibration(fc, cc, kc, skew, width, height);
         }
 
-        if (classname.equals("april.camera.SimpleCaltechCalibration")) {
+        if (classname.equals("april.camera.models.SimpleCaltechCalibration")) {
             double kc[] = new double[] { 0, 0 };
             return new SimpleCaltechCalibration(fc, cc, kc, width, height);
         }
 
-        if (classname.equals("april.camera.DistortionFreeCalibration")) {
+        if (classname.equals("april.camera.models.DistortionFreeCalibration")) {
             return new DistortionFreeCalibration(fc, cc, width, height);
         }
 
-        if (classname.equals("april.camera.SimpleKannalaBrandtCalibration")) {
+        if (classname.equals("april.camera.models.SimpleKannalaBrandtCalibration")) {
             //double kc[] = new double[] { 1, 0, 0, 0, 0 };
             double kc[] = new double[] { 1.0/3,
                                          2.0/15,
@@ -748,7 +812,7 @@ public class CameraCalibrator
             return new SimpleKannalaBrandtCalibration(fc, cc, kc, width, height);
         }
 
-        if (classname.equals("april.camera.KannalaBrandtCalibration")) {
+        if (classname.equals("april.camera.models.KannalaBrandtCalibration")) {
             //double kc[] = new double[] { 1, 0, 0, 0, 0 };
             double kc[] = new double[] { 1.0/3,
                                          2.0/15,
@@ -766,6 +830,9 @@ public class CameraCalibrator
         return null;
     }
 
+    /** Use an IntrinsicsEstimator to estimate the camera intrinsics. Returns
+      * null if the intrinsics contain a NaN value.
+      */
     private double[][] estimateIntrinsics(List<ProcessedImage> currentCameraImages)
     {
         ArrayList<ArrayList<TagDetection>> allDetections = new ArrayList<ArrayList<TagDetection>>();
@@ -774,7 +841,14 @@ public class CameraCalibrator
 
         IntrinsicsEstimator estimator = new IntrinsicsEstimator(allDetections, this.tf);
 
-        return estimator.getIntrinsics();
+        double K[][] = estimator.getIntrinsics();
+
+        for (int i=0; i < K.length; i++)
+            for (int j=0; j < K[i].length; j++)
+                if (Double.isNaN(K[i][j]))
+                    return null;
+
+        return K;
     }
 
     private double[][] estimateMosaicExtrinsics(double K[][], List<TagDetection> detections)

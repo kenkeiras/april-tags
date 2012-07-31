@@ -1,16 +1,28 @@
-package april.camera;
+package april.camera.models;
 
+import april.camera.*;
 import april.config.*;
 import april.jmat.*;
 import april.util.*;
 
-public class SimpleKannalaBrandtCalibration implements Calibration, ParameterizableCalibration
+public class CaltechCalibration implements Calibration, ParameterizableCalibration
 {
+    // constants for iteratively rectifying coordinates (e.g. max allowed error)
+    private static final int max_iterations = 20;
+    private static final double max_pixel_error = 0.01;
+    private double max_sqerr;
+
     // required calibration parameter lengths
     static final public int LENGTH_FC = 2;
     static final public int LENGTH_CC = 2;
+    static final public int LENGTH_KC = 5;
 
-    static final public int LENGTH_KC = 4;
+    // indices for lookup in kc[]
+    static final public int KC1 = 0; // r^2
+    static final public int KC2 = 1; // r^4
+    static final public int KC3 = 2; // tangential
+    static final public int KC4 = 3; // tangential
+    static final public int KC5 = 4; // r^6
 
     // Focal length, in pixels
     private double[]        fc;
@@ -19,7 +31,10 @@ public class SimpleKannalaBrandtCalibration implements Calibration, Parameteriza
     private double[]        cc;
 
     // Distortion
-    private double[]        kc;
+    private double[]        kc; // [kc1 kc2 kc3 kc4 kc5 kc6]
+
+    // Skew
+    private double          skew;
 
     // Intrinsics matrix
     private double[][]      K;
@@ -29,12 +44,13 @@ public class SimpleKannalaBrandtCalibration implements Calibration, Parameteriza
     private int             width;
     private int             height;
 
-    public SimpleKannalaBrandtCalibration(double fc[], double cc[], double kc[],
-                                    int width, int height)
+    public CaltechCalibration(double fc[], double cc[], double kc[], double skew,
+                              int width, int height)
     {
         this.fc     = LinAlg.copy(fc);
         this.cc     = LinAlg.copy(cc);
         this.kc     = LinAlg.copy(kc);
+        this.skew   = skew;
 
         this.width  = width;
         this.height = height;
@@ -42,11 +58,12 @@ public class SimpleKannalaBrandtCalibration implements Calibration, Parameteriza
         createIntrinsicsMatrix();
     }
 
-    public SimpleKannalaBrandtCalibration(Config config)
+    public CaltechCalibration(Config config)
     {
         this.fc     = config.requireDoubles("intrinsics.fc");
         this.cc     = config.requireDoubles("intrinsics.cc");
         this.kc     = config.requireDoubles("intrinsics.kc");
+        this.skew   = config.requireDouble("intrinsics.skew");
 
         this.width  = config.requireInt("width");
         this.height = config.requireInt("height");
@@ -57,13 +74,16 @@ public class SimpleKannalaBrandtCalibration implements Calibration, Parameteriza
     private void createIntrinsicsMatrix()
     {
         assert(fc.length == LENGTH_FC);
-        assert(cc.length == LENGTH_CC);
         assert(kc.length == LENGTH_KC);
+        assert(cc.length == LENGTH_CC);
 
-        K = new double[][] { { fc[0],   0.0, cc[0] } ,
-                             {   0.0, fc[1], cc[1] } ,
-                             {   0.0,   0.0,   1.0 } };
+        K = new double[][] { { fc[0],  skew*fc[0], cc[0] } ,
+                             {   0.0,       fc[1], cc[1] } ,
+                             {   0.0,         0.0,   1.0 } };
         Kinv = LinAlg.inverse(K);
+
+        // compute the max square error for iterative rectification in normalized units
+        max_sqerr = Math.pow(max_pixel_error / Math.max(fc[0], fc[1]), 2);
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -121,9 +141,9 @@ public class SimpleKannalaBrandtCalibration implements Calibration, Parameteriza
         s = String.format("%s        intrinsics {\n", s);
         s = String.format("%s            fc = [%11.6f,%11.6f ];\n", s, fc[0], fc[1]);
         s = String.format("%s            cc = [%11.6f,%11.6f ];\n", s, cc[0], cc[1]);
-        s = String.format("%s            kc = [%11.6f,%11.6f,%11.6f,%11.6f ];\n",
-                          s, kc[0], kc[1], kc[2], kc[3]);
-
+        s = String.format("%s            kc = [%11.6f,%11.6f,%11.6f,%11.6f,%11.6f ];\n",
+                          s, kc[0], kc[1], kc[2], kc[3], kc[4]);
+        s = String.format("%s            skew = %11.6f\n", s, skew);
         s = String.format("%s        }\n", s);
 
         return s;
@@ -131,10 +151,11 @@ public class SimpleKannalaBrandtCalibration implements Calibration, Parameteriza
 
     public String getCacheString()
     {
-        return String.format("%.12f %.12f %.12f %.12f %.12f %.12f %.12f %.12f %d %d",
+        return String.format("%.12f %.12f %.12f %.12f %.12f %.12f %.12f %.12f %.12f %.12f %d %d",
                              fc[0], fc[1],
                              cc[0], cc[1],
-                             kc[0], kc[1], kc[2], kc[3],
+                             kc[0], kc[1], kc[2], kc[3], kc[4],
+                             skew,
                              width, height);
     }
 
@@ -142,27 +163,30 @@ public class SimpleKannalaBrandtCalibration implements Calibration, Parameteriza
     // Parameterizable interface methods
     public double[] getParameterization()
     {
-        int len = LENGTH_FC + LENGTH_CC + LENGTH_KC;
+        int len = LENGTH_FC + LENGTH_CC + LENGTH_KC + 1;
 
         double params[] = new double[len];
 
-        params[ 0] = fc[0];
-        params[ 1] = fc[1];
+        params[0] = fc[0];
+        params[1] = fc[1];
 
-        params[ 2] = cc[0];
-        params[ 3] = cc[1];
+        params[2] = cc[0];
+        params[3] = cc[1];
 
-        params[ 4] = kc[0];
-        params[ 5] = kc[1];
-        params[ 6] = kc[2];
-        params[ 7] = kc[3];
+        params[4] = kc[0];
+        params[5] = kc[1];
+        params[6] = kc[2];
+        params[7] = kc[3];
+        params[8] = kc[4];
+
+        params[9] = skew;
 
         return params;
     }
 
     public void resetParameterization(double params[])
     {
-        assert(params.length == (LENGTH_FC + LENGTH_CC + LENGTH_KC));
+        assert(params.length == (LENGTH_FC + LENGTH_CC + LENGTH_KC + 1));
 
         fc = new double[LENGTH_FC];
         fc[0] = params[0];
@@ -177,6 +201,9 @@ public class SimpleKannalaBrandtCalibration implements Calibration, Parameteriza
         kc[1] = params[5];
         kc[2] = params[6];
         kc[3] = params[7];
+        kc[4] = params[8];
+
+        skew = params[9];
 
         createIntrinsicsMatrix();
     }
@@ -187,58 +214,54 @@ public class SimpleKannalaBrandtCalibration implements Calibration, Parameteriza
     // Perform distortion in normalized coordinates
     private double[] distortNormalized(double xy_rn[])
     {
-        assert(xy_rn.length == 2);
-
         double x = xy_rn[0];
         double y = xy_rn[1];
-        double z = 1.0;
 
-        // the three sides of the triangle
-        double O = Math.sqrt(x*x + y*y);
-        double H = Math.sqrt(x*x + y*y + z*z);
-        double A = z;
+        double r2 = x*x + y*y;
+        double r4 = r2*r2;
+        double r6 = r4*r2;
 
-        double theta  = Math.asin(O/H);
-        double theta2 = theta*theta;
-        double theta3 = theta*theta2;
-        double theta5 = theta3*theta2;
-        double theta7 = theta5*theta2;
-        double theta9 = theta7*theta2;
+        double multiplier = 1 + kc[KC1] * r2
+                              + kc[KC2] * r4
+                              + kc[KC5] * r6 ;
 
-        double psi = Math.atan2(y, x);
+        double dx[] = new double[] {2*kc[KC3]*x*y + kc[KC4]*(r2 + 2*x*x),
+                                    kc[KC3]*(r2 + 2*y*y) + 2*kc[KC4]*x*y};
 
-        double rtheta =         theta + // force kc0 to 1
-                        kc[0] * theta3 +
-                        kc[1] * theta5 +
-                        kc[2] * theta7 +
-                        kc[3] * theta9;
-
-        double ur[] = new double[] { Math.cos(psi), Math.sin(psi) };
-
-        double xy_dn[] = new double[2];
-
-        xy_dn[0] += ur[0] * rtheta;
-        xy_dn[1] += ur[1] * rtheta;
-
+        double xy_dn[] = new double[] { x*multiplier + dx[0] ,
+                                        y*multiplier + dx[1] };
         return xy_dn;
     }
 
+    // Perform iterative rectification in normalized coordinates
     private double[] rectifyNormalized(double xy_dn[])
     {
-        double psi = Math.atan2(xy_dn[1], xy_dn[0]);
+        double x_rn = xy_dn[0];
+        double y_rn = xy_dn[1];
 
-        double rtheta = ((xy_dn[0]/Math.cos(psi)) + (xy_dn[1]/Math.sin(psi))) / 2d;
+        for (int i=0; i < max_iterations; i++) {
+            double r2 = x_rn*x_rn + y_rn*y_rn;
+            double r4 = r2 * r2;
+            double r6 = r4 * r2;
 
-        double theta = Math.asin(Math.sqrt(xy_dn[0]*xy_dn[0] + xy_dn[1]*xy_dn[1]) /
-                                 Math.sqrt(xy_dn[0]*xy_dn[0] + xy_dn[1]*xy_dn[1] + 1));
+            double multiplier = 1 + kc[KC1] * r2
+                                  + kc[KC2] * r4
+                                  + kc[KC5] * r6 ;
 
-        for (int i=0; i < 10; i++)
-            theta = rtheta - (kc[0]*Math.pow(theta, 3) + kc[1]*Math.pow(theta, 5) + kc[2]*Math.pow(theta, 7) + kc[3]*Math.pow(theta, 9));
+            double dx[] = new double[] {2*kc[KC3]*x_rn*y_rn + kc[KC4]*(r2 + 2*x_rn*x_rn),
+                                        kc[KC3]*(r2 + 2*y_rn*y_rn) + 2*kc[KC4]*x_rn*y_rn};
 
-        double r = Math.tan(theta);
+            double x_sqerr = xy_dn[0] - (x_rn*multiplier + dx[0]);
+            double y_sqerr = xy_dn[1] - (y_rn*multiplier + dx[1]);
+            double sqerr = x_sqerr*x_sqerr + y_sqerr*y_sqerr;
 
-        return new double[] { r*Math.cos(psi), r*Math.sin(psi) };
+            x_rn = (xy_dn[0] - dx[0]) / multiplier;
+            y_rn = (xy_dn[1] - dx[1]) / multiplier;
+
+            if (sqerr < this.max_sqerr)
+                break;
+        }
+
+        return new double[] { x_rn, y_rn };
     }
 }
-
-

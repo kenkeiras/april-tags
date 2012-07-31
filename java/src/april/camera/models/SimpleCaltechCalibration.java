@@ -1,5 +1,6 @@
-package april.camera;
+package april.camera.models;
 
+import april.camera.*;
 import april.config.*;
 import april.jmat.*;
 import april.util.*;

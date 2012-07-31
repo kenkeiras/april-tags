@@ -51,7 +51,9 @@ public class SingleCameraCalibrator implements ParameterListener
 
         pg = new ParameterGUI();
         pg.addButtons("captureOnce","Capture once","capture","Toggle image capturing",
-                      "iterateonce","Iterate once","iterate","Toggle auto iteration");
+                      "save","Save images",
+                      "iterateonce","Iterate once","iterate","Toggle auto iteration",
+                      "print","Print calibration");
         pg.addListener(this);
 
         jf = new JFrame("Single camera calibrator");
@@ -130,13 +132,17 @@ public class SingleCameraCalibrator implements ParameterListener
             vb.swap();
         }
 
-        if (name.equals("iterateonce")) {
-            if (calibrator != null)
-                calibrator.iterate();
-        }
+        if (name.equals("iterateonce") && calibrator != null)
+            calibrator.iterate();
 
         if (name.equals("iterate"))
             autoiterate = autoiterate ? false : true;
+
+        if (name.equals("print") && calibrator != null)
+            calibrator.printCalibrationBlock();
+
+        if (name.equals("save") && calibrator != null)
+            calibrator.saveImages();
     }
 
     class AcquisitionThread extends Thread
@@ -254,7 +260,7 @@ public class SingleCameraCalibrator implements ParameterListener
 
         opts.addBoolean('h',"help",false,"See this help screen");
         opts.addString('u',"url","","Camera URL");
-        opts.addString('c',"class","april.camera.CaltechCalibration","Calibration class");
+        opts.addString('c',"class","april.camera.models.CaltechCalibration","Calibration model class name");
         opts.addDouble('m',"spacing",0.0254,"Spacing between tags (meters)");
 
         if (!opts.parse(args)) {
