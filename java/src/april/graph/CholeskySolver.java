@@ -83,7 +83,7 @@ public class CholeskySolver implements GraphSolver
         if (verbose)
             System.out.printf("Build A, B: %15.5f\n", tic.toctic());
 
-        if (true) {
+        if (false) {
             // Condition the matrix. Any un-constrained variables get a
             // weight to be unchanged.
 
