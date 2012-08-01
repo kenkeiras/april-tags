@@ -5,6 +5,7 @@ import java.awt.image.*;
 import javax.imageio.*;
 
 import april.camera.*;
+import april.camera.models.*;
 import april.config.*;
 import april.jcam.*;
 import april.jmat.*;

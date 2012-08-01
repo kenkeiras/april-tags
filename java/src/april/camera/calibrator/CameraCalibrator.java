@@ -515,25 +515,37 @@ public class CameraCalibrator
             }
 
             boolean good = max > maxRadius;
-            String uistring = String.format("<<monospaced-10,%s>>%s: Lens distortion defined up to %.0f of %.0f pixels (%s)",
+            String uistring = String.format("<<monospaced-10,%s>>%s: %s\n<<monospaced-10,%s>>Defined up to %.0f of %.0f pixels",
                                             good ? "white" : "red",
                                             wrapper.name,
+                                            good ? "good (invertible)" : "add tags at edges",
+                                            good ? "white" : "red",
                                             max,
-                                            maxRadius,
-                                            good ? "good" : "add images near image border");
+                                            maxRadius);
 
             vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT,
                                         new VisChain(LinAlg.translate(100, 50 + 100*idx, 0),
-                                                     new VzRectangle(200, 100, new VzMesh.Style(new Color(10*idx, 10*idx, 10*idx)))),
+                                                     new VzRectangle(200, 100,
+                                                                     new VzMesh.Style(new Color(10*idx, 10*idx, 10*idx)),
+                                                                     new VzLines.Style(Color.white, 1))),
                                         new VisChain(LinAlg.translate(0, 100*idx, 0),
+                                                     new VzLines(new VisVertexData(new double[][] { {  0,   0},
+                                                                                                    {100, 100} }),
+                                                                 VzLines.LINE_STRIP,
+                                                                 new VzLines.Style(new Color(255, 255, 255, 128), 1)),
                                                      LinAlg.scale(100 / maxRadius,
                                                                   100 / maxRadius,
                                                                   1),
                                                      new VzLines(new VisVertexData(points),
                                                                  VzLines.LINE_STRIP,
                                                                  new VzLines.Style(Color.red, 1))),
-                                        new VisChain(LinAlg.translate(0, 100*idx, 0),
-                                                     new VzText(VzText.ANCHOR.BOTTOM_LEFT, uistring))));
+                                        new VisChain(LinAlg.translate(35, 100*idx, 0),
+                                                     new VzText(VzText.ANCHOR.BOTTOM_LEFT, "<<monospaced-10>>r rect")),
+                                        new VisChain(LinAlg.translate(0, 10+100*idx, 0),
+                                                     LinAlg.rotateZ(Math.PI/2),
+                                                     new VzText(VzText.ANCHOR.TOP_LEFT, "<<monospaced-10>>r dist")),
+                                        new VisChain(LinAlg.translate(0, 100*(idx+1), 0),
+                                                     new VzText(VzText.ANCHOR.TOP_LEFT, uistring))));
         }
 
         vb.swap();
