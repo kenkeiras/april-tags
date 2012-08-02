@@ -202,7 +202,7 @@ JNIEXPORT jobject JNICALL Java_april_jcam_ImageSourceNative_image_1source_1get_1
         (*jenv)->DeleteLocalRef(jenv, ifmt);
 
         jfieldID utimeId = (*jenv)->GetFieldID(jenv, frameDataClass, "utime", "J");
-        (*jenv)->SetLongField(jenv, frmd, utimeId, (long)fdat->utime);
+        (*jenv)->SetLongField(jenv, frmd, utimeId, (jlong) fdat->utime);
 
         jfieldID dataId = (*jenv)->GetFieldID(jenv, frameDataClass, "data", "[B");
         jbyteArray bytes = NULL;
