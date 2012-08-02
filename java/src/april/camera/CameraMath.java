@@ -145,6 +145,132 @@ public class CameraMath
         return K;
     }
 
+    /** Estimate the fundamental matrix from two sets of xy coordinates. Solves the equation:<br>
+      * <center><i> transpose(x') * F * x = 0 </i></center><br>
+      * using a linear formulation and the SVD. Then enforces the rank 2 constraint on the matrix F.
+      *
+      * @param xys - The list of xy coordinates corresponding to <i>x</i> in the formula above
+      * @param xy_primes - The list of xy coordinates corresponding to <i>x'</i> in the formula above
+      */
+    public final static double[][] estimateFundamentalMatrix(List<double[]> xys, List<double[]> xy_primes)
+    {
+        assert(xys.size() == xy_primes.size());
+        int n = xys.size();
+
+        // compute the transformations to normalize each set of points
+        double T[][]        = getPointNormalizationTransform(xys);
+        double Tprime[][]   = getPointNormalizationTransform(xy_primes);
+
+        double A[][] = new double[n][];
+        for (int i=0; i < n; i++) {
+
+            double xy[]         = xys.get(i);
+            double xy_prime[]   = xy_primes.get(i);
+
+            // apply the normalization to both points
+            xy = pixelTransform(T, xy);
+            xy_prime = pixelTransform(Tprime, xy_prime);
+
+            double x  = xy[0];
+            double y  = xy[1];
+            double xp = xy_prime[0];
+            double yp = xy_prime[1];
+
+            A[i] = new double[] { xp * x  ,
+                                  xp * y  ,
+                                  xp      ,
+                                  yp * x  ,
+                                  yp * y  ,
+                                  yp      ,
+                                  x       ,
+                                  y       ,
+                                  1       };
+        }
+
+        SingularValueDecomposition A_SVD = new SingularValueDecomposition(new Matrix(A));
+
+        int rank = A_SVD.rank();
+        if (rank < 8) {
+            System.out.printf("Warning: matrix for computing the Fundamental Matrix had rank %d (rank of 8 required)\n", rank);
+            return null;
+        }
+
+        Matrix A_V    = A_SVD.getV();
+        double fvec[] = A_V.getColumn(A_V.getColumnDimension()-1).getDoubles();
+
+        // reshape the vector
+        double F[][] = new double[][] { { fvec[0], fvec[1], fvec[2] } ,
+                                        { fvec[3], fvec[4], fvec[5] } ,
+                                        { fvec[6], fvec[7], fvec[8] } };
+
+        // enforce rank constraint
+        SingularValueDecomposition F_SVD = new SingularValueDecomposition(new Matrix(F));
+        double U[][] = F_SVD.getU().copyArray();
+        double S[][] = F_SVD.getS().copyArray();
+        double V[][] = F_SVD.getV().copyArray();
+
+        S[2][2] = 0;
+
+        // recreate F
+        F = LinAlg.matrixAB(U, LinAlg.matrixAB(S, LinAlg.transpose(V)));
+
+        // de-normalize
+        F = LinAlg.matrixAB(LinAlg.transpose(Tprime), LinAlg.matrixAB(F, T));
+
+        return F;
+    }
+
+    /** Compute the transformation which translates a set of points to the origin
+      * and scales their distance from the origin such that the RMS error is sqrt(2).
+      * Used when computing homographies and the fundamental matrix.
+      */
+    public final static double[][] getPointNormalizationTransform(List<double[]> points)
+    {
+        double xyrms[] = getXmeanYmeanRMS(points);
+
+        double scale = Math.sqrt(2) / xyrms[2];
+
+        double T[][] = new double[3][3];
+        T[0][0] = scale;
+        T[1][1] = scale;
+        T[0][2] = -xyrms[0] * scale;
+        T[1][2] = -xyrms[1] * scale;
+        T[2][2] = 1;
+
+        return T;
+    }
+
+    /** Compute the centroid of a set of points and the RMS distance of the points to the centroid.
+      * Returns a double[] of the form { xmean, ymean, rms distance }
+      */
+    public final static double[] getXmeanYmeanRMS(List<double[]> points)
+    {
+        int n = points.size();
+        double xsum = 0, ysum = 0;
+
+        for (double xy[] : points) {
+            xsum += xy[0];
+            ysum += xy[1];
+        }
+
+        double xmean = xsum / n;
+        double ymean = ysum / n;
+
+        double acc = 0;
+        for (double xy[] : points) {
+
+            double dx = xy[0] - xmean;
+            double dy = xy[1] - ymean;
+            double dist = dx*dx + dy*dy;
+
+            acc += dist;
+        }
+
+        double dist_rms = Math.sqrt((1.0 / n) * acc);
+
+        return new double[] { xmean, ymean, dist_rms };
+    }
+
     ////////////////////////////////////////////////////////////////////////////////
     // Projection methods for 3D points
 
