@@ -253,6 +253,11 @@ public class CameraCalibrator
         return LinAlg.copy(cam.cameraExtrinsics.state);
     }
 
+    public synchronized Graph getGraphCopy()
+    {
+        return g.copy();
+    }
+
     private void generateTagPositions(TagFamily tf, double metersPerTag)
     {
         tagPositions = new ArrayList<double[]>();

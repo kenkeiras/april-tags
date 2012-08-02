@@ -47,7 +47,7 @@ public class GExtrinsicsNode extends GNode
         return LinAlg.copy(s);
     }
 
-    public GNode copy()
+    public GExtrinsicsNode copy()
     {
         GExtrinsicsNode node = new GExtrinsicsNode();
         node.init = LinAlg.copy(this.init);
