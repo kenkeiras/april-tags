@@ -136,15 +136,17 @@ public class CameraCalibrator
         this.metersPerTag = metersPerTag;
 
         this.vl = vl;
-        this.vw = vl.world;
-        ((DefaultCameraManager) vl.cameraManager).interfaceMode = 3.0;
-        vl.cameraManager.uiLookAt(new double[] { 1.5, 0.03, 4.75000 },
-                                  new double[] { 1.5, 0.03, 0.00000 },
-                                  new double[] { 1.0, 0.00, 0.00000 },
-                                  true);
-        vl.cameraManager.getCameraTarget().perspectiveness = 0;
-        VzGrid.addGrid(vw, new VzGrid(new VzMesh.Style(new Color(32, 32, 32, 128)),
-                                      new VzLines.Style(new Color(128, 128, 128, 128), 1)));
+        if (vl != null) {
+            this.vw = vl.world;
+            ((DefaultCameraManager) vl.cameraManager).interfaceMode = 3.0;
+            vl.cameraManager.uiLookAt(new double[] { 1.5, 0.03, 4.75000 },
+                                      new double[] { 1.5, 0.03, 0.00000 },
+                                      new double[] { 1.0, 0.00, 0.00000 },
+                                      true);
+            vl.cameraManager.getCameraTarget().perspectiveness = 0;
+            VzGrid.addGrid(vw, new VzGrid(new VzMesh.Style(new Color(32, 32, 32, 128)),
+                                          new VzLines.Style(new Color(128, 128, 128, 128), 1)));
+        }
 
         g = new Graph();
 
@@ -385,6 +387,9 @@ public class CameraCalibrator
 
     public synchronized void draw()
     {
+        if (vl == null)
+            return;
+
         // don't try to draw until we have a few images
         if (images.size() < NUM_IMAGES_REQUIRED)
             return;
