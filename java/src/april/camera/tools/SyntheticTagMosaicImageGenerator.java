@@ -44,11 +44,11 @@ public class SyntheticTagMosaicImageGenerator
 
     public class SyntheticImages
     {
-        BufferedImage rectified;
-        BufferedImage distorted;
+        public BufferedImage rectified;
+        public BufferedImage distorted;
 
-        ArrayList<double[]> predictedTagCenters_rectified;
-        ArrayList<double[]> predictedTagCenters_distorted;
+        public ArrayList<double[]> predictedTagCenters_rectified;
+        public ArrayList<double[]> predictedTagCenters_distorted;
     }
 
     public SyntheticTagMosaicImageGenerator(TagFamily tf, int _width, int _height, double tagSizeMeters)
@@ -252,11 +252,17 @@ public class SyntheticTagMosaicImageGenerator
         ParameterGUI    pg;
         JImage          jimr;
         JImage          jimd;
+        JFileChooser    chooser;
 
         SyntheticTagMosaicImageGenerator gen;
         int width, height;
 
         Random r = new Random(1461234L);
+
+        SyntheticImages lastImages;
+        double lastXyzrpy[];
+
+        long lastUtime = 0L;
 
         public SIGenGUI(SyntheticTagMosaicImageGenerator gen, int width, int height)
         {
@@ -269,7 +275,7 @@ public class SyntheticTagMosaicImageGenerator
                              "showPredictedTagCenters","Show predicted tag centers (image coordinates)", false);
             pg.addDoubleSlider("k1", "Distortion k1", -2, 2, -0.4);
             pg.addDoubleSlider("k2", "Distortion k2", -2, 2,  0.2);
-            pg.addButtons("step","Sample new mosaic position");
+            pg.addButtons("step","Sample new mosaic position","save","Save image pair");
             pg.addListener(this);
 
             jf = new JFrame("Synthetic image generator");
@@ -279,6 +285,11 @@ public class SyntheticTagMosaicImageGenerator
             jimr.setFit(false);
             jimd = new JImage();
             jimd.setFit(false);
+
+            chooser = new JFileChooser();
+            javax.swing.filechooser.FileNameExtensionFilter filter =
+                    new javax.swing.filechooser.FileNameExtensionFilter("PNG images", "png");
+            chooser.setFileFilter(filter);
 
             JSplitPane imagePane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, jimr, jimd);
             imagePane.setDividerLocation(0.5);
@@ -294,7 +305,9 @@ public class SyntheticTagMosaicImageGenerator
             jf.setVisible(true);
 
             // initial image
-            generate(new double[] { 0.4, 0, 0, 0, 0, 0 });
+            double xyzrpy[] = new double[] { 0.4, 0, 0, 0, 0, 0 };
+            generate(xyzrpy);
+            lastXyzrpy = xyzrpy;
         }
 
         public void parameterChanged(ParameterGUI pg, String name)
@@ -308,6 +321,44 @@ public class SyntheticTagMosaicImageGenerator
                                                 -0.4 + 0.8*r.nextDouble() };
 
                 generate(xyzrpy);
+
+                lastXyzrpy = xyzrpy;
+
+                return;
+            }
+
+            if (name.equals("save")) {
+
+                if (lastImages != null) {
+
+                    int returnVal = chooser.showSaveDialog(jf);
+
+                    if(returnVal == JFileChooser.APPROVE_OPTION) {
+                        File f = chooser.getSelectedFile();
+                        String path = f.getPath();
+
+                        String base = path;
+                        if (path.endsWith(".png"))
+                            base = path.substring(0, path.length()-4);
+
+                        try {
+                            ImageIO.write(lastImages.rectified, "png", new File(String.format("%s.rectified.png", base)));
+                            ImageIO.write(lastImages.distorted, "png", new File(String.format("%s.distorted.png", base)));
+
+                        } catch (Exception ex) {
+                            System.err.println("Failed to write images.");
+                        }
+                    }
+                }
+
+                return;
+            }
+
+            long utime = TimeUtil.utime();
+            if ((utime - lastUtime) > 500000L) {
+                lastUtime = utime;
+
+                generate(lastXyzrpy);
             }
         }
 
@@ -358,6 +409,8 @@ public class SyntheticTagMosaicImageGenerator
 
             jimr.setImage(images.rectified);
             jimd.setImage(images.distorted);
+
+            lastImages = images;
         }
     }
 
