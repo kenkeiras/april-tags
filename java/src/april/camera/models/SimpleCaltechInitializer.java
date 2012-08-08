@@ -19,9 +19,42 @@ public class SimpleCaltechInitializer implements CalibrationInitializer
                                         ArrayList<ArrayList<TagDetection>> allDetections,
                                         TagFamily tf)
     {
-        IntrinsicsEstimator estimator = new IntrinsicsEstimator(allDetections, tf, width, height);
+        IntrinsicsFreeDistortionEstimator distortionEstimator =
+                        new IntrinsicsFreeDistortionEstimator(allDetections, tf, width, height);
 
-        double K[][] = estimator.getIntrinsics();
+        ArrayList<ArrayList<TagDetection>> allRectifiedDetections = new ArrayList<ArrayList<TagDetection>>();
+        for (ArrayList<TagDetection> detections : allDetections) {
+
+            ArrayList<TagDetection> rectifiedDetections = new ArrayList<TagDetection>();
+            for (TagDetection d : detections) {
+
+                TagDetection rd = new TagDetection();
+                // easy stuff
+                rd.good                 = d.good;
+                rd.obsCode              = d.obsCode;
+                rd.code                 = d.code;
+                rd.id                   = d.id;
+                rd.hammingDistance      = d.hammingDistance;
+                rd.rotation             = d.rotation;
+
+                // these things could be fixed, but aren't used by IntrinsicsEstimator
+                rd.p                    = LinAlg.copy(d.p);
+                rd.homography           = LinAlg.copy(d.homography);
+                rd.hxy                  = LinAlg.copy(d.hxy);
+                rd.observedPerimeter    = d.observedPerimeter;
+
+                // we need to fix this for IntrinsicsEstimator
+                rd.cxy                  = distortionEstimator.undistort(d.cxy);
+
+                rectifiedDetections.add(rd);
+            }
+
+            allRectifiedDetections.add(rectifiedDetections);
+        }
+
+        IntrinsicsEstimator intrinsicsEstimator = new IntrinsicsEstimator(allRectifiedDetections, tf, width, height);
+
+        double K[][] = intrinsicsEstimator.getIntrinsics();
         System.out.println("Estimated intrinsics:"); LinAlg.print(K);
 
         for (int i=0; i < K.length; i++)
