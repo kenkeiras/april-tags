@@ -46,6 +46,9 @@ public class VisTexture implements VisSerializable
 
         BufferedImage im = null;
 
+        this.width = input.getWidth();
+        this.height = input.getHeight();
+
         if (alphaMask) {
             im = VisUtil.coerceImage(input, BufferedImage.TYPE_BYTE_GRAY);
             glinternal = GL.GL_ALPHA8;
@@ -54,9 +57,6 @@ public class VisTexture implements VisSerializable
             bytes_per_pixel = 1;
 
         } else {
-
-            this.width = input.getWidth();
-            this.height = input.getHeight();
 
             int imtype = input.getType();
 
