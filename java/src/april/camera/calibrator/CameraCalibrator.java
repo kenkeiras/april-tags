@@ -27,6 +27,8 @@ import april.vis.*;
  */
 public class CameraCalibrator
 {
+    public static boolean verbose = true;
+
     final int NUM_IMAGES_REQUIRED = 3;
 
     List<CalibrationInitializer> initializers  = null;
@@ -340,7 +342,7 @@ public class CameraCalibrator
     {
         GExtrinsicsNode mosaicExtrinsics = new GExtrinsicsNode();
         g.nodes.add(mosaicExtrinsics);
-        System.out.printf("Added mosaic extrinsics. Graph contains %d nodes\n", g.nodes.size());
+        if (verbose) System.out.printf("Added mosaic extrinsics. Graph contains %d nodes\n", g.nodes.size());
         int mosaicIndex = g.nodes.size() - 1;
         mosaicExtrinsicsIndices.add(mosaicIndex);
         assert(mosaicExtrinsicsIndices.size() == imagesetIndex + 1);
@@ -575,7 +577,7 @@ public class CameraCalibrator
 
         if ((counter % 100) == 0) {
 
-            printCalibrationBlock();
+            if (verbose) printCalibrationBlock();
 
             //int numTagEdges = 0;
             //for (GEdge e : g.edges)
@@ -786,9 +788,10 @@ public class CameraCalibrator
 
             // create graph intrinsics node
             GIntrinsicsNode cameraIntrinsics = new GIntrinsicsNode(cal);
-            System.out.println("Initialized camera intrinsics to:"); LinAlg.print(cameraIntrinsics.init);
+            if (verbose) System.out.println("Initialized camera intrinsics to:");
+            if (verbose) LinAlg.print(cameraIntrinsics.init);
             g.nodes.add(cameraIntrinsics);
-            System.out.printf("Added camera intrinsics. Graph contains %d nodes\n", g.nodes.size());
+            if (verbose) System.out.printf("Added camera intrinsics. Graph contains %d nodes\n", g.nodes.size());
             int cameraIntrinsicsIndex = g.nodes.size() - 1;
 
             GExtrinsicsNode cameraExtrinsics = null;
@@ -826,7 +829,7 @@ public class CameraCalibrator
         ArrayList<double[]> points_mosaic = new ArrayList<double[]>();
 
         // TODO fix this issue
-        System.out.println("Warning: CameraUtil.homographyToPose still does not take the optical center as a parameter, which means that the estimates must be incorrect");
+        if (verbose) System.out.println("Warning: CameraUtil.homographyToPose still does not take the optical center as a parameter, which means that the estimates must be incorrect");
 
         for (int i = 0; i < detections.size(); i++) {
 
@@ -850,8 +853,8 @@ public class CameraCalibrator
 
         double mosaicToGlobal_est[][] = AlignPoints3D.align(points_mosaic,
                                                             points_camera_est);
-        System.out.println("Estimated mosaic extrinsics:");
-        LinAlg.printTranspose(LinAlg.matrixToXyzrpy(mosaicToGlobal_est));
+        if (verbose) System.out.println("Estimated mosaic extrinsics:");
+        if (verbose) LinAlg.printTranspose(LinAlg.matrixToXyzrpy(mosaicToGlobal_est));
 
         return mosaicToGlobal_est;
     }
@@ -885,9 +888,9 @@ public class CameraCalibrator
 
             constraints.add(constraint);
 
-            System.out.printf("Constraining (%8.3f, %8.3f) to (%8.3f, %8.3f, %8.3f)\n",
-                              constraint.xy_px[0], constraint.xy_px[1],
-                              constraint.xyz_m[0], constraint.xyz_m[1], constraint.xyz_m[2]);
+            // System.out.printf("Constraining (%8.3f, %8.3f) to (%8.3f, %8.3f, %8.3f)\n",
+            //                   constraint.xy_px[0], constraint.xy_px[1],
+            //                   constraint.xyz_m[0], constraint.xyz_m[1], constraint.xyz_m[2]);
         }
 
         CameraWrapper cam = cameras.get(cameraIndex);
@@ -897,10 +900,10 @@ public class CameraCalibrator
                                      xys_px,
                                      xyzs_m);
         g.edges.add(edge);
-        System.out.printf("Added tag edge. Graph contains %d edges\n", g.edges.size());
+        if (verbose) System.out.printf("Added tag edge. Graph contains %d edges\n", g.edges.size());
         assert(g.edges.size()-1 == tagEdgeIndex);
 
-        printStatus();
+        if (verbose) printStatus();
     }
 
     void printStatus()
