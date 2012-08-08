@@ -88,7 +88,7 @@ public class BilinearRasterizer implements Rasterizer
        }
     }
 
-    /** Rectify an RGB BufferedImage using the lookup tables.
+    /** Rectify a grayscale BufferedImage using the lookup tables.
       */
     public BufferedImage rectifyImageByteGray(BufferedImage in)
     {
