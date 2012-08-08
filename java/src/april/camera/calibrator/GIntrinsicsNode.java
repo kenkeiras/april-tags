@@ -55,7 +55,7 @@ public class GIntrinsicsNode extends GNode
         return new double[6];
     }
 
-    public GNode copy()
+    public GIntrinsicsNode copy()
     {
         GIntrinsicsNode node = new GIntrinsicsNode();
         node.init = LinAlg.copy(this.init);

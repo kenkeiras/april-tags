@@ -206,12 +206,20 @@ public class GTagEdge extends GEdge
         return lin;
     }
 
-    public GEdge copy()
+    public GTagEdge copy()
     {
         GTagEdge edge = new GTagEdge();
         edge.nodes = LinAlg.copy(this.nodes);
         edge.attributes = Attributes.copy(this.attributes);
 
+        edge.hasCameraExtrinsics = this.hasCameraExtrinsics;
+        edge.CI = this.CI;
+        edge.CE = this.CE;
+        edge.ME = this.ME;
+
+        // inherited: nodes
+        edge.pixel_observations = new ArrayList<double[]>(this.pixel_observations);
+        edge.mosaic_coordinates = new ArrayList<double[]>(this.mosaic_coordinates);
         return edge;
     }
 

@@ -27,8 +27,9 @@ import april.vis.*;
  */
 public class CameraCalibrator
 {
-    public final int REQUIRED_NUM_IMAGES = 3;       // number of images needed before iteration
-    public final int REQUIRED_TAGS_PER_IMAGE = 8;   // number of constraints needed per image
+    public int REQUIRED_NUM_IMAGES = 3;       // number of images needed before iteration
+    public int REQUIRED_TAGS_PER_IMAGE = 8;   // number of constraints needed per image
+    public static boolean verbose = true;
 
     List<CalibrationInitializer> initializers       = null;
     List<double[]>               initialParameters  = null;
@@ -253,6 +254,11 @@ public class CameraCalibrator
         return LinAlg.copy(cam.cameraExtrinsics.state);
     }
 
+    public synchronized Graph getGraphCopy()
+    {
+        return g.copy();
+    }
+
     private void generateTagPositions(TagFamily tf, double metersPerTag)
     {
         tagPositions = new ArrayList<double[]>();
@@ -363,7 +369,7 @@ public class CameraCalibrator
     {
         GExtrinsicsNode mosaicExtrinsics = new GExtrinsicsNode();
         g.nodes.add(mosaicExtrinsics);
-        System.out.printf("Added mosaic extrinsics. Graph contains %d nodes\n", g.nodes.size());
+        if (verbose) System.out.printf("Added mosaic extrinsics. Graph contains %d nodes\n", g.nodes.size());
         int mosaicIndex = g.nodes.size() - 1;
         mosaicExtrinsicsIndices.add(mosaicIndex);
         assert(mosaicExtrinsicsIndices.size() == imagesetIndex + 1);
@@ -603,7 +609,7 @@ public class CameraCalibrator
 
         if ((counter % 100) == 0) {
 
-            printCalibrationBlock();
+            if (verbose) printCalibrationBlock();
 
             //int numTagEdges = 0;
             //for (GEdge e : g.edges)
@@ -814,9 +820,10 @@ public class CameraCalibrator
 
             // create graph intrinsics node
             GIntrinsicsNode cameraIntrinsics = new GIntrinsicsNode(cal);
-            System.out.println("Initialized camera intrinsics to:"); LinAlg.print(cameraIntrinsics.init);
+            if (verbose) System.out.println("Initialized camera intrinsics to:");
+            if (verbose) LinAlg.print(cameraIntrinsics.init);
             g.nodes.add(cameraIntrinsics);
-            System.out.printf("Added camera intrinsics. Graph contains %d nodes\n", g.nodes.size());
+            if (verbose) System.out.printf("Added camera intrinsics. Graph contains %d nodes\n", g.nodes.size());
             int cameraIntrinsicsIndex = g.nodes.size() - 1;
 
             GExtrinsicsNode cameraExtrinsics = null;
@@ -854,7 +861,7 @@ public class CameraCalibrator
         ArrayList<double[]> points_mosaic = new ArrayList<double[]>();
 
         // TODO fix this issue
-        System.out.println("Warning: CameraUtil.homographyToPose still does not take the optical center as a parameter, which means that the estimates must be incorrect");
+        if (verbose) System.out.println("Warning: CameraUtil.homographyToPose still does not take the optical center as a parameter, which means that the estimates must be incorrect");
 
         for (int i = 0; i < detections.size(); i++) {
 
@@ -878,8 +885,8 @@ public class CameraCalibrator
 
         double mosaicToGlobal_est[][] = AlignPoints3D.align(points_mosaic,
                                                             points_camera_est);
-        System.out.println("Estimated mosaic extrinsics:");
-        LinAlg.printTranspose(LinAlg.matrixToXyzrpy(mosaicToGlobal_est));
+        if (verbose) System.out.println("Estimated mosaic extrinsics:");
+        if (verbose) LinAlg.printTranspose(LinAlg.matrixToXyzrpy(mosaicToGlobal_est));
 
         return mosaicToGlobal_est;
     }
@@ -913,9 +920,9 @@ public class CameraCalibrator
 
             constraints.add(constraint);
 
-            System.out.printf("Constraining (%8.3f, %8.3f) to (%8.3f, %8.3f, %8.3f)\n",
-                              constraint.xy_px[0], constraint.xy_px[1],
-                              constraint.xyz_m[0], constraint.xyz_m[1], constraint.xyz_m[2]);
+            // System.out.printf("Constraining (%8.3f, %8.3f) to (%8.3f, %8.3f, %8.3f)\n",
+            //                   constraint.xy_px[0], constraint.xy_px[1],
+            //                   constraint.xyz_m[0], constraint.xyz_m[1], constraint.xyz_m[2]);
         }
 
         CameraWrapper cam = cameras.get(cameraIndex);
@@ -925,10 +932,10 @@ public class CameraCalibrator
                                      xys_px,
                                      xyzs_m);
         g.edges.add(edge);
-        System.out.printf("Added tag edge. Graph contains %d edges\n", g.edges.size());
+        if (verbose) System.out.printf("Added tag edge. Graph contains %d edges\n", g.edges.size());
         assert(g.edges.size()-1 == tagEdgeIndex);
 
-        printStatus();
+        if (verbose) printStatus();
     }
 
     void printStatus()
