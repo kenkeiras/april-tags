@@ -57,9 +57,52 @@ public class NearestNeighborRasterizer implements Rasterizer
         }
     }
 
+    public BufferedImage rectifyImage(BufferedImage in)
+    {
+        switch(in.getType())
+        {
+            case BufferedImage.TYPE_INT_RGB:
+                return rectifyImageIntRGB(in);
+
+            case BufferedImage.TYPE_BYTE_GRAY:
+                return rectifyImageByteGray(in);
+
+            default:
+                throw new RuntimeException("Unsupported image type: "+in.getType());
+       }
+    }
+
+    /** Rectify a grayscale BufferedImage using the lookup tables.
+      */
+    public BufferedImage rectifyImageByteGray(BufferedImage in)
+    {
+        int width = in.getWidth();
+        int height = in.getHeight();
+
+        assert(width == inputWidth && height == inputHeight);
+
+        BufferedImage out = new BufferedImage(outputWidth, outputHeight,
+                                              BufferedImage.TYPE_BYTE_GRAY);
+
+        byte _in[]  = ((DataBufferByte) (in.getRaster().getDataBuffer())).getData();
+        byte _out[] = ((DataBufferByte) (out.getRaster().getDataBuffer())).getData();
+
+        for (int i=0; i < _out.length; i++) {
+
+            int idx = indices[i];
+
+            if (idx == -1)
+                continue;
+
+            _out[i] = _in[idx];
+        }
+
+        return out;
+    }
+
     /** Rectify an RGB BufferedImage using the lookup tables.
       */
-    public BufferedImage rectifyImage(BufferedImage in)
+    public BufferedImage rectifyImageIntRGB(BufferedImage in)
     {
         int width = in.getWidth();
         int height = in.getHeight();
