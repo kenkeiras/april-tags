@@ -16,10 +16,17 @@ public class IntrinsicsEstimator
     private ArrayList<ArrayList<double[][]>> allFitLines = new ArrayList<ArrayList<double[][]>>();
 
     private TagMosaic mosaic;
+    private TagFamily tf;
+    private int width;
+    private int height;
 
-    public IntrinsicsEstimator(ArrayList<ArrayList<TagDetection>> allDetections, TagFamily tf)
+    public IntrinsicsEstimator(ArrayList<ArrayList<TagDetection>> allDetections, TagFamily tf,
+                               int width, int height)
     {
-        mosaic = new TagMosaic(tf);
+        this.mosaic = new TagMosaic(tf);
+        this.tf = tf;
+        this.width = width;
+        this.height = height;
 
         // compute all of the vanishing points
         for (ArrayList<TagDetection> detections : allDetections) {
@@ -45,7 +52,15 @@ public class IntrinsicsEstimator
             }
         }
 
-        K = CameraMath.estimateIntrinsicsFromVanishingPoints(vanishingPoints);
+        if (vanishingPoints.size() >= 3) {
+            // if we have enough points to estimate cx and cy properly, do so
+            K = CameraMath.estimateIntrinsicsFromVanishingPoints(vanishingPoints, width, height);
+
+        } else {
+            // estimate the focal length and assume that cx and cy are at width/2 and height/2, respectively
+            // for now, we just use the first image
+            K = CameraMath.estimateIntrinsicsFromOneVanishingPointAndAssumeCxCy(vanishingPoints.get(0), width, height);
+        }
     }
 
     public ArrayList<double[][]> getFitLines(int n)

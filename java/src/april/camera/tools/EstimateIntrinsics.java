@@ -38,6 +38,9 @@ public class EstimateIntrinsics implements ParameterListener
     double XY1[];
     double PixelsToVis[][];
 
+    int imwidth  = -1;
+    int imheight = -1;
+
     public EstimateIntrinsics(String dirpath, TagFamily tf)
     {
         // check directory
@@ -58,8 +61,18 @@ public class EstimateIntrinsics implements ParameterListener
         Collections.sort(paths);
 
         try {
-            for (String path : paths)
-                images.add(ImageIO.read(new File(path)));
+            for (String path : paths) {
+                BufferedImage im = ImageIO.read(new File(path));
+
+                if (imwidth == -1 || imheight == -1) {
+                    imwidth = im.getWidth();
+                    imheight = im.getHeight();
+                }
+
+                assert(imwidth == im.getWidth() && imheight == im.getHeight());
+
+                images.add(im);
+            }
         } catch (IOException ex) {
             System.err.println("Exception while loading images: " + ex);
             System.exit(-1);
@@ -70,13 +83,13 @@ public class EstimateIntrinsics implements ParameterListener
         this.td = new TagDetector(tf);
 
         for (BufferedImage im : images)
-            allDetections.add(td.process(im, new double[] { im.getWidth()/2, im.getHeight()/2 }));
+            allDetections.add(td.process(im, new double[] { imwidth/2, imheight/2 }));
 
         // setup GUI
         setupGUI();
 
         // estimate the intrinsics
-        ie = new IntrinsicsEstimator(allDetections, this.tf);
+        ie = new IntrinsicsEstimator(allDetections, this.tf, imwidth, imheight);
 
         double K[][] = ie.getIntrinsics();
 

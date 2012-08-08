@@ -75,6 +75,14 @@ public class KannalaBrandtCalibration implements Calibration, ParameterizableCal
         createIntrinsicsMatrix();
     }
 
+    public KannalaBrandtCalibration(double params[], int width, int height)
+    {
+        this.width = width;
+        this.height = height;
+
+        resetParameterization(params);
+    }
+
     private void createIntrinsicsMatrix()
     {
         assert(fc.length == LENGTH_FC);

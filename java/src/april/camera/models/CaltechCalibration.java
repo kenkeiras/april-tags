@@ -71,6 +71,14 @@ public class CaltechCalibration implements Calibration, ParameterizableCalibrati
         createIntrinsicsMatrix();
     }
 
+    public CaltechCalibration(double params[], int width, int height)
+    {
+        this.width = width;
+        this.height = height;
+
+        resetParameterization(params);
+    }
+
     private void createIntrinsicsMatrix()
     {
         assert(fc.length == LENGTH_FC);

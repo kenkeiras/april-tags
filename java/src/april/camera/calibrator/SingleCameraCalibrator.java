@@ -38,7 +38,7 @@ public class SingleCameraCalibrator implements ParameterListener
 
     boolean autoiterate = false;
 
-    public SingleCameraCalibrator(String cameraClass, String url, double tagSpacing_m)
+    public SingleCameraCalibrator(CalibrationInitializer initializer, String url, double tagSpacing_m)
     {
         ////////////////////////////////////////////////////////////////////////////////
         // GUI setup
@@ -84,10 +84,10 @@ public class SingleCameraCalibrator implements ParameterListener
         }
 
         // Calibrator setup
-        ArrayList<String> classnames = new ArrayList<String>();
-        classnames.add(cameraClass);
+        ArrayList<CalibrationInitializer> initializers = new ArrayList<CalibrationInitializer>();
+        initializers.add(initializer);
 
-        calibrator = new CameraCalibrator(classnames, new Tag36h11(),
+        calibrator = new CameraCalibrator(initializers, new Tag36h11(),
                                           tagSpacing_m, vl2);
 
         // Threads
@@ -260,7 +260,7 @@ public class SingleCameraCalibrator implements ParameterListener
 
         opts.addBoolean('h',"help",false,"See this help screen");
         opts.addString('u',"url","","Camera URL");
-        opts.addString('c',"class","april.camera.models.CaltechCalibration","Calibration model class name");
+        opts.addString('c',"class","april.camera.models.CaltechInitializer","Calibration model initializer class name");
         opts.addDouble('m',"spacing",0.0254,"Spacing between tags (meters)");
 
         if (!opts.parse(args)) {
@@ -268,7 +268,7 @@ public class SingleCameraCalibrator implements ParameterListener
 	    }
 
         String url = opts.getString("url");
-        String camclass = opts.getString("class");
+        String initclass = opts.getString("class");
         double spacing = opts.getDouble("spacing");
 
         if (opts.getBoolean("help") || url.isEmpty()){
@@ -277,6 +277,11 @@ public class SingleCameraCalibrator implements ParameterListener
             System.exit(1);
         }
 
-        new SingleCameraCalibrator(camclass, url, spacing);
+        Object obj = ReflectUtil.createObject(initclass);
+        assert(obj != null);
+        assert(obj instanceof CalibrationInitializer);
+        CalibrationInitializer initializer = (CalibrationInitializer) obj;
+
+        new SingleCameraCalibrator(initializer, url, spacing);
     }
 }

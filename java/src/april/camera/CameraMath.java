@@ -60,6 +60,85 @@ public class CameraMath
         return LinAlg.matrixAB(K, LinAlg.select(L2C, 0, 2, 0, 3));
     }
 
+    /** Estimate the camera intrinsics matrix K from a single vanishing point pair (two vanishing points in one image).
+      *
+      * @param vanishingPointPair - A vanishing point pairs {u0, v0} specified
+      * as two vanishing points for one plane in an image (e.g. an AprilTag or tag calibration mosaic). The camera
+      * center is taken to by width/2, height/2
+      */
+    public final static double[][] estimateIntrinsicsFromOneVanishingPointAndAssumeCxCy(double[][] vp,
+                                                                                        int width, int height)
+    {
+        if (vp == null)
+            return null;
+
+        double cx = width/2.0;
+        double cy = height/2.0;
+
+        double A[][] = new double[3][];
+        int i=0;
+
+        // vanishing points
+        double u[] = new double[] { vp[0][0] - cx, vp[0][1] - cy, 1 };
+        double v[] = new double[] { vp[1][0] - cx, vp[1][1] - cy, 1 };
+
+        // normalization is essential for good estimates
+        u = LinAlg.normalize(u);
+        v = LinAlg.normalize(v);
+
+        double u1 = u[0];
+        double u2 = u[1];
+        double u3 = u[2];
+
+        double v1 = v[0];
+        double v2 = v[1];
+        double v3 = v[2];
+
+        double row[] = new double[] { u1*v1,
+                                      u2*v2,
+                                      u3*v3 };
+
+        A[i++] = row;
+
+        // similar focal lengths
+        A[i++] = new double[] { 1, -1, 0 };
+
+        // the SVD computation that we have is "economical", so we
+        // have to add a row to get the null-space result
+        A[i++] = new double[3];
+
+        SingularValueDecomposition SVD = new SingularValueDecomposition(new Matrix(A));
+        Matrix U = SVD.getU();
+        Matrix S = SVD.getS();
+        Matrix V = SVD.getV();
+
+        double w[] = V.getColumn(V.getColumnDimension()-1).getDoubles();
+
+        double omega[][] = new double[3][3];
+        omega[0][0] = w[0];
+        omega[0][1] = 0;
+        omega[0][2] = 0;
+        omega[1][0] = 0;
+        omega[1][1] = w[1];
+        omega[1][2] = 0;
+        omega[2][0] = 0;
+        omega[2][1] = 0;
+        omega[2][2] = w[2];
+
+        CholeskyDecomposition cd = new CholeskyDecomposition(new Matrix(omega));
+        if (!cd.isSPD())
+            cd = new CholeskyDecomposition(new Matrix(LinAlg.scale(omega, -1)));
+
+        double Kinv[][] = cd.getL().transpose().copyArray();
+        Kinv = LinAlg.scale(Kinv, 1.0 / Kinv[2][2]);
+
+        double K[][] = LinAlg.inverse(Kinv);
+        K[0][2] = cx;
+        K[1][2] = cy;
+
+        return K;
+    }
+
     /** Estimate the camera intrinsics matrix K from a list of vanishing point pairs (two vanishing points per image).
       *
       * @param vanishingPointPairs - A list of vanishing point pairs {{u0, v0}, {u1, v1}, {u2, v2}, ...} specified
@@ -67,7 +146,8 @@ public class CameraMath
       * observations are required to estimate the intrinsics. Null vanishing points are allowed for convenience and
       * will be skipped.
       */
-    public final static double[][] estimateIntrinsicsFromVanishingPoints(ArrayList<double[][]> vanishingPointPairs)
+    public final static double[][] estimateIntrinsicsFromVanishingPoints(ArrayList<double[][]> vanishingPointPairs,
+                                                                         int width, int height)
     {
         int numVanishingPoints = 0;
         for (double vp[][] : vanishingPointPairs)

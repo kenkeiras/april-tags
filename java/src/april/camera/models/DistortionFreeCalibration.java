@@ -48,6 +48,14 @@ public class DistortionFreeCalibration implements Calibration, ParameterizableCa
         createIntrinsicsMatrix();
     }
 
+    public DistortionFreeCalibration(double params[], int width, int height)
+    {
+        this.width = width;
+        this.height = height;
+
+        resetParameterization(params);
+    }
+
     private void createIntrinsicsMatrix()
     {
         assert(fc.length == LENGTH_FC);
