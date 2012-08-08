@@ -8,6 +8,8 @@ import april.tag.*;
 
 public class SimpleCaltechInitializer implements CalibrationInitializer
 {
+    public static boolean verbose = true;
+
     public SimpleCaltechInitializer()
     {
     }
@@ -22,7 +24,8 @@ public class SimpleCaltechInitializer implements CalibrationInitializer
         IntrinsicsEstimator estimator = new IntrinsicsEstimator(allDetections, tf, width, height);
 
         double K[][] = estimator.getIntrinsics();
-        System.out.println("Estimated intrinsics:"); LinAlg.print(K);
+        if (verbose) System.out.println("Estimated intrinsics:");
+        if (verbose) LinAlg.print(K);
 
         for (int i=0; i < K.length; i++)
             for (int j=0; j < K[i].length; j++)
