@@ -60,11 +60,12 @@ public class CameraMath
         return LinAlg.matrixAB(K, LinAlg.select(L2C, 0, 2, 0, 3));
     }
 
-    /** Estimate the camera intrinsics matrix K from a single vanishing point pair (two vanishing points in one image).
+    /** Estimate the camera intrinsics matrix K from a single vanishing point
+      * pair (two vanishing points in one image).
       *
-      * @param vanishingPointPair - A vanishing point pairs {u0, v0} specified
-      * as two vanishing points for one plane in an image (e.g. an AprilTag or tag calibration mosaic). The camera
-      * center is taken to by width/2, height/2
+      * @param vp - A vanishing point pair {u0, v0} specified as two vanishing
+      * points for one plane in an image (e.g. an AprilTag or tag calibration
+      * mosaic). The camera center is taken to by width/2, height/2
       */
     public final static double[][] estimateIntrinsicsFromOneVanishingPointAndAssumeCxCy(double[][] vp,
                                                                                         int width, int height)
@@ -139,12 +140,14 @@ public class CameraMath
         return K;
     }
 
-    /** Estimate the camera intrinsics matrix K from a list of vanishing point pairs (two vanishing points per image).
+    /** Estimate the camera intrinsics matrix K from a list of vanishing point
+      * pairs (two vanishing points per image).
       *
-      * @param vanishingPointPairs - A list of vanishing point pairs {{u0, v0}, {u1, v1}, {u2, v2}, ...} specified
-      * as two vanishing points per plane in the image (e.g. an AprilTag or tag calibration mosaic). At least 3 planar
-      * observations are required to estimate the intrinsics. Null vanishing points are allowed for convenience and
-      * will be skipped.
+      * @param vanishingPointPairs - A list of vanishing point pairs {{u0, v0},
+      * {u1, v1}, {u2, v2}, ...} specified as two vanishing points per plane in
+      * the image (e.g. an AprilTag or tag calibration mosaic). At least 3
+      * planar observations are required to estimate the intrinsics. Null
+      * vanishing points are allowed for convenience and will be skipped.
       */
     public final static double[][] estimateIntrinsicsFromVanishingPoints(ArrayList<double[][]> vanishingPointPairs,
                                                                          int width, int height)

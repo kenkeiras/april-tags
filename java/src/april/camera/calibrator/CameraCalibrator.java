@@ -27,14 +27,14 @@ import april.vis.*;
  */
 public class CameraCalibrator
 {
-    final int NUM_IMAGES_REQUIRED = 3;
+    public final int REQUIRED_NUM_IMAGES = 3;       // number of images needed before iteration
+    public final int REQUIRED_TAGS_PER_IMAGE = 8;   // number of constraints needed per image
 
-    List<CalibrationInitializer> initializers  = null;
-    List<double[]>               initialParameters = null;
-    List<double[]>               initialExtrinsics = null;
-    List<List<ProcessedImage>>   images      = new ArrayList<List<ProcessedImage>>();
-
-    List<CameraWrapper>         cameras     = null;
+    List<CalibrationInitializer> initializers       = null;
+    List<double[]>               initialParameters  = null;
+    List<double[]>               initialExtrinsics  = null;
+    List<List<ProcessedImage>>   images             = new ArrayList<List<ProcessedImage>>();
+    List<CameraWrapper>          cameras            = null;
 
     TagDetector detector;
     TagFamily   tf;
@@ -274,15 +274,39 @@ public class CameraCalibrator
         }
     }
 
-    /** Add sets of images, <b>exactly one image per camera</b>, for
-     * calibration in the same order as initialization. The mosaic and
-     * cameras must not move within the list of
-     * images provided. <b>addImages</b> should be called multiple times (at
-     * least three) no matter how many cameras are present.
-     */
     public synchronized void addImages(List<BufferedImage> newImages)
     {
+        addImages(newImages, null, null);
+    }
+
+    public synchronized void addImages(List<BufferedImage> newImages,
+                               ArrayList<ArrayList<TagDetection>> allDetections)
+    {
+        addImages(newImages, allDetections, null);
+    }
+
+    public synchronized void addImages(List<BufferedImage> newImages,
+                                       double MosaicToGlobalXyzrpy[])
+    {
+        addImages(newImages, null, MosaicToGlobalXyzrpy);
+    }
+
+    /** Add sets of images, <b>exactly one image per camera</b>, for
+     * calibration in the same order as initialization.
+     * If allDetections is null, the april.tag.TagDetector will detect tags in
+     * the images. If it is not null, the provided TagDetections will be used.
+     * If MosaicToGlobalXyzrpy is null, the position will be estimated with
+     * CameraUtil.homographyToPose and jmat.AlignPoints3D. If it is not null,
+     * the provided estimate will be used.<br>
+     * <br>
+     * The mosaic and cameras must not move within the list of images provided.
+     */
+    public synchronized void addImages(List<BufferedImage> newImages,
+                               ArrayList<ArrayList<TagDetection>> allDetections,
+                               double MosaicToGlobalXyzrpy[])
+    {
         assert(newImages.size() == initializers.size());
+        assert((allDetections == null) || (allDetections.size() == initializers.size()));
 
         ArrayList<ProcessedImage> processedImages = new ArrayList<ProcessedImage>();
         for (int cameraIndex = 0; cameraIndex < newImages.size(); cameraIndex++) {
@@ -298,12 +322,16 @@ public class CameraCalibrator
                 assert(reference.image.getHeight() == im.getHeight());
             }
 
-            ArrayList<TagDetection> detections = detector.process(im,
-                                                    new double[] {im.getWidth()/2, im.getHeight()/2});
+            ArrayList<TagDetection> detections = null;
+
+            if (allDetections == null)
+                detections = detector.process(im, new double[] {im.getWidth()/2, im.getHeight()/2});
+            else
+                detections = allDetections.get(cameraIndex);
 
             // skip if we don't have a reasonable number of observed tags?
             // XXX is this the right thing to do? should we reject the whole image set?
-            if (detections.size() < 8)
+            if (detections.size() < REQUIRED_TAGS_PER_IMAGE)
                 return;
 
             processedImages.add(new ProcessedImage(im, detections));
@@ -323,15 +351,15 @@ public class CameraCalibrator
 
             // add all the images we've collected so far
             for (int i=0; i < this.images.size(); i++)
-                addImageSet(this.images.get(i), i);
+                addImageSet(this.images.get(i), i, MosaicToGlobalXyzrpy);
         }
         // otherwise, we just need to add the new set of images
         else {
-            addImageSet(processedImages, this.images.size() - 1);
+            addImageSet(processedImages, this.images.size() - 1, MosaicToGlobalXyzrpy);
         }
     }
 
-    private void addImageSet(List<ProcessedImage> newImages, int imagesetIndex)
+    private void addImageSet(List<ProcessedImage> newImages, int imagesetIndex, double MosaicToGlobalXyzrpy[])
     {
         GExtrinsicsNode mosaicExtrinsics = new GExtrinsicsNode();
         g.nodes.add(mosaicExtrinsics);
@@ -346,10 +374,15 @@ public class CameraCalibrator
             CameraWrapper camera = cameras.get(cameraIndex);
 
             if (cameraIndex == 0) {
-                double mosaicToGlobal_est[][] = estimateMosaicExtrinsics(camera.cal.copyIntrinsics(),
-                                                                         pim.detections);
-                // XXX update mosaic extrinsics estimate in a cleaner way
-                mosaicExtrinsics.init = LinAlg.matrixToXyzrpy(mosaicToGlobal_est);
+
+                if (MosaicToGlobalXyzrpy == null) {
+                    double mosaicToGlobal_est[][] = estimateMosaicExtrinsics(camera.cal.copyIntrinsics(),
+                                                                             pim.detections);
+
+                    MosaicToGlobalXyzrpy = LinAlg.matrixToXyzrpy(mosaicToGlobal_est);
+                }
+
+                mosaicExtrinsics.init = LinAlg.copy(MosaicToGlobalXyzrpy);
                 mosaicExtrinsics.state = LinAlg.copy(mosaicExtrinsics.init);
 
             } else if (!camera.extrinsicsInitialized) {
@@ -563,7 +596,7 @@ public class CameraCalibrator
     {
         // don't try to optimize until we have a few images
         // XXX replace this later with an rank check of the graph
-        if (images.size() < NUM_IMAGES_REQUIRED)
+        if (images.size() < REQUIRED_NUM_IMAGES)
             return;
 
         solver.iterate();
