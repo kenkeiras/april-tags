@@ -169,6 +169,7 @@ public class MEnvGUI
         jf.add(new JScrollPane(editor), BorderLayout.CENTER);
 
         jf.setSize(600,400);
+        jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         jf.setVisible(true);
 
         usersTurn();

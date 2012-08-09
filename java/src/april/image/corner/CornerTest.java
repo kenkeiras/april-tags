@@ -86,6 +86,7 @@ public class CornerTest implements ParameterListener
         jf.add(jp, BorderLayout.SOUTH);
 
         jf.setSize(800,600);
+        jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         jf.setVisible(true);
 
         vl.backgroundColor = new Color(128,128,128);
