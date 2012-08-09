@@ -45,6 +45,7 @@ public class CameraCalibrator
     VisLayer        vl;
     VisCanvas       vc;
     VisWorld.Buffer vb;
+    TreeSet<String> disabledBuffers = new TreeSet<String>();
 
     IntrinsicsEstimator ie;
     Graph g;
@@ -596,6 +597,197 @@ public class CameraCalibrator
         }
 
         vb.swap();
+
+        ////////////////////////////////////////
+        vb = vw.getBuffer("Sample density");
+
+        for (int cameraIndex = 0; cameraIndex < cameras.size(); cameraIndex++) {
+
+            int width  = images.get(cameraIndex).get(0).image.getWidth();
+            int height = images.get(cameraIndex).get(0).image.getHeight();
+
+            int w = width / 30 + 2;
+            int h = height / 30;
+            int hist[] = new int[w*h];
+
+            for (int imageSetIndex=0; imageSetIndex < images.size(); imageSetIndex++) {
+                List<TagDetection> detections = images.get(imageSetIndex).get(cameraIndex).detections;
+
+                for (TagDetection d : detections) {
+                    int x = (int) (d.cxy[0] / 30);
+                    int y = (int) (d.cxy[1] / 30);
+                    hist[y*w+x+2]++;
+                }
+            }
+
+            int max = 0;
+            for (int i=0; i < hist.length; i++)
+                max = Math.max(max, hist[i]);
+
+            for (int y=0; y < h; y++) {
+                int percent = ((h-1-y) * (max+1)) / h;
+                hist[y*w+0] = percent;
+            }
+
+            BufferedImage im = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+            int buf[] = ((DataBufferInt) (im.getRaster().getDataBuffer())).getData();
+            for (int y=0; y < h; y++) {
+                for (int x=0; x < w; x++) {
+                    int i=y*w+x;
+                    int v = hist[i];
+
+                    if (x == 1) {
+                        buf[i] = 0;
+                    }
+                    else if (v == 0) {
+                        buf[i] = 0xFF00FF00;
+                    }
+                    else {
+                        int b = (int) (v * 255 / max);
+                        buf[i] = 0xFF000000 | (b & 0xFF);
+                    }
+                }
+            }
+
+            VisTexture texture = new VisTexture(im, VisTexture.NO_MIN_FILTER |
+                                                    VisTexture.NO_MAG_FILTER |
+                                                    VisTexture.NO_REPEAT |
+                                                    VisTexture.NO_ALPHA_MASK);
+
+            double scale = 150.0/w;
+            vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_RIGHT,
+                                        new VisChain(LinAlg.translate(-150, 150*cameraIndex, 0),
+                                                     LinAlg.scale(scale, scale, 1),
+                                                     new VzImage(texture, VzImage.FLIP))));
+        }
+
+        vb.swap();
+
+        ////////////////////////////////////////
+
+        for (int cameraIndex = 0; cameraIndex < cameras.size(); cameraIndex++) {
+
+            for (int imageSetIndex=0; imageSetIndex < images.size(); imageSetIndex++) {
+
+                VisChain chain = new VisChain();
+
+                ProcessedImage pim = images.get(imageSetIndex).get(cameraIndex);
+                int width = pim.image.getWidth();
+                int height = pim.image.getHeight();
+
+                String buffername = String.format("Camera%d-Image%d", cameraIndex, imageSetIndex);
+                vb = vw.getBuffer(buffername);
+                VzImage vzim = new VzImage(new VisTexture(pim.image, VisTexture.NO_MIN_FILTER|
+                                                                     VisTexture.NO_MAG_FILTER|
+                                                                     VisTexture.NO_ALPHA_MASK|
+                                                                     VisTexture.NO_REPEAT),
+                                           0);
+                chain.add(LinAlg.translate(0, height, 0));
+                chain.add(LinAlg.scale(1, -1, 1));
+                chain.add(vzim);
+
+                CameraWrapper camera = cameras.get(cameraIndex);
+                GExtrinsicsNode mosaicExtrinsics = (GExtrinsicsNode) g.nodes.get(mosaicExtrinsicsIndices.get(imageSetIndex));
+
+                double[][] cameraToGlobal = LinAlg.identity(4);
+                if (camera.cameraExtrinsics != null)
+                    cameraToGlobal = camera.cameraExtrinsics.getMatrix();
+
+                double[][] mosaicToGlobal = mosaicExtrinsics.getMatrix();
+
+                double[][] mosaicToCamera = LinAlg.matrixAB(LinAlg.inverse(cameraToGlobal),
+                                                            mosaicToGlobal);
+
+                double tagWidth_m = metersPerTag * (tf.d/2.0 + tf.blackBorder) / (tf.d + 2*tf.blackBorder + 2*tf.whiteBorder);
+
+                for (TagDetection d : pim.detections) {
+
+                    ////////////////////////////////////////
+                    // predicted position
+                    {
+                        double xyz_mosaic[] = tagPositions.get(d.id);
+                        double xyz_camera[] = LinAlg.transform(mosaicToCamera, xyz_mosaic);
+                        double xy_predicted[] = camera.cameraIntrinsics.project(xyz_camera);
+                        chain.add(new VzPoints(new VisVertexData(xy_predicted),
+                                               new VzPoints.Style(Color.cyan, 3)));
+                    }
+
+                    double border[][] = new double[4][];
+                    {
+                        double xyz_mosaic[] = LinAlg.copy(tagPositions.get(d.id));
+                        xyz_mosaic[0] += tagWidth_m;
+                        xyz_mosaic[1] += tagWidth_m;
+
+                        double xyz_camera[] = LinAlg.transform(mosaicToCamera, xyz_mosaic);
+                        double xy_predicted[] = camera.cameraIntrinsics.project(xyz_camera);
+                        border[0] = xy_predicted;
+                    }
+                    {
+                        double xyz_mosaic[] = LinAlg.copy(tagPositions.get(d.id));
+                        xyz_mosaic[0] += tagWidth_m;
+                        xyz_mosaic[1] -= tagWidth_m;
+
+                        double xyz_camera[] = LinAlg.transform(mosaicToCamera, xyz_mosaic);
+                        double xy_predicted[] = camera.cameraIntrinsics.project(xyz_camera);
+                        border[1] = xy_predicted;
+                    }
+                    {
+                        double xyz_mosaic[] = LinAlg.copy(tagPositions.get(d.id));
+                        xyz_mosaic[0] -= tagWidth_m;
+                        xyz_mosaic[1] -= tagWidth_m;
+
+                        double xyz_camera[] = LinAlg.transform(mosaicToCamera, xyz_mosaic);
+                        double xy_predicted[] = camera.cameraIntrinsics.project(xyz_camera);
+                        border[2] = xy_predicted;
+                    }
+                    {
+                        double xyz_mosaic[] = LinAlg.copy(tagPositions.get(d.id));
+                        xyz_mosaic[0] -= tagWidth_m;
+                        xyz_mosaic[1] += tagWidth_m;
+
+                        double xyz_camera[] = LinAlg.transform(mosaicToCamera, xyz_mosaic);
+                        double xy_predicted[] = camera.cameraIntrinsics.project(xyz_camera);
+                        border[3] = xy_predicted;
+                    }
+                    chain.add(new VzLines(new VisVertexData(border),
+                                          VzLines.LINE_LOOP,
+                                          new VzLines.Style(Color.cyan, 2)));
+
+                    ////////////////////////////////////////
+                    // observed position
+                    double p0[] = d.interpolate(-1,-1);
+                    double p1[] = d.interpolate(1,-1);
+                    double p2[] = d.interpolate(1,1);
+                    double p3[] = d.interpolate(-1,1);
+
+                    double ymax = Math.max(Math.max(p0[1], p1[1]), Math.max(p2[1], p3[1]));
+
+                    chain.add(new VzPoints(new VisVertexData(d.cxy),
+                                           new VzPoints.Style(Color.blue, 3)));
+                    chain.add(new VzLines(new VisVertexData(p0, p1, p2, p3, p0),
+                                          VzLines.LINE_STRIP,
+                                          new VzLines.Style(Color.blue, 1)));
+                    chain.add(new VzLines(new VisVertexData(p0,p1),
+                                          VzLines.LINE_STRIP,
+                                          new VzLines.Style(Color.green, 1)));
+                    chain.add(new VzLines(new VisVertexData(p0, p3),
+                                          VzLines.LINE_STRIP,
+                                          new VzLines.Style(Color.red, 1)));
+                }
+
+                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
+                                            new VisChain(LinAlg.translate(-width/2, -height/2, 0),
+                                                         chain)));
+
+                if (!disabledBuffers.contains(buffername)) {
+                    disabledBuffers.add(buffername);
+                    vl.setBufferEnabled(buffername, false);
+                }
+
+                vb.swap();
+            }
+        }
+
     }
 
     public synchronized void iterate()

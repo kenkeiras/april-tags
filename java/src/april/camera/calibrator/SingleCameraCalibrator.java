@@ -38,8 +38,11 @@ public class SingleCameraCalibrator implements ParameterListener
 
     boolean autoiterate = false;
 
-    public SingleCameraCalibrator(CalibrationInitializer initializer, String url, double tagSpacing_m)
+    public SingleCameraCalibrator(CalibrationInitializer initializer, String url, double tagSpacing_m,
+                                  boolean autocapture)
     {
+        this.capture = autocapture;
+
         ////////////////////////////////////////////////////////////////////////////////
         // GUI setup
         vw1 = new VisWorld();
@@ -262,6 +265,7 @@ public class SingleCameraCalibrator implements ParameterListener
         opts.addString('u',"url","","Camera URL");
         opts.addString('c',"class","april.camera.models.CaltechInitializer","Calibration model initializer class name");
         opts.addDouble('m',"spacing",0.0254,"Spacing between tags (meters)");
+        opts.addBoolean('a',"autocapture",false,"Automatically capture frames");
 
         if (!opts.parse(args)) {
             System.out.println("Option error: "+opts.getReason());
@@ -270,6 +274,7 @@ public class SingleCameraCalibrator implements ParameterListener
         String url = opts.getString("url");
         String initclass = opts.getString("class");
         double spacing = opts.getDouble("spacing");
+        boolean autocapture = opts.getBoolean("autocapture");
 
         if (opts.getBoolean("help") || url.isEmpty()){
             System.out.println("Usage:");
@@ -282,6 +287,6 @@ public class SingleCameraCalibrator implements ParameterListener
         assert(obj instanceof CalibrationInitializer);
         CalibrationInitializer initializer = (CalibrationInitializer) obj;
 
-        new SingleCameraCalibrator(initializer, url, spacing);
+        new SingleCameraCalibrator(initializer, url, spacing, autocapture);
     }
 }
