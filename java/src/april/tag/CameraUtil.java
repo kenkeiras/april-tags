@@ -17,19 +17,19 @@ public class CameraUtil
      * projects points from the tag's local coordinate system to the
      * camera's coordinate frame).
      *
-     * [ h00 h01 h02 h03] = [ 1/fx 0     0 0 ] [ R00 R01 R02 TX ]
-     * [ h10 h11 h12 h13] = [ 0    1/fy  0 0 ] [ R10 R11 R12 TY ]
-     * [ h20 h21 h22 h23] = [ 0    0     1 0 ] [ R20 R21 R22 TZ ]
-     *                                         [ 0   0   0   1  ]
+     * [ h00 h01 h02 h03] = [ fx 0   0 0 ] [ R00 R01 R02 TX ]
+     * [ h10 h11 h12 h13] = [ 0  fy  0 0 ] [ R10 R11 R12 TY ]
+     * [ h20 h21 h22 h23] = [ 0  0   1 0 ] [ R20 R21 R22 TZ ]
+     *                                     [ 0   0   0   1  ]
      *
      * When observing a tag, the points we project in world space all
      * have z=0, so we can form a 3x3 matrix by eliminating the 3rd
      * column of the pose matrix.
      *
-     * [ h00 h01 h02 ] = [ 1/fx 0     0 0 ] [ R00 R01 TX ]
-     * [ h10 h11 h12 ] = [ 0    1/fy  0 0 ] [ R10 R11 TY ]
-     * [ h20 h21 h22 ] = [ 0    0     1 0 ] [ R20 R21 TZ ]
-     *                                      [ 0   0   1  ]
+     * [ h00 h01 h02 ] = [ fx 0   0 0 ] [ R00 R01 TX ]
+     * [ h10 h11 h12 ] = [ 0  fy  0 0 ] [ R10 R11 TY ]
+     * [ h20 h21 h22 ] = [ 0  0   1 0 ] [ R20 R21 TZ ]
+     *                                  [ 0   0   1  ]
      *
      * (note that these h's are different from the ones above.)
      *

@@ -23,8 +23,8 @@ public class TestHomography
                                                              {  0,  0, -1,  0 },
                                                              {  1,  0,  0,  0 },
                                                              {  0,  0,  0,  1 } },
-                                            LinAlg.xyzrpyToMatrix(new double[] { 0.4, 0, 0,
-                                                                                 0.0, 0.0, 0.0 }),
+                                            LinAlg.xyzrpyToMatrix(new double[] { 0.4, 0.05, 0.03,
+                                                                                 0.25, 0.1, 0.3 }),
                                             LinAlg.rotateY(Math.PI/2),
                                             LinAlg.rotateZ(-Math.PI/2));
         System.out.println("Rt:"); LinAlg.print(Rt);
@@ -84,5 +84,19 @@ public class TestHomography
         }
 
         System.out.println("H and Hhat match (after normalization) up to 1.0E-6.");
+
+        double T[][] = CameraMath.decomposeHomography(H, K);
+        System.out.println("Homography-decomposition estimate of Rt, T:"); LinAlg.print(T);
+
+        for (int i=0; i < T.length; i++) {
+            for (int j=0; j < T[i].length; j++) {
+                if (Math.abs(T[i][j] - Rt[i][j]) > 1.0E-6) {
+                    System.out.println("Rt and T differ (after normalization) by more than 1.0E-6.");
+                    System.exit(-1);
+                }
+            }
+        }
+
+        System.out.println("Rt and T match (after normalization) up to 1.0E-6.");
     }
 }

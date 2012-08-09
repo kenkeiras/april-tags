@@ -228,6 +228,59 @@ public class CameraMath
         return K;
     }
 
+    /** Decompose a Homography using the camera intrinsics matrix K. It is
+      * important to note that the coordinate system convention assumed here
+      * assumes that Z points INTO the scene (e.g. Caltech). Also, no scaling is
+      * done, we assume that the homography was computed between pixels and meters.
+      */
+    public final static double[][] decomposeHomography(double H[][], double K[][])
+    {
+        // H is typically equal to K*Rt (for a 3x3 matrix Rt). However, H is
+        // only ever known up to scale, so we must expect H=S*K*Rt
+        // Conveniently, it turns out that H = S*K*Rt = K*S*Rt, which means we
+        // can premultiply by inv(K) to recover the scale rotation component
+        double SRt[][] = LinAlg.matrixAB(LinAlg.inverse(K), H);
+
+        // compute the scale, as the columns of R in Rt=[R_3x2 | t_3x1] should
+        // have unit magnitude
+        double scale0 = Math.sqrt(SRt[0][0]*SRt[0][0] + SRt[1][0]*SRt[1][0] + SRt[2][0]*SRt[2][0]);
+        double scale1 = Math.sqrt(SRt[0][1]*SRt[0][1] + SRt[1][1]*SRt[1][1] + SRt[2][1]*SRt[2][1]);
+        double scale  = Math.sqrt(scale0*scale1);
+
+        // Remove the scale factor.
+        double Rt[][] = LinAlg.scale(SRt, 1.0/scale);
+
+        double T[][] = new double[][] { { Rt[0][0], Rt[0][1],        0, Rt[0][2] },
+                                        { Rt[1][0], Rt[1][1],        0, Rt[1][2] },
+                                        { Rt[2][0], Rt[2][1],        0, Rt[2][2] },
+                                        {        0,        0,        0,        1 } };
+
+        // recover sign of scale factor by noting that observations must occur in front of the camera.
+        if (T[2][3] < 0)
+            T = LinAlg.scale(T, -1);
+
+        // recover third rotation vector by crossproduct of the other two rotation vectors.
+        double a[] = new double[] { T[0][0], T[1][0], T[2][0] };
+        double b[] = new double[] { T[0][1], T[1][1], T[2][1] };
+        double ab[] = LinAlg.crossProduct(a,b);
+
+        T[0][2] = ab[0];
+        T[1][2] = ab[1];
+        T[2][2] = ab[2];
+
+        // pull out just the rotation component so we can normalize it.
+        double R[][] = LinAlg.select(T, 0, 2, 0, 2);
+
+        SingularValueDecomposition svd = new SingularValueDecomposition(new Matrix(R));
+        // polar decomposition, R = (UV')(VSV')
+        Matrix MR = svd.getU().times(svd.getV().transpose());
+        for (int i = 0; i < 3; i++)
+            for (int j = 0; j < 3; j++)
+                T[i][j] = MR.get(i,j);
+
+        return T;
+    }
+
     public final static double[][] estimateHomography(List<double[]> xys, List<double[]> xy_primes)
     {
         assert(xys.size() == xy_primes.size());

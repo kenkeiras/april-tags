@@ -1049,11 +1049,9 @@ public class CameraCalibrator
 
     private double[][] estimateMosaicExtrinsics(double K[][], List<TagDetection> detections)
     {
+        /* // Old, per-tag homography decomposition and AlignPoints3D
         ArrayList<double[]> points_camera_est = new ArrayList<double[]>();
         ArrayList<double[]> points_mosaic = new ArrayList<double[]>();
-
-        // TODO fix this issue
-        if (verbose) System.out.println("Warning: CameraUtil.homographyToPose still does not take the optical center as a parameter, which means that the estimates must be incorrect");
 
         for (int i = 0; i < detections.size(); i++) {
 
@@ -1081,6 +1079,24 @@ public class CameraCalibrator
         if (verbose) LinAlg.printTranspose(LinAlg.matrixToXyzrpy(mosaicToGlobal_est));
 
         return mosaicToGlobal_est;
+        */
+
+        // Fit a homography jointly to all of the tag observations and
+        // decompose it to estimate the extrinsics
+        ArrayList<double[]> points_mosaic_meters = new ArrayList<double[]>();
+        ArrayList<double[]> points_image_pixels = new ArrayList<double[]>();
+
+        for (TagDetection d : detections) {
+            points_mosaic_meters.add(LinAlg.select(tagPositions.get(d.id), 0, 1));
+            points_image_pixels.add(LinAlg.select(d.cxy, 0, 1));
+        }
+
+        double H[][] = CameraMath.estimateHomography(points_mosaic_meters,
+                                                     points_image_pixels);
+
+        double Rt[][] = CameraMath.decomposeHomography(H, K);
+
+        return Rt;
     }
 
     private void processImage(int cameraIndex, int imageIndex, int mosaicIndex,
