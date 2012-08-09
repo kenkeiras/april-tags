@@ -676,6 +676,11 @@ public class CameraCalibrator
                 int height = pim.image.getHeight();
 
                 String buffername = String.format("Camera%d-Image%d", cameraIndex, imageSetIndex);
+                if (!disabledBuffers.contains(buffername)) {
+                    disabledBuffers.add(buffername);
+                    vl.setBufferEnabled(buffername, false);
+                }
+
                 vb = vw.getBuffer(buffername);
                 VzImage vzim = new VzImage(new VisTexture(pim.image, VisTexture.NO_MIN_FILTER|
                                                                      VisTexture.NO_MAG_FILTER|
@@ -778,11 +783,6 @@ public class CameraCalibrator
                 vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
                                             new VisChain(LinAlg.translate(-width/2, -height/2, 0),
                                                          chain)));
-
-                if (!disabledBuffers.contains(buffername)) {
-                    disabledBuffers.add(buffername);
-                    vl.setBufferEnabled(buffername, false);
-                }
 
                 vb.swap();
             }
