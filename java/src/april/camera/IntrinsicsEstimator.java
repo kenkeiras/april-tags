@@ -20,7 +20,7 @@ public class IntrinsicsEstimator
     private int width;
     private int height;
 
-    public IntrinsicsEstimator(ArrayList<ArrayList<TagDetection>> allDetections, TagFamily tf,
+    public IntrinsicsEstimator(List<List<TagDetection>> allDetections, TagFamily tf,
                                int width, int height)
     {
         this.mosaic = new TagMosaic(tf);
@@ -29,7 +29,7 @@ public class IntrinsicsEstimator
         this.height = height;
 
         // compute all of the vanishing points
-        for (ArrayList<TagDetection> detections : allDetections) {
+        for (List<TagDetection> detections : allDetections) {
 
             if (detections.size() == 1)
                 computeSingleTagVanishingPoints(detections.get(0));
@@ -101,7 +101,7 @@ public class IntrinsicsEstimator
         allFitLines.add(fitLines);
     }
 
-    private void computeTagMosaicVanishingPoints(ArrayList<TagDetection> detections)
+    private void computeTagMosaicVanishingPoints(List<TagDetection> detections)
     {
         ArrayList<TagMosaic.GroupedDetections> rowDetections = mosaic.getRowDetections(detections);
         ArrayList<TagMosaic.GroupedDetections> colDetections = mosaic.getColumnDetections(detections);
@@ -275,17 +275,17 @@ public class IntrinsicsEstimator
             }
         }
 
-        public ArrayList<GroupedDetections> getRowDetections(ArrayList<TagDetection> detections)
+        public ArrayList<GroupedDetections> getRowDetections(List<TagDetection> detections)
         {
             return getGroupedDetections(detections, GroupedDetections.ROW_GROUP);
         }
 
-        public ArrayList<GroupedDetections> getColumnDetections(ArrayList<TagDetection> detections)
+        public ArrayList<GroupedDetections> getColumnDetections(List<TagDetection> detections)
         {
             return getGroupedDetections(detections, GroupedDetections.COL_GROUP);
         }
 
-        public ArrayList<GroupedDetections> getGroupedDetections(ArrayList<TagDetection> detections,
+        public ArrayList<GroupedDetections> getGroupedDetections(List<TagDetection> detections,
                                                                  int groupType)
         {
             HashMap<Integer,ArrayList<TagDetection>> groupLists = new HashMap<Integer,ArrayList<TagDetection>>();

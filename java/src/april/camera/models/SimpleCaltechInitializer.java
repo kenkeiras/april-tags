@@ -18,7 +18,7 @@ public class SimpleCaltechInitializer implements CalibrationInitializer
       * the initializer. Returns null if initialization could not proceed.
       */
     public ParameterizableCalibration initializeWithObservations(int width, int height,
-                                        ArrayList<ArrayList<TagDetection>> allDetections,
+                                        List<List<TagDetection>> allDetections,
                                         TagFamily tf)
     {
         IntrinsicsEstimator estimator = new IntrinsicsEstimator(allDetections, tf, width, height);

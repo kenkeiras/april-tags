@@ -66,9 +66,9 @@ public class CameraCalibrator
     private static class ProcessedImage
     {
         public BufferedImage image;
-        public ArrayList<TagDetection> detections;
+        public List<TagDetection> detections;
 
-        public ProcessedImage(BufferedImage image, ArrayList<TagDetection> detections)
+        public ProcessedImage(BufferedImage image, List<TagDetection> detections)
         {
             this.image = image;
             this.detections = detections;
@@ -287,7 +287,7 @@ public class CameraCalibrator
     }
 
     public synchronized void addImages(List<BufferedImage> newImages,
-                               ArrayList<ArrayList<TagDetection>> allDetections)
+                                       List<List<TagDetection>> allDetections)
     {
         addImages(newImages, allDetections, null);
     }
@@ -309,7 +309,7 @@ public class CameraCalibrator
      * The mosaic and cameras must not move within the list of images provided.
      */
     public synchronized void addImages(List<BufferedImage> newImages,
-                               ArrayList<ArrayList<TagDetection>> allDetections,
+                                       List<List<TagDetection>> allDetections,
                                double MosaicToGlobalXyzrpy[])
     {
         assert(newImages.size() == initializers.size());
@@ -329,7 +329,7 @@ public class CameraCalibrator
                 assert(reference.image.getHeight() == im.getHeight());
             }
 
-            ArrayList<TagDetection> detections = null;
+            List<TagDetection> detections = null;
 
             if (allDetections == null)
                 detections = detector.process(im, new double[] {im.getWidth()/2, im.getHeight()/2});
@@ -1003,7 +1003,7 @@ public class CameraCalibrator
 
             // get all the detections (one set per image) for this camera for
             // the purposes of initialization
-            ArrayList<ArrayList<TagDetection>> allDetections = new ArrayList<ArrayList<TagDetection>>();
+            List<List<TagDetection>> allDetections = new ArrayList<List<TagDetection>>();
             for (ProcessedImage pim : currentCameraImages)
                 allDetections.add(pim.detections);
 
@@ -1121,7 +1121,7 @@ public class CameraCalibrator
     }
 
     private void processImage(int cameraIndex, int imageIndex, int mosaicIndex,
-                              ArrayList<TagDetection> detections)
+                              List<TagDetection> detections)
     {
         // index where edge will appear (though it's not there now)
         int tagEdgeIndex = g.edges.size();

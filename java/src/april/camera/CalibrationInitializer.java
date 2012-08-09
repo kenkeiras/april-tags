@@ -10,7 +10,7 @@ public interface CalibrationInitializer
       * the initializer. Returns null if initialization could not proceed.
       */
     public ParameterizableCalibration initializeWithObservations(int width, int height,
-                                        ArrayList<ArrayList<TagDetection>> allDetections,
+                                        List<List<TagDetection>> allDetections,
                                         TagFamily tf);
 
     /** Initialize the calibration using the provided parameters. Essentially,
