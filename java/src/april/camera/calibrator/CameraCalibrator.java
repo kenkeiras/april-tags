@@ -498,8 +498,8 @@ public class CameraCalibrator
         vb = vw.getBuffer("HUD");
         vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.TOP_RIGHT,
                                     new VzText(VzText.ANCHOR.TOP_RIGHT,
-                       String.format("<<monospaced-14,white>>Mean reprojection error: %8.6f pixels",
-                                     getMRE()))));
+                       String.format("<<monospaced-14,right,white>>Mean reprojection error: %8.6f pixels\nMean square reprojection error: %8.6f pixels",
+                                     getMRE(), getMSE()))));
         vb.swap();
 
         ////////////////////////////////////////
@@ -846,6 +846,26 @@ public class CameraCalibrator
             numObs += len;
         }
         return reprojError / numObs;
+    }
+
+    public synchronized double getMSE()
+    {
+        double sqError = 0;
+        int numObs = 0;
+        for (GEdge e : g.edges) {
+            assert(e instanceof GTagEdge);
+            GTagEdge edge = (GTagEdge) e;
+
+            double res[] = edge.getResidualExternal(g);
+            assert((res.length & 0x1) == 0);
+
+            int len = res.length / 2;
+            for (int i=0; i < len; i+=2)
+                sqError += res[i]*res[i] + res[i+1]*res[i+1];
+
+            numObs += len;
+        }
+        return sqError / numObs;
     }
 
     public void printCalibrationBlock()
