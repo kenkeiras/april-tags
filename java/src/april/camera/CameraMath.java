@@ -228,6 +228,60 @@ public class CameraMath
         return K;
     }
 
+    public final static double[][] estimateHomography(List<double[]> xys, List<double[]> xy_primes)
+    {
+        assert(xys.size() == xy_primes.size());
+        int n = xys.size();
+
+        // compute the transformations to normalize each set of points
+        double T[][]        = getPointNormalizationTransform(xys);
+        double Tprime[][]   = getPointNormalizationTransform(xy_primes);
+
+        double A[][] = new double[2*n][];
+        for (int i=0; i < n; i++) {
+
+            double xy[]         = xys.get(i);
+            double xy_prime[]   = xy_primes.get(i);
+
+            // apply the normalization to both points
+            xy = pixelTransform(T, xy);
+            xy_prime = pixelTransform(Tprime, xy_prime);
+
+            double x  = xy[0];
+            double y  = xy[1];
+            double w  = 1;
+            double xp = xy_prime[0];
+            double yp = xy_prime[1];
+            double wp = 1;
+
+            A[2*i+0] = new double[] {     0,     0,     0, -wp*x, -wp*y, -wp*w,  yp*x,  yp*y,  yp*w };
+            A[2*i+1] = new double[] {  wp*x,  wp*y,  wp*w,     0,     0,     0, -xp*x, -xp*y, -xp*w };
+        }
+
+        SingularValueDecomposition A_SVD = new SingularValueDecomposition(new Matrix(A));
+
+        int rank = A_SVD.rank();
+        if (rank < 8) {
+            System.out.printf("Warning: matrix for computing a homography had rank %d (rank of 8 required)\n", rank);
+            return null;
+        }
+
+        Matrix U = A_SVD.getU();
+        Matrix S = A_SVD.getS();
+        Matrix V = A_SVD.getV();
+
+        double hvec[] = V.getColumn(V.getColumnDimension()-1).getDoubles();
+
+        double Ht[][] = new double[][] { { hvec[0], hvec[1], hvec[2] },
+                                         { hvec[3], hvec[4], hvec[5] },
+                                         { hvec[6], hvec[7], hvec[8] } };
+
+        // result H = inv(T') * Ht * T
+        // de-normalize
+        double H[][] = LinAlg.matrixAB(LinAlg.inverse(Tprime), LinAlg.matrixAB(Ht, T));
+        return H;
+    }
+
     /** Estimate the fundamental matrix from two sets of xy coordinates. Solves the equation:<br>
       * <center><i> transpose(x') * F * x = 0 </i></center><br>
       * using a linear formulation and the SVD. Then enforces the rank 2 constraint on the matrix F.
