@@ -31,6 +31,9 @@ public class SingleCameraCalibrator implements ParameterListener
     ImageSource         isrc;
     BlockingSingleQueue<FrameData> imageQueue = new BlockingSingleQueue<FrameData>();
 
+    // Wait to read the next image until the previous one is done being processed?
+    boolean blockOnProcessing = false; // Only set to true for img-dir processing
+
     // Calibrator
     CameraCalibrator    calibrator;
     boolean             capture = false;
@@ -39,9 +42,10 @@ public class SingleCameraCalibrator implements ParameterListener
     boolean autoiterate = false;
 
     public SingleCameraCalibrator(CalibrationInitializer initializer, String url, double tagSpacing_m,
-                                  boolean autocapture)
+                                  boolean autocapture, boolean block)
     {
         this.capture = autocapture;
+        this.blockOnProcessing = block;
 
         ////////////////////////////////////////////////////////////////////////////////
         // GUI setup
@@ -165,15 +169,18 @@ public class SingleCameraCalibrator implements ParameterListener
             }
 
             isrc.start();
-
             while (true) {
                 FrameData frmd = isrc.getFrame();
 
                 if (frmd == null)
                     break;
 
+                if (blockOnProcessing)
+                    imageQueue.waitTillEmpty();
+
                 imageQueue.put(frmd);
             }
+            System.out.println("Null!");
         }
     }
 
@@ -287,6 +294,6 @@ public class SingleCameraCalibrator implements ParameterListener
         assert(obj instanceof CalibrationInitializer);
         CalibrationInitializer initializer = (CalibrationInitializer) obj;
 
-        new SingleCameraCalibrator(initializer, url, spacing, autocapture);
+        new SingleCameraCalibrator(initializer, url, spacing, autocapture, url.startsWith("dir://"));
     }
 }
