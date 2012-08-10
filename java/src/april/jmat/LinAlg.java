@@ -989,10 +989,9 @@ public final class LinAlg
         double T = R.get(0,0) + R.get(1,1) + R.get(2,2) + 1;
         double S;
 
-        double m0  = R.get(0,0), m1 = R.get(1,0), m2 = R.get(2,0), m3 = R.get(3,0);
-        double m4  = R.get(0,1), m5 = R.get(1,1), m6 = R.get(2,1), m7 = R.get(3,1);
-        double m8  = R.get(0,2), m9 = R.get(1,2), m10 = R.get(2,2), m11 = R.get(3,2);
-        double m12 = R.get(0,3), m13 = R.get(1,3), m14 = R.get(2,3), m15 = R.get(3,3);
+        double m0  = R.get(0,0), m1 = R.get(1,0), m2 = R.get(2,0);
+        double m4  = R.get(0,1), m5 = R.get(1,1), m6 = R.get(2,1);
+        double m8  = R.get(0,2), m9 = R.get(1,2), m10 = R.get(2,2);
 
         double q[] = new double[4];
 

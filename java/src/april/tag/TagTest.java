@@ -99,6 +99,7 @@ public class TagTest implements ParameterListener
                                    new double[] {0, 2, 0},
                                    new double[] {0, .37, 0.927}, true);
         jf.setSize(800,600);
+        jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         jf.setVisible(true);
 
         ImageSourceFormat ifmt = is.getCurrentFormat();
