@@ -85,7 +85,7 @@ public class TestHomography
 
         System.out.println("H and Hhat match (after normalization) up to 1.0E-6.");
 
-        double T[][] = CameraMath.decomposeHomography(H, K);
+        double T[][] = CameraMath.decomposeHomography(H, K, xys.get(0));
         System.out.println("Homography-decomposition estimate of Rt, T:"); LinAlg.print(T);
 
         for (int i=0; i < T.length; i++) {
