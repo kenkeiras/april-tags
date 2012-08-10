@@ -1115,7 +1115,7 @@ public class CameraCalibrator
         double H[][] = CameraMath.estimateHomography(points_mosaic_meters,
                                                      points_image_pixels);
 
-        double Rt[][] = CameraMath.decomposeHomography(H, K);
+        double Rt[][] = CameraMath.decomposeHomography(H, K, points_mosaic_meters.get(0));
 
         return Rt;
     }
