@@ -425,7 +425,8 @@ public class CameraCalibrator
                          pim.detections);
         }
 
-        draw();
+        if (imagesetIndex+1 == this.images.size())
+            draw();
     }
 
     public synchronized void draw()
