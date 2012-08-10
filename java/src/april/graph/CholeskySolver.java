@@ -147,7 +147,7 @@ public class CholeskySolver implements GraphSolver
             Matrix PB = B.copy();
             PB.permuteRows(perm);
 
-            if (true) {
+            if (false) {
                 double acc = 0;
                 int count = 0;
                 boolean underconstrained = false;

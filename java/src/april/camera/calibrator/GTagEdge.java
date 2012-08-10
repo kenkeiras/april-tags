@@ -124,13 +124,13 @@ public class GTagEdge extends GEdge
                                             double[][]       Jn)
     {
 
-        double eps = 0.01;
+        double eps = 0.001;
         if (gn == cameraIntrinsics)
-            eps = 0.01;
+            eps = 0.001;
         else if (gn == cameraExtrinsics)
-            eps = 0.1;
+            eps = 0.001;
         else if (gn == mosaicExtrinsics)
-            eps = 0.1;
+            eps = 0.001;
 
         final double s[] = LinAlg.copy(gn.state);
         for (int i=0; i < s.length; i++) {

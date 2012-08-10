@@ -230,10 +230,25 @@ public class CameraMath
 
     /** Decompose a Homography using the camera intrinsics matrix K. It is
       * important to note that the coordinate system convention assumed here
-      * assumes that Z points INTO the scene (e.g. Caltech). Also, no scaling is
-      * done, we assume that the homography was computed between pixels and meters.
+      * assumes that Z points INTO the scene (e.g. Caltech), so any points
+      * observed in the image must have corresponding 3D points after
+      * transforming by the resulting transformation matrix with positive z
+      * coordinates. Point <b>p</b> is used to enforce this condition -- when
+      * decomposing a homography from an AprilTag detection, p={0,0} is
+      * sufficient (the center of the tag was observed in the image), but when
+      * the origin is <b>not</b> observed in the image, this assumption results
+      * in an incorrect estimate of the transformation.<br>
+      * <br>
+      * Note: It is assumed that the homography was computed between the desired
+      * input and output units. If this is not the case, rescale the translation
+      * component into the desired units.
+      *
+      * @param H - the 3x3 homography
+      * @param K - the 3x3 camera intrinsics matrix
+      * @param p - a point on the scene plane (e.g. tag mosaic) that must be in
+      * front of the camera (any point that was observed in the image)
       */
-    public final static double[][] decomposeHomography(double H[][], double K[][])
+    public final static double[][] decomposeHomography(double H[][], double K[][], double p[])
     {
         // H is typically equal to K*Rt (for a 3x3 matrix Rt). However, H is
         // only ever known up to scale, so we must expect H=S*K*Rt
@@ -255,9 +270,14 @@ public class CameraMath
                                         { Rt[2][0], Rt[2][1],        0, Rt[2][2] },
                                         {        0,        0,        0,        1 } };
 
-        // recover sign of scale factor by noting that observations must occur in front of the camera.
-        if (T[2][3] < 0)
+        double pp[] = LinAlg.transform(T, p);
+
+        // pp must be in front of the camera (positive z)
+        if (pp[2] < 0)
             T = LinAlg.scale(T, -1);
+
+        // ensure the bottom row is what we expect (rescaling can flip the sign)
+        T[3] = new double[] { 0, 0, 0, 1 };
 
         // recover third rotation vector by crossproduct of the other two rotation vectors.
         double a[] = new double[] { T[0][0], T[1][0], T[2][0] };
