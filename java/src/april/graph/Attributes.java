@@ -9,7 +9,6 @@ import lcm.lcm.*;
 
 public class Attributes
 {
-
     public static class Attr
     {
         public Object          o;
@@ -24,8 +23,7 @@ public class Attributes
 
     public HashMap<String, Attr> attrs = new HashMap<String, Attr>();
 
-
-    static Attributes read(StructureReader ins ) throws IOException
+    public static Attributes read(StructureReader ins ) throws IOException
     {
         int nattributes = ins.readInt();
         if (nattributes == 0)
@@ -46,7 +44,7 @@ public class Attributes
         return a;
     }
 
-    static void write(Attributes a, StructureWriter outs) throws IOException
+    public static void write(Attributes a, StructureWriter outs) throws IOException
     {
         outs.writeComment("num attributes");
         if (a == null) {
@@ -81,7 +79,7 @@ public class Attributes
         }
     }
 
-    static Attributes copy(Attributes in)
+    public static Attributes copy(Attributes in)
     {
         // handle null check in one location
         if (in  == null)

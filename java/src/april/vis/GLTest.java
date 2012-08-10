@@ -15,6 +15,7 @@ public class GLTest
         jf.setLayout(new BorderLayout());
         jf.add(panel, BorderLayout.CENTER);
         jf.setSize(600, 400);
+        jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         jf.setVisible(true);
     }
 
