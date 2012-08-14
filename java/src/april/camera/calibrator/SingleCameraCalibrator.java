@@ -59,6 +59,7 @@ public class SingleCameraCalibrator implements ParameterListener
         pg = new ParameterGUI();
         pg.addButtons("captureOnce","Capture once","capture","Toggle image capturing",
                       "save","Save images",
+                      "savedetections","Save detections",
                       "iterateonce","Iterate once","iterate","Toggle auto iteration",
                       "print","Print calibration");
         pg.addListener(this);
@@ -150,6 +151,9 @@ public class SingleCameraCalibrator implements ParameterListener
 
         if (name.equals("save") && calibrator != null)
             calibrator.saveImages();
+
+        if (name.equals("savedetections") && calibrator != null)
+            calibrator.saveDetections();
     }
 
     class AcquisitionThread extends Thread
@@ -180,7 +184,7 @@ public class SingleCameraCalibrator implements ParameterListener
 
                 imageQueue.put(frmd);
             }
-            System.out.println("Null!");
+            System.out.println("Out of frames!");
         }
     }
 

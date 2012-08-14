@@ -36,7 +36,8 @@ public class SyntheticTagMosaicImageGenerator
     ArrayList<Integer> tagsToDisplay;
 
     double LocalToCamera[][];       // local frame to camera coordinates
-    double MosaicPixelsToVis[][];   // mosaic pixel coordinate to vis coordinate transform
+    double MosaicPixelsToVis[][];
+    double MosaicToVis[][];
 
     double K[][];
     Calibration input;
@@ -44,6 +45,8 @@ public class SyntheticTagMosaicImageGenerator
 
     public class SyntheticImages
     {
+        public double[] MosaicToGlobal; // xyzrpy
+
         public BufferedImage rectified;
         public BufferedImage distorted;
 
@@ -140,6 +143,11 @@ public class SyntheticTagMosaicImageGenerator
                                                 LinAlg.translate(-(xmin+xmax)/2,
                                                                  -(ymin+ymax)/2,
                                                                  0));
+        MosaicToVis = LinAlg.multiplyMany(LinAlg.rotateY(Math.PI/2),
+                                          LinAlg.rotateZ(-Math.PI/2),
+                                          LinAlg.translate(-scale*(xmin+xmax)/2,
+                                                           -scale*(ymin+ymax)/2,
+                                                           0));
 
         // camera settings
         double fov_deg = vl.cameraManager.getCameraTarget().perspective_fovy_degrees;
@@ -168,8 +176,14 @@ public class SyntheticTagMosaicImageGenerator
     public SyntheticImages generateImage(Calibration outputDistorted, double xyzrpy[],
                                          boolean drawTagCenters)
     {
+        SyntheticImages images = new SyntheticImages();
+
         double MosaicPixelsToGlobal[][] = LinAlg.matrixAB(LinAlg.xyzrpyToMatrix(xyzrpy),
                                                           MosaicPixelsToVis);
+        double MosaicToGlobal[][] = LinAlg.matrixAB(LinAlg.xyzrpyToMatrix(xyzrpy),
+                                                    MosaicToVis);
+
+        images.MosaicToGlobal = LinAlg.matrixToXyzrpy(MosaicToGlobal);
 
         ArrayList<double[]> tagPositionsGlobal = new ArrayList<double[]>();
         for (int id : tagsToDisplay) {
@@ -222,8 +236,6 @@ public class SyntheticTagMosaicImageGenerator
                                                 BufferedImage.TYPE_INT_RGB);
         Graphics2D g = (Graphics2D) frame.getGraphics();
         vc.paintComponent(g);
-
-        SyntheticImages images = new SyntheticImages();
 
         {
             Rasterizer rasterizer = new BilinearRasterizer(input, outputRectified);
@@ -340,6 +352,19 @@ public class SyntheticTagMosaicImageGenerator
                         String base = path;
                         if (path.endsWith(".png"))
                             base = path.substring(0, path.length()-4);
+
+                        {
+                            String toks[] = base.split("/");
+                            String shortname = toks[toks.length-1];
+                            System.out.printf("%s_truth_ext = [%12.6f, %12.6f, %12.6f, %12.6f, %12.6f, %12.6f];\n",
+                                              shortname,
+                                              lastImages.MosaicToGlobal[0],
+                                              lastImages.MosaicToGlobal[1],
+                                              lastImages.MosaicToGlobal[2],
+                                              lastImages.MosaicToGlobal[3],
+                                              lastImages.MosaicToGlobal[4],
+                                              lastImages.MosaicToGlobal[5]);
+                        }
 
                         try {
                             ImageIO.write(lastImages.rectified, "png", new File(String.format("%s.rectified.png", base)));
