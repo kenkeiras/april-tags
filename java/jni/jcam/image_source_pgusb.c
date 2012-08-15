@@ -1007,7 +1007,7 @@ static int start(image_source_t *isrc)
     return 0;
 }
 
-static int get_frame(image_source_t *isrc, void **imbuf, int *buflen)
+static int get_frame(image_source_t *isrc, frame_data_t *frmd)
 {
     assert(isrc->impl_type == IMPL_TYPE);
     impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
@@ -1015,17 +1015,21 @@ static int get_frame(image_source_t *isrc, void **imbuf, int *buflen)
 
     int idx = get_ready_frame(impl);
 
-    *buflen = impl->bytes_per_frame;
-    *imbuf = impl->images[idx].buf;
+    frmd->datalen = impl->bytes_per_frame;
+    frmd->data = impl->images[idx].buf;
+    frmd->utime = utime_now(); // XXX DO BETTER
+    frmd->ifmt = impl->formats[impl->current_format_idx];
 
 //    printf("get_frame\n");
     return 0;
 }
 
-static int release_frame(image_source_t *isrc, void *imbuf)
+static int release_frame(image_source_t *isrc, frame_data_t *frmd)
 {
     assert(isrc->impl_type == IMPL_TYPE);
     impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+
+    void *imbuf = frmd-> data;
 
     int idx = -1;
     for (int i = 0; i < impl->nimages; i++) {

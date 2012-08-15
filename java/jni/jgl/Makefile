@@ -1,26 +1,5 @@
 include ../common.mk
 
-#############################################################
-# Linux
-ifeq "$(shell uname)" "Linux"
-
-LDFLAGS += -shared -lX11 -lGL
-LIBJGL_OBJS = glcontext-x11.o
-
-endif
-
-#############################################################
-# MacOS X
-ifeq "$(shell uname)" "Darwin"
-
-LDFLAGS += -lX11 -lGL
-LIBJGL_OBJS = glcontext-x11.o
-
-endif
-
-#############################################################
-# Core rules
-
 LIB=libjgl.$(SHARED_EXT)
 DESTLIB=../../../lib/$(LIB)
 
@@ -30,9 +9,9 @@ all:  $(DESTLIB)
 $(DESTLIB) : $(LIB)
 	cp $(LIB) $(DESTLIB)
 
-LIBJGL_OBJS += glcontext.o gl_jni.o lphash.o parray.o
+LIBJGL_OBJS += glcontext.o glcontext-x11.o gl_jni.o lphash.o parray.o
 $(LIB): april_vis_GL.h $(LIBJGL_OBJS)
-	$(LD) $(LDFLAGS) $(LIBJGL_OBJS) -o $@
+	$(LD) $(LDFLAGS) $(LIBJGL_OBJS) -o $@ -lGL -lX11
 
 #############################################################
 %.o: %.c

@@ -1,6 +1,5 @@
 #include <stdint.h>
 #include <sys/select.h>
-#include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -60,7 +59,7 @@ struct impl_islog
     uint64_t last_frame_utime;
 };
 
-int64_t utime_now()
+static int64_t utime_now()
 {
     struct timeval tv;
     gettimeofday (&tv, NULL);
@@ -271,7 +270,7 @@ static int start(image_source_t *isrc)
     return 0;
 }
 
-static int get_frame(image_source_t *isrc, void **imbuf, int *buflen)
+static int get_frame(image_source_t *isrc, frame_data_t * frmd)
 {
     assert(isrc->impl_type == IMPL_TYPE);
     impl_islog_t *impl = (impl_islog_t*) isrc->impl;
@@ -321,14 +320,22 @@ static int get_frame(image_source_t *isrc, void **imbuf, int *buflen)
 
     impl->last_frame_utime = utime_now();
 
-    *imbuf = impl->last_frame->buf;
-    *buflen = impl->last_frame->buflen;
+    frmd->data = impl->last_frame->buf;
+    frmd->datalen = impl->last_frame->buflen;
+
+    frmd->ifmt = calloc(1, sizeof(image_source_format_t));
+    frmd->ifmt->format = new_frame->format; // No copy, will be freed on next call to get_frame();
+    frmd->ifmt->width = new_frame->width;
+    frmd->ifmt->height = new_frame->height;
+
+    frmd->utime = new_frame->utime;
 
     return 0;
 }
 
-static int release_frame(image_source_t *isrc, void *imbuf)
+static int release_frame(image_source_t *isrc, frame_data_t * frmd)
 {
+    // free() calls occurs on subsequent call to get_frame();
     return 0;
 }
 

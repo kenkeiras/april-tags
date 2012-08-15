@@ -99,6 +99,7 @@ public class TagTest implements ParameterListener
                                    new double[] {0, 2, 0},
                                    new double[] {0, .37, 0.927}, true);
         jf.setSize(800,600);
+        jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         jf.setVisible(true);
 
         ImageSourceFormat ifmt = is.getCurrentFormat();
@@ -141,11 +142,11 @@ public class TagTest implements ParameterListener
             detector.debugLabels    = vw.getBuffer("labels");
 
             while (true) {
-                byte buf[] = is.getFrame();
-                if (buf == null)
+                FrameData frmd = is.getFrame();
+                if (frmd == null)
                     continue;
 
-                BufferedImage im = ImageConvert.convertToImage(fmt.format, fmt.width, fmt.height, buf);
+                BufferedImage im = ImageConvert.convertToImage(frmd);
 
                 tf.setErrorRecoveryBits(pg.gi("errorbits"));
 

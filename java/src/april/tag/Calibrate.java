@@ -160,7 +160,9 @@ public class Calibrate implements ParameterListener
                 isrc.start();
 
                 while (true) {
-                    byte data[] = isrc.getFrame();
+
+                    FrameData fd = isrc.getFrame();
+                    byte data[] = fd.data;
                     BufferedImage im = ImageConvert.convertToImage(ifmt.format, ifmt.width, ifmt.height, data);
 
                     if (firstFrame) {

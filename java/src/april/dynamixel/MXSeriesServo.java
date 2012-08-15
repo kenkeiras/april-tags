@@ -43,7 +43,10 @@ public class MXSeriesServo extends AbstractServo
 
     public void setPID(byte p, byte i, byte d)
     {
-        writeToRAM(new byte[] { 26, p, i, d}, true);
+        // Note: Values were reversed in specs, recently.
+        // Old MX28 firmware orders bytes as p, i, d whereas
+        // now all servos are listed as storing the bytes d, i, p
+        writeToRAM(new byte[] { 26, d, i, p}, true);
     }
 
     public void setGoal(double radians, double speedfrac, double torquefrac)

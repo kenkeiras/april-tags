@@ -53,6 +53,7 @@ public class ScanMatcherTest implements LCMSubscriber, ParameterListener
         jf.add(vc, BorderLayout.CENTER);
         jf.add(pg.getPanel(), BorderLayout.SOUTH);
         jf.setSize(600,400);
+        jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         jf.setVisible(true);
 
         Config smconfig = config.getChild("scanmatcher_manager");

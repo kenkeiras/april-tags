@@ -85,9 +85,9 @@ public class ImageUtil
         FloatImage fg = new FloatImage(in, 8);
         FloatImage fb = new FloatImage(in, 0);
 
-        fr.filterFactoredCentered(k, k);
-        fg.filterFactoredCentered(k, k);
-        fb.filterFactoredCentered(k, k);
+        fr = fr.filterFactoredCentered(k, k);
+        fg = fg.filterFactoredCentered(k, k);
+        fb = fb.filterFactoredCentered(k, k);
 
         BufferedImage out = new BufferedImage(in.getWidth(), in.getHeight(), BufferedImage.TYPE_INT_RGB);
         for (int y = 0; y < in.getHeight(); y++) {

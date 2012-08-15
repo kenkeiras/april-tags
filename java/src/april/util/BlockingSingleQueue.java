@@ -8,6 +8,8 @@ public class BlockingSingleQueue<T>
 
     int drops;
 
+    Object empty  = new Object();
+
     public synchronized void put(T el)
     {
         if (t != null)
@@ -42,6 +44,9 @@ public class BlockingSingleQueue<T>
             if (this.t != null) {
                 T tmp = this.t;
                 this.t = null;
+
+                this.notifyAll();
+
                 return tmp;
             }
 
@@ -51,4 +56,18 @@ public class BlockingSingleQueue<T>
             }
         }
     }
+
+    public synchronized  void waitTillEmpty()
+    {
+        while (true) {
+            if (this.t == null)
+                return;
+
+            try {
+                this.wait();
+            } catch (InterruptedException ex) {
+            }
+        }
+    }
+
 }

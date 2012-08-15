@@ -17,7 +17,7 @@ public class VisTexture implements VisSerializable
     int width, height;
     int bytes_per_pixel;
 
-    static boolean warnedSlowConversion;
+    static boolean warnedSlowConversion = false;
 
     boolean alphaMask;
 
@@ -45,6 +45,9 @@ public class VisTexture implements VisSerializable
         setFlags(flags);
 
         BufferedImage im = null;
+
+        this.width = input.getWidth();
+        this.height = input.getHeight();
 
         if (alphaMask) {
             im = VisUtil.coerceImage(input, BufferedImage.TYPE_BYTE_GRAY);
@@ -91,6 +94,7 @@ public class VisTexture implements VisSerializable
                     bytes_per_pixel = 4;
                     break;
                 }
+
                 default: {
                     // coerce texture format to a type we know.
                     im = VisUtil.coerceImage(input, BufferedImage.TYPE_INT_ARGB);
@@ -100,12 +104,11 @@ public class VisTexture implements VisSerializable
                     gltype = GL.GL_UNSIGNED_INT_8_8_8_8_REV;
                     bytes_per_pixel = 4;
                     break;
+
                 }
             }
         }
 
-        this.width = input.getWidth();
-        this.height = input.getHeight();
 
         if (im.getRaster().getDataBuffer() instanceof DataBufferInt)
             this.idata = ((DataBufferInt) (im.getRaster().getDataBuffer())).getData();

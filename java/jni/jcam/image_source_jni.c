@@ -56,15 +56,9 @@ JNIEXPORT jint JNICALL Java_april_jcam_ImageSourceNative_image_1source_1num_1for
 }
 
 
-/*
- * Class:     jcam_ImageSource
- * Method:    image_source_get_format
- * Signature: (II)Ljcam/ImageSource;
- */
-JNIEXPORT jobject JNICALL Java_april_jcam_ImageSourceNative_image_1source_1get_1format_1jni
-  (JNIEnv *jenv, jclass jcls, jint srcid, jint fmtidx)
+// Helper function to convert image_source_format_t to ImageSourceFormat, needed by getFormat() and getFrame()
+jobject image_source_format_t_to_ImageSourceFormat(JNIEnv *jenv, image_source_format_t * fmt)
 {
-    image_source_t *isrc = isrcs[srcid];
 
     jclass formatClass = (*jenv)->FindClass(jenv, "april/jcam/ImageSourceFormat");
     assert(formatClass != NULL);
@@ -73,8 +67,6 @@ JNIEXPORT jobject JNICALL Java_april_jcam_ImageSourceNative_image_1source_1get_1
     assert(methodId != NULL);
 
     jobject ifmt = (*jenv)->NewObject(jenv, formatClass, methodId);
-
-    image_source_format_t *fmt = isrc->get_format(isrc, fmtidx);
 
     if (1) {
         jstring fcc = (*jenv)->NewStringUTF(jenv, fmt->format);
@@ -92,6 +84,20 @@ JNIEXPORT jobject JNICALL Java_april_jcam_ImageSourceNative_image_1source_1get_1
     }
 
     return ifmt;
+}
+
+/*
+ * Class:     jcam_ImageSource
+ * Method:    image_source_get_format
+ * Signature: (II)Ljcam/ImageSourceFormat;
+ */
+JNIEXPORT jobject JNICALL Java_april_jcam_ImageSourceNative_image_1source_1get_1format_1jni
+  (JNIEnv *jenv, jclass jcls, jint srcid, jint fmtidx)
+{
+    image_source_t *isrc = isrcs[srcid];
+    image_source_format_t *fmt = isrc->get_format(isrc, fmtidx);
+
+    return image_source_format_t_to_ImageSourceFormat(jenv, fmt);
 }
 
 /*
@@ -163,29 +169,52 @@ JNIEXPORT jint JNICALL Java_april_jcam_ImageSourceNative_image_1source_1start_1j
 }
 
 /*
- * Class:     jcam_ImageSource
- * Method:    image_source_get_frame
- * Signature: (ID)[B
+ * Class:     april_jcam_ImageSourceNative
+ * Method:    image_source_get_frame_jni
+ * Signature: (I)Lapril/jcam/FrameData;
  */
-JNIEXPORT jbyteArray JNICALL Java_april_jcam_ImageSourceNative_image_1source_1get_1frame_1jni
+JNIEXPORT jobject JNICALL Java_april_jcam_ImageSourceNative_image_1source_1get_1frame_1jni
   (JNIEnv *jenv, jclass jcls, jint srcid)
 {
     image_source_t *isrc = isrcs[srcid];
 
-    void *imbuf = NULL;
-    int imbuflen = 0;
+    /* void *imbuf = NULL; */
+    /* int imbuflen = 0; */
 
-    int res = isrc->get_frame(isrc, &imbuf, &imbuflen);
+    frame_data_t * fdat = calloc(1, sizeof(frame_data_t));
+    int res = isrc->get_frame(isrc, fdat);
 
     if (res < 0)
         return NULL;
 
-    jbyteArray bytes = NULL;
-    bytes = (*jenv)->NewByteArray(jenv, imbuflen);
-    (*jenv)->SetByteArrayRegion(jenv, bytes, 0, imbuflen, (jbyte*) imbuf);
-    isrc->release_frame(isrc, imbuf);
+    jclass frameDataClass = (*jenv)->FindClass(jenv, "april/jcam/FrameData");
+    assert(frameDataClass != NULL);
 
-    return bytes;
+    jmethodID methodId = (*jenv)->GetMethodID(jenv, frameDataClass, "<init>", "()V");
+    assert(methodId != NULL);
+
+    jobject frmd = (*jenv)->NewObject(jenv, frameDataClass, methodId);
+    if (1) {
+        // Get the image source format
+        jobject ifmt = image_source_format_t_to_ImageSourceFormat(jenv, fdat->ifmt);
+        jfieldID ifmtId = (*jenv)->GetFieldID(jenv, frameDataClass, "ifmt", "Lapril/jcam/ImageSourceFormat;");
+        (*jenv)->SetObjectField(jenv, frmd, ifmtId, ifmt);
+        (*jenv)->DeleteLocalRef(jenv, ifmt);
+
+        jfieldID utimeId = (*jenv)->GetFieldID(jenv, frameDataClass, "utime", "J");
+        (*jenv)->SetLongField(jenv, frmd, utimeId, (jlong) fdat->utime);
+
+        jfieldID dataId = (*jenv)->GetFieldID(jenv, frameDataClass, "data", "[B");
+        jbyteArray bytes = NULL;
+        bytes = (*jenv)->NewByteArray(jenv, fdat->datalen);
+        (*jenv)->SetByteArrayRegion(jenv, bytes, 0, fdat->datalen, (jbyte*) fdat->data);
+        (*jenv)->SetObjectField(jenv, frmd, dataId, bytes);
+        (*jenv)->DeleteLocalRef(jenv, bytes);
+    }
+    isrc->release_frame(isrc, fdat);
+    free(fdat);
+
+    return frmd;
 }
 
 /*

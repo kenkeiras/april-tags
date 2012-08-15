@@ -95,6 +95,7 @@ public class TagTransmit implements ParameterListener
         jf.add(pg, BorderLayout.SOUTH);
 
         jf.setSize(800,600);
+        jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         jf.setVisible(true);
 
         vl.cameraManager.fit2D(new double[] {0,0}, new double[] { 752, 480}, true);
@@ -128,11 +129,11 @@ public class TagTransmit implements ParameterListener
             detector.debugLabels    = vw.getBuffer("labels");
 
             while (true) {
-                byte buf[] = is.getFrame();
-                if (buf == null)
+                FrameData frmd = is.getFrame();
+                if (frmd == null)
                     continue;
 
-                BufferedImage im = ImageConvert.convertToImage(fmt.format, fmt.width, fmt.height, buf);
+                BufferedImage im = ImageConvert.convertToImage(frmd);
 
                 tagFamily.setErrorRecoveryBits(pg.gi("errorbits"));
 

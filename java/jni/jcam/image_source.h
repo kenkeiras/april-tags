@@ -18,6 +18,16 @@ struct image_source_format
     void  *priv; // for use by the implementation.
 };
 
+typedef struct frame_data frame_data_t;
+struct frame_data
+{
+    image_source_format_t *ifmt;
+    uint64_t utime;
+    void * data;
+    int  datalen;
+
+    void *priv;
+};
 
 typedef struct image_source image_source_t;
 struct image_source
@@ -32,8 +42,8 @@ struct image_source
     int (*get_current_format)(image_source_t *isrc);
 
     int (*start)(image_source_t *isrc);
-    int (*get_frame)(image_source_t *isrc, void **buf, int *buflen);
-    int (*release_frame)(image_source_t *isrc, void *buf);
+    int (*get_frame)(image_source_t *isrc, frame_data_t * frmd);
+    int (*release_frame)(image_source_t *isrc, frame_data_t *frmd);
     int (*stop)(image_source_t *isrc);
 
     int (*num_features)(image_source_t *isrc);
@@ -88,6 +98,15 @@ static char** string_array_add(char **strs, char *s)
     strs[len+1] = NULL;
 
     return strs;
+}
+
+// lightweight replacement for timestamp.h
+#include <sys/time.h>
+static int64_t utime_now()
+{
+    struct timeval tv;
+    gettimeofday (&tv, NULL);
+    return (int64_t) tv.tv_sec * 1000000 + tv.tv_usec;
 }
 
 #endif

@@ -252,8 +252,18 @@ public class Graph
     public Graph(String path) throws IOException
     {
         StructureReader ins = new TextStructureReader(new BufferedReader(new FileReader(path)));
+        loadGraph(this, ins);
+        ins.close();
+    }
 
-        attributes = Attributes.read(ins);
+    public Graph(StructureReader ins) throws IOException
+    {
+        loadGraph(this, ins);
+    }
+
+    private static void loadGraph(Graph graph, StructureReader ins) throws IOException
+    {
+        graph.attributes = Attributes.read(ins);
 
         while (true) {
             String classname = ins.readString();
@@ -268,23 +278,21 @@ public class Graph
 
                 ins.blockBegin();
                 gn.read(ins);
-                nodes.add(gn);
+                graph.nodes.add(gn);
                 ins.blockEnd();
 
             } else if (obj instanceof GEdge) {
                 GEdge ge = (GEdge) obj;
                 ins.blockBegin();
                 ge.read(ins);
-                edges.add(ge);
+                graph.edges.add(ge);
                 ins.blockEnd();
             } else {
-                System.out.println("Unable to handle object of type: "+obj);
+                System.out.println("Unable to handle object of type: "+obj+" with classname '" + classname + "'");
             }
         }
 
-        System.out.printf("loaded %d nodes and %d edges\n", nodes.size(), edges.size());
-
-        ins.close();
+        System.out.printf("loaded %d nodes and %d edges\n", graph.nodes.size(), graph.edges.size());
     }
 
     // Returns a deep copy of this graph with the exception of a

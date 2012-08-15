@@ -1,5 +1,11 @@
 package april.jcam;
 
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import april.util.*;
+
 import java.awt.image.*;
 import java.io.*;
 import java.util.*;
@@ -13,6 +19,7 @@ import javax.imageio.*;
 
     fps=XXX
     loop=true
+    ask=false    -- Floating window allows user to control frame advancement
 
     i.e.:
 
@@ -24,8 +31,12 @@ public class ImageSourceFile extends ImageSource
     int pos = 0;
     ImageSourceFormat ifmt;
     boolean loop = true;
+    boolean ask = false;
     double fps = Double.MAX_VALUE;
     long lastmtime;
+
+    final Object askCond = new Object(); // synchronize on this to wait for user input
+    boolean firstCall = true;
 
     public ImageSourceFile(String url) throws IOException
     {
@@ -41,6 +52,8 @@ public class ImageSourceFile extends ImageSource
                     fps = Double.parseDouble(keyval[1]);
                 else if (keyval[0].equals("loop"))
                     loop = Boolean.parseBoolean(keyval[1]);
+                else if (keyval[0].equals("ask"))
+                    ask = Boolean.parseBoolean(keyval[1]);
                 else
                     System.out.println("ImageSourceFile: Unknown parameter "+keyval[0]);
             }
@@ -81,6 +94,36 @@ public class ImageSourceFile extends ImageSource
         ifmt.width = im.getWidth();
         ifmt.height = im.getHeight();
         ifmt.format = "RGB";
+
+        // Enables users to specify when to switch frames
+        if (ask) {
+            JFrame askFrame = new JFrame("Frame flow control");
+            ParameterGUI pg = new ParameterGUI();
+            pg.addButtons("-2","Prev", "-1", "Refresh", "0", "Next");
+            askFrame.setLayout(new BorderLayout());
+            askFrame.add(pg,BorderLayout.CENTER);
+
+            askFrame.setSize(300,60);
+            askFrame.setVisible(true);
+            askFrame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
+            askFrame.setAlwaysOnTop(true);
+
+            pg.addListener(new ParameterListener() {
+                    public void parameterChanged(ParameterGUI pg, String name)
+                    {
+                        synchronized(askCond) {
+                            // Frames advance automatically, so compensate appropriately
+                            pos += Integer.parseInt(name);
+                            if (pos < 0) // prevent user from going into uncharted territory
+                                pos = 0;
+                            if (pos >= paths.size())
+                                pos = paths.size()-1;
+
+                            askCond.notifyAll();
+                        }
+                    }
+                });
+        }
     }
 
     public void start()
@@ -106,7 +149,7 @@ public class ImageSourceFile extends ImageSource
     }
 
     // ignores timeout.
-    public byte[] getFrame()
+    public FrameData getFrame()
     {
         /////////////////////////////////////
         // wait until it's time to produce a frame.
@@ -114,39 +157,50 @@ public class ImageSourceFile extends ImageSource
         long wakeuptime = lastmtime + ((int) (1000/fps));
         long waittime = wakeuptime - nowmtime;
 
-        if (waittime > 0) {
+        if (ask && !firstCall) {
+
+            synchronized(askCond) {
+                try{
+                    askCond.wait();
+                } catch(InterruptedException e){}
+            }
+        } else if (waittime > 0) {
 
             try {
                 Thread.sleep(waittime);
             } catch (InterruptedException ex) {
             }
         }
+        firstCall = false;
 
-        lastmtime = System.currentTimeMillis();
+        if (loop) {
+            pos = (pos + paths.size()) % paths.size();
+        } else if (pos >= paths.size() || pos < 0) {
+            return null;
+        }
 
         // produce a frame.
+        lastmtime = System.currentTimeMillis();
         try {
-            if (pos >= paths.size()) {
-                if (loop)
-                    pos = 0;
-                else
-                    return null;
-            }
-
             BufferedImage im = ImageIO.read(new File(paths.get(pos++)));
             int width = im.getWidth(), height = im.getHeight();
-            byte b[] = new byte[width*height*3];
+
+            FrameData frmd = new FrameData();
+            frmd.ifmt = ifmt;
+            frmd.data = new byte[width*height*3];
+            frmd.utime = lastmtime*1000;
+
             int bpos = 0;
             for (int y = 0; y < height; y++) {
                 for (int x = 0; x < width; x++) {
                     int rgb = im.getRGB(x, y);
-                    b[bpos++] = (byte) ((rgb>>16)&0xff);
-                    b[bpos++] = (byte) ((rgb>>8)&0xff);
-                    b[bpos++] = (byte) ((rgb)&0xff);
+                    frmd.data[bpos++] = (byte) ((rgb>>16)&0xff);
+                    frmd.data[bpos++] = (byte) ((rgb>>8)&0xff);
+                    frmd.data[bpos++] = (byte) ((rgb)&0xff);
                 }
             }
 
-            return b;
+            return frmd;
 
         } catch (IOException ex) {
             System.out.println("ImageSourceFile exception: "+ex);

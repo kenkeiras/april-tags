@@ -14,7 +14,6 @@
 
 #define IMAGE_SOURCE_UTILS
 #include "image_source.h"
-
 #define IMPL_TYPE 0x56344c32
 #define NUM_BUFFERS 4
 
@@ -227,7 +226,7 @@ static int start(image_source_t *isrc)
     return 0;
 }
 
-static int get_frame(image_source_t *isrc, void **imbuf, int *buflen)
+static int get_frame(image_source_t *isrc, frame_data_t * frmd)//void **imbuf, int *buflen)
 {
     assert(isrc->impl_type == IMPL_TYPE);
     impl_v4l2_t *impl = (impl_v4l2_t*) isrc->impl;
@@ -271,13 +270,15 @@ static int get_frame(image_source_t *isrc, void **imbuf, int *buflen)
         }
     }
 
-    *buflen = buf.bytesused;
-    *imbuf = impl->buffers[buf.index].start;
+    frmd->datalen = buf.bytesused;
+    frmd->data = impl->buffers[buf.index].start;
+    frmd->ifmt = impl->formats[impl->current_format_idx];
+    frmd->utime = utime_now(); // Can we get better timing than this from v4l2?
 
     return 0;
 }
 
-static int release_frame(image_source_t *isrc, void *imbuf)
+static int release_frame(image_source_t *isrc, frame_data_t *frmd)
 {
     assert(isrc->impl_type == IMPL_TYPE);
     impl_v4l2_t *impl = (impl_v4l2_t*) isrc->impl;
@@ -291,7 +292,7 @@ static int release_frame(image_source_t *isrc, void *imbuf)
 
     int found = 0;
     for (int i = 0; i < NUM_BUFFERS; i++) {
-        if (impl->buffers[i].start == imbuf) {
+        if (impl->buffers[i].start == frmd->data) {
             buf.index = i;
             found = 1;
             break;
@@ -299,7 +300,7 @@ static int release_frame(image_source_t *isrc, void *imbuf)
     }
 
     if (!found) {
-        printf("release frame called with bogus imbuf: %p\n", imbuf);
+        printf("release frame called with bogus imbuf: %p\n", frmd->data);
         return -1;
     }
 
