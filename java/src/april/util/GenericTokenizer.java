@@ -23,6 +23,11 @@ public class GenericTokenizer<T>
             this.line = line;
             this.column = column;
         }
+
+        public String toString()
+        {
+            return String.format("token \"%s\" of type %s at line %d, column %d\n", token, type, line, column-1);
+        }
     }
 
     static final char MIN_CHAR=0;
@@ -36,12 +41,19 @@ public class GenericTokenizer<T>
     {
         // if a terminal node, the type of token (as given by the user).
         T      type;
+
         // Priority of this production; lower numbers get named
         // preferentially. E.g., "function" might match both SYMBOL
         // and KEYWORDS; if KEYWORDS is declared before SYMBOL, then
         // "function" will be labeled as a KEYWORD, even though it
         // matches both.
         int    priority;
+
+        // If this state is reached and it's terminal (there are no
+        // transitions away from this state), an output token would
+        // ordinarily be generated. But if ignore is true, this token
+        // is discarded instead.
+        boolean ignore;
 
         // set of out-going edges
         ArrayList<NEdge> out = new ArrayList<NEdge>();
@@ -60,6 +72,8 @@ public class GenericTokenizer<T>
 
         public String toString()
         {
+            if (ignore)
+                return String.format("(state %d IGNORE)", id);
             return String.format("(state %d "+type+")", id);
         }
     }
@@ -121,10 +135,11 @@ public class GenericTokenizer<T>
         int id = nextDStateId++;
         ArrayList<DEdge> out = new ArrayList<DEdge>();
         T t;
+        boolean ignore;
 
         public String toString()
         {
-            String s = String.format("(state %d "+t+": nstates ", id);
+            String s = String.format("(state %d "+t+" "+ignore+": nstates ", id);
             for (NState ns : nstatesClosure)
                 s = s + String.format("%d ", ns.id);
             s = s + ")";
@@ -243,11 +258,16 @@ public class GenericTokenizer<T>
      * which productions are added determins their priority: a
      * production added earlier takes precedence over a later
      * production. **/
-    public void add(T t, String regex)
+    public void add(T t, String regex, boolean ignore)
     {
         assert(!compiled);
 
+        if (!ignore)
+            assert(t != null);
+
         NState terminalNState = new NState(t);
+        terminalNState.ignore = ignore;
+
         NState initialNState = new NState();
         NEdge  e = new NEdge();
         e.destination = initialNState;
@@ -256,6 +276,15 @@ public class GenericTokenizer<T>
         createNStates(new StringFeeder(regex), initialNState, initialNState, terminalNState);
     }
 
+    public void add(T t, String regex)
+    {
+        add(t, regex, false);
+    }
+
+    public void addIgnore(String regex)
+    {
+        add(null, regex, true);
+    }
 
     // Parse a regular expression, connecting states between initial and terminal.
     void createNStates(StringFeeder sf, NState initialState,
@@ -452,6 +481,8 @@ public class GenericTokenizer<T>
 
     ////////////////////////////////////////////////////////////////
     // Create DFS from the NFS
+    boolean deadEndWarning;
+
     void compile()
     {
         assert(!compiled);    // please only compile once.
@@ -465,6 +496,84 @@ public class GenericTokenizer<T>
         queue.push(droot);
 
         compile(queue, new HashSet<DState>());
+
+        for (DState dstate : dstates) {
+            if (dstate.t == null && !dstate.ignore) {
+                if (!deadEndWarning) {
+                    System.out.println("WARNING: Your grammar is buggy! See comments in GenericTokenizer.");
+
+                    /* A "good" grammar is one that defends against
+                       unexpected inputs. Every DState ought to
+                       produce some sort of token, or else it is
+                       possible that the parser could arrive in that
+                       dstate and not be able to transition to the
+                       next dstate (due to, for example, the next
+                       input character not matching any of the out
+                       edges of the dstate). An early EOF can also cause
+                       any dstate to become terminal.
+                     */
+                    deadEndWarning = true;
+                }
+                System.out.printf("Dead-end dstate: "+dstate+"\n");
+                String seq = findDeadStateInputSequence(dstate.id);
+                if (seq != null) {
+                    System.out.printf("  A sequence that produces it: "+seq);
+                    System.out.printf("[ ");
+
+                    boolean accepts[] = new boolean[MAX_CHAR+1];
+                    for (DEdge de : dstate.out) {
+                        for (char c = de.c0; c <= de.c1; c++)
+                            accepts[(int) c] = true;
+                    }
+                    int i0 = 0;
+                    boolean some = false;
+                    while (i0 < accepts.length) {
+                        if (accepts[i0]) {
+                            i0++;
+                            continue;
+                        }
+                        some = true;
+                        int i1 = i0;
+                        while (i1+1 < accepts.length && !accepts[i1+1])
+                            i1++;
+                        System.out.printf("%s-%s ",escape((char) i0), escape((char) i1));
+                        i0 = i1+1;
+                    }
+                    if (!some)
+                        System.out.printf("EOF ");
+
+                    /*for (DEdge de : dstate.out) {
+                        if (de.c0 == de.c1)
+                            System.out.printf("%s ", escape(de.c0));
+                        else
+                            System.out.printf("%s-%s ", escape(de.c0), escape(de.c1));
+                            } */
+
+                    System.out.printf("]\n\n");
+                } else {
+                    System.out.printf("  Sorry, couldn't find a sequence that produces this dstate. (Try a larger depth limit?)\n\n");
+                }
+            }
+        }
+    }
+
+    static String escape(char c)
+    {
+        if (c==0)
+            return "\\0";
+        if (c=='\n')
+            return "\\n";
+        if (c=='\r')
+            return "\\r";
+        if (c=='\t')
+            return "\\t";
+        if (c=='-')
+            return "\\-";
+        if (c=='\\')
+            return "\\\\";
+        if (c<' ')
+            return String.format("\\%d", (int) c);
+        return ""+c;
     }
 
     // We will visit DStates, following edges, until we have visited
@@ -578,8 +687,9 @@ public class GenericTokenizer<T>
         // the NState's type.
         int priority = Integer.MAX_VALUE;
         for (NState nstate : closure) {
-            if (nstate.type != null && nstate.priority < priority) {
+            if ((nstate.type != null || nstate.ignore) && nstate.priority < priority) {
                 ds.t = nstate.type;
+                ds.ignore = nstate.ignore;
                 priority = nstate.priority;
             }
         }
@@ -743,15 +853,16 @@ public class GenericTokenizer<T>
 
                 sb.append(c);
                 if (!sf.hasNext()) {
-                    if (state.t != null)
-                        tokens.add(new Token<T>(state.t, sb.toString(), sf.line, sf.col));
-                    else
+                    if (state.t != null || state.ignore) {
+                        if (!state.ignore)
+                            tokens.add(new Token<T>(state.t, sb.toString(), sf.line, sf.col));
+                    } else {
                         // incomplete token means that we ran out of input
                         // but have not arrived in a state that produces a
                         // token. In other words, more input is needed to
                         // complete a token.
-                        System.out.println("incomplete token in state "+state+" "+sb);
-
+                        System.out.println("incomplete token in state "+state+" "+sb+" ");
+                    }
                     return tokens;
                 }
                 c = sf.next();
@@ -770,7 +881,8 @@ public class GenericTokenizer<T>
                 //   good error reporting should add a production for
                 //   a single mismatched character.
                 //
-                tokens.add(new Token(null, sb.toString(), sf.line, sf.col));
+                System.out.println("Parse error; grammar does not contain a . production to catch errors.");
+                // tokens.add(new Token(null, sb.toString(), sf.line, sf.col));
 
                 if (!sf.hasNext())
                     return tokens;
@@ -781,11 +893,47 @@ public class GenericTokenizer<T>
 
             // We're not in the initial state; produce a token and
             // restart parsing from the root node.
-            if (state.t != null)
+            if (state.t != null && !state.ignore)
                 tokens.add(new Token(state.t, sb.toString(), sf.line, sf.col));
             sb = new StringBuilder();
             state = droot;
         }
+    }
+
+    String findDeadStateInputSequence(int terminaldstate)
+    {
+        for (int depthlimit = 1; depthlimit < 10; depthlimit++) {
+            String s = findDeadStateInputSequenceDLS(0, terminaldstate, depthlimit, 0);
+
+            if (s != null)
+                return s;
+        }
+
+        // couldn't find one
+        return null;
+    }
+
+    // depth limited recursive search
+    String findDeadStateInputSequenceDLS(int dstate, int terminaldstate, int depthlimit, int depth)
+    {
+        DState ds = dstates.get(dstate);
+        if (ds.id == terminaldstate)
+            return ""; // return non-null. we found it! We'll start building up the string
+
+        if (depth > depthlimit)
+            return null;
+
+        for (DEdge de : ds.out) {
+            String s = findDeadStateInputSequenceDLS(de.destination.id, terminaldstate, depthlimit, depth+1);
+            if (s != null) {
+                if (de.c0 == de.c1)
+                    return escape(de.c0)+s;
+                else
+                    return String.format("[%s-%s]%s", escape(de.c0), escape(de.c1), s);
+            }
+        }
+
+        return null;
     }
 
     //////////////////////////////////////////////////////////
