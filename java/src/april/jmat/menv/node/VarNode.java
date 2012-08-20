@@ -16,7 +16,7 @@ public class VarNode implements Node
 
     public String toString()
     {
-        return String.format("\"%s\"", name);
+        return String.format("VarNode \"%s\"", name);
     }
 
     public int emit(Emit e)

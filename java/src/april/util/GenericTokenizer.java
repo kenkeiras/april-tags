@@ -5,9 +5,17 @@ import java.util.*;
 
 /** This class implements a basic lexer that compiles regular
  * expressions programmatically (i.e., does not use an external .yy
- * file. **/
+ * file.
+ *
+ * \$ represents the EOF marker. Every grammar should check for this.
+ **/
 public class GenericTokenizer<T>
 {
+    // Enabling this can output good debugging information and should
+    // be done when developing your grammar. But it produces spurious
+    // warnings for syntax errors...
+    public boolean showDeadEnds = false;
+
     public static class Token<T>
     {
         public T      type;    // the type specified by the user.
@@ -31,7 +39,8 @@ public class GenericTokenizer<T>
     }
 
     static final char MIN_CHAR=0;
-    static final char MAX_CHAR='~';
+    static final char EOF_CHAR=127;
+    static final char MAX_CHAR=EOF_CHAR;
 
     ///////////////////////////////////////////////////////
     // NFS classes
@@ -90,6 +99,8 @@ public class GenericTokenizer<T>
             return "'\\n'";
         if (c == 0)
             return "'\\0'";
+        if (c==EOF_CHAR)
+            return "'\\$'";
         return String.format("'\\%03d'", (int) c);
     }
 
@@ -210,8 +221,11 @@ public class GenericTokenizer<T>
     ArrayList<DState> dstates = new ArrayList<DState>();
     boolean compiled = false;
 
-    public GenericTokenizer()
+    T errorType;
+
+    public GenericTokenizer(T errorType)
     {
+        this.errorType = errorType;
         nroot = new NState();
     }
 
@@ -230,6 +244,7 @@ public class GenericTokenizer<T>
                 case ')':
                 case '^':
                 case '.':
+                case '$':
                 case '|':
                 case '\\':
                 case '+':
@@ -350,7 +365,7 @@ public class GenericTokenizer<T>
 
             } else if (c=='.') {
 
-                NEdge e = new NEdge(MIN_CHAR, MAX_CHAR);
+                NEdge e = new NEdge(MIN_CHAR, (char) (EOF_CHAR-1));
                 e.destination = s1;
                 s0.out.add(e);
 
@@ -474,6 +489,8 @@ public class GenericTokenizer<T>
             accepts[(int) '\n'] = true;
             accepts[(int) '\r'] = true;
             accepts[(int) '\t'] = true;
+        } else if (c=='$') {
+            accepts[EOF_CHAR] = true;
         } else {
             accepts[(int) c] = true;
         }
@@ -481,8 +498,6 @@ public class GenericTokenizer<T>
 
     ////////////////////////////////////////////////////////////////
     // Create DFS from the NFS
-    boolean deadEndWarning;
-
     void compile()
     {
         assert(!compiled);    // please only compile once.
@@ -499,68 +514,79 @@ public class GenericTokenizer<T>
 
         for (DState dstate : dstates) {
             if (dstate.t == null && !dstate.ignore) {
-                if (!deadEndWarning) {
-                    System.out.println("WARNING: Your grammar is buggy! See comments in GenericTokenizer.");
 
-                    /* A "good" grammar is one that defends against
-                       unexpected inputs. Every DState ought to
-                       produce some sort of token, or else it is
-                       possible that the parser could arrive in that
-                       dstate and not be able to transition to the
-                       next dstate (due to, for example, the next
-                       input character not matching any of the out
-                       edges of the dstate). An early EOF can also cause
-                       any dstate to become terminal.
-                     */
-                    deadEndWarning = true;
-                }
-                System.out.printf("Dead-end dstate: "+dstate+"\n");
-                String seq = findDeadStateInputSequence(dstate.id);
-                if (seq != null) {
-                    System.out.printf("  A sequence that produces it: "+seq);
-                    System.out.printf("[ ");
-
+                if (showDeadEnds) {
+                    // is it really a dead-end state? Compute the set of
+                    // edges that transition out. It might be exhaustive!
                     boolean accepts[] = new boolean[MAX_CHAR+1];
                     for (DEdge de : dstate.out) {
                         for (char c = de.c0; c <= de.c1; c++)
                             accepts[(int) c] = true;
                     }
-                    int i0 = 0;
-                    boolean some = false;
-                    while (i0 < accepts.length) {
-                        if (accepts[i0]) {
-                            i0++;
-                            continue;
+
+                    boolean deadEnd = false;
+                    for (int i = 0; i < accepts.length; i++)
+                        if (!accepts[i])
+                            deadEnd = true;
+
+                    if (!deadEnd)
+                        continue;
+
+                    System.out.printf("Dead-end dstate: "+dstate+"\n");
+                    String seq = findDeadStateInputSequence(dstate.id);
+                    if (seq != null) {
+                        System.out.printf("  A sequence that produces it: "+seq);
+                        System.out.printf("[ ");
+
+
+                        int i0 = 0;
+                        boolean some = false;
+                        while (i0 < accepts.length) {
+                            if (accepts[i0]) {
+                                i0++;
+                                continue;
+                            }
+
+                            int i1 = i0;
+                            while (i1+1 < accepts.length && !accepts[i1+1])
+                                i1++;
+                            if (i0 == i1) {
+                                System.out.printf("%s ", escape((char) i0));
+                            } else if (i1 == EOF_CHAR) {
+                                if (i0 == (i1-1))
+                                    System.out.printf("%s %s ", escape((char) i0), escape(EOF_CHAR));
+                                else
+                                    System.out.printf("%s-%s %s ", escape((char) i0), escape((char) (EOF_CHAR-1)), escape(EOF_CHAR));
+                            } else {
+                                System.out.printf("%s-%s ",escape((char) i0), escape((char) i1));
+                            }
+
+                            i0 = i1+1;
                         }
-                        some = true;
-                        int i1 = i0;
-                        while (i1+1 < accepts.length && !accepts[i1+1])
-                            i1++;
-                        System.out.printf("%s-%s ",escape((char) i0), escape((char) i1));
-                        i0 = i1+1;
+
+                        System.out.printf("]\n\n");
+                    } else {
+                        System.out.printf("  Sorry, couldn't find a sequence that produces this dstate. (Try a larger depth limit?)\n\n");
                     }
-                    if (!some)
-                        System.out.printf("EOF ");
-
-                    /*for (DEdge de : dstate.out) {
-                        if (de.c0 == de.c1)
-                            System.out.printf("%s ", escape(de.c0));
-                        else
-                            System.out.printf("%s-%s ", escape(de.c0), escape(de.c1));
-                            } */
-
-                    System.out.printf("]\n\n");
-                } else {
-                    System.out.printf("  Sorry, couldn't find a sequence that produces this dstate. (Try a larger depth limit?)\n\n");
                 }
             }
         }
+    }
+
+    static String escape(String s)
+    {
+        StringBuffer sb = new StringBuffer();
+        for (int i = 0; i < s.length(); i++)
+            sb.append(escape(s.charAt(i)));
+        return sb.toString();
     }
 
     static String escape(char c)
     {
         if (c==0)
             return "\\0";
+        if (c=='.')
+            return "\\.";
         if (c=='\n')
             return "\\n";
         if (c=='\r')
@@ -571,6 +597,8 @@ public class GenericTokenizer<T>
             return "\\-";
         if (c=='\\')
             return "\\\\";
+        if (c==EOF_CHAR)
+            return "\\$";
         if (c<' ')
             return String.format("\\%d", (int) c);
         return ""+c;
@@ -821,6 +849,8 @@ public class GenericTokenizer<T>
      * not possible to add additional expressions. **/
     public ArrayList<Token<T>> tokenize(String s)
     {
+        s = s + ((char) EOF_CHAR);
+
         if (!compiled)
             compile();
 
@@ -881,11 +911,17 @@ public class GenericTokenizer<T>
                 //   good error reporting should add a production for
                 //   a single mismatched character.
                 //
-                System.out.println("Parse error; grammar does not contain a . production to catch errors.");
-                // tokens.add(new Token(null, sb.toString(), sf.line, sf.col));
+                if (showDeadEnds) {
+                    System.out.println("GenericTokenizer: Got caught in a dead-end dstate!");
+                    System.out.println("  dstate: "+state);
+                    System.out.println("  input : "+escape(sb.toString()));
+                }
+
+                tokens.add(new Token(errorType, sb.toString(), sf.line, sf.col));
 
                 if (!sf.hasNext())
                     return tokens;
+
                 c = sf.next();
                 sb = new StringBuilder();
                 continue;
@@ -940,7 +976,7 @@ public class GenericTokenizer<T>
     // Test/example code.
     public static void main(String args[])
     {
-        GenericTokenizer<String> gt = new GenericTokenizer<String>();
+        GenericTokenizer<String> gt = new GenericTokenizer<String>("ERROR");
         /*	gt.add(" +", " +");
             gt.add("ab+", "ab+");
             gt.add("abc", "abc");
@@ -952,11 +988,15 @@ public class GenericTokenizer<T>
         //	gt.add("(j)k","(j)k");
 
         gt.add("WHITE", "\\s+");
+        gt.addIgnore("\\$");
 
         // do NOT add unary minus, it interferes with subtraction
-        gt.add("NUMBER", "[\\.0-9]+((e|E)\\-?[0-9]+)?");
+        gt.add("NUMBER", "\\.[0-9]+((e|E)\\-?[0-9]+)?");
+        gt.add("NUMBER", "[0-9]+[\\.0-9]*((e|E)\\-?[0-9]+)?");
         gt.add("SYMBOL", "[_A-Za-z][_A-Za-z0-9]*");
         gt.addEscape("OP", "++ -- <= == >= += -= *= /= && || << >> <<= >>= <<< >>> .* ./ .^ + - / * \\ ' [ ] ( ) { } ; < > , ^");
+
+        gt.add("ERROR", ".");
 
         gt.dumpNroot();
         System.out.println("*****************");

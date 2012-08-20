@@ -13,7 +13,7 @@ class Tokenizer
     static GenericTokenizer<String> gt;
 
     static {
-        gt = new GenericTokenizer<String>();
+        gt = new GenericTokenizer<String>("ERROR");
 
         gt.add("STRING", "\"[^\"]*\"");
         gt.addEscape("OP", "+{ { } = : , ; [ ]");
@@ -22,7 +22,7 @@ class Tokenizer
         gt.addIgnore("#[^\n]*\\n"); // comment
         gt.addIgnore("//[^\n]*\\n"); // comment
         gt.addIgnore("\\s+");        // whitespace
-        gt.add("ERROR", ".");
+        gt.addIgnore("\\$");
     }
 
     public Tokenizer(File f) throws IOException
