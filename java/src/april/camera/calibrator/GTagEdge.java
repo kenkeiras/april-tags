@@ -223,6 +223,17 @@ public class GTagEdge extends GEdge
         return edge;
     }
 
+
+    public ArrayList<double[]> getPixelObs()
+    {
+        return pixel_observations;
+    }
+
+    public ArrayList<double[]> getMosaicCoords()
+    {
+        return mosaic_coordinates;
+    }
+
     public double getChi2(Graph g)
     {
         assert(g.nodes.get(this.nodes[CI]) instanceof GIntrinsicsNode);
