@@ -107,6 +107,13 @@ public class TagDetector implements AbstractTagDetector
     /** Early pruning of quads which have insane aspect ratios. **/
     public double maxQuadAspectRatio = 32;
 
+    // when stitching a quad together from segments, how far away can
+    // one line begin from the end of the other?
+    //
+    // range = quadSearchRangePix + quadSearchRangeFraction*line_length
+    public double quadSearchRangePix = 6;
+    public double quadSearchRangeFraction = 0.5;
+
     /** Produce debugging output. If the debugging code annoys you (or
      * makes porting harder) you can delete all of the code in an
      * if(debug) block.
@@ -571,7 +578,7 @@ public class TagDetector implements AbstractTagDetector
             GLine2D parentLine = new GLine2D(new double[] { parent.x0, parent.y0 },
                                              new double[] { parent.x1, parent.y1 });
 
-            for (Segment child : gridder.find(parent.x1, parent.y1, 3+0.5*parent.length)) {
+            for (Segment child : gridder.find(parent.x1, parent.y1, quadSearchRangePix + quadSearchRangeFraction*parent.length)) {
 //            for (Segment child : gridder.find(parent.x1, parent.y1, 5+parent.length)) {
                 // require child to have the right handedness...
                 if (MathUtil.mod2pi(child.theta - parent.theta) > 0)
