@@ -58,6 +58,7 @@ public class GraphTest implements ParameterListener
         jf.add(vc, BorderLayout.CENTER);
         jf.add(pg.getPanel(), BorderLayout.SOUTH);
         jf.setSize(800, 600);
+        jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         jf.setVisible(true);
 
         ArrayList<double[]> bounds = g.getBounds();
@@ -148,6 +149,8 @@ public class GraphTest implements ParameterListener
             VisVertexData vd = new VisVertexData();
 
             for (GEdge ge : g.edges) {
+                if (ge.nodes.length != 2)
+                    continue; // Can't draw other types of edges
 
                 for (int i = 0; i < ge.nodes.length; i++) {
                     GNode gn = g.nodes.get(ge.nodes[i]);

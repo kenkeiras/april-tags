@@ -8,6 +8,8 @@ import april.tag.*;
 
 public class KannalaBrandtInitializer implements CalibrationInitializer
 {
+    public static boolean verbose = true;
+
     public KannalaBrandtInitializer()
     {
     }
@@ -16,13 +18,14 @@ public class KannalaBrandtInitializer implements CalibrationInitializer
       * the initializer. Returns null if initialization could not proceed.
       */
     public ParameterizableCalibration initializeWithObservations(int width, int height,
-                                        ArrayList<ArrayList<TagDetection>> allDetections,
+                                        List<List<TagDetection>> allDetections,
                                         TagFamily tf)
     {
         IntrinsicsEstimator estimator = new IntrinsicsEstimator(allDetections, tf, width, height);
 
         double K[][] = estimator.getIntrinsics();
-        System.out.println("Estimated intrinsics:"); LinAlg.print(K);
+        if (verbose) System.out.println("Estimated intrinsics:");
+        if (verbose) LinAlg.print(K);
 
         for (int i=0; i < K.length; i++)
             for (int j=0; j < K[i].length; j++)

@@ -38,6 +38,7 @@ public class LatencyTest
         jf.add(sampleLabel, BorderLayout.SOUTH);
 
         jf.setSize(1000,800);
+        jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         jf.setVisible(true);
     }
 

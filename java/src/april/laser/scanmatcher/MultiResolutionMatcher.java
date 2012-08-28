@@ -467,6 +467,7 @@ public class MultiResolutionMatcher
             jf.add(pg, BorderLayout.SOUTH);
 
             jf.setSize(800,600);
+            jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             jf.setVisible(true);
 
             pg.addListener(this);

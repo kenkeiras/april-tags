@@ -1,6 +1,7 @@
 package april.camera.tools;
 
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.image.*;
 import java.io.*;
 import java.util.*;
@@ -20,7 +21,7 @@ public class EstimateIntrinsics implements ParameterListener
 {
     ArrayList<String>                   paths           = new ArrayList<String>();
     ArrayList<BufferedImage>            images          = new ArrayList<BufferedImage>();
-    ArrayList<ArrayList<TagDetection>>  allDetections   = new ArrayList<ArrayList<TagDetection>>();
+    ArrayList<List<TagDetection>>  allDetections   = new ArrayList<List<TagDetection>>();
 
     IntrinsicsEstimator ie;
 
@@ -150,7 +151,7 @@ public class EstimateIntrinsics implements ParameterListener
 
         String path                         = paths.get(n);
         BufferedImage image                 = images.get(n);
-        ArrayList<TagDetection> detections  = allDetections.get(n);
+        List<TagDetection> detections  = allDetections.get(n);
 
         assert(images.size() == ie.getVanishingPoints().size());
         double vp[][]                   = ie.getVanishingPoints().get(n);

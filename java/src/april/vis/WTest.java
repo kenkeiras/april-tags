@@ -53,6 +53,7 @@ public class WTest
         jf.setLayout(new BorderLayout());
         jf.add(new JScrollPane(new WAdapter(layerPanel)), BorderLayout.CENTER);
         jf.setSize(400,600);
+        jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         jf.setVisible(true);
     }
 }

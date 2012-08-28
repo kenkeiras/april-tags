@@ -231,6 +231,7 @@ public class DragPanel implements MouseListener, MouseMotionListener
 //        jf.add(new JScrollPane(dp), BorderLayout.CENTER);
 
         jf.setSize(600,400);
+        jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         jf.setVisible(true);
     }
 }

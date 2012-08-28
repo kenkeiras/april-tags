@@ -48,6 +48,13 @@ public class CameraMath
 
                 return new double[] { r[0]/r[2], r[1]/r[2] };
             }
+            if (p.length==3) {
+                double r[] = new double[] { T[0][0]*p[0] + T[0][1]*p[1] + T[0][2]*p[2],
+                                            T[1][0]*p[0] + T[1][1]*p[1] + T[1][2]*p[2],
+                                            T[2][0]*p[0] + T[2][1]*p[1] + T[2][2]*p[2] };
+
+                return new double[] { r[0]/r[2], r[1]/r[2] };
+            }
             assert(false);
         }
 

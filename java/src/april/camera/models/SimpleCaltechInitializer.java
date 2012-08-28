@@ -8,6 +8,8 @@ import april.tag.*;
 
 public class SimpleCaltechInitializer implements CalibrationInitializer
 {
+    public static boolean verbose = true;
+
     public SimpleCaltechInitializer()
     {
     }
@@ -16,7 +18,7 @@ public class SimpleCaltechInitializer implements CalibrationInitializer
       * the initializer. Returns null if initialization could not proceed.
       */
     public ParameterizableCalibration initializeWithObservations(int width, int height,
-                                        ArrayList<ArrayList<TagDetection>> allDetections,
+                                        List<List<TagDetection>> allDetections,
                                         TagFamily tf)
     {
         IntrinsicsFreeDistortionEstimator distortionEstimator =
@@ -55,7 +57,8 @@ public class SimpleCaltechInitializer implements CalibrationInitializer
         IntrinsicsEstimator intrinsicsEstimator = new IntrinsicsEstimator(allRectifiedDetections, tf, width, height);
 
         double K[][] = intrinsicsEstimator.getIntrinsics();
-        System.out.println("Estimated intrinsics:"); LinAlg.print(K);
+        if (verbose) System.out.println("Estimated intrinsics:");
+        if (verbose) LinAlg.print(K);
 
         for (int i=0; i < K.length; i++)
             for (int j=0; j < K[i].length; j++)

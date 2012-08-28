@@ -103,6 +103,7 @@ public class FeatureTest implements ParameterListener
 
         jf.add(jtb, BorderLayout.SOUTH);
         jf.setSize(1024, 600);
+        jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         jf.setVisible(true);
 
         update();

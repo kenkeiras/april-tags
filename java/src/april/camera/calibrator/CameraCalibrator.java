@@ -66,9 +66,9 @@ public class CameraCalibrator
     private static class ProcessedImage
     {
         public BufferedImage image;
-        public ArrayList<TagDetection> detections;
+        public List<TagDetection> detections;
 
-        public ProcessedImage(BufferedImage image, ArrayList<TagDetection> detections)
+        public ProcessedImage(BufferedImage image, List<TagDetection> detections)
         {
             this.image = image;
             this.detections = detections;
@@ -287,7 +287,7 @@ public class CameraCalibrator
     }
 
     public synchronized void addImages(List<BufferedImage> newImages,
-                               ArrayList<ArrayList<TagDetection>> allDetections)
+                                       List<List<TagDetection>> allDetections)
     {
         addImages(newImages, allDetections, null);
     }
@@ -309,7 +309,7 @@ public class CameraCalibrator
      * The mosaic and cameras must not move within the list of images provided.
      */
     public synchronized void addImages(List<BufferedImage> newImages,
-                               ArrayList<ArrayList<TagDetection>> allDetections,
+                                       List<List<TagDetection>> allDetections,
                                double MosaicToGlobalXyzrpy[])
     {
         assert(newImages.size() == initializers.size());
@@ -329,7 +329,7 @@ public class CameraCalibrator
                 assert(reference.image.getHeight() == im.getHeight());
             }
 
-            ArrayList<TagDetection> detections = null;
+            List<TagDetection> detections = null;
 
             if (allDetections == null)
                 detections = detector.process(im, new double[] {im.getWidth()/2, im.getHeight()/2});
@@ -506,6 +506,10 @@ public class CameraCalibrator
         ////////////////////////////////////////
         vb = vw.getBuffer("Distortion");
 
+        VisChain bgchain = new VisChain();
+        VisChain mgchain = new VisChain();
+        VisChain fgchain = new VisChain();
+
         for (int idx = 0; idx < cameras.size(); idx++) {
 
             CameraWrapper wrapper = cameras.get(idx);
@@ -572,31 +576,35 @@ public class CameraCalibrator
                                             max,
                                             maxRadius);
 
-            vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT,
-                                        new VisChain(LinAlg.translate(100, 50 + 100*idx, 0),
-                                                     new VzRectangle(200, 100,
-                                                                     new VzMesh.Style(new Color(10*idx, 10*idx, 10*idx)),
-                                                                     new VzLines.Style(Color.white, 1))),
-                                        new VisChain(LinAlg.translate(0, 100*idx, 0),
-                                                     new VzLines(new VisVertexData(new double[][] { {  0,   0},
-                                                                                                    {100, 100} }),
-                                                                 VzLines.LINE_STRIP,
-                                                                 new VzLines.Style(new Color(255, 255, 255, 128), 1)),
-                                                     LinAlg.scale(100 / maxRadius,
-                                                                  100 / maxRadius,
-                                                                  1),
-                                                     new VzLines(new VisVertexData(points),
-                                                                 VzLines.LINE_STRIP,
-                                                                 new VzLines.Style(Color.red, 1))),
-                                        new VisChain(LinAlg.translate(35, 100*idx, 0),
-                                                     new VzText(VzText.ANCHOR.BOTTOM_LEFT, "<<monospaced-10>>r rect")),
-                                        new VisChain(LinAlg.translate(0, 10+100*idx, 0),
-                                                     LinAlg.rotateZ(Math.PI/2),
-                                                     new VzText(VzText.ANCHOR.TOP_LEFT, "<<monospaced-10>>r dist")),
-                                        new VisChain(LinAlg.translate(0, 100*(idx+1), 0),
-                                                     new VzText(VzText.ANCHOR.TOP_LEFT, uistring))));
+            bgchain.add(new VisChain(LinAlg.translate(100, 50 + 100*idx, 0),
+                                     new VzRectangle(200, 100,
+                                                     new VzMesh.Style(new Color(10*idx, 10*idx, 10*idx)),
+                                                     new VzLines.Style(Color.white, 1))),
+                        new VisChain(LinAlg.translate(0, 100*idx, 0),
+                                     new VzLines(new VisVertexData(new double[][] { {  0,   0},
+                                                                                    {100, 100} }),
+                                                 VzLines.LINE_STRIP,
+                                                 new VzLines.Style(new Color(255, 255, 255, 128), 1))));
+            mgchain.add(new VisChain(LinAlg.translate(0, 100*idx, 0),
+                                     LinAlg.scale(100 / maxRadius,
+                                                  100 / maxRadius,
+                                                  1),
+                                     new VzLines(new VisVertexData(points),
+                                                 VzLines.LINE_STRIP,
+                                                 new VzLines.Style(Color.red, 1))));
+            fgchain.add(new VisChain(LinAlg.translate(35, 100*idx, 0),
+                                     new VzText(VzText.ANCHOR.BOTTOM_LEFT, "<<monospaced-10>>r rect")),
+                        new VisChain(LinAlg.translate(0, 10+100*idx, 0),
+                                     LinAlg.rotateZ(Math.PI/2),
+                                     new VzText(VzText.ANCHOR.TOP_LEFT, "<<monospaced-10>>r dist")),
+                        new VisChain(LinAlg.translate(0, 100*(idx+1), 0),
+                                     new VzText(VzText.ANCHOR.TOP_LEFT, uistring)));
         }
 
+        vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT,
+                                    bgchain,
+                                    mgchain,
+                                    fgchain));
         vb.swap();
 
         ////////////////////////////////////////
@@ -604,8 +612,8 @@ public class CameraCalibrator
 
         for (int cameraIndex = 0; cameraIndex < cameras.size(); cameraIndex++) {
 
-            int width  = images.get(cameraIndex).get(0).image.getWidth();
-            int height = images.get(cameraIndex).get(0).image.getHeight();
+            int width  = images.get(0).get(cameraIndex).image.getWidth();
+            int height = images.get(0).get(cameraIndex).image.getHeight();
 
             int w = width / 30 + 2;
             int h = height / 30;
@@ -657,7 +665,7 @@ public class CameraCalibrator
 
             double scale = 150.0/w;
             vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_RIGHT,
-                                        new VisChain(LinAlg.translate(-150, 150*cameraIndex, 0),
+                                        new VisChain(LinAlg.translate(-150, 150*h/w*cameraIndex, 0),
                                                      LinAlg.scale(scale, scale, 1),
                                                      new VzImage(texture, VzImage.FLIP))));
         }
@@ -922,6 +930,52 @@ public class CameraCalibrator
         System.out.println("}");
     }
 
+    public void saveDetections()
+    {
+        saveDetections("/tmp/CameraCalibration");
+    }
+
+    public void saveDetections(String basepath)
+    {
+        if (images == null || images.size() < 1 || cameras == null)
+            return;
+
+        String dirName = String.format("%s/", basepath);
+        File dir = new File(dirName);
+
+        if (dir.mkdirs() != true) {
+            System.err.printf("CameraCalibrator: Failure to create directory '%s'\n", dirName);
+            return;
+        }
+
+        try {
+            String filename = String.format("%s/detections.csv", basepath);
+            BufferedWriter outs = new BufferedWriter(new FileWriter(new File(filename)));
+
+            for (int imageSetIndex = 0; imageSetIndex < images.size(); imageSetIndex++) {
+                List<ProcessedImage> imageSet = images.get(imageSetIndex);
+
+                for (int cameraIndex = 0; cameraIndex < imageSet.size(); cameraIndex++) {
+
+                    ProcessedImage pim = imageSet.get(cameraIndex);
+
+                    CameraWrapper cam = cameras.get(cameraIndex);
+                    double K[][] = cam.cal.copyIntrinsics();
+
+                    for (TagDetection d : pim.detections) {
+
+                        outs.write(String.format("%12.6f\n", Math.sqrt(Math.pow(d.cxy[0] - K[0][2], 2) +
+                                                                       Math.pow(d.cxy[1] - K[1][2], 2)  )));
+                    }
+                }
+            }
+
+            outs.close();
+        } catch (IOException ex) {
+            System.out.println("Error saving detections: " + ex);
+        }
+    }
+
     public void saveImages()
     {
         saveImages("/tmp/CameraCalibration");
@@ -1003,7 +1057,7 @@ public class CameraCalibrator
 
             // get all the detections (one set per image) for this camera for
             // the purposes of initialization
-            ArrayList<ArrayList<TagDetection>> allDetections = new ArrayList<ArrayList<TagDetection>>();
+            List<List<TagDetection>> allDetections = new ArrayList<List<TagDetection>>();
             for (ProcessedImage pim : currentCameraImages)
                 allDetections.add(pim.detections);
 
@@ -1121,7 +1175,7 @@ public class CameraCalibrator
     }
 
     private void processImage(int cameraIndex, int imageIndex, int mosaicIndex,
-                              ArrayList<TagDetection> detections)
+                              List<TagDetection> detections)
     {
         // index where edge will appear (though it's not there now)
         int tagEdgeIndex = g.edges.size();

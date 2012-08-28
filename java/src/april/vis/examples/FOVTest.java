@@ -38,6 +38,7 @@ public class FOVTest implements ParameterListener
         pg.addListener(this);
 
         jf.setSize(600,400);
+        jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         jf.setVisible(true);
 
         parameterChanged(pg, "fov");

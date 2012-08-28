@@ -7,20 +7,19 @@ import april.jmat.geom.*;
 import april.tag.*;
 import april.util.*;
 
-public class IntrinsicsEstimator
+public class IntrinsicsEstimator2
 {
     public static boolean verbose = true;
 
     private double K[][];
     private ArrayList<double[][]> vanishingPoints = new ArrayList<double[][]>();
-    private ArrayList<ArrayList<double[][]>> allFitLines = new ArrayList<ArrayList<double[][]>>();
 
     private TagMosaic mosaic;
     private TagFamily tf;
     private int width;
     private int height;
 
-    public IntrinsicsEstimator(List<List<TagDetection>> allDetections, TagFamily tf,
+    public IntrinsicsEstimator2(List<List<TagDetection>> allDetections, TagFamily tf,
                                int width, int height)
     {
         this.mosaic = new TagMosaic(tf);
@@ -36,7 +35,6 @@ public class IntrinsicsEstimator
             else if (detections.size() > 1)
                 computeTagMosaicVanishingPoints(detections);
             else {
-                allFitLines.add(null);
                 vanishingPoints.add(null);
             }
         }
@@ -63,11 +61,6 @@ public class IntrinsicsEstimator
         }
     }
 
-    public ArrayList<double[][]> getFitLines(int n)
-    {
-        return allFitLines.get(n);
-    }
-
     public ArrayList<double[][]> getVanishingPoints()
     {
         return vanishingPoints;
@@ -92,90 +85,22 @@ public class IntrinsicsEstimator
         // intersect lines to compute vanishing points
         vanishingPoints.add(new double[][] { bottom.intersectionWith(top) ,
                                              left.intersectionWith(right) });
-
-        ArrayList<double[][]> fitLines = new ArrayList<double[][]>();
-        fitLines.add(getLine(bottom));
-        fitLines.add(getLine(top));
-        fitLines.add(getLine(left));
-        fitLines.add(getLine(right));
-        allFitLines.add(fitLines);
     }
 
     private void computeTagMosaicVanishingPoints(List<TagDetection> detections)
     {
-        ArrayList<TagMosaic.GroupedDetections> rowDetections = mosaic.getRowDetections(detections);
-        ArrayList<TagMosaic.GroupedDetections> colDetections = mosaic.getColumnDetections(detections);
+        ArrayList<double[]> xy_rcs = new ArrayList<double[]>();
+        ArrayList<double[]> xy_pxs = new ArrayList<double[]>();
 
-        ArrayList<double[][]> fitLines = new ArrayList<double[][]>();
-
-        // get min and max row and column for computing vanishing point
-        int minRow = Integer.MAX_VALUE;
-        int maxRow = Integer.MIN_VALUE;
-        int minCol = Integer.MAX_VALUE;
-        int maxCol = Integer.MIN_VALUE;
-        int minRowIndex = -1;
-        int maxRowIndex = -1;
-        int minColIndex = -1;
-        int maxColIndex = -1;
-
-        for (int i=0; i < rowDetections.size(); i++) {
-            TagMosaic.GroupedDetections gd = rowDetections.get(i);
-            assert(gd.type == TagMosaic.GroupedDetections.ROW_GROUP);
-
-            if (verbose)
-                System.out.printf("Detection group %2d: type %1d index %2d #detections %3d\n",
-                                  i, gd.type, gd.index, gd.detections.size());
-
-            if (gd.detections.size() < 2)
-                continue;
-
-            fitLines.add(getLine(gd.fitLine()));
-
-            if (gd.index < minRow) {
-                minRow = gd.index;
-                minRowIndex = i;
-            }
-            if (gd.index > maxRow) {
-                maxRow = gd.index;
-                maxRowIndex = i;
-            }
+        for (TagDetection d : detections) {
+            xy_rcs.add(new double[] { mosaic.getRow(d.id), mosaic.getCol(d.id) });
+            xy_pxs.add(d.cxy);
         }
 
-        for (int i=0; i < colDetections.size(); i++) {
-            TagMosaic.GroupedDetections gd = colDetections.get(i);
-            assert(gd.type == TagMosaic.GroupedDetections.COL_GROUP);
+        double H[][] = CameraMath.estimateHomography(xy_rcs, xy_pxs);
 
-            if (verbose)
-                System.out.printf("Detection group %2d: type %1d index %2d #detections %3d\n",
-                                  i, gd.type, gd.index, gd.detections.size());
-
-            if (gd.detections.size() < 2)
-                continue;
-
-            fitLines.add(getLine(gd.fitLine()));
-
-            if (gd.index < minCol) {
-                minCol = gd.index;
-                minColIndex = i;
-            }
-            if (gd.index > maxCol) {
-                maxCol = gd.index;
-                maxColIndex = i;
-            }
-        }
-
-        if (verbose)
-            System.out.printf("Row min %2d (%2d) max %2d (%2d) Col min %2d (%2d) max %2d (%2d)\n",
-                              minRow, minRowIndex, maxRow, maxRowIndex,
-                              minCol, minColIndex, maxCol, maxColIndex);
-
-        GLine2D rowMinLine = rowDetections.get(minRowIndex).fitLine();
-        GLine2D rowMaxLine = rowDetections.get(maxRowIndex).fitLine();
-        GLine2D colMinLine = colDetections.get(minColIndex).fitLine();
-        GLine2D colMaxLine = colDetections.get(maxColIndex).fitLine();
-
-        double rowVanishingPoint[] = rowMinLine.intersectionWith(rowMaxLine);
-        double colVanishingPoint[] = colMinLine.intersectionWith(colMaxLine);
+        double rowVanishingPoint[] = CameraMath.pixelTransform(H, new double[] { 0, 1, 0 });
+        double colVanishingPoint[] = CameraMath.pixelTransform(H, new double[] { 1, 0, 0 });
 
         if (verbose)
             System.out.printf("Vanishing points (%7.1f, %7.1f) and (%7.1f, %7.1f)\n",
@@ -183,39 +108,6 @@ public class IntrinsicsEstimator
                               colVanishingPoint[0], colVanishingPoint[1]);
 
         vanishingPoints.add(new double[][] { rowVanishingPoint, colVanishingPoint });
-        allFitLines.add(fitLines);
-    }
-
-    // rendering
-    private double[][] getLine(GLine2D line)
-    {
-        double x0 = -10000;
-        double x1 =  20000;
-        double y0 = -10000;
-        double y1 =  20000;
-
-        double p0[] = null;
-        double p1[] = null;
-
-        double dx  = line.getDx();
-        double dy  = line.getDy();
-        double p[] = line.getPoint();
-        double t   = line.getTheta();
-        t = MathUtil.mod2pi(t);
-
-        double pi = Math.PI;
-        // mostly horizontal
-        if ((t < -3*pi/4) || (t > -pi/4 && t < pi/4) || (t > 3*pi/4)) {
-            p0 = new double[] { x0, p[1] + (x0 - p[0])*dy/dx };
-            p1 = new double[] { x1, p[1] + (x1 - p[0])*dy/dx };
-        }
-        // mostly vertical
-        else {
-            p0 = new double[] { p[0] + (y0 - p[1])*dx/dy, y0 };
-            p1 = new double[] { p[0] + (y1 - p[1])*dx/dy, y1 };
-        }
-
-        return new double[][] { p0, p1 };
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -224,7 +116,7 @@ public class IntrinsicsEstimator
 
     private class TagMosaic
     {
-        // IntrinsicsEstimator does not require tagPositions and metersPerTag is not given
+        // IntrinsicsEstimator2 does not require tagPositions and metersPerTag is not given
         // ArrayList<double[]> tagPositions;
 
         ArrayList<int[]>    tagRowCol;
@@ -243,7 +135,7 @@ public class IntrinsicsEstimator
                     if (id >= tf.codes.length)
                         continue;
 
-                    // IntrinsicsEstimator does not require tagPositions and metersPerTag is not given
+                    // IntrinsicsEstimator2 does not require tagPositions and metersPerTag is not given
                     // tagPositions.add(new double[] { x * metersPerTag ,
                     //                                 y * metersPerTag ,
                     //                                 0.0              });
@@ -251,6 +143,16 @@ public class IntrinsicsEstimator
                     tagRowCol.add(new int[] { y, x });
                 }
             }
+        }
+
+        public int getRow(long id)
+        {
+            return tagRowCol.get((int) id)[0];
+        }
+
+        public int getCol(long id)
+        {
+            return tagRowCol.get((int) id)[1];
         }
 
         public class GroupedDetections
@@ -321,3 +223,4 @@ public class IntrinsicsEstimator
         }
     }
 }
+
