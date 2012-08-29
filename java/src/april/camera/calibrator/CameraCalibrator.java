@@ -255,6 +255,21 @@ public class CameraCalibrator
         return LinAlg.copy(cam.cameraExtrinsics.state);
     }
 
+    public synchronized double[] getMosaicExtrinsics(int mosaic)
+    {
+        return LinAlg.copy(g.nodes.get(mosaicExtrinsicsIndices.get(mosaic)).state);
+    }
+
+    public synchronized ArrayList<double[]> getMosaicExtrinsics()
+    {
+        ArrayList<double[]> extrins = new ArrayList();
+
+        for (Integer i : mosaicExtrinsicsIndices)
+            extrins.add(LinAlg.copy(g.nodes.get(i).state));
+
+        return extrins;
+    }
+
     public synchronized Graph getGraphCopy()
     {
         return g.copy();
@@ -357,6 +372,9 @@ public class CameraCalibrator
             cameras = cameraList;
 
             // add all the images we've collected so far
+            //XXX This reuses the extrinsics for /this/ mosaic to redo
+            //XXX all the previous ones in the case of delayed
+            //XXX initialization
             for (int i=0; i < this.images.size(); i++)
                 addImageSet(this.images.get(i), i, MosaicToGlobalXyzrpy);
         }
