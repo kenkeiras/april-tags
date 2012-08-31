@@ -20,12 +20,10 @@ public class IntrinsicsEstimator2
     private int height;
 
     public IntrinsicsEstimator2(List<List<TagDetection>> allDetections, TagFamily tf,
-                               int width, int height)
+                                double fallbackcx, double fallbackcy)
     {
         this.mosaic = new TagMosaic(tf);
         this.tf = tf;
-        this.width = width;
-        this.height = height;
 
         // compute all of the vanishing points
         for (List<TagDetection> detections : allDetections) {
@@ -52,12 +50,11 @@ public class IntrinsicsEstimator2
 
         if (vanishingPoints.size() >= 3) {
             // if we have enough points to estimate cx and cy properly, do so
-            K = CameraMath.estimateIntrinsicsFromVanishingPoints(vanishingPoints, width, height);
+            K = CameraMath.estimateIntrinsicsFromVanishingPoints(vanishingPoints);
 
-        } else {
-            // estimate the focal length and assume that cx and cy are at width/2 and height/2, respectively
-            // for now, we just use the first image
-            K = CameraMath.estimateIntrinsicsFromOneVanishingPointAndAssumeCxCy(vanishingPoints.get(0), width, height);
+        } else if (vanishingPoints.size() >= 1) {
+            // estimate the focal length with the fallback cx, cy given
+            K = CameraMath.estimateIntrinsicsFromOneVanishingPointWithGivenCxCy(vanishingPoints.get(0), fallbackcx, fallbackcy);
         }
     }
 

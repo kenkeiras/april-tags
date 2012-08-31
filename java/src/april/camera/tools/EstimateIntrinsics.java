@@ -90,7 +90,7 @@ public class EstimateIntrinsics implements ParameterListener
         setupGUI();
 
         // estimate the intrinsics
-        ie = new IntrinsicsEstimator(allDetections, this.tf, imwidth, imheight);
+        ie = new IntrinsicsEstimator(allDetections, this.tf, imwidth/2, imheight/2);
 
         double K[][] = ie.getIntrinsics();
 

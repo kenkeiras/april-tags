@@ -47,7 +47,6 @@ public class CameraCalibrator
     VisWorld.Buffer vb;
     TreeSet<String> disabledBuffers = new TreeSet<String>();
 
-    IntrinsicsEstimator ie;
     Graph g;
     GraphSolver solver;
 
