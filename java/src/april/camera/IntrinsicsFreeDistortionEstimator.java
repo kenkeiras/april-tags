@@ -14,17 +14,18 @@ public class IntrinsicsFreeDistortionEstimator
 {
     public int MAX_ITERATIONS = 20; // number of iterations for undistortion
 
-    ArrayList<ArrayList<TagDetection>> allDetections;
+    List<List<TagDetection>> allDetections;
     int width, height;
 
     TagFamily tf;
     TagMosaic mosaic;
 
-    Graph g;
-    GraphSolver gs;
-    int distortNodeIndex = -1;
+    // XXX not always intended to be public
+    public Graph g;
+    public GraphSolver gs;
+    public int distortNodeIndex = -1;
 
-    public IntrinsicsFreeDistortionEstimator(ArrayList<ArrayList<TagDetection>> allDetections,
+    public IntrinsicsFreeDistortionEstimator(List<List<TagDetection>> allDetections,
                                              TagFamily tf, int width, int height)
     {
         this.allDetections = allDetections;
@@ -53,6 +54,29 @@ public class IntrinsicsFreeDistortionEstimator
         GDistort distort = (GDistort) g.nodes.get(distortNodeIndex);
 
         return distort.undistort(xy_dp);
+    }
+
+    public void iterate()
+    {
+        gs.iterate();
+    }
+
+    public double getMSE()
+    {
+        GDistort distort = (GDistort) g.nodes.get(distortNodeIndex);
+
+        double tse = 0;
+        int nedges = 0;
+        for (GEdge e : g.edges) {
+            if (e instanceof GCollinearEdge) {
+                GCollinearEdge edge = (GCollinearEdge) e;
+                double residual[] = edge.getResidual(distort);
+                tse += residual[0];
+                nedges++;
+            }
+        }
+
+        return tse / nedges;
     }
 
     private void estimateDistortion()
@@ -116,10 +140,10 @@ public class IntrinsicsFreeDistortionEstimator
         }
         distort.state = LinAlg.copy(bests);
 
-        System.out.printf("Estimated distortion parameters: ");
-        for (int i=0; i < distort.state.length; i++)
-            System.out.printf("%24.12f, ", distort.state[i]);
-        System.out.println();
+        //System.out.printf("Estimated distortion parameters: ");
+        //for (int i=0; i < distort.state.length; i++)
+        //    System.out.printf("%24.12f, ", distort.state[i]);
+        //System.out.println();
     }
 
     public void buildGraph()
@@ -134,10 +158,10 @@ public class IntrinsicsFreeDistortionEstimator
         // make edges that enforce collinearity
         for (int image=0; image < allDetections.size(); image++) {
 
-            ArrayList<TagDetection> detections = allDetections.get(image);
+            List<TagDetection> detections = allDetections.get(image);
 
-            ArrayList<TagMosaic.GroupedDetections> rowDetections = mosaic.getRowDetections(detections);
-            ArrayList<TagMosaic.GroupedDetections> colDetections = mosaic.getColumnDetections(detections);
+            List<TagMosaic.GroupedDetections> rowDetections = mosaic.getRowDetections(detections);
+            List<TagMosaic.GroupedDetections> colDetections = mosaic.getColumnDetections(detections);
 
             for (TagMosaic.GroupedDetections group : rowDetections) {
                 assert(group.type == TagMosaic.GroupedDetections.ROW_GROUP);
@@ -175,7 +199,7 @@ public class IntrinsicsFreeDistortionEstimator
         }
     }
 
-    private class GDistort extends GNode
+    public class GDistort extends GNode
     {
         // init: cx, cy, k1, k2
         // state: cx, cy, k1, k2
@@ -252,18 +276,19 @@ public class IntrinsicsFreeDistortionEstimator
         }
     }
 
-    private class GCollinearEdge extends GEdge
+    // XXX not intended to be public forever
+    public class GCollinearEdge extends GEdge
     {
         // nodes
         public double P[][];
         double W[][]; // inverse(P)
 
         public int image;
-        ArrayList<double[]> xy_dps;
+        List<double[]> xy_dps;
 
         public GCollinearEdge(int image, // which image was this in?
                               int distortNodeIndex,
-                              ArrayList<double[]> distortedPointPositions)
+                              List<double[]> distortedPointPositions)
         {
             this.image = image;
             this.nodes = new int[] { distortNodeIndex };
@@ -367,6 +392,46 @@ public class IntrinsicsFreeDistortionEstimator
             return residual[0]*residual[0];
         }
 
+        public double[][] getLine(Graph g)
+        {
+            GDistort distort = (GDistort) g.nodes.get(this.nodes[0]);
+
+            // undistort all the points with the current model
+            ArrayList<double[]> xy_rps = new ArrayList<double[]>();
+            for (double xy_dp[] : this.xy_dps)
+                xy_rps.add(distort.undistort(xy_dp));
+
+            GLine2D line = GLine2D.lsqFit(xy_rps);
+
+            // init
+            double xy_rp1[] = xy_rps.get(0);
+            double xy_rp2[] = xy_rps.get(0);
+
+            // should we minimize and maximize x or y?
+            int index = 0;
+            double t = line.getTheta();
+            t = MathUtil.mod2pi(t);
+            if ((t < -3*Math.PI/4) || (t > -Math.PI/4 && t < Math.PI/4) || (t > 3*Math.PI/4))
+                index = 0; // mostly horizontal
+            else
+                index = 1; // mostly vertical
+
+            // find the min and max term
+            for (double xy_rp[] : xy_rps) {
+
+                if (xy_rp[index] < xy_rp1[index])
+                    xy_rp1 = xy_rp;
+
+                if (xy_rp[index] > xy_rp2[index])
+                    xy_rp2 = xy_rp;
+            }
+
+            // return the line segment
+            return new double[][] { line.pointOnLineClosestTo(xy_rp1),
+                                    line.pointOnLineClosestTo(xy_rp2) };
+        }
+
+
         public GEdge copy()
         {
             assert(false);
@@ -434,17 +499,17 @@ public class IntrinsicsFreeDistortionEstimator
             }
         }
 
-        public ArrayList<GroupedDetections> getRowDetections(ArrayList<TagDetection> detections)
+        public List<GroupedDetections> getRowDetections(List<TagDetection> detections)
         {
             return getGroupedDetections(detections, GroupedDetections.ROW_GROUP);
         }
 
-        public ArrayList<GroupedDetections> getColumnDetections(ArrayList<TagDetection> detections)
+        public List<GroupedDetections> getColumnDetections(List<TagDetection> detections)
         {
             return getGroupedDetections(detections, GroupedDetections.COL_GROUP);
         }
 
-        public ArrayList<GroupedDetections> getGroupedDetections(ArrayList<TagDetection> detections,
+        public List<GroupedDetections> getGroupedDetections(List<TagDetection> detections,
                                                                  int groupType)
         {
             HashMap<Integer,ArrayList<TagDetection>> groupLists = new HashMap<Integer,ArrayList<TagDetection>>();

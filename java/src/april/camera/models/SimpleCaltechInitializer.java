@@ -24,10 +24,10 @@ public class SimpleCaltechInitializer implements CalibrationInitializer
         IntrinsicsFreeDistortionEstimator distortionEstimator =
                         new IntrinsicsFreeDistortionEstimator(allDetections, tf, width, height);
 
-        ArrayList<ArrayList<TagDetection>> allRectifiedDetections = new ArrayList<ArrayList<TagDetection>>();
-        for (ArrayList<TagDetection> detections : allDetections) {
+        List<List<TagDetection>> allRectifiedDetections = new ArrayList<List<TagDetection>>();
+        for (List<TagDetection> detections : allDetections) {
 
-            ArrayList<TagDetection> rectifiedDetections = new ArrayList<TagDetection>();
+            List<TagDetection> rectifiedDetections = new ArrayList<TagDetection>();
             for (TagDetection d : detections) {
 
                 TagDetection rd = new TagDetection();
