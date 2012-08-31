@@ -17,16 +17,17 @@ public class IntrinsicsEstimator
 
     private TagMosaic mosaic;
     private TagFamily tf;
-    private int width;
-    private int height;
 
+    /** Estimate the intrinsics by computing vanishing points from the tag
+     * detections.  If only one image is provided, the fallback focal center is
+     * used to allow estimation of the focal length. Lacking more information,
+     * width/2 and height/2 is a good guess for the focal center.
+      */
     public IntrinsicsEstimator(List<List<TagDetection>> allDetections, TagFamily tf,
-                               int width, int height)
+                               double fallbackcx, double fallbackcy)
     {
         this.mosaic = new TagMosaic(tf);
         this.tf = tf;
-        this.width = width;
-        this.height = height;
 
         // compute all of the vanishing points
         for (List<TagDetection> detections : allDetections) {
@@ -54,12 +55,11 @@ public class IntrinsicsEstimator
 
         if (vanishingPoints.size() >= 3) {
             // if we have enough points to estimate cx and cy properly, do so
-            K = CameraMath.estimateIntrinsicsFromVanishingPoints(vanishingPoints, width, height);
+            K = CameraMath.estimateIntrinsicsFromVanishingPoints(vanishingPoints);
 
-        } else {
-            // estimate the focal length and assume that cx and cy are at width/2 and height/2, respectively
-            // for now, we just use the first image
-            K = CameraMath.estimateIntrinsicsFromOneVanishingPointAndAssumeCxCy(vanishingPoints.get(0), width, height);
+        } else if (vanishingPoints.size() >= 1) {
+            // estimate the focal length with the fallback cx, cy given
+            K = CameraMath.estimateIntrinsicsFromOneVanishingPointWithGivenCxCy(vanishingPoints.get(0), fallbackcx, fallbackcy);
         }
     }
 
@@ -168,6 +168,13 @@ public class IntrinsicsEstimator
             System.out.printf("Row min %2d (%2d) max %2d (%2d) Col min %2d (%2d) max %2d (%2d)\n",
                               minRow, minRowIndex, maxRow, maxRowIndex,
                               minCol, minColIndex, maxCol, maxColIndex);
+
+        // if we don't have two distinct lines, we can't do anything
+        if (minRowIndex == maxRowIndex || minColIndex == maxColIndex) {
+            vanishingPoints.add(null);
+            allFitLines.add(fitLines);
+            return;
+        }
 
         GLine2D rowMinLine = rowDetections.get(minRowIndex).fitLine();
         GLine2D rowMaxLine = rowDetections.get(maxRowIndex).fitLine();

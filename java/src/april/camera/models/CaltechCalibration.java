@@ -151,7 +151,7 @@ public class CaltechCalibration implements Calibration, ParameterizableCalibrati
         s = String.format("%s            cc = [%11.6f,%11.6f ];\n", s, cc[0], cc[1]);
         s = String.format("%s            kc = [%11.6f,%11.6f,%11.6f,%11.6f,%11.6f ];\n",
                           s, kc[0], kc[1], kc[2], kc[3], kc[4]);
-        s = String.format("%s            skew = %11.6f\n", s, skew);
+        s = String.format("%s            skew = %11.6f;\n", s, skew);
         s = String.format("%s        }\n", s);
 
         return s;

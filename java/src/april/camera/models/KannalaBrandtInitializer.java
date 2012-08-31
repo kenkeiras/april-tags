@@ -21,9 +21,12 @@ public class KannalaBrandtInitializer implements CalibrationInitializer
                                         List<List<TagDetection>> allDetections,
                                         TagFamily tf)
     {
-        IntrinsicsEstimator estimator = new IntrinsicsEstimator(allDetections, tf, width, height);
+        IntrinsicsEstimator estimator = new IntrinsicsEstimator(allDetections, tf, width/2, height/2);
 
         double K[][] = estimator.getIntrinsics();
+        if (K == null)
+            return null;
+
         if (verbose) System.out.println("Estimated intrinsics:");
         if (verbose) LinAlg.print(K);
 

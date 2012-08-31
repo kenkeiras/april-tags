@@ -54,9 +54,12 @@ public class SimpleCaltechInitializer implements CalibrationInitializer
             allRectifiedDetections.add(rectifiedDetections);
         }
 
-        IntrinsicsEstimator intrinsicsEstimator = new IntrinsicsEstimator(allRectifiedDetections, tf, width, height);
+        IntrinsicsEstimator intrinsicsEstimator = new IntrinsicsEstimator(allRectifiedDetections, tf, width/2, height/2);
 
         double K[][] = intrinsicsEstimator.getIntrinsics();
+        if (K == null)
+            return null;
+
         if (verbose) System.out.println("Estimated intrinsics:");
         if (verbose) LinAlg.print(K);
 
