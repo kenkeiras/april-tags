@@ -6,6 +6,8 @@ import april.jmat.*;
 
 public class CameraMath
 {
+    public static boolean verbose = false;
+
     /** Triangulation function for points in *rectified image planes*. Radial distortion
       * must be accounted for before calling triangulate()
       **/
@@ -127,16 +129,20 @@ public class CameraMath
         if (numVanishingPoints == 1)
             A[i++] = new double[3];
 
-        System.out.println("A"); LinAlg.print(A);
+        if (verbose) {
+            System.out.println("A"); LinAlg.print(A);
+        }
 
         SingularValueDecomposition SVD = new SingularValueDecomposition(new Matrix(A));
         Matrix U = SVD.getV();
         Matrix S = SVD.getS();
         Matrix V = SVD.getV();
 
-        System.out.println("U"); U.print();
-        System.out.println("S"); S.print();
-        System.out.println("V"); V.print();
+        if (verbose) {
+            System.out.println("U"); U.print();
+            System.out.println("S"); S.print();
+            System.out.println("V"); V.print();
+        }
 
         double w[] = V.getColumn(V.getColumnDimension()-1).getDoubles();
 
@@ -152,7 +158,9 @@ public class CameraMath
         omega[2][2] = w[2];
 
         omega = LinAlg.scale(omega, 1.0/omega[2][2]);
-        System.out.println("Omega:"); LinAlg.print(omega);
+        if (verbose) {
+            System.out.println("Omega:"); LinAlg.print(omega);
+        }
 
         CholeskyDecomposition cd = new CholeskyDecomposition(new Matrix(omega));
         if (!cd.isSPD())
@@ -167,7 +175,9 @@ public class CameraMath
 
         K[0][2] = cx;
         K[1][2] = cy;
-        System.out.println("K:"); LinAlg.print(K);
+        if (verbose) {
+            System.out.println("K:"); LinAlg.print(K);
+        }
 
         return K;
     }
@@ -237,16 +247,20 @@ public class CameraMath
         if (numVanishingPoints == 3)
             A[i++] = new double[6];
 
-        System.out.println("A"); LinAlg.print(A);
+        if (verbose) {
+            System.out.println("A"); LinAlg.print(A);
+        }
 
         SingularValueDecomposition SVD = new SingularValueDecomposition(new Matrix(A));
         Matrix U = SVD.getV();
         Matrix S = SVD.getS();
         Matrix V = SVD.getV();
 
-        System.out.println("U"); U.print();
-        System.out.println("S"); S.print();
-        System.out.println("V"); V.print();
+        if (verbose) {
+            System.out.println("U"); U.print();
+            System.out.println("S"); S.print();
+            System.out.println("V"); V.print();
+        }
 
         double w[] = V.getColumn(V.getColumnDimension()-1).getDoubles();
 
@@ -262,7 +276,9 @@ public class CameraMath
         omega[2][2] = w[5];
 
         omega = LinAlg.scale(omega, 1.0/omega[2][2]);
-        System.out.println("Omega:"); LinAlg.print(omega);
+        if (verbose) {
+            System.out.println("Omega:"); LinAlg.print(omega);
+        }
 
         CholeskyDecomposition cd = new CholeskyDecomposition(new Matrix(omega));
         if (!cd.isSPD())
@@ -274,7 +290,9 @@ public class CameraMath
 
         double K[][] = LinAlg.inverse(Kinv);
         K = LinAlg.scale(K, 1.0 / K[2][2]);
-        System.out.println("K:"); LinAlg.print(K);
+        if (verbose) {
+            System.out.println("K:"); LinAlg.print(K);
+        }
 
         return K;
     }
