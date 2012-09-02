@@ -6,6 +6,8 @@ import april.jmat.*;
 
 public class MaxInscribedRectifiedView implements View
 {
+    public static boolean verbose = false;
+
     double[][]  K;
     double[][]  Kinv;
 
@@ -69,7 +71,7 @@ public class MaxInscribedRectifiedView implements View
             //System.out.printf("%6.1f %6.1f - %6.1f\n", xy_rp[0], xy_rp[1], Rl);
         }
 
-        System.out.printf("Bottom: %5.1f Right: %5.1f Top: %5.1f Left: %5.1f\n", Rb, Rr, Rt, Rl);
+        if (verbose) System.out.printf("Bottom: %5.1f Right: %5.1f Top: %5.1f Left: %5.1f\n", Rb, Rr, Rt, Rl);
 
         ////////////////////////////////////////////////////////////////////////////////
         // transformation matrix
