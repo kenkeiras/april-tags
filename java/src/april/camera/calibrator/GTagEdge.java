@@ -225,8 +225,24 @@ public class GTagEdge extends GEdge
 
     public double getChi2(Graph g)
     {
-        assert(false);
-        return 0;
+        assert(g.nodes.get(this.nodes[CI]) instanceof GIntrinsicsNode);
+        if (hasCameraExtrinsics)
+            assert(g.nodes.get(this.nodes[CE]) instanceof GExtrinsicsNode);
+        assert(g.nodes.get(this.nodes[ME]) instanceof GExtrinsicsNode);
+
+        GIntrinsicsNode cameraIntrinsics = (GIntrinsicsNode) g.nodes.get(this.nodes[CI]);
+        GExtrinsicsNode cameraExtrinsics = null;
+        if (hasCameraExtrinsics)
+            cameraExtrinsics = (GExtrinsicsNode) g.nodes.get(this.nodes[CE]);
+        GExtrinsicsNode mosaicExtrinsics = (GExtrinsicsNode) g.nodes.get(this.nodes[ME]);
+
+        double r[] = getResidual(cameraIntrinsics, cameraExtrinsics, mosaicExtrinsics);
+
+        double chi2 = 0;
+        for (int i=0; i < r.length; i++)
+            chi2 += r[i]*r[i];
+
+        return chi2;
     }
 
     public void write(StructureWriter outs) throws IOException

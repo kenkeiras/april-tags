@@ -35,11 +35,21 @@ public class IntrinsicsFreeDistortionEstimator
         this.mosaic = new TagMosaic(this.tf);
 
         g = new Graph();
+
         CholeskySolver.verbose = false;
-        gs = new CholeskySolver(g, new MinimumDegreeOrdering());
+        LMSolver.verbose = false;
+        IntrinsicsEstimator.verbose = false;
+
+        gs = new LMSolver(g, new MinimumDegreeOrdering(), 1e-10, 1e10, 10);
 
         buildGraph();
-        estimateDistortion();
+        iterateFully();
+    }
+
+    public double[] getCC()
+    {
+        GDistort distort = (GDistort) g.nodes.get(distortNodeIndex);
+        return new double[] {distort.state[0], distort.state[1]};
     }
 
     public double[] distort(double xy_rp[])
@@ -58,92 +68,24 @@ public class IntrinsicsFreeDistortionEstimator
 
     public void iterate()
     {
+        if (g == null || gs == null || g.edges.size() == 0)
+            return;
+
         gs.iterate();
+    }
+
+    public void iterateFully()
+    {
+        if (g == null || gs == null || g.edges.size() == 0)
+            return;
+
+        while (gs.canIterate())
+            gs.iterate();
     }
 
     public double getMSE()
     {
-        GDistort distort = (GDistort) g.nodes.get(distortNodeIndex);
-
-        double tse = 0;
-        int nedges = 0;
-        for (GEdge e : g.edges) {
-            if (e instanceof GCollinearEdge) {
-                GCollinearEdge edge = (GCollinearEdge) e;
-                double residual[] = edge.getResidual(distort);
-                tse += residual[0];
-                nedges++;
-            }
-        }
-
-        return tse / nedges;
-    }
-
-    private void estimateDistortion()
-    {
-        GDistort distort = (GDistort) g.nodes.get(distortNodeIndex);
-        double s[];
-        double minmse;
-        double bests[];
-
-        ////////////////////////////////////////
-        // kc1
-        s = LinAlg.copy(distort.state);
-        minmse = -1;
-        bests = null;
-        for (double ds=-0.00000100; ds < 0.00000100; ds+=0.00000001) {
-            distort.state[2] = s[2] + ds;
-
-            double mse = 0;
-            int nedges = 0;
-            for (GEdge e : g.edges) {
-                if (e instanceof GCollinearEdge) {
-                    GCollinearEdge edge = (GCollinearEdge) e;
-                    double residual[] = edge.getResidual(distort);
-                    mse += residual[0];
-                    nedges++;
-                }
-            }
-            mse = mse / nedges;
-
-            if (bests == null || mse < minmse) {
-                bests = LinAlg.copy(distort.state);
-                minmse = mse;
-            }
-        }
-        distort.state = LinAlg.copy(bests);
-
-        ////////////////////////////////////////
-        // kc2
-        s = LinAlg.copy(distort.state);
-        minmse = -1;
-        bests = null;
-        for (double ds=-0.00000010; ds < 0.00000010; ds+=0.0000000001) {
-            distort.state[3] = s[3] + ds;
-
-            double mse = 0;
-            int nedges = 0;
-            for (GEdge e : g.edges) {
-                if (e instanceof GCollinearEdge) {
-                    GCollinearEdge edge = (GCollinearEdge) e;
-                    double residual[] = edge.getResidual(distort);
-                    mse += residual[0];
-                    nedges++;
-                }
-            }
-            mse = mse / nedges;
-
-            if (bests == null || mse < minmse) {
-                bests = LinAlg.copy(distort.state);
-                minmse = mse;
-            }
-        }
-        distort.state = LinAlg.copy(bests);
-
-        //System.out.printf("Estimated distortion parameters: ");
-        //for (int i=0; i < distort.state.length; i++)
-        //    System.out.printf("%24.12f, ", distort.state[i]);
-        //System.out.println();
+        return g.getErrorStats().chi2;
     }
 
     public void buildGraph()
@@ -224,13 +166,22 @@ public class IntrinsicsFreeDistortionEstimator
             double x_rpc = xy_rp[0] - cx;
             double y_rpc = xy_rp[1] - cy;
 
-            double r2 = x_rpc*x_rpc + y_rpc*y_rpc;
-            double r4 = r2*r2;
+            // initial guess
+            double x_dpc = x_rpc;
+            double y_dpc = y_rpc;
 
-            double multiplier = 1 + k1*r2 + k2*r4;
+            for (int i=0; i < MAX_ITERATIONS; i++) {
+                double r2 = x_dpc*x_dpc + y_dpc*y_dpc;
+                double r4 = r2*r2;
 
-            double xy_dp[] = new double[] { cx + multiplier*x_rpc ,
-                                            cy + multiplier*y_rpc };
+                double multiplier = 1 + k1*r2 + k2*r4;
+
+                x_dpc = x_rpc / multiplier;
+                y_dpc = y_rpc / multiplier;
+            }
+
+            double xy_dp[] = new double[] { cx + x_dpc ,
+                                            cy + y_dpc };
             return xy_dp;
         }
 
@@ -244,22 +195,13 @@ public class IntrinsicsFreeDistortionEstimator
             double x_dpc = xy_dp[0] - cx;
             double y_dpc = xy_dp[1] - cy;
 
-            // initial guess
-            double x_rpc = x_dpc;
-            double y_rpc = y_dpc;
+            double r2 = x_dpc*x_dpc + y_dpc*y_dpc;
+            double r4 = r2*r2;
 
-            for (int i=0; i < MAX_ITERATIONS; i++) {
-                double r2 = x_rpc*x_rpc + y_rpc*y_rpc;
-                double r4 = r2*r2;
+            double multiplier = 1 + k1*r2 + k2*r4;
 
-                double multiplier = 1 + k1*r2 + k2*r4;
-
-                x_rpc = x_dpc / multiplier;
-                y_rpc = y_dpc / multiplier;
-            }
-
-            double xy_rp[] = new double[] { cx + x_rpc ,
-                                            cy + y_rpc };
+            double xy_rp[] = new double[] { cx + multiplier*x_dpc ,
+                                            cy + multiplier*y_dpc };
             return xy_rp;
         }
 
