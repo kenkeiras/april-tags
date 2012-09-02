@@ -59,7 +59,7 @@ public class IntrinsicsEstimator
 
         } else if (vanishingPoints.size() >= 1) {
             // estimate the focal length with the fallback cx, cy given
-            K = CameraMath.estimateIntrinsicsFromOneVanishingPointWithGivenCxCy(vanishingPoints.get(0), fallbackcx, fallbackcy);
+            K = CameraMath.estimateIntrinsicsFromVanishingPointsWithGivenCxCy(vanishingPoints, fallbackcx, fallbackcy);
         }
     }
 
