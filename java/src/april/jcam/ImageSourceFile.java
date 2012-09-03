@@ -93,7 +93,7 @@ public class ImageSourceFile extends ImageSource
         ifmt = new ImageSourceFormat();
         ifmt.width = im.getWidth();
         ifmt.height = im.getHeight();
-        ifmt.format = "RGB";
+        ifmt.format = im.getType() == BufferedImage.TYPE_BYTE_GRAY ? "GRAY8" : "RGB";
 
         // Enables users to specify when to switch frames
         if (ask) {
@@ -171,22 +171,11 @@ public class ImageSourceFile extends ImageSource
         lastmtime = System.currentTimeMillis();
         try {
             BufferedImage im = ImageIO.read(new File(paths.get(pos++)));
-            int width = im.getWidth(), height = im.getHeight();
 
             FrameData frmd = new FrameData();
             frmd.ifmt = ifmt;
-            frmd.data = new byte[width*height*3];
+            frmd.data = im.getType() == BufferedImage.TYPE_BYTE_GRAY? getGrayBytes(im) : getRGBBytes(im);
             frmd.utime = lastmtime*1000;
-
-            int bpos = 0;
-            for (int y = 0; y < height; y++) {
-                for (int x = 0; x < width; x++) {
-                    int rgb = im.getRGB(x, y);
-                    frmd.data[bpos++] = (byte) ((rgb>>16)&0xff);
-                    frmd.data[bpos++] = (byte) ((rgb>>8)&0xff);
-                    frmd.data[bpos++] = (byte) ((rgb)&0xff);
-                }
-            }
 
             return frmd;
 
@@ -195,6 +184,28 @@ public class ImageSourceFile extends ImageSource
         }
 
         return null;
+    }
+
+    static byte[] getRGBBytes(BufferedImage im)
+    {
+        int width = im.getWidth(), height = im.getHeight();
+        byte data[] = new byte[width*height*3];
+        int bpos = 0;
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int rgb = im.getRGB(x, y);
+                data[bpos++] = (byte) ((rgb>>16)&0xff);
+                data[bpos++] = (byte) ((rgb>>8)&0xff);
+                data[bpos++] = (byte) ((rgb)&0xff);
+            }
+        }
+
+        return data;
+    }
+
+    static byte[] getGrayBytes(BufferedImage im)
+    {
+        return ((DataBufferByte) (im.getRaster().getDataBuffer())).getData();
     }
 
     public int getNumFormats()
