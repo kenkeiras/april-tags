@@ -1,7 +1,8 @@
 package april.camera.calibrator;
 
 import java.io.*;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.image.*;
 import java.util.*;
 
@@ -41,11 +42,19 @@ public class SingleCameraCalibrator implements ParameterListener
 
     boolean autoiterate = false;
 
+    TagFamily tf;
+    TagDetector td;
+
+    double PixelsToVis[][];
+
     public SingleCameraCalibrator(CalibrationInitializer initializer, String url, double tagSpacing_m,
                                   boolean autocapture, boolean block)
     {
         this.capture = autocapture;
         this.blockOnProcessing = block;
+
+        this.tf = new Tag36h11();
+        this.td = new TagDetector(tf);
 
         ////////////////////////////////////////////////////////////////////////////////
         // GUI setup
@@ -57,10 +66,13 @@ public class SingleCameraCalibrator implements ParameterListener
         vc2 = new VisCanvas(vl2);
 
         pg = new ParameterGUI();
-        pg.addButtons("captureOnce","Capture once","capture","Toggle image capturing",
+        pg.addCheckBoxes("enablecamera","Enable camera",true,
+                         "autocapture","Autocapture",autocapture,
+                         "autoiterate","Autoiterate",false);
+        pg.addButtons("captureOnce","Capture once",
                       "save","Save images",
                       "savedetections","Save detections",
-                      "iterateonce","Iterate once","iterate","Toggle auto iteration",
+                      "iterateonce","Iterate once",
                       "print","Print calibration");
         pg.addListener(this);
 
@@ -95,7 +107,7 @@ public class SingleCameraCalibrator implements ParameterListener
         ArrayList<CalibrationInitializer> initializers = new ArrayList<CalibrationInitializer>();
         initializers.add(initializer);
 
-        calibrator = new CameraCalibrator(initializers, new Tag36h11(),
+        calibrator = new CameraCalibrator(initializers, tf,
                                           tagSpacing_m, vl2);
 
         // Threads
@@ -106,45 +118,13 @@ public class SingleCameraCalibrator implements ParameterListener
 
     public void parameterChanged(ParameterGUI pg, String name)
     {
-        if (name.equals("capture")) {
-            vb = vw1.getBuffer("HUD");
-
-            if (capture) {
-                capture = false;
-                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.TOP_LEFT,
-                                            new VzText(VzText.ANCHOR.TOP_LEFT,
-                                                       "<<monospaced-12,red>>Capturing disabled")));
-            } else {
-                capture = true;
-                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.TOP_LEFT,
-                                            new VzText(VzText.ANCHOR.TOP_LEFT,
-                                                       "<<monospaced-12,green>>Capturing enabled")));
-            }
-            vb.swap();
-        }
-
         if (name.equals("captureOnce")) {
-            vb = vw1.getBuffer("HUD");
-
-            if (captureOnce) {
-                captureOnce = false;
-                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.TOP_LEFT,
-                                            new VzText(VzText.ANCHOR.TOP_LEFT,
-                                                       "<<monospaced-12,red>>Capturing disabled")));
-            } else {
-                captureOnce = true;
-                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.TOP_LEFT,
-                                            new VzText(VzText.ANCHOR.TOP_LEFT,
-                                                       "<<monospaced-12,green>>Waiting to capture")));
-            }
-            vb.swap();
+            if (captureOnce) captureOnce = false;
+            else             captureOnce = true;
         }
 
         if (name.equals("iterateonce") && calibrator != null)
             calibrator.iterate();
-
-        if (name.equals("iterate"))
-            autoiterate = autoiterate ? false : true;
 
         if (name.equals("print") && calibrator != null)
             calibrator.printCalibrationBlock();
@@ -190,56 +170,104 @@ public class SingleCameraCalibrator implements ParameterListener
 
     class ProcessingThread extends Thread
     {
-        boolean once = true;
-
         public void run()
         {
+            long lastutime = 0;
+
             while (true) {
-                FrameData frmd = imageQueue.get();
 
-                BufferedImage im = ImageConvert.convertToImage(frmd);
+                if (pg.gb("enablecamera")) {
+                    FrameData frmd = imageQueue.get();
 
-                draw(im);
+                    BufferedImage im = ImageConvert.convertToImage(frmd);
+                    List<TagDetection> detections = td.process(im, new double[] {im.getWidth()/2.0, im.getHeight()/2.0});
 
-                if (capture || captureOnce) {
-                    if (captureOnce) {
-                        captureOnce = false;
-                        vb = vw1.getBuffer("HUD");
-                        vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.TOP_LEFT,
-                                                    new VzText(VzText.ANCHOR.TOP_LEFT,
-                                                               "<<monospaced-12,red>>Capturing disabled")));
-                        vb.swap();
+                    draw(im, detections);
+
+                    if (pg.gb("autocapture") || captureOnce) {
+                        if (captureOnce) captureOnce = false;
+                        process(im, detections);
                     }
-
-                    process(im);
                 }
-                TimeUtil.sleep(100);
+
+                // sleep a little if we're spinning too fast
+                long utime = TimeUtil.utime();
+                long desired = 30000;
+                if ((utime - lastutime) < desired) {
+                    int sleepms = (int) ((desired - (utime-lastutime))*1e-3);
+                    TimeUtil.sleep(sleepms);
+                }
+                lastutime = utime;
             }
         }
 
-        void draw(BufferedImage im)
+        void draw(BufferedImage im, List<TagDetection> detections)
         {
-            vb = vw1.getBuffer("Video");
+            if (PixelsToVis == null) {
+                double XY0[] = new double[2];
+                double XY1[] = new double[] { im.getWidth(), im.getHeight() };
+                PixelsToVis = CameraMath.makeVisPlottingTransform(im.getWidth(), im.getHeight(),
+                                                                  XY0, XY1, true);
+                vl1.cameraManager.fit2D(XY0, XY1, true);
+            }
 
+            vb = vw1.getBuffer("Video");
             vb.addBack(new VisLighting(false,
-                                       new VzImage(new VisTexture(im,
-                                                                  VisTexture.NO_MAG_FILTER | VisTexture.NO_MIN_FILTER | VisTexture.NO_REPEAT),
-                                                   VzImage.FLIP)));
+                                       new VisChain(PixelsToVis,
+                                                    new VzImage(new VisTexture(im, VisTexture.NO_MAG_FILTER |
+                                                                                   VisTexture.NO_MIN_FILTER |
+                                                                                   VisTexture.NO_REPEAT),
+                                                                0))));
             vb.swap();
 
-            if (once) {
-                once = false;
-                vl1.cameraManager.fit2D(new double[2], new double[] {im.getWidth(), im.getHeight()}, true);
+            vb = vw1.getBuffer("Detections");
+            VisChain chain = new VisChain();
+            chain.add(PixelsToVis);
+            for (TagDetection d : detections) {
+                double p0[] = d.interpolate(-1,-1);
+                double p1[] = d.interpolate( 1,-1);
+                double p2[] = d.interpolate( 1, 1);
+                double p3[] = d.interpolate(-1, 1);
+
+                chain.add(new VzPoints(new VisVertexData(d.cxy),
+                                       new VzPoints.Style(Color.blue, 3)));
+                chain.add(new VzLines(new VisVertexData(p0, p1, p2, p3, p0),
+                                      VzLines.LINE_STRIP,
+                                      new VzLines.Style(Color.blue, 2)));
+                chain.add(new VzLines(new VisVertexData(p0,p1),
+                                      VzLines.LINE_STRIP,
+                                      new VzLines.Style(Color.green, 2)));
+                chain.add(new VzLines(new VisVertexData(p0, p3),
+                                      VzLines.LINE_STRIP,
+                                      new VzLines.Style(Color.red, 2)));
             }
+            vb.addBack(chain);
+            vb.swap();
+
+            vb = vw1.getBuffer("HUD");
+            if (captureOnce)
+                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.TOP_LEFT,
+                                            new VzText(VzText.ANCHOR.TOP_LEFT,
+                                                       "<<monospaced-12,green>>Waiting to capture")));
+            else
+                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.TOP_LEFT,
+                                            new VzText(VzText.ANCHOR.TOP_LEFT,
+                                                       String.format("<<monospaced-12,%s>>Autocapture %s",
+                                                                     pg.gb("autocapture") ? "green" : "red",
+                                                                     pg.gb("autocapture") ? "enabled" : "disabled"))));
+            vb.swap();
         }
 
-        void process(BufferedImage im)
+        void process(BufferedImage im, List<TagDetection> detections)
         {
             System.out.println("Process");
-            ArrayList<BufferedImage> images = new ArrayList<BufferedImage>();
-            images.add(im);
+            ArrayList<BufferedImage> allImages = new ArrayList<BufferedImage>();
+            allImages.add(im);
 
-            calibrator.addImages(images);
+            List<List<TagDetection>> allDetections = new ArrayList<List<TagDetection>>();
+            allDetections.add(detections);
+
+            calibrator.addImages(allImages, allDetections);
         }
     }
 
@@ -255,7 +283,7 @@ public class SingleCameraCalibrator implements ParameterListener
                     continue;
                 }
 
-                if (autoiterate)
+                if (pg.gb("autoiterate"))
                     calibrator.iterate();
 
                 long now = TimeUtil.utime();
