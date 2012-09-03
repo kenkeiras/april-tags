@@ -35,6 +35,8 @@ public class CameraCalibrator
     List<double[]>               initialParameters  = null;
     List<double[]>               initialExtrinsics  = null;
     List<List<ProcessedImage>>   images             = new ArrayList<List<ProcessedImage>>();
+    List<double[]>               mosaicExtInits     = new ArrayList<double[]>();
+
     List<CameraWrapper>          cameras            = null;
 
     TagDetector detector;
@@ -255,6 +257,21 @@ public class CameraCalibrator
         return LinAlg.copy(cam.cameraExtrinsics.state);
     }
 
+    public synchronized double[] getMosaicExtrinsics(int mosaic)
+    {
+        return LinAlg.copy(g.nodes.get(mosaicExtrinsicsIndices.get(mosaic)).state);
+    }
+
+    public synchronized ArrayList<double[]> getMosaicExtrinsics()
+    {
+        ArrayList<double[]> extrins = new ArrayList();
+
+        for (Integer i : mosaicExtrinsicsIndices)
+            extrins.add(LinAlg.copy(g.nodes.get(i).state));
+
+        return extrins;
+    }
+
     public synchronized Graph getGraphCopy()
     {
         return g.copy();
@@ -308,7 +325,29 @@ public class CameraCalibrator
      * <br>
      * The mosaic and cameras must not move within the list of images provided.
      */
+
     public synchronized void addImages(List<BufferedImage> newImages,
+                                       List<List<TagDetection>> allDetections,
+                                       double MosaicToGlobalXyzrpy[])
+    {
+        addImagesNoInit(newImages, allDetections, MosaicToGlobalXyzrpy);
+        initialize();
+    }
+
+    // Delays initialization until all images have been processed.
+    public synchronized void addImageSet(List<List<BufferedImage>> newImagesSet,
+                                         List<List<List<TagDetection>>> allDetectionsSet,
+                                         List<double[]> MosaicToGlobalXyzrpySet )
+    {
+        assert(newImagesSet.size() == allDetectionsSet.size());
+        assert(allDetectionsSet.size() == MosaicToGlobalXyzrpySet.size());
+
+        for (int i = 0; i < newImagesSet.size(); i++)
+            addImagesNoInit(newImagesSet.get(i), allDetectionsSet.get(i), MosaicToGlobalXyzrpySet.get(i));
+        initialize();
+    }
+
+    private synchronized void addImagesNoInit(List<BufferedImage> newImages,
                                        List<List<TagDetection>> allDetections,
                                double MosaicToGlobalXyzrpy[])
     {
@@ -345,6 +384,10 @@ public class CameraCalibrator
         }
 
         this.images.add(processedImages);
+        this.mosaicExtInits.add(MosaicToGlobalXyzrpy);
+    }
+
+    private void initialize() {
 
         // initialize the cameras if we haven't provided we have the minimum number of images
         if (cameras == null) {
@@ -357,12 +400,16 @@ public class CameraCalibrator
             cameras = cameraList;
 
             // add all the images we've collected so far
+            //XXX This reuses the extrinsics for /this/ mosaic to redo
+            //XXX all the previous ones in the case of delayed
+            //XXX initialization
             for (int i=0; i < this.images.size(); i++)
-                addImageSet(this.images.get(i), i, MosaicToGlobalXyzrpy);
+                addImageSet(this.images.get(i), i, this.mosaicExtInits.get(i));
         }
         // otherwise, we just need to add the new set of images
         else {
-            addImageSet(processedImages, this.images.size() - 1, MosaicToGlobalXyzrpy);
+            int idx = this.images.size() - 1;
+            addImageSet(this.images.get(idx), idx , this.mosaicExtInits.get(idx));
         }
     }
 
@@ -672,6 +719,83 @@ public class CameraCalibrator
 
         vb.swap();
 
+        ///////////// Reprojection Histogram
+        vb = vw.getBuffer("reprojection-hist");
+        {
+            ArrayList<Double> errs = new ArrayList();
+            for (GEdge e : g.edges) {
+                assert(e instanceof GTagEdge);
+                GTagEdge edge = (GTagEdge) e;
+
+                double res[] = edge.getResidualExternal(g);
+                assert((res.length & 0x1) == 0);
+
+                int len = res.length / 2;
+                for (int i=0; i < len; i+=2)
+                    errs.add(Math.sqrt(res[i]*res[i] + res[i+1]*res[i+1]));
+            }
+
+            // Compute histogram of errs.
+            Collections.sort(errs);
+
+            double eMin = errs.get(0);
+            double eMax = errs.get(errs.size() -1);
+
+            int nbuckets = 90;
+            double bucket = (eMax - eMin) / nbuckets;
+
+            double thresh = eMin + bucket;
+            ArrayList<Integer> counts = new ArrayList();
+            int ct = 0;
+            int maxCt = 0, maxIdx = -1;
+            for (Double e : errs) {
+
+                while (e > thresh) {
+                    thresh += bucket;
+                    if (ct > maxCt) {
+                        maxCt = ct;
+                        maxIdx = counts.size();
+                    }
+                    counts.add(ct);
+                    ct = 0;
+                }
+                ct++;
+            }
+            while(counts.size() < nbuckets)
+                counts.add(0);
+
+            double maxHist = (maxIdx + 0.5)*bucket + eMin;
+
+            // Draw histogram:
+            int height = 100 - 2*22;//3*counts.size()/2;
+            BufferedImage hist = new BufferedImage(counts.size(), height, BufferedImage.TYPE_INT_ARGB);
+
+            int x = 0;
+            for (Integer val : counts) {
+                for (int y = 0; y < height; y++) {
+
+                    int ymax = (int)Math.ceil(height*val*1.0/maxCt);
+
+                    if (ymax != 0 && y <= ymax) {
+                        hist.setRGB(x,y, 0xffffffff);
+                    } else {
+                        hist.setRGB(x,y, 0x00ffffff);
+                    }
+                }
+                x++;
+            }
+            vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM,
+                                        new VzText(VzText.ANCHOR.BOTTOM, String.format("<<white>>MRE [%.3f, %.3f]", eMin,eMax)),
+                                        LinAlg.translate(-counts.size()/2,22,0),
+                                        new VzImage(new VisTexture(hist, VisTexture.NO_MAG_FILTER | VisTexture.NO_MIN_FILTER),0),
+                                        LinAlg.translate(maxIdx,height,0),
+                                        new VzText(VzText.ANCHOR.BOTTOM_LEFT,String.format("peak %.3f",maxHist))));
+
+        }
+
+        vb.swap();
+
+
         ////////////////////////////////////////
 
         for (int cameraIndex = 0; cameraIndex < cameras.size(); cameraIndex++) {
@@ -884,6 +1008,12 @@ public class CameraCalibrator
 
         // start block
         System.out.println("aprilCameraCalibration {\n");
+
+        // Comment about MRE, MSE for this calibration
+        if (true) {
+            System.out.printf("    // MRE: %.5f\n",getMRE());
+            System.out.printf("    // MSE: %.5f\n",getMSE());
+        }
 
         // print name list
         String names = "    names = [";
