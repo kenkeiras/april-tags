@@ -35,6 +35,8 @@ public class CameraCalibrator
     List<double[]>               initialParameters  = null;
     List<double[]>               initialExtrinsics  = null;
     List<List<ProcessedImage>>   images             = new ArrayList<List<ProcessedImage>>();
+    List<double[]>               mosaicExtInits     = new ArrayList<double[]>();
+
     List<CameraWrapper>          cameras            = null;
 
     TagDetector detector;
@@ -323,7 +325,29 @@ public class CameraCalibrator
      * <br>
      * The mosaic and cameras must not move within the list of images provided.
      */
+
     public synchronized void addImages(List<BufferedImage> newImages,
+                                       List<List<TagDetection>> allDetections,
+                                       double MosaicToGlobalXyzrpy[])
+    {
+        addImagesNoInit(newImages, allDetections, MosaicToGlobalXyzrpy);
+        initialize();
+    }
+
+    // Delays initialization until all images have been processed.
+    public synchronized void addImageSet(List<List<BufferedImage>> newImagesSet,
+                                         List<List<List<TagDetection>>> allDetectionsSet,
+                                         List<double[]> MosaicToGlobalXyzrpySet )
+    {
+        assert(newImagesSet.size() == allDetectionsSet.size());
+        assert(allDetectionsSet.size() == MosaicToGlobalXyzrpySet.size());
+
+        for (int i = 0; i < newImagesSet.size(); i++)
+            addImagesNoInit(newImagesSet.get(i), allDetectionsSet.get(i), MosaicToGlobalXyzrpySet.get(i));
+        initialize();
+    }
+
+    private synchronized void addImagesNoInit(List<BufferedImage> newImages,
                                        List<List<TagDetection>> allDetections,
                                double MosaicToGlobalXyzrpy[])
     {
@@ -360,6 +384,10 @@ public class CameraCalibrator
         }
 
         this.images.add(processedImages);
+        this.mosaicExtInits.add(MosaicToGlobalXyzrpy);
+    }
+
+    private void initialize() {
 
         // initialize the cameras if we haven't provided we have the minimum number of images
         if (cameras == null) {
@@ -376,11 +404,12 @@ public class CameraCalibrator
             //XXX all the previous ones in the case of delayed
             //XXX initialization
             for (int i=0; i < this.images.size(); i++)
-                addImageSet(this.images.get(i), i, MosaicToGlobalXyzrpy);
+                addImageSet(this.images.get(i), i, this.mosaicExtInits.get(i));
         }
         // otherwise, we just need to add the new set of images
         else {
-            addImageSet(processedImages, this.images.size() - 1, MosaicToGlobalXyzrpy);
+            int idx = this.images.size() - 1;
+            addImageSet(this.images.get(idx), idx , this.mosaicExtInits.get(idx));
         }
     }
 
