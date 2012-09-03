@@ -719,6 +719,83 @@ public class CameraCalibrator
 
         vb.swap();
 
+        ///////////// Reprojection Histogram
+        vb = vw.getBuffer("reprojection-hist");
+        {
+            ArrayList<Double> errs = new ArrayList();
+            for (GEdge e : g.edges) {
+                assert(e instanceof GTagEdge);
+                GTagEdge edge = (GTagEdge) e;
+
+                double res[] = edge.getResidualExternal(g);
+                assert((res.length & 0x1) == 0);
+
+                int len = res.length / 2;
+                for (int i=0; i < len; i+=2)
+                    errs.add(Math.sqrt(res[i]*res[i] + res[i+1]*res[i+1]));
+            }
+
+            // Compute histogram of errs.
+            Collections.sort(errs);
+
+            double eMin = errs.get(0);
+            double eMax = errs.get(errs.size() -1);
+
+            int nbuckets = 90;
+            double bucket = (eMax - eMin) / nbuckets;
+
+            double thresh = eMin + bucket;
+            ArrayList<Integer> counts = new ArrayList();
+            int ct = 0;
+            int maxCt = 0, maxIdx = -1;
+            for (Double e : errs) {
+
+                while (e > thresh) {
+                    thresh += bucket;
+                    if (ct > maxCt) {
+                        maxCt = ct;
+                        maxIdx = counts.size();
+                    }
+                    counts.add(ct);
+                    ct = 0;
+                }
+                ct++;
+            }
+            while(counts.size() < nbuckets)
+                counts.add(0);
+
+            double maxHist = (maxIdx + 0.5)*bucket + eMin;
+
+            // Draw histogram:
+            int height = 100 - 2*22;//3*counts.size()/2;
+            BufferedImage hist = new BufferedImage(counts.size(), height, BufferedImage.TYPE_INT_ARGB);
+
+            int x = 0;
+            for (Integer val : counts) {
+                for (int y = 0; y < height; y++) {
+
+                    int ymax = (int)Math.ceil(height*val*1.0/maxCt);
+
+                    if (ymax != 0 && y <= ymax) {
+                        hist.setRGB(x,y, 0xffffffff);
+                    } else {
+                        hist.setRGB(x,y, 0x00ffffff);
+                    }
+                }
+                x++;
+            }
+            vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM,
+                                        new VzText(VzText.ANCHOR.BOTTOM, String.format("<<white>>MRE [%.3f, %.3f]", eMin,eMax)),
+                                        LinAlg.translate(-counts.size()/2,22,0),
+                                        new VzImage(new VisTexture(hist, VisTexture.NO_MAG_FILTER | VisTexture.NO_MIN_FILTER),0),
+                                        LinAlg.translate(maxIdx,height,0),
+                                        new VzText(VzText.ANCHOR.BOTTOM_LEFT,String.format("peak %.3f",maxHist))));
+
+        }
+
+        vb.swap();
+
+
         ////////////////////////////////////////
 
         for (int cameraIndex = 0; cameraIndex < cameras.size(); cameraIndex++) {
@@ -931,6 +1008,12 @@ public class CameraCalibrator
 
         // start block
         System.out.println("aprilCameraCalibration {\n");
+
+        // Comment about MRE, MSE for this calibration
+        if (true) {
+            System.out.printf("    // MRE: %.5f\n",getMRE());
+            System.out.printf("    // MSE: %.5f\n",getMSE());
+        }
 
         // print name list
         String names = "    names = [";
