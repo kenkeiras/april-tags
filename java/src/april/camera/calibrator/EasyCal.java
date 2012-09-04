@@ -258,8 +258,10 @@ public class EasyCal implements ParameterListener
 
         void score(BufferedImage im, List<TagDetection> detections)
         {
-            if (detections.size() == 0)
+            if (detections.size() == 0) {
+                vwside.getBuffer("Matches").swap();
                 return;
+            }
 
             if (minID == null || maxID == null) {
                 minID = detections.get(0).id;
@@ -282,7 +284,13 @@ public class EasyCal implements ParameterListener
                 double p[] = null;
                 for (int j=0; j < suggestion.tagids.length; j++) {
                     if (suggestion.tagids[j] == matchid) {
-                        p = suggestion.predictedTagCenters_rectified.get(j);
+                        double pt[] = suggestion.predictedTagCenters_rectified.get(j);
+
+                        if (pt[0] >= 0 && pt[0] < im.getWidth() &&
+                            pt[1] >= 0 && pt[1] < im.getHeight())
+                        {
+                            p = pt;
+                        }
                     }
                 }
 
@@ -297,6 +305,7 @@ public class EasyCal implements ParameterListener
                 }
             }
 
+            // draw lines
             double matchlines[][] = new double[lines.size()*2][];
             for (int i=0; i < lines.size(); i++) {
                 double line[][] = lines.get(i);
