@@ -50,6 +50,7 @@ public class SyntheticTagMosaicImageGenerator
         public BufferedImage rectified;
         public BufferedImage distorted;
 
+        public int[] tagids;
         public ArrayList<double[]> predictedTagCenters_rectified;
         public ArrayList<double[]> predictedTagCenters_distorted;
     }
@@ -255,6 +256,10 @@ public class SyntheticTagMosaicImageGenerator
                                                                       LocalToCamera,
                                                                       tagPositionsGlobal);
         }
+
+        images.tagids = new int[tagsToDisplay.size()];
+        for (int i=0; i < tagsToDisplay.size(); i++)
+            images.tagids[i] = tagsToDisplay.get(i);
 
         return images;
     }
