@@ -46,6 +46,9 @@ public class EasyCal implements ParameterListener
     SyntheticTagMosaicImageGenerator simgen;
     SyntheticTagMosaicImageGenerator.SyntheticImages suggestion;
     List<ScoredImage> candidateImages;
+    boolean waitingForBest = false;
+    long startedWaiting = 0;
+    double waitTime = 3.0; // seconds
 
     Integer minID, maxID;
 
@@ -80,7 +83,8 @@ public class EasyCal implements ParameterListener
         vc = new VisCanvas(vlcal);
 
         pg = new ParameterGUI();
-        pg.addButtons("save","Save images",
+        pg.addButtons("skip","Skip this suggestion",
+                      "save","Save images",
                       "print","Print calibration");
         pg.addListener(this);
 
@@ -123,6 +127,9 @@ public class EasyCal implements ParameterListener
 
     public void parameterChanged(ParameterGUI pg, String name)
     {
+        if (name.equals("skip"))
+            generateSuggestion(generateXyzrpy());
+
         if (name.equals("print") && calibrator != null)
             calibrator.printCalibrationBlock();
 
@@ -279,7 +286,7 @@ public class EasyCal implements ParameterListener
             for (int i=0; i < detections.size(); i++) {
                 TagDetection d = detections.get(i);
 
-                int matchid = d.id - minID;
+                int matchid = d.id;
 
                 double p[] = null;
                 for (int j=0; j < suggestion.tagids.length; j++) {
@@ -324,28 +331,19 @@ public class EasyCal implements ParameterListener
             ////////////////////////////////////////
             ScoredImage si = new ScoredImage(im, detections, totaldist/nmatches);
 
-            if (si.meandistance < 30) { // XXX not a great criteria
-                candidateImages.clear();
-
-                // we've got a detection
-                List<BufferedImage> allImages = new ArrayList<BufferedImage>();
-                List<List<TagDetection>> allDetections = new ArrayList<List<TagDetection>>();
-                allImages.add(si.im);
-                allDetections.add(si.detections);
-
-                calibrator.addImages(allImages, allDetections);
-
-                // make a new suggestion
-                generateSuggestion(generateXyzrpy());
-            } else {
-                // keep N best candidate images
-                candidateImages.add(si);
-                Collections.sort(candidateImages);
-                List<ScoredImage> newCandidates = new ArrayList<ScoredImage>();
-                for (int i=0; i < Math.min(10, candidateImages.size()); i++)
-                    newCandidates.add(candidateImages.get(i));
-                candidateImages = newCandidates;
+            if (!waitingForBest && si.meandistance < im.getWidth()/10.0) {
+                waitingForBest = true;
+                startedWaiting = TimeUtil.utime();
+                System.out.println("Waiting has started...");
             }
+
+            // keep N best candidate images
+            candidateImages.add(si);
+            Collections.sort(candidateImages);
+            List<ScoredImage> newCandidates = new ArrayList<ScoredImage>();
+            for (int i=0; i < Math.min(10, candidateImages.size()); i++)
+                newCandidates.add(candidateImages.get(i));
+            candidateImages = newCandidates;
 
             // print
             for (int i=0; i < Math.min(10, candidateImages.size()); i++) {
@@ -353,6 +351,30 @@ public class EasyCal implements ParameterListener
                 System.out.printf("(%3d, %6.1f) ", ci.detections.size(), ci.meandistance);
             }
             System.out.println();
+
+            if (waitingForBest) {
+                double waited = (TimeUtil.utime() - startedWaiting)*1.0e-6;
+
+                if (waited > waitTime) {
+
+                    waitingForBest = false;
+                    ScoredImage best = candidateImages.get(0);
+                    candidateImages.clear();
+
+                    System.out.printf("Using image with %d detections and mean error %6.1f\n",
+                                      best.detections.size(), best.meandistance);
+
+                    List<BufferedImage> allImages = new ArrayList<BufferedImage>();
+                    List<List<TagDetection>> allDetections = new ArrayList<List<TagDetection>>();
+                    allImages.add(best.im);
+                    allDetections.add(best.detections);
+
+                    calibrator.addImages(allImages, allDetections);
+
+                    // make a new suggestion
+                    generateSuggestion(generateXyzrpy());
+                }
+            }
         }
     }
 
@@ -413,13 +435,22 @@ public class EasyCal implements ParameterListener
             // tags on a standard 1-page print of the tag mosaic
             double pitch = 0.0254;
             ArrayList<Integer> tagsToDisplay = new ArrayList<Integer>();
-            for (int i=  0; i <=   9; i++) tagsToDisplay.add(i);
-            for (int i= 24; i <=  33; i++) tagsToDisplay.add(i);
-            for (int i= 48; i <=  57; i++) tagsToDisplay.add(i);
-            for (int i= 72; i <=  81; i++) tagsToDisplay.add(i);
-            for (int i= 96; i <= 105; i++) tagsToDisplay.add(i);
-            for (int i=120; i <= 129; i++) tagsToDisplay.add(i);
-            for (int i=144; i <= 153; i++) tagsToDisplay.add(i);
+            // small foam board 14-23, 182-191
+            int mosaicWidth  = (int) Math.sqrt(tf.codes.length);
+            int mosaicHeight = tf.codes.length / mosaicWidth + 1;
+            int minCol =  14 % mosaicWidth;
+            int maxCol =  23 % mosaicWidth;
+            int minRow =  14 / mosaicWidth;
+            int maxRow = 182 / mosaicWidth;
+            for (int col = minCol; col <= maxCol; col++) {
+                for (int row = minRow; row <= maxRow; row++) {
+                    int id = row*mosaicWidth + col;
+                    if (id > tf.codes.length)
+                        continue;
+
+                    tagsToDisplay.add(id);
+                }
+            }
 
             simgen = new SyntheticTagMosaicImageGenerator(tf, imwidth, imheight, pitch, tagsToDisplay);
 
@@ -447,12 +478,12 @@ public class EasyCal implements ParameterListener
 
     private double[] generateXyzrpy()
     {
-        double xyzrpy[] = new double[] { 0.1 + 0.5*r.nextDouble(),
+        double xyzrpy[] = new double[] { 0.2 + 0.5*r.nextDouble(),
                                         -0.1 + 0.2*r.nextDouble(),
                                         -0.1 + 0.2*r.nextDouble(),
-                                        -0.4 + 0.8*r.nextDouble(),
-                                        -0.4 + 0.8*r.nextDouble(),
-                                        -0.4 + 0.8*r.nextDouble() };
+                                        -0.4 + 1.2*r.nextDouble(),
+                                        -0.4 + 1.2*r.nextDouble(),
+                                        -0.4 + 1.2*r.nextDouble() };
         return xyzrpy;
     }
 

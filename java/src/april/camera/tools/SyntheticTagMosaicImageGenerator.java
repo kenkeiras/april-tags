@@ -127,11 +127,11 @@ public class SyntheticTagMosaicImageGenerator
         double scale = tagSizeMeters / example.getWidth();
 
         // get center of specified tag mosaic
-        double xmin = tagPositionsPixels.get(tagsToDisplay.get(0))[0];
-        double xmax = tagPositionsPixels.get(tagsToDisplay.get(0))[0];
-        double ymin = tagPositionsPixels.get(tagsToDisplay.get(0))[1];
-        double ymax = tagPositionsPixels.get(tagsToDisplay.get(0))[1];
-        for (Integer id : tagsToDisplay) {
+        double xmin = tagPositionsPixels.get(this.tagsToDisplay.get(0))[0];
+        double xmax = tagPositionsPixels.get(this.tagsToDisplay.get(0))[0];
+        double ymin = tagPositionsPixels.get(this.tagsToDisplay.get(0))[1];
+        double ymax = tagPositionsPixels.get(this.tagsToDisplay.get(0))[1];
+        for (Integer id : this.tagsToDisplay) {
             xmin = Math.min(xmin, tagPositionsPixels.get(id)[0] - example.getWidth()/2);
             xmax = Math.max(xmax, tagPositionsPixels.get(id)[0] + example.getWidth()/2);
             ymin = Math.min(ymin, tagPositionsPixels.get(id)[1] - example.getHeight()/2);
