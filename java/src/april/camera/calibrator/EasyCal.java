@@ -214,12 +214,15 @@ public class EasyCal implements ParameterListener
 
             ////////////////////////////////////////
             // suggested image
+            BufferedImage sugim = suggestion.distorted;
+            if (sugim == null)
+                sugim = suggestion.rectified;
             vb = vwside.getBuffer("Suggestion");
             vb.setDrawOrder(0);
             vb.addBack(new VisLighting(false,
                                        new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT,
                                                         new VisChain(PixelsToVisSug,
-                                                                     new VzImage(new VisTexture(EasyCal.this.suggestion.rectified,
+                                                                     new VzImage(new VisTexture(sugim,
                                                                                                 VisTexture.NO_MAG_FILTER |
                                                                                                 VisTexture.NO_MIN_FILTER |
                                                                                                 VisTexture.NO_REPEAT),
@@ -291,7 +294,12 @@ public class EasyCal implements ParameterListener
                 double p[] = null;
                 for (int j=0; j < suggestion.tagids.length; j++) {
                     if (suggestion.tagids[j] == matchid) {
-                        double pt[] = suggestion.predictedTagCenters_rectified.get(j);
+                        double pt[] = null;
+
+                        if (suggestion.predictedTagCenters_distorted != null)
+                            pt = suggestion.predictedTagCenters_distorted.get(j);
+                        else
+                            pt = suggestion.predictedTagCenters_rectified.get(j);
 
                         if (pt[0] >= 0 && pt[0] < im.getWidth() &&
                             pt[1] >= 0 && pt[1] < im.getHeight())
@@ -472,8 +480,11 @@ public class EasyCal implements ParameterListener
         if (xyzrpy == null)
             xyzrpy = new double[] {0.4, 0, 0, 0, 0.5, 0.5};
 
-        this.suggestion = simgen.generateImage(null, xyzrpy, false);
+        ParameterizableCalibration cal = null;
+        if (calibrator != null)
+            cal = calibrator.getCalibrationObject(0);
 
+        this.suggestion = simgen.generateImage(cal, xyzrpy, false);
     }
 
     private double[] generateXyzrpy()

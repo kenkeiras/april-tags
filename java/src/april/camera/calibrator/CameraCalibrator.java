@@ -242,6 +242,19 @@ public class CameraCalibrator
         return cam.cal.getParameterization();
     }
 
+    public synchronized ParameterizableCalibration getCalibrationObject(int cameraIndex)
+    {
+        if (cameras == null)
+            return null;
+
+        if (cameraIndex < 0 || cameraIndex >= cameras.size())
+            return null;
+
+        CameraWrapper cam = cameras.get(cameraIndex);
+        assert(cam != null);
+        return cam.cal;
+    }
+
     /** Return the XYZRPY camera-to-global representation of the extrinsics
       * for the specified camera.
       */
