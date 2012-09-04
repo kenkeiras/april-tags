@@ -30,8 +30,8 @@ public class VisCanvas extends JComponent implements VisSerializable
 
     // protected by synchronizing on 'layers'
     ArrayList<VisLayer> layers = new ArrayList<VisLayer>();
-    VisWorld privateWorld;
-    VisLayer privateLayer;
+    public VisWorld privateWorld;
+    public VisLayer privateLayer;
 
     EventHandler eh = new EventHandler();
 

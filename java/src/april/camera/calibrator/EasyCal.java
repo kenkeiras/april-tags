@@ -11,6 +11,7 @@ import java.util.*;
 import javax.swing.*;
 
 import april.camera.*;
+import april.camera.tools.*;
 import april.jcam.*;
 import april.tag.*;
 import april.util.*;
@@ -40,6 +41,10 @@ public class EasyCal implements ParameterListener
     TagDetector td;
     double PixelsToVis[][];
     boolean once = true;
+
+    Random r = new Random(1461234L);
+    SyntheticTagMosaicImageGenerator simgen;
+    double desiredXyzrpy[];
 
     public EasyCal(CalibrationInitializer initializer, String url, double tagSpacingMeters)
     {
@@ -221,9 +226,8 @@ public class EasyCal implements ParameterListener
             vlims = new VisLayer("Camera", vwims);
             vlims.layerManager = new DefaultLayerManager(vlims, new double[] {0, 0.5, lw, 0.5});
             ((DefaultCameraManager) vlims.cameraManager).interfaceMode = 1.5;
+            vlims.backgroundColor = new Color(50, 50, 50);
             vc.addLayer(vlims);
-
-            vlims.cameraManager.fit2D(XY0, XY1, true);
         }
 
         if (vwsug == null || vlsug == null) {
@@ -233,8 +237,40 @@ public class EasyCal implements ParameterListener
 
             vlsug.layerManager = new DefaultLayerManager(vlsug, new double[] {0, 0.0, lw, 0.5});
             ((DefaultCameraManager) vlsug.cameraManager).interfaceMode = 1.5;
+            vlsug.backgroundColor = new Color(50, 50, 50);
             vc.addLayer(vlsug);
+
+            // tags on a standard 1-page print of the tag mosaic
+            double pitch = 0.0254;
+            ArrayList<Integer> tagsToDisplay = new ArrayList<Integer>();
+            for (int i=  0; i <=   9; i++) tagsToDisplay.add(i);
+            for (int i= 24; i <=  33; i++) tagsToDisplay.add(i);
+            for (int i= 48; i <=  57; i++) tagsToDisplay.add(i);
+            for (int i= 72; i <=  81; i++) tagsToDisplay.add(i);
+            for (int i= 96; i <= 105; i++) tagsToDisplay.add(i);
+            for (int i=120; i <= 129; i++) tagsToDisplay.add(i);
+            for (int i=144; i <= 153; i++) tagsToDisplay.add(i);
+
+            simgen = new SyntheticTagMosaicImageGenerator(tf, imwidth, imheight, pitch,
+                                                          tagsToDisplay);
+            desiredXyzrpy = new double[] {0.4, 0, 0, 0, 0, 0};
+
+            SyntheticTagMosaicImageGenerator.SyntheticImages images =
+                        simgen.generateImage(null, desiredXyzrpy, false);
+            BufferedImage sim = images.rectified;
+
+            vb = vwsug.getBuffer("Suggestion");
+            vb.addBack(new VisLighting(false,
+                                       new VisChain(PixelsToVis,
+                                                    new VzImage(new VisTexture(sim, VisTexture.NO_MAG_FILTER |
+                                                                                    VisTexture.NO_MIN_FILTER |
+                                                                                    VisTexture.NO_REPEAT),
+                                                                0))));
+            vb.swap();
         }
+
+        vlims.cameraManager.fit2D(XY0, XY1, true);
+        vlsug.cameraManager.fit2D(XY0, XY1, true);
     }
 
     public static void main(String args[])
