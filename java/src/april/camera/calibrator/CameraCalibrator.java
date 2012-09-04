@@ -330,8 +330,10 @@ public class CameraCalibrator
                                        List<List<TagDetection>> allDetections,
                                        double MosaicToGlobalXyzrpy[])
     {
-        addImagesNoInit(newImages, allDetections, MosaicToGlobalXyzrpy);
-        initialize();
+        boolean success = addImagesNoInit(newImages, allDetections, MosaicToGlobalXyzrpy);
+
+        if (success)
+            initialize();
     }
 
     // Delays initialization until all images have been processed.
@@ -342,14 +344,18 @@ public class CameraCalibrator
         assert(newImagesSet.size() == allDetectionsSet.size());
         assert(allDetectionsSet.size() == MosaicToGlobalXyzrpySet.size());
 
-        for (int i = 0; i < newImagesSet.size(); i++)
-            addImagesNoInit(newImagesSet.get(i), allDetectionsSet.get(i), MosaicToGlobalXyzrpySet.get(i));
-        initialize();
+        boolean success = false;
+        for (int i = 0; i < newImagesSet.size(); i++) {
+            success |= addImagesNoInit(newImagesSet.get(i), allDetectionsSet.get(i), MosaicToGlobalXyzrpySet.get(i));
+        }
+
+        if (success)
+            initialize();
     }
 
-    private synchronized void addImagesNoInit(List<BufferedImage> newImages,
-                                       List<List<TagDetection>> allDetections,
-                               double MosaicToGlobalXyzrpy[])
+    private synchronized boolean addImagesNoInit(List<BufferedImage> newImages,
+                                                 List<List<TagDetection>> allDetections,
+                                                 double MosaicToGlobalXyzrpy[])
     {
         assert(newImages.size() == initializers.size());
         assert((allDetections == null) || (allDetections.size() == initializers.size()));
@@ -378,13 +384,15 @@ public class CameraCalibrator
             // skip if we don't have a reasonable number of observed tags?
             // XXX is this the right thing to do? should we reject the whole image set?
             if (detections.size() < REQUIRED_TAGS_PER_IMAGE)
-                return;
+                return false;
 
             processedImages.add(new ProcessedImage(im, detections));
         }
 
         this.images.add(processedImages);
         this.mosaicExtInits.add(MosaicToGlobalXyzrpy);
+
+        return true;
     }
 
     private void initialize() {
