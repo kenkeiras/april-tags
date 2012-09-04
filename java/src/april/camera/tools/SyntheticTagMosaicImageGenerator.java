@@ -93,6 +93,7 @@ public class SyntheticTagMosaicImageGenerator
 
         vc = new VisCanvas(vl);
         vc.setSize(canvasWidth, canvasHeight);
+        vc.privateLayer.setEnabled(false);
 
         // tag mosaic
         example = tf.makeImage(0);
@@ -237,7 +238,7 @@ public class SyntheticTagMosaicImageGenerator
         Graphics2D g = (Graphics2D) frame.getGraphics();
         vc.paintComponent(g);
 
-        {
+        if (true) {
             Rasterizer rasterizer = new BilinearRasterizer(input, outputRectified);
             images.rectified = rasterizer.rectifyImage(frame);
 
@@ -246,7 +247,7 @@ public class SyntheticTagMosaicImageGenerator
                                                                       tagPositionsGlobal);
         }
 
-        {
+        if (outputDistorted != null) {
             Rasterizer rasterizer = new BilinearRasterizer(input, outputDistorted);
             images.distorted = rasterizer.rectifyImage(frame);
 
