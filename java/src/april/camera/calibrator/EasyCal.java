@@ -45,6 +45,7 @@ public class EasyCal implements ParameterListener
     Random r = new Random(1461234L);
     SyntheticTagMosaicImageGenerator simgen;
     double desiredXyzrpy[];
+    BufferedImage suggestion;
 
     public EasyCal(CalibrationInitializer initializer, String url, double tagSpacingMeters)
     {
@@ -167,13 +168,16 @@ public class EasyCal implements ParameterListener
         {
             updateLayers(im.getWidth(), im.getHeight());
 
+            ////////////////////////////////////////
             vb = vwims.getBuffer("Video");
             vb.addBack(new VisLighting(false,
-                                       new VisChain(PixelsToVis,
-                                                    new VzImage(new VisTexture(im, VisTexture.NO_MAG_FILTER |
-                                                                                   VisTexture.NO_MIN_FILTER |
-                                                                                   VisTexture.NO_REPEAT),
-                                                                0))));
+                                       new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT,
+                                                        new VisChain(PixelsToVis,
+                                                                     new VzImage(new VisTexture(im,
+                                                                                                VisTexture.NO_MAG_FILTER |
+                                                                                                VisTexture.NO_MIN_FILTER |
+                                                                                                VisTexture.NO_REPEAT),
+                                                                                 0)))));
             vb.swap();
 
             vb = vwims.getBuffer("Detections");
@@ -197,7 +201,19 @@ public class EasyCal implements ParameterListener
                                       VzLines.LINE_STRIP,
                                       new VzLines.Style(Color.red, 2)));
             }
-            vb.addBack(chain);
+            vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT, chain));
+            vb.swap();
+
+            ////////////////////////////////////////
+            vb = vwsug.getBuffer("Suggestion");
+            vb.addBack(new VisLighting(false,
+                                       new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT,
+                                                        new VisChain(PixelsToVis,
+                                                                     new VzImage(new VisTexture(EasyCal.this.suggestion,
+                                                                                                VisTexture.NO_MAG_FILTER |
+                                                                                                VisTexture.NO_MIN_FILTER |
+                                                                                                VisTexture.NO_REPEAT),
+                                                                                 0)))));
             vb.swap();
         }
     }
@@ -206,36 +222,37 @@ public class EasyCal implements ParameterListener
     {
         double imaspect = ((double) imwidth) / imheight;
         double visaspect = ((double) vc.getWidth()) / vc.getHeight();
+
         double lh = 0.5;
         double lw = imaspect*lh/visaspect;
 
-        double XY0[] = new double[2];
-        double XY1[] = new double[] { imwidth, imheight };
+        double h = vc.getHeight() * 0.5;
+        double w = h*imaspect;
+
+        PixelsToVis = CameraMath.makeVisPlottingTransform(imwidth, imheight,
+                                                          new double[] { 0, 0 },
+                                                          new double[] { w, h },
+                                                          true);
 
         if (once) {
             once = false;
-            PixelsToVis = CameraMath.makeVisPlottingTransform(imwidth, imheight,
-                                                              XY0, XY1, true);
 
-            vlcal.layerManager = new DefaultLayerManager(vlcal, new double[] { lw, 0, 1.0-lw, 1});
-        }
+            // cal layer
+            vlcal.layerManager = new WindowedLayerManager(WindowedLayerManager.ALIGN.TOP_RIGHT, (int) (vc.getWidth()-w), (int) (vc.getHeight()));
 
-        if (vwims == null || vlims == null || PixelsToVis == null) {
-
+            // image layer
             vwims = new VisWorld();
             vlims = new VisLayer("Camera", vwims);
-            vlims.layerManager = new DefaultLayerManager(vlims, new double[] {0, 0.5, lw, 0.5});
+            vlims.layerManager = new WindowedLayerManager(WindowedLayerManager.ALIGN.TOP_LEFT, (int) (w), (int) (h));
             ((DefaultCameraManager) vlims.cameraManager).interfaceMode = 1.5;
             vlims.backgroundColor = new Color(50, 50, 50);
             vc.addLayer(vlims);
-        }
 
-        if (vwsug == null || vlsug == null) {
-
+            // suggestion layer
             vwsug = new VisWorld();
             vlsug = new VisLayer("Suggestions", vwsug);
-
-            vlsug.layerManager = new DefaultLayerManager(vlsug, new double[] {0, 0.0, lw, 0.5});
+            //vlsug.layerManager = new DefaultLayerManager(vlsug, new double[] {0, 0.0, lw, 0.5});
+            vlsug.layerManager = new WindowedLayerManager(WindowedLayerManager.ALIGN.BOTTOM_LEFT, (int) (w), (int) (h));
             ((DefaultCameraManager) vlsug.cameraManager).interfaceMode = 1.5;
             vlsug.backgroundColor = new Color(50, 50, 50);
             vc.addLayer(vlsug);
@@ -251,26 +268,24 @@ public class EasyCal implements ParameterListener
             for (int i=120; i <= 129; i++) tagsToDisplay.add(i);
             for (int i=144; i <= 153; i++) tagsToDisplay.add(i);
 
-            simgen = new SyntheticTagMosaicImageGenerator(tf, imwidth, imheight, pitch,
-                                                          tagsToDisplay);
-            desiredXyzrpy = new double[] {0.4, 0, 0, 0, 0, 0};
+            simgen = new SyntheticTagMosaicImageGenerator(tf, imwidth, imheight, pitch, tagsToDisplay);
+            desiredXyzrpy = new double[] {0.4, 0, 0, 0, 0.5, 0.5};
 
             SyntheticTagMosaicImageGenerator.SyntheticImages images =
                         simgen.generateImage(null, desiredXyzrpy, false);
-            BufferedImage sim = images.rectified;
 
-            vb = vwsug.getBuffer("Suggestion");
-            vb.addBack(new VisLighting(false,
-                                       new VisChain(PixelsToVis,
-                                                    new VzImage(new VisTexture(sim, VisTexture.NO_MAG_FILTER |
-                                                                                    VisTexture.NO_MIN_FILTER |
-                                                                                    VisTexture.NO_REPEAT),
-                                                                0))));
-            vb.swap();
+            this.suggestion = images.rectified;
         }
+        else {
+            ((WindowedLayerManager) vlcal.layerManager).winwidth  = (int) (vc.getWidth()-w);
+            ((WindowedLayerManager) vlcal.layerManager).winheight = (int) vc.getHeight();
 
-        vlims.cameraManager.fit2D(XY0, XY1, true);
-        vlsug.cameraManager.fit2D(XY0, XY1, true);
+            ((WindowedLayerManager) vlims.layerManager).winwidth  = (int) w;
+            ((WindowedLayerManager) vlims.layerManager).winheight = (int) h;
+
+            ((WindowedLayerManager) vlsug.layerManager).winwidth  = (int) w;
+            ((WindowedLayerManager) vlsug.layerManager).winheight = (int) h;
+        }
     }
 
     public static void main(String args[])
