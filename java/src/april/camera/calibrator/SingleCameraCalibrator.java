@@ -16,6 +16,7 @@ import april.vis.*;
 
 public class SingleCameraCalibrator implements ParameterListener
 {
+
     // GUI
     JFrame              jf;
     VisWorld            vw1;
@@ -47,6 +48,14 @@ public class SingleCameraCalibrator implements ParameterListener
 
     double PixelsToVis[][];
 
+    // Save the info we need to replace calibrator later on, if necessary
+    double tagSpacing_m;
+    CalibrationInitializer initializer;
+
+    // Keep track of all the images and detections we've done, we'll use them to reinitialize as necessary
+    List<List<BufferedImage>> imagesSet = new ArrayList();
+    List<List<List<TagDetection>>>  detsSet = new ArrayList();
+
     public SingleCameraCalibrator(CalibrationInitializer initializer, String url, double tagSpacing_m,
                                   boolean autocapture, boolean block)
     {
@@ -55,6 +64,8 @@ public class SingleCameraCalibrator implements ParameterListener
 
         this.tf = new Tag36h11();
         this.td = new TagDetector(tf);
+        this.initializer = initializer;
+        this.tagSpacing_m = tagSpacing_m;
 
         ////////////////////////////////////////////////////////////////////////////////
         // GUI setup
@@ -104,10 +115,7 @@ public class SingleCameraCalibrator implements ParameterListener
         }
 
         // Calibrator setup
-        ArrayList<CalibrationInitializer> initializers = new ArrayList<CalibrationInitializer>();
-        initializers.add(initializer);
-
-        calibrator = new CameraCalibrator(initializers, tf,
+        calibrator = new CameraCalibrator(Arrays.asList(initializer), tf,
                                           tagSpacing_m, vl2);
 
         // Threads
@@ -261,13 +269,24 @@ public class SingleCameraCalibrator implements ParameterListener
         void process(BufferedImage im, List<TagDetection> detections)
         {
             System.out.println("Process");
-            ArrayList<BufferedImage> allImages = new ArrayList<BufferedImage>();
-            allImages.add(im);
+            imagesSet.add(Arrays.asList(im));
+            detsSet.add(Arrays.asList(detections));
 
-            List<List<TagDetection>> allDetections = new ArrayList<List<TagDetection>>();
-            allDetections.add(detections);
+            calibrator.addImages(imagesSet.get(imagesSet.size()-1), detsSet.get(detsSet.size()-1));
+            double origMRE = calibrator.getMRE();
 
-            calibrator.addImages(allImages, allDetections);
+            { // Try to reinitialize, check MRE, take the better one:
+                CameraCalibrator cal = new CameraCalibrator(Arrays.asList(initializer), tf,
+                                                            tagSpacing_m, vl2);
+                cal.addImageSet(imagesSet, detsSet, Collections.<double[]>nCopies(imagesSet.size(),null));
+                double newMRE = cal.getMRE();
+
+                if (newMRE < origMRE) {
+                    System.out.printf("Using new init on %d images with MRE %.5f instead of MRE of %.5f\n",
+                                      imagesSet.size(), newMRE, origMRE);
+                    calibrator = cal;
+                }
+            }
         }
     }
 
