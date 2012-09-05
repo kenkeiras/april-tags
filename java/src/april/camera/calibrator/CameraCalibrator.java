@@ -1125,9 +1125,17 @@ public class CameraCalibrator
         String dirName = String.format("%s/", basepath);
         File dir = new File(dirName);
 
-        if (dir.mkdirs() != true) {
-            System.err.printf("CameraCalibrator: Failure to create directory '%s'\n", dirName);
+        if (dir.exists() && !dir.isDirectory()) {
+            System.err.printf("CameraCalibrator: File exists at the desired directory '%s'\n", dirName);
             return;
+        }
+
+        if (!dir.exists()) {
+            boolean mkdir = dir.mkdirs();
+            if (mkdir != true) {
+                System.err.printf("CameraCalibrator: Failed to create directory '%s'\n", dirName);
+                return;
+            }
         }
 
         try {
@@ -1144,15 +1152,15 @@ public class CameraCalibrator
                     CameraWrapper cam = cameras.get(cameraIndex);
                     double K[][] = cam.cal.copyIntrinsics();
 
-                    for (TagDetection d : pim.detections) {
-
-                        outs.write(String.format("%12.6f\n", Math.sqrt(Math.pow(d.cxy[0] - K[0][2], 2) +
-                                                                       Math.pow(d.cxy[1] - K[1][2], 2)  )));
-                    }
+                    for (TagDetection d : pim.detections)
+                        outs.write(String.format("%12.6f, %12.6f\n", d.cxy[0], d.cxy[1]));
                 }
             }
 
             outs.close();
+
+            System.out.println("Saved detections successfully.");
+
         } catch (IOException ex) {
             System.out.println("Error saving detections: " + ex);
         }
