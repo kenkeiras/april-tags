@@ -42,7 +42,7 @@ public class EasyCal implements ParameterListener
     double PixelsToVisSug[][];
     boolean once = true;
 
-    Random r = new Random(1461234L);
+    Random r = new Random();//(1461234L);
     SyntheticTagMosaicImageGenerator simgen;
     SyntheticTagMosaicImageGenerator.SyntheticImages suggestion;
     List<ScoredImage> candidateImages;
@@ -75,6 +75,10 @@ public class EasyCal implements ParameterListener
     {
         this.tf = new Tag36h11();
         this.td = new TagDetector(tf);
+
+        // silence!
+        CameraCalibrator.verbose = false;
+        IntrinsicsEstimator.verbose = false;
 
         ////////////////////////////////////////
         // GUI
@@ -402,9 +406,6 @@ public class EasyCal implements ParameterListener
                     waitingForBest = false;
                     ScoredImage best = candidateImages.get(0);
                     candidateImages.clear();
-
-                    System.out.printf("Using image with %d detections and mean error %6.1f\n",
-                                      best.detections.size(), best.meandistance);
 
                     List<BufferedImage> allImages = new ArrayList<BufferedImage>();
                     List<List<TagDetection>> allDetections = new ArrayList<List<TagDetection>>();

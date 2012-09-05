@@ -816,8 +816,19 @@ public class CameraCalibrator
 
         vb.swap();
 
+        ////////////////////////////////////////
+        // calibration text
+        String calstr = getCalibrationBlockString();
+        vb = vw.getBuffer("Calibration");
+        vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.TOP_LEFT,
+                                    new VzText(VzText.ANCHOR.TOP_LEFT,
+                                               "<<dropshadow=#88000000>>"+
+                                               "<<sansserif-9,white>>"+
+                                               calstr)));
+        vb.swap();
 
         ////////////////////////////////////////
+        // reprojected images
 
         for (int cameraIndex = 0; cameraIndex < cameras.size(); cameraIndex++) {
 
@@ -1027,13 +1038,25 @@ public class CameraCalibrator
         if (cameras == null || cameras.size() < 1)
             return;
 
+        System.out.printf(getCalibrationBlockString());
+    }
+
+    private String getCalibrationBlockString()
+    {
+        if (cameras == null || cameras.size() == 0)
+            return null;
+
+        String str = "";
+
         // start block
-        System.out.println("aprilCameraCalibration {\n");
+        str += "aprilCameraCalibration {\n";
+        str += "\n";
 
         // Comment about MRE, MSE for this calibration
         if (true) {
-            System.out.printf("    // MRE: %.5f\n",getMRE());
-            System.out.printf("    // MSE: %.5f\n",getMSE());
+            str += String.format("    // MRE: %.5f\n",getMRE());
+            str += String.format("    // MSE: %.5f\n",getMSE());
+            str += "\n";
         }
 
         // print name list
@@ -1042,20 +1065,20 @@ public class CameraCalibrator
             CameraWrapper cam = cameras.get(i);
             names = String.format("%s %s,", names, cam.name);
         }
-        names = String.format("%s %s ];", names, cameras.get(cameras.size()-1).name);
-        System.out.println(names);
+        names = String.format("%s %s ];\n", names, cameras.get(cameras.size()-1).name);
+        str += names;
 
         // print cameras
         for (int i=0; i < cameras.size(); i++) {
 
             CameraWrapper cam = cameras.get(i);
 
-            System.out.println();
-            System.out.printf("    %s {\n", cam.name);
+            str += "\n";
+            str += String.format("    %s {\n", cam.name);
 
             // make sure ParameterizableCalibration is up to date and print it
             cam.cal.resetParameterization(cam.cameraIntrinsics.state);
-            System.out.println(cam.cal.getCalibrationString());
+            str += cam.cal.getCalibrationString();
 
             double state[] = new double[6];
             if (cam.cameraExtrinsics != null) {
@@ -1072,13 +1095,15 @@ public class CameraCalibrator
             s = String.format("%s            rollpitchyaw_degrees = [%11.6f,%11.6f,%11.6f ];\n",
                               s, state[3]*180/Math.PI, state[4]*180/Math.PI, state[5]*180/Math.PI);
             s = String.format("%s        }\n", s);
-            System.out.printf("%s", s);
 
-            System.out.printf("    }\n");
+            str += s;
+            str += "    }\n";
         }
 
         // end block
-        System.out.println("}");
+        str += "}\n";
+
+        return str;
     }
 
     public void saveDetections()
