@@ -212,17 +212,24 @@ public class EasyCal implements ParameterListener
                                                                                  0)))));
             vb.swap();
 
+            vb = vwside.getBuffer("Video HUD");
+            vb.setDrawOrder(50);
+            vb.addBack(new VisDepthTest(false,
+                                        new VisPixCoords(VisPixCoords.ORIGIN.TOP,
+                                                         new VzText(VzText.ANCHOR.TOP,
+                                                                    "<<dropshadow=#FF000000,"+
+                                                                    "monospaced-12-bold,white>>"+
+                                                                    "Images are mirrored for display purposes"))));
+            vb.swap();
+
             ////////////////////////////////////////
             // suggested image
-            BufferedImage sugim = suggestion.distorted;
-            if (sugim == null)
-                sugim = suggestion.rectified;
             vb = vwside.getBuffer("Suggestion");
             vb.setDrawOrder(0);
             vb.addBack(new VisLighting(false,
                                        new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT,
                                                         new VisChain(PixelsToVisSug,
-                                                                     new VzImage(new VisTexture(sugim,
+                                                                     new VzImage(new VisTexture(suggestion.rectified,
                                                                                                 VisTexture.NO_MAG_FILTER |
                                                                                                 VisTexture.NO_MIN_FILTER |
                                                                                                 VisTexture.NO_REPEAT),
@@ -270,6 +277,17 @@ public class EasyCal implements ParameterListener
         {
             if (detections.size() == 0) {
                 vwside.getBuffer("Matches").swap();
+
+                vb = vwside.getBuffer("Suggestion HUD");
+                vb.setDrawOrder(50);
+                vb.addBack(new VisDepthTest(false,
+                                            new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM,
+                                                             new VzText(VzText.ANCHOR.BOTTOM,
+                                                                        "<<dropshadow=#FF000000>>"+
+                                                                        "<<monospaced-12-bold,white>>"+
+                                                                        "Please align target with synthetic image"))));
+                vb.swap();
+
                 return;
             }
 
@@ -294,12 +312,7 @@ public class EasyCal implements ParameterListener
                 double p[] = null;
                 for (int j=0; j < suggestion.tagids.length; j++) {
                     if (suggestion.tagids[j] == matchid) {
-                        double pt[] = null;
-
-                        if (suggestion.predictedTagCenters_distorted != null)
-                            pt = suggestion.predictedTagCenters_distorted.get(j);
-                        else
-                            pt = suggestion.predictedTagCenters_rectified.get(j);
+                        double pt[] = suggestion.predictedTagCenters_rectified.get(j);
 
                         if (pt[0] >= 0 && pt[0] < im.getWidth() &&
                             pt[1] >= 0 && pt[1] < im.getHeight())
@@ -342,7 +355,15 @@ public class EasyCal implements ParameterListener
             if (!waitingForBest && si.meandistance < im.getWidth()/10.0) {
                 waitingForBest = true;
                 startedWaiting = TimeUtil.utime();
-                System.out.println("Waiting has started...");
+
+                vb = vwside.getBuffer("Suggestion HUD");
+                vb.addBack(new VisDepthTest(false,
+                                            new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM,
+                                                             new VzText(VzText.ANCHOR.BOTTOM,
+                                                                        "<<dropshadow=#FF000000>>"+
+                                                                        "<<monospaced-14-bold,green>>"+
+                                                                        "Capturing best image..."))));
+                vb.swap();
             }
 
             // keep N best candidate images
@@ -353,18 +374,31 @@ public class EasyCal implements ParameterListener
                 newCandidates.add(candidateImages.get(i));
             candidateImages = newCandidates;
 
-            // print
-            for (int i=0; i < Math.min(10, candidateImages.size()); i++) {
-                ScoredImage ci = candidateImages.get(i);
-                System.out.printf("(%3d, %6.1f) ", ci.detections.size(), ci.meandistance);
-            }
-            System.out.println();
-
             if (waitingForBest) {
                 double waited = (TimeUtil.utime() - startedWaiting)*1.0e-6;
 
                 if (waited > waitTime) {
 
+                    ////////////////////////////////////////
+                    // "flash"
+                    vwside.getBuffer("Suggestion").swap();
+                    vwside.getBuffer("Suggestion Overlay").swap();
+                    vwside.getBuffer("Matches").swap();
+                    vb = vwside.getBuffer("Suggestion HUD");
+                    vb.setDrawOrder(50);
+                    vb.addBack(new VisDepthTest(false,
+                                                new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT,
+                                                                 new VisChain(PixelsToVisSug,
+                                                                              LinAlg.translate(im.getWidth()/2, im.getHeight()/2, 0),
+                                                                              LinAlg.scale(-1, -1, 1),
+                                                                              new VzText(VzText.ANCHOR.CENTER,
+                                                                                         "<<dropshadow=#FFFFFFFF>>"+
+                                                                                         "<<monospaced-18,black>>"+
+                                                                                         "Image captured")))));
+                    vb.swap();
+
+                    ////////////////////////////////////////
+                    // use acquired image and suggest a new one
                     waitingForBest = false;
                     ScoredImage best = candidateImages.get(0);
                     candidateImages.clear();
@@ -382,6 +416,18 @@ public class EasyCal implements ParameterListener
                     // make a new suggestion
                     generateSuggestion(generateXyzrpy());
                 }
+            }
+            else {
+                // not waiting
+                vb = vwside.getBuffer("Suggestion HUD");
+                vb.setDrawOrder(50);
+                vb.addBack(new VisDepthTest(false,
+                                            new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM,
+                                                             new VzText(VzText.ANCHOR.BOTTOM,
+                                                                        "<<dropshadow=#FF000000>>"+
+                                                                        "<<monospaced-12-bold,white>>"+
+                                                                        "Please align target with synthetic image"))));
+                vb.swap();
             }
         }
     }
@@ -437,7 +483,7 @@ public class EasyCal implements ParameterListener
             vlside = new VisLayer("Side pane", vwside);
             vlside.layerManager = new WindowedLayerManager(WindowedLayerManager.ALIGN.BOTTOM_LEFT, (int) (w), (int) (vc.getHeight()));
             ((DefaultCameraManager) vlside.cameraManager).interfaceMode = 1.5;
-            vlside.backgroundColor = new Color(50, 50, 50);
+            vlside.backgroundColor = Color.white;
             vc.addLayer(vlside);
 
             // tags on a standard 1-page print of the tag mosaic
@@ -489,7 +535,7 @@ public class EasyCal implements ParameterListener
 
     private double[] generateXyzrpy()
     {
-        double xyzrpy[] = new double[] { 0.2 + 0.5*r.nextDouble(),
+        double xyzrpy[] = new double[] { 0.2 + 0.35*r.nextDouble(),
                                         -0.1 + 0.2*r.nextDouble(),
                                         -0.1 + 0.2*r.nextDouble(),
                                         -0.4 + 1.2*r.nextDouble(),
