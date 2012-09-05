@@ -50,7 +50,12 @@ public class EasyCal implements ParameterListener
     long startedWaiting = 0;
     double waitTime = 3.0; // seconds
 
-    Integer minID, maxID;
+    // save info for reinitialization
+    double tagSpacingMeters;
+    CalibrationInitializer initializer;
+
+    List<List<BufferedImage>> imagesSet = new ArrayList<List<BufferedImage>>();
+    List<List<List<TagDetection>>> detsSet = new ArrayList<List<List<TagDetection>>>();
 
     private class ScoredImage implements Comparable<ScoredImage>
     {
@@ -75,6 +80,8 @@ public class EasyCal implements ParameterListener
     {
         this.tf = new Tag36h11();
         this.td = new TagDetector(tf);
+        this.tagSpacingMeters = tagSpacingMeters;
+        this.initializer = initializer;
 
         // silence!
         CameraCalibrator.verbose = false;
@@ -118,10 +125,7 @@ public class EasyCal implements ParameterListener
 
         ////////////////////////////////////////
         // Calibrator setup
-        ArrayList<CalibrationInitializer> initializers = new ArrayList<CalibrationInitializer>();
-        initializers.add(initializer);
-
-        calibrator = new CameraCalibrator(initializers, tf, tagSpacingMeters, vlcal);
+        calibrator = new CameraCalibrator(Arrays.asList(initializer), tf, tagSpacingMeters, vlcal);
 
         ////////////////////////////////////////
         new AcquisitionThread().start();
@@ -295,16 +299,6 @@ public class EasyCal implements ParameterListener
                 return;
             }
 
-            if (minID == null || maxID == null) {
-                minID = detections.get(0).id;
-                maxID = detections.get(0).id;
-            }
-
-            for (TagDetection d : detections) {
-                minID = Math.min(minID, d.id);
-                maxID = Math.max(maxID, d.id);
-            }
-
             List<double[][]> lines = new ArrayList<double[][]>();
             double totaldist = 0;
             int nmatches = 0;
@@ -407,12 +401,7 @@ public class EasyCal implements ParameterListener
                     ScoredImage best = candidateImages.get(0);
                     candidateImages.clear();
 
-                    List<BufferedImage> allImages = new ArrayList<BufferedImage>();
-                    List<List<TagDetection>> allDetections = new ArrayList<List<TagDetection>>();
-                    allImages.add(best.im);
-                    allDetections.add(best.detections);
-
-                    calibrator.addImages(allImages, allDetections);
+                    addImage(best.im, best.detections);
 
                     // make a new suggestion
                     generateSuggestion(generateXyzrpy());
@@ -429,6 +418,27 @@ public class EasyCal implements ParameterListener
                                                                         "<<monospaced-12-bold,white>>"+
                                                                         "Please align target with synthetic image"))));
                 vb.swap();
+            }
+        }
+    }
+
+    private void addImage(BufferedImage im, List<TagDetection> detections)
+    {
+        imagesSet.add(Arrays.asList(im));
+        detsSet.add(Arrays.asList(detections));
+
+        calibrator.addImages(imagesSet.get(imagesSet.size()-1), detsSet.get(detsSet.size()-1));
+        double origMRE = calibrator.getMRE();
+
+        {
+            // try to reinitialize
+            CameraCalibrator cal = new CameraCalibrator(Arrays.asList(this.initializer),
+                                                        this.tf, this.tagSpacingMeters, this.vlcal);
+            cal.addImageSet(imagesSet, detsSet, Collections.<double[]>nCopies(imagesSet.size(),null));
+            double newMRE = cal.getMRE();
+
+            if (newMRE < origMRE) {
+                calibrator = cal;
             }
         }
     }
