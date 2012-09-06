@@ -157,13 +157,13 @@ public class CameraCalibrator
                 cameraManager.interfaceMode = 2.5;
 
                 VisCameraManager.CameraPosition pos = cameraManager.getCameraTarget();
-                //pos.eye    = new double[] { 0.1, 0.0, 2.0 };
-                //pos.lookat = new double[] { 0.1, 0.0, 0.0 };
-                //pos.up     = new double[] { 1.0, 0.0, 0.0 };
-                //pos.perspectiveness = 0;
-                pos.eye    = new double[] { 1.2, 0.0, 0.5 };
-                pos.lookat = new double[] { 0.2, 0.0, 0.0 };
-                pos.up     = new double[] {-0.4, 0.0, 0.9 };
+                pos.eye    = new double[] { 0.1, 0.0, 2.0 };
+                pos.lookat = new double[] { 0.1, 0.0, 0.0 };
+                pos.up     = new double[] { 1.0, 0.0, 0.0 };
+                pos.perspectiveness = 0;
+                //pos.eye    = new double[] { 1.2, 0.0, 0.5 };
+                //pos.lookat = new double[] { 0.2, 0.0, 0.0 };
+                //pos.up     = new double[] {-0.4, 0.0, 0.9 };
                 cameraManager.goUI(pos);
                 cameraManager.setDefaultPosition(pos.eye, pos.lookat, pos.up);
 
