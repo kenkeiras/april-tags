@@ -19,9 +19,10 @@ public class DistortionFreeInitializer implements CalibrationInitializer
       */
     public ParameterizableCalibration initializeWithObservations(int width, int height,
                                         List<List<TagDetection>> allDetections,
-                                        TagFamily tf)
+                                        TagMosaic tm)
     {
-        IntrinsicsEstimator estimator = new IntrinsicsEstimator(allDetections, tf, width/2, height/2);
+        IntrinsicsEstimator estimator = new IntrinsicsEstimator(allDetections, tm,
+                                                                width/2, height/2);
         double K[][] = estimator.getIntrinsics();
         if (K == null)
             return null;

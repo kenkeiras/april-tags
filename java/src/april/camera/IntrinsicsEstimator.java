@@ -16,18 +16,16 @@ public class IntrinsicsEstimator
     private ArrayList<ArrayList<double[][]>> allFitLines = new ArrayList<ArrayList<double[][]>>();
 
     private TagMosaic mosaic;
-    private TagFamily tf;
 
     /** Estimate the intrinsics by computing vanishing points from the tag
      * detections.  If only one image is provided, the fallback focal center is
      * used to allow estimation of the focal length. Lacking more information,
      * width/2 and height/2 is a good guess for the focal center.
       */
-    public IntrinsicsEstimator(List<List<TagDetection>> allDetections, TagFamily tf,
+    public IntrinsicsEstimator(List<List<TagDetection>> allDetections, TagMosaic mosaic,
                                double fallbackcx, double fallbackcy)
     {
-        this.mosaic = new TagMosaic(tf);
-        this.tf = tf;
+        this.mosaic = mosaic;
 
         // compute all of the vanishing points
         for (List<TagDetection> detections : allDetections) {
@@ -223,108 +221,5 @@ public class IntrinsicsEstimator
         }
 
         return new double[][] { p0, p1 };
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////
-    // TagMosaic helper class
-    ////////////////////////////////////////////////////////////////////////////////
-
-    private class TagMosaic
-    {
-        // IntrinsicsEstimator does not require tagPositions and metersPerTag is not given
-        // ArrayList<double[]> tagPositions;
-
-        ArrayList<int[]>    tagRowCol;
-
-        public TagMosaic(TagFamily tf)
-        {
-            tagRowCol = new ArrayList<int[]>();
-
-            // TODO Add a method to TagFamily that returns this grid?
-            int mosaicWidth     = (int) Math.sqrt(tf.codes.length);
-            int mosaicHeight    = tf.codes.length / mosaicWidth + 1;
-
-            for (int y=0; y < mosaicHeight; y++) {
-                for (int x=0; x < mosaicWidth; x++) {
-                    int id = y*mosaicWidth + x;
-                    if (id >= tf.codes.length)
-                        continue;
-
-                    // IntrinsicsEstimator does not require tagPositions and metersPerTag is not given
-                    // tagPositions.add(new double[] { x * metersPerTag ,
-                    //                                 y * metersPerTag ,
-                    //                                 0.0              });
-
-                    tagRowCol.add(new int[] { y, x });
-                }
-            }
-        }
-
-        public class GroupedDetections
-        {
-            public final static int ROW_GROUP = 0;
-            public final static int COL_GROUP = 1;
-            public int type;
-
-            // row or column index in the tag mosaic
-            public int index;
-
-            // list of detections in this row or column
-            public ArrayList<TagDetection> detections;
-
-            public GLine2D fitLine()
-            {
-                ArrayList<double[]> centers = new ArrayList<double[]>();
-                for (TagDetection d : detections)
-                    centers.add(d.cxy);
-
-                return GLine2D.lsqFit(centers);
-            }
-        }
-
-        public ArrayList<GroupedDetections> getRowDetections(List<TagDetection> detections)
-        {
-            return getGroupedDetections(detections, GroupedDetections.ROW_GROUP);
-        }
-
-        public ArrayList<GroupedDetections> getColumnDetections(List<TagDetection> detections)
-        {
-            return getGroupedDetections(detections, GroupedDetections.COL_GROUP);
-        }
-
-        public ArrayList<GroupedDetections> getGroupedDetections(List<TagDetection> detections,
-                                                                 int groupType)
-        {
-            HashMap<Integer,ArrayList<TagDetection>> groupLists = new HashMap<Integer,ArrayList<TagDetection>>();
-
-            for (int i=0; i < detections.size(); i++) {
-                TagDetection d = detections.get(i);
-
-                int rowcol[] = tagRowCol.get(d.id);
-                int group = rowcol[groupType]; // the row or column number
-
-                ArrayList<TagDetection> groupList = groupLists.get(group);
-                if (groupList == null)
-                    groupList = new ArrayList<TagDetection>();
-
-                groupList.add(d);
-                groupLists.put(group, groupList);
-            }
-
-            Set<Integer> groupKeys = groupLists.keySet();
-
-            ArrayList<GroupedDetections> groups = new ArrayList<GroupedDetections>();
-            for (Integer group : groupKeys) {
-
-                GroupedDetections gd = new GroupedDetections();
-                gd.type = groupType;
-                gd.index = group;
-                gd.detections = groupLists.get(group);
-
-                groups.add(gd);
-            }
-
-            return groups;
-        }
     }
 }

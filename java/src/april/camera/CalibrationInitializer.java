@@ -11,7 +11,7 @@ public interface CalibrationInitializer
       */
     public ParameterizableCalibration initializeWithObservations(int width, int height,
                                         List<List<TagDetection>> allDetections,
-                                        TagFamily tf);
+                                        TagMosaic tm);
 
     /** Initialize the calibration using the provided parameters. Essentially,
       * create the desired class (which implements ParameterizableCalibration)

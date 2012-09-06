@@ -41,6 +41,7 @@ public class CameraCalibrator
 
     TagDetector detector;
     TagFamily   tf;
+    TagMosaic   mosaic;
     double      metersPerTag;
 
     VisWorld        vw;
@@ -137,6 +138,7 @@ public class CameraCalibrator
         this.tf = tf;
         this.detector = new TagDetector(this.tf);
         this.metersPerTag = metersPerTag;
+        this.mosaic = new TagMosaic(tf, metersPerTag);
 
         this.vl = vl;
         if (vl != null) {
@@ -242,14 +244,6 @@ public class CameraCalibrator
      */
     public synchronized double[] getCalibrationParameters(int cameraIndex)
     {
-        assert(cameraIndex >= 0 && cameraIndex < cameras.size());
-
-        CameraWrapper cam = cameras.get(cameraIndex);
-        return cam.cal.getParameterization();
-    }
-
-    public synchronized ParameterizableCalibration getCalibrationObject(int cameraIndex)
-    {
         if (cameras == null)
             return null;
 
@@ -257,8 +251,7 @@ public class CameraCalibrator
             return null;
 
         CameraWrapper cam = cameras.get(cameraIndex);
-        assert(cam != null);
-        return cam.cal;
+        return cam.cal.getParameterization();
     }
 
     /** Return the XYZRPY camera-to-global representation of the extrinsics
@@ -1259,7 +1252,7 @@ public class CameraCalibrator
             else
                 // normally, let the initializer proceed as it sees fit
                 cal = initializer.initializeWithObservations(width, height,
-                                                             allDetections, this.tf);
+                                                             allDetections, this.mosaic);
 
             // if the initializer failed, we probably don't have enough images
             // and will try again next time

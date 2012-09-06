@@ -42,6 +42,8 @@ public class EasyCal implements ParameterListener
     double PixelsToVisSug[][];
     boolean once = true;
 
+    Integer imwidth, imheight;
+
     Random r = new Random();//(1461234L);
     SyntheticTagMosaicImageGenerator simgen;
     SyntheticTagMosaicImageGenerator.SyntheticImages suggestion;
@@ -86,6 +88,11 @@ public class EasyCal implements ParameterListener
         // silence!
         CameraCalibrator.verbose = false;
         IntrinsicsEstimator.verbose = false;
+        april.camera.models.SimpleKannalaBrandtInitializer.verbose = false;
+        april.camera.models.SimpleCaltechInitializer.verbose = false;
+        april.camera.models.KannalaBrandtInitializer.verbose = false;
+        april.camera.models.DistortionFreeInitializer.verbose = false;
+        april.camera.models.CaltechInitializer.verbose = false;
 
         ////////////////////////////////////////
         // GUI
@@ -188,6 +195,13 @@ public class EasyCal implements ParameterListener
                 BufferedImage im = ImageConvert.convertToImage(frmd);
                 List<TagDetection> detections = td.process(im, new double[] {im.getWidth()/2.0, im.getHeight()/2.0});
 
+                if (imwidth == null || imheight == null) {
+                    imwidth = im.getWidth();
+                    imheight = im.getHeight();
+                }
+
+                assert(imwidth == im.getWidth() && imheight == im.getHeight());
+
                 draw(im, detections);
                 score(im, detections);
 
@@ -204,7 +218,7 @@ public class EasyCal implements ParameterListener
 
         void draw(BufferedImage im, List<TagDetection> detections)
         {
-            updateLayers(im.getWidth(), im.getHeight());
+            updateLayers();
 
             ////////////////////////////////////////
             // camera image
@@ -234,10 +248,13 @@ public class EasyCal implements ParameterListener
             // suggested image
             vb = vwside.getBuffer("Suggestion");
             vb.setDrawOrder(0);
+            BufferedImage sugim = suggestion.distorted;
+            if (sugim == null)
+                sugim = suggestion.rectified;
             vb.addBack(new VisLighting(false,
                                        new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT,
                                                         new VisChain(PixelsToVisSug,
-                                                                     new VzImage(new VisTexture(suggestion.rectified,
+                                                                     new VzImage(new VisTexture(sugim,
                                                                                                 VisTexture.NO_MAG_FILTER |
                                                                                                 VisTexture.NO_MIN_FILTER |
                                                                                                 VisTexture.NO_REPEAT),
@@ -310,7 +327,12 @@ public class EasyCal implements ParameterListener
                 double p[] = null;
                 for (int j=0; j < suggestion.tagids.length; j++) {
                     if (suggestion.tagids[j] == matchid) {
-                        double pt[] = suggestion.predictedTagCenters_rectified.get(j);
+                        double pt[] = null;
+
+                        if (suggestion.predictedTagCenters_distorted != null)
+                            pt = suggestion.predictedTagCenters_distorted.get(j);
+                        else
+                            pt = suggestion.predictedTagCenters_rectified.get(j);
 
                         if (pt[0] >= 0 && pt[0] < im.getWidth() &&
                             pt[1] >= 0 && pt[1] < im.getHeight())
@@ -458,7 +480,7 @@ public class EasyCal implements ParameterListener
         }
     }
 
-    private void updateLayers(int imwidth, int imheight)
+    private void updateLayers()
     {
         double imaspect = ((double) imwidth) / imheight;
         double visaspect = ((double) vc.getWidth()) / vc.getHeight();
@@ -537,10 +559,16 @@ public class EasyCal implements ParameterListener
         if (xyzrpy == null)
             xyzrpy = new double[] {0.4, 0, 0, 0, 0.5, 0.5};
 
+        // try to get the current calibration object for creating images
+        // that match those from the camera
         ParameterizableCalibration cal = null;
+        double params[] = null;
         if (calibrator != null)
-            cal = calibrator.getCalibrationObject(0);
+            params = calibrator.getCalibrationParameters(0);
+        if (params != null)
+            cal = initializer.initializeWithParameters(imwidth, imheight, params);
 
+        // generate the images
         this.suggestion = simgen.generateImage(cal, xyzrpy, false);
     }
 

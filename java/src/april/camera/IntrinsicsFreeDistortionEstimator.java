@@ -17,7 +17,6 @@ public class IntrinsicsFreeDistortionEstimator
     List<List<TagDetection>> allDetections;
     int width, height;
 
-    TagFamily tf;
     TagMosaic mosaic;
 
     // XXX not always intended to be public
@@ -26,13 +25,12 @@ public class IntrinsicsFreeDistortionEstimator
     public int distortNodeIndex = -1;
 
     public IntrinsicsFreeDistortionEstimator(List<List<TagDetection>> allDetections,
-                                             TagFamily tf, int width, int height)
+                                             TagMosaic mosaic, int width, int height)
     {
         this.allDetections = allDetections;
+        this.mosaic = mosaic;
         this.width = width;
         this.height = height;
-        this.tf = tf;
-        this.mosaic = new TagMosaic(this.tf);
 
         g = new Graph();
 
@@ -388,102 +386,6 @@ public class IntrinsicsFreeDistortionEstimator
         public void read(StructureReader ins) throws IOException
         {
             assert(false);
-        }
-    }
-
-    private class TagMosaic
-    {
-        ArrayList<int[]>    tagRowCol;
-
-        public TagMosaic(TagFamily tf)
-        {
-            tagRowCol = new ArrayList<int[]>();
-
-            // TODO Add a method to TagFamily that returns this grid?
-            int mosaicWidth     = (int) Math.sqrt(tf.codes.length);
-            int mosaicHeight    = tf.codes.length / mosaicWidth + 1;
-
-            for (int y=0; y < mosaicHeight; y++) {
-                for (int x=0; x < mosaicWidth; x++) {
-                    int id = y*mosaicWidth + x;
-                    if (id >= tf.codes.length)
-                        continue;
-
-                    tagRowCol.add(new int[] { y, x });
-                }
-            }
-        }
-
-        public int[] getRowCol(int id)
-        {
-            return tagRowCol.get(id);
-        }
-
-        public class GroupedDetections
-        {
-            public final static int ROW_GROUP = 0;
-            public final static int COL_GROUP = 1;
-            public int type;
-
-            // row or column index in the tag mosaic
-            public int index;
-
-            // list of detections in this row or column
-            public ArrayList<TagDetection> detections;
-
-            public GLine2D fitLine()
-            {
-                ArrayList<double[]> centers = new ArrayList<double[]>();
-                for (TagDetection d : detections)
-                    centers.add(d.cxy);
-
-                return GLine2D.lsqFit(centers);
-            }
-        }
-
-        public List<GroupedDetections> getRowDetections(List<TagDetection> detections)
-        {
-            return getGroupedDetections(detections, GroupedDetections.ROW_GROUP);
-        }
-
-        public List<GroupedDetections> getColumnDetections(List<TagDetection> detections)
-        {
-            return getGroupedDetections(detections, GroupedDetections.COL_GROUP);
-        }
-
-        public List<GroupedDetections> getGroupedDetections(List<TagDetection> detections,
-                                                                 int groupType)
-        {
-            HashMap<Integer,ArrayList<TagDetection>> groupLists = new HashMap<Integer,ArrayList<TagDetection>>();
-
-            for (int i=0; i < detections.size(); i++) {
-                TagDetection d = detections.get(i);
-
-                int rowcol[] = tagRowCol.get(d.id);
-                int group = rowcol[groupType]; // the row or column number
-
-                ArrayList<TagDetection> groupList = groupLists.get(group);
-                if (groupList == null)
-                    groupList = new ArrayList<TagDetection>();
-
-                groupList.add(d);
-                groupLists.put(group, groupList);
-            }
-
-            Set<Integer> groupKeys = groupLists.keySet();
-
-            ArrayList<GroupedDetections> groups = new ArrayList<GroupedDetections>();
-            for (Integer group : groupKeys) {
-
-                GroupedDetections gd = new GroupedDetections();
-                gd.type = groupType;
-                gd.index = group;
-                gd.detections = groupLists.get(group);
-
-                groups.add(gd);
-            }
-
-            return groups;
         }
     }
 }

@@ -19,13 +19,14 @@ import april.vis.*;
 
 public class EstimateIntrinsics implements ParameterListener
 {
-    ArrayList<String>                   paths           = new ArrayList<String>();
-    ArrayList<BufferedImage>            images          = new ArrayList<BufferedImage>();
-    ArrayList<List<TagDetection>>  allDetections   = new ArrayList<List<TagDetection>>();
+    ArrayList<String>               paths           = new ArrayList<String>();
+    ArrayList<BufferedImage>        images          = new ArrayList<BufferedImage>();
+    ArrayList<List<TagDetection>>   allDetections   = new ArrayList<List<TagDetection>>();
 
     IntrinsicsEstimator ie;
 
     TagFamily tf;
+    TagMosaic tm;
     TagDetector td;
 
     JFrame          jf;
@@ -82,6 +83,7 @@ public class EstimateIntrinsics implements ParameterListener
         // detect tags
         this.tf = tf;
         this.td = new TagDetector(tf);
+        this.tm = new TagMosaic(tf, 0.0254);
 
         for (BufferedImage im : images)
             allDetections.add(td.process(im, new double[] { imwidth/2, imheight/2 }));
@@ -90,7 +92,7 @@ public class EstimateIntrinsics implements ParameterListener
         setupGUI();
 
         // estimate the intrinsics
-        ie = new IntrinsicsEstimator(allDetections, this.tf, imwidth/2, imheight/2);
+        ie = new IntrinsicsEstimator(allDetections, tm, imwidth/2, imheight/2);
 
         double K[][] = ie.getIntrinsics();
 

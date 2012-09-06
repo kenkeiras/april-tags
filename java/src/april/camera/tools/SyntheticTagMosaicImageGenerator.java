@@ -28,9 +28,7 @@ public class SyntheticTagMosaicImageGenerator
     int canvasWidth, canvasHeight;
     int imageWidth, imageHeight;
 
-    BufferedImage example;
-    BufferedImage mosaic;
-    ArrayList<double[]> tagPositionsPixels; // pixel position *on the mosaic image*
+    TagMosaic mosaic;
     double tagSizeMeters;
 
     ArrayList<Integer> tagsToDisplay;
@@ -82,6 +80,7 @@ public class SyntheticTagMosaicImageGenerator
         this.tagsToDisplay = tagsToDisplay;
         if (this.tagsToDisplay == null)
             this.tagsToDisplay = getAllTagIds(tf);
+        this.mosaic = new TagMosaic(this.tf, this.tagSizeMeters);
 
         // gui
         vw = new VisWorld();
@@ -96,46 +95,25 @@ public class SyntheticTagMosaicImageGenerator
         vc.setSize(canvasWidth, canvasHeight);
         vc.privateLayer.setEnabled(false);
 
-        // tag mosaic
-        example = tf.makeImage(0);
-        mosaic = tf.getAllImagesMosaic();
-
-        int mosaicWidth     = (int) Math.sqrt(tf.codes.length);
-        int mosaicHeight    = tf.codes.length / mosaicWidth + 1;
-        {
-            tagPositionsPixels = new ArrayList<double[]>();
-
-            for (int y=0; y < mosaicHeight; y++) {
-                for (int x=0; x < mosaicWidth; x++) {
-                    int id = y*mosaicWidth + x;
-                    if (id >= tf.codes.length)
-                        continue;
-
-                    tagPositionsPixels.add(new double[] { example.getWidth()  * (0.5 + x) ,
-                                                          example.getHeight() * (0.5 + y) ,
-                                                          0.0                             });
-                }
-            }
-        }
-
         // transformation matrices
         LocalToCamera = new double[][] { {  0, -1,  0,  0} ,
                                          {  0,  0, -1,  0} ,
                                          {  1,  0,  0,  0} ,
                                          {  0,  0,  0,  1} };
 
-        double scale = tagSizeMeters / example.getWidth();
+        double scale = tagSizeMeters / mosaic.getTagWidthPixels();
 
-        // get center of specified tag mosaic
-        double xmin = tagPositionsPixels.get(this.tagsToDisplay.get(0))[0];
-        double xmax = tagPositionsPixels.get(this.tagsToDisplay.get(0))[0];
-        double ymin = tagPositionsPixels.get(this.tagsToDisplay.get(0))[1];
-        double ymax = tagPositionsPixels.get(this.tagsToDisplay.get(0))[1];
+        // get the extreme edges for the specified tag mosaic
+        double xmin = mosaic.getPositionPixels(this.tagsToDisplay.get(0))[0] - mosaic.getTagWidthPixels()/2;
+        double xmax = mosaic.getPositionPixels(this.tagsToDisplay.get(0))[0] + mosaic.getTagWidthPixels()/2;
+        double ymin = mosaic.getPositionPixels(this.tagsToDisplay.get(0))[1] - mosaic.getTagHeightPixels()/2;
+        double ymax = mosaic.getPositionPixels(this.tagsToDisplay.get(0))[1] + mosaic.getTagHeightPixels()/2;
+
         for (Integer id : this.tagsToDisplay) {
-            xmin = Math.min(xmin, tagPositionsPixels.get(id)[0] - example.getWidth()/2);
-            xmax = Math.max(xmax, tagPositionsPixels.get(id)[0] + example.getWidth()/2);
-            ymin = Math.min(ymin, tagPositionsPixels.get(id)[1] - example.getHeight()/2);
-            ymax = Math.max(ymax, tagPositionsPixels.get(id)[1] + example.getHeight()/2);
+            xmin = Math.min(xmin, mosaic.getPositionPixels(id)[0] - mosaic.getTagWidthPixels()/2);
+            xmax = Math.max(xmax, mosaic.getPositionPixels(id)[0] + mosaic.getTagWidthPixels()/2);
+            ymin = Math.min(ymin, mosaic.getPositionPixels(id)[1] - mosaic.getTagHeightPixels()/2);
+            ymax = Math.max(ymax, mosaic.getPositionPixels(id)[1] + mosaic.getTagHeightPixels()/2);
         }
 
         // put the mosaic on the YZ plane, centered about the X axis
@@ -189,7 +167,7 @@ public class SyntheticTagMosaicImageGenerator
 
         ArrayList<double[]> tagPositionsGlobal = new ArrayList<double[]>();
         for (int id : tagsToDisplay) {
-            double p[] = tagPositionsPixels.get(id);
+            double p[] = mosaic.getPositionPixels(id);
             tagPositionsGlobal.add(LinAlg.transform(MosaicPixelsToGlobal, p));
         }
 
@@ -206,8 +184,8 @@ public class SyntheticTagMosaicImageGenerator
         for (int i=0; i < tagsToDisplay.size(); i++) {
 
             int id              = tagsToDisplay.get(i);
-            double p[]          = tagPositionsPixels.get(id);
-            BufferedImage tag   = tf.makeImage(id);
+            double p[]          = mosaic.getPositionPixels(id);
+            BufferedImage tag   = mosaic.getImage(id);
 
             VisTexture vt = new VisTexture(tag, VisTexture.NO_MIN_FILTER |
                                                 VisTexture.NO_MAG_FILTER |
@@ -216,9 +194,9 @@ public class SyntheticTagMosaicImageGenerator
             int flags = 0;
             VzImage vzim = new VzImage(vt, flags);
             vb.addBack(new VisChain(MosaicPixelsToGlobal,
-                                    LinAlg.translate(p[0] - 0.5 * example.getWidth()  ,
-                                                     p[1] - 0.5 * example.getHeight() ,
-                                                     0                                ),
+                                    LinAlg.translate(p[0] - 0.5 * mosaic.getTagWidthPixels()  ,
+                                                     p[1] - 0.5 * mosaic.getTagHeightPixels() ,
+                                                     0                                        ),
                                     vzim));
         }
         vb.swap();

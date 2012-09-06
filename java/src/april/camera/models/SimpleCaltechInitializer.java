@@ -19,10 +19,11 @@ public class SimpleCaltechInitializer implements CalibrationInitializer
       */
     public ParameterizableCalibration initializeWithObservations(int width, int height,
                                         List<List<TagDetection>> allDetections,
-                                        TagFamily tf)
+                                        TagMosaic tm)
     {
         IntrinsicsFreeDistortionEstimator distortionEstimator =
-                        new IntrinsicsFreeDistortionEstimator(allDetections, tf, width, height);
+                        new IntrinsicsFreeDistortionEstimator(allDetections, tm,
+                                                              width, height);
 
         List<List<TagDetection>> allRectifiedDetections = new ArrayList<List<TagDetection>>();
         for (List<TagDetection> detections : allDetections) {
@@ -54,7 +55,8 @@ public class SimpleCaltechInitializer implements CalibrationInitializer
             allRectifiedDetections.add(rectifiedDetections);
         }
 
-        IntrinsicsEstimator intrinsicsEstimator = new IntrinsicsEstimator(allRectifiedDetections, tf, width/2, height/2);
+        IntrinsicsEstimator intrinsicsEstimator = new IntrinsicsEstimator(allRectifiedDetections, tm,
+                                                                          width/2, height/2);
 
         double K[][] = intrinsicsEstimator.getIntrinsics();
         if (K == null)
