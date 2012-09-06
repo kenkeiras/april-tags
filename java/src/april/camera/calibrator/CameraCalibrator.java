@@ -114,6 +114,13 @@ public class CameraCalibrator
         this(initializers, tf, metersPerTag, null);
     }
 
+    public CameraCalibrator(List<CalibrationInitializer> initializers,
+                            TagFamily tf, double metersPerTag,
+                            VisLayer vl)
+    {
+        this(initializers, tf, metersPerTag, vl, true);
+    }
+
     /** The constructor for the somewhat-general camera calibrator.  This
      * calibrator has been tested on single cameras and stereo camera pairs.
      *
@@ -131,7 +138,8 @@ public class CameraCalibrator
      * position of the tag mosaic
      */
     public CameraCalibrator(List<CalibrationInitializer> initializers,
-                            TagFamily tf, double metersPerTag, VisLayer vl)
+                            TagFamily tf, double metersPerTag,
+                            VisLayer vl, boolean resetVisCameraManager)
     {
         this.initializers = initializers;
 
@@ -143,20 +151,26 @@ public class CameraCalibrator
         this.vl = vl;
         if (vl != null) {
             this.vw = vl.world;
-            DefaultCameraManager cameraManager = (DefaultCameraManager) vl.cameraManager;
-            cameraManager.interfaceMode = 3.0;
 
-            VisCameraManager.CameraPosition pos = cameraManager.getCameraTarget();
-            pos.eye    = new double[] { 0.1, 0.0, 2.0 };
-            pos.lookat = new double[] { 0.1, 0.0, 0.0 };
-            pos.up     = new double[] { 1.0, 0.0, 0.0 };
-            pos.perspectiveness = 0;
-            cameraManager.goUI(pos);
-            cameraManager.setDefaultPosition(pos.eye, pos.lookat, pos.up);
+            if (resetVisCameraManager) {
+                DefaultCameraManager cameraManager = (DefaultCameraManager) vl.cameraManager;
+                cameraManager.interfaceMode = 2.5;
 
-            VzGrid.addGrid(vw, new VzGrid(new VzLines.Style(new Color(128, 128, 128, 128), 1)));
-            vw.getBuffer("grid").setDrawOrder(-10001);
-            vw.getBuffer("grid-overlay").setDrawOrder(-10000);
+                VisCameraManager.CameraPosition pos = cameraManager.getCameraTarget();
+                //pos.eye    = new double[] { 0.1, 0.0, 2.0 };
+                //pos.lookat = new double[] { 0.1, 0.0, 0.0 };
+                //pos.up     = new double[] { 1.0, 0.0, 0.0 };
+                //pos.perspectiveness = 0;
+                pos.eye    = new double[] { 1.2, 0.0, 0.5 };
+                pos.lookat = new double[] { 0.2, 0.0, 0.0 };
+                pos.up     = new double[] {-0.4, 0.0, 0.9 };
+                cameraManager.goUI(pos);
+                cameraManager.setDefaultPosition(pos.eye, pos.lookat, pos.up);
+
+                VzGrid.addGrid(vw, new VzGrid(new VzLines.Style(new Color(128, 128, 128, 128), 1)));
+                vw.getBuffer("grid").setDrawOrder(-10001);
+                vw.getBuffer("grid-overlay").setDrawOrder(-10000);
+            }
         }
 
         g = new Graph();
@@ -252,6 +266,20 @@ public class CameraCalibrator
 
         CameraWrapper cam = cameras.get(cameraIndex);
         return cam.cal.getParameterization();
+    }
+
+    /** Copy and return the intrinsics for the specified camera.
+      */
+    public synchronized double[][] getCalibrationIntrinsics(int cameraIndex)
+    {
+        if (cameras == null)
+            return null;
+
+        if (cameraIndex < 0 || cameraIndex >= cameras.size())
+            return null;
+
+        CameraWrapper cam = cameras.get(cameraIndex);
+        return cam.cal.copyIntrinsics();
     }
 
     /** Return the XYZRPY camera-to-global representation of the extrinsics

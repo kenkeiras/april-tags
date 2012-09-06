@@ -37,6 +37,7 @@ public class EasyCal implements ParameterListener
 
     CameraCalibrator calibrator;
     TagFamily tf;
+    TagMosaic mosaic;
     TagDetector td;
     double PixelsToVisCam[][];
     double PixelsToVisSug[][];
@@ -47,10 +48,12 @@ public class EasyCal implements ParameterListener
     Random r = new Random();//(1461234L);
     SyntheticTagMosaicImageGenerator simgen;
     SyntheticTagMosaicImageGenerator.SyntheticImages suggestion;
+    double desiredXyzrpy[];
     List<ScoredImage> candidateImages;
     boolean waitingForBest = false;
     long startedWaiting = 0;
     double waitTime = 3.0; // seconds
+    Integer minRow, minCol, maxRow, maxCol;
 
     // save info for reinitialization
     double tagSpacingMeters;
@@ -81,6 +84,7 @@ public class EasyCal implements ParameterListener
     public EasyCal(CalibrationInitializer initializer, String url, double tagSpacingMeters)
     {
         this.tf = new Tag36h11();
+        this.mosaic = new TagMosaic(tf, tagSpacingMeters);
         this.td = new TagDetector(tf);
         this.tagSpacingMeters = tagSpacingMeters;
         this.initializer = initializer;
@@ -199,7 +203,6 @@ public class EasyCal implements ParameterListener
                     imwidth = im.getWidth();
                     imheight = im.getHeight();
                 }
-
                 assert(imwidth == im.getWidth() && imheight == im.getHeight());
 
                 draw(im, detections);
@@ -265,43 +268,36 @@ public class EasyCal implements ParameterListener
             // detections
             vb = vwside.getBuffer("Detections");
             vb.setDrawOrder(10);
-            VisChain camchain = new VisChain();
-            VisChain sugchain = new VisChain();
+            VisChain chain = new VisChain();
             for (TagDetection d : detections) {
                 double p0[] = d.interpolate(-1,-1);
                 double p1[] = d.interpolate( 1,-1);
                 double p2[] = d.interpolate( 1, 1);
                 double p3[] = d.interpolate(-1, 1);
 
-                sugchain.add(new VzMesh(new VisVertexData(p0, p1, p2, p3),
-                                        VzMesh.QUADS,
-                                        new VzMesh.Style(new Color(0, 255, 0))));
-
-                camchain.add(new VzPoints(new VisVertexData(d.cxy),
-                                          new VzPoints.Style(Color.blue, 3)));
-                camchain.add(new VzLines(new VisVertexData(p0, p1, p2, p3, p0),
-                                         VzLines.LINE_STRIP,
-                                         new VzLines.Style(Color.blue, 2)));
-                camchain.add(new VzLines(new VisVertexData(p0,p1),
-                                         VzLines.LINE_STRIP,
-                                         new VzLines.Style(Color.green, 2)));
-                camchain.add(new VzLines(new VisVertexData(p0, p3),
-                                         VzLines.LINE_STRIP,
-                                         new VzLines.Style(Color.red, 2)));
+                chain.add(new VzPoints(new VisVertexData(d.cxy),
+                                       new VzPoints.Style(Color.blue, 3)));
+                chain.add(new VzLines(new VisVertexData(p0, p1, p2, p3, p0),
+                                      VzLines.LINE_STRIP,
+                                      new VzLines.Style(Color.blue, 2)));
+                chain.add(new VzLines(new VisVertexData(p0,p1),
+                                      VzLines.LINE_STRIP,
+                                      new VzLines.Style(Color.green, 2)));
+                chain.add(new VzLines(new VisVertexData(p0, p3),
+                                      VzLines.LINE_STRIP,
+                                      new VzLines.Style(Color.red, 2)));
             }
-            vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT, new VisChain(PixelsToVisCam, camchain)));
-            vb.swap();
-
-            vb = vwside.getBuffer("Suggestion Overlay");
-            vb.setDrawOrder(10);
-            vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT, new VisChain(PixelsToVisSug, sugchain)));
+            vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT, new VisChain(PixelsToVisCam, chain)));
             vb.swap();
         }
 
         void score(BufferedImage im, List<TagDetection> detections)
         {
             if (detections.size() == 0) {
+                vwcal.getBuffer("Suggestion").swap();
+
                 vwside.getBuffer("Matches").swap();
+                vwside.getBuffer("Suggestion Overlay").swap();
 
                 vb = vwside.getBuffer("Suggestion HUD");
                 vb.setDrawOrder(50);
@@ -316,6 +312,56 @@ public class EasyCal implements ParameterListener
                 return;
             }
 
+            // fit a homography to the distorted tag detections
+            List<double[]> xy_meters = new ArrayList<double[]>();
+            List<double[]> xy_pixels = new ArrayList<double[]>();
+            for (TagDetection d : detections) {
+                xy_meters.add(LinAlg.select(mosaic.getPositionMeters(d.id), 0, 1));
+                xy_pixels.add(LinAlg.select(d.cxy, 0, 1));
+            }
+
+            double K[][] = calibrator.getCalibrationIntrinsics(0);
+            double H[][] = null;
+            if (detections.size() > 4)
+                H = CameraMath.estimateHomography(xy_meters, xy_pixels);
+
+            // update the min/max column/row
+            if (minRow == null || maxRow == null || minCol == null || maxCol == null) {
+                TagDetection d = detections.get(0);
+                minRow = mosaic.getRow(d.id);
+                maxRow = minRow;
+                minCol = mosaic.getColumn(d.id);
+                maxCol = minCol;
+            }
+
+            for (TagDetection d : detections) {
+                int row = mosaic.getRow(d.id);
+                int col = mosaic.getColumn(d.id);
+
+                minRow = Math.min(minRow, row);
+                minCol = Math.min(minCol, col);
+                maxRow = Math.max(maxRow, row);
+                maxCol = Math.max(maxCol, col);
+            }
+
+            // plot tag detections
+            VisChain chain = new VisChain();
+            for (TagDetection d : detections) {
+                double p0[] = d.interpolate(-1,-1);
+                double p1[] = d.interpolate( 1,-1);
+                double p2[] = d.interpolate( 1, 1);
+                double p3[] = d.interpolate(-1, 1);
+
+                chain.add(new VzMesh(new VisVertexData(p0, p1, p2, p3),
+                                     VzMesh.QUADS,
+                                     new VzMesh.Style(new Color(0, 255, 0))));
+            }
+            vb = vwside.getBuffer("Suggestion Overlay");
+            vb.setDrawOrder(10);
+            vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT, new VisChain(PixelsToVisSug, chain)));
+            vb.swap();
+
+            // plot matching lines
             List<double[][]> lines = new ArrayList<double[][]>();
             double totaldist = 0;
             int nmatches = 0;
@@ -367,6 +413,45 @@ public class EasyCal implements ParameterListener
                                         new VzLines(new VisVertexData(matchlines),
                                                     VzLines.LINES,
                                                     new VzLines.Style(Color.blue, 4))));
+            vb.swap();
+
+            ////////////////////////////////////////
+            // plot suggested and current mosaic positions in 3D
+
+            vb = vwcal.getBuffer("Suggestion");
+            if (K != null && H != null) {
+
+                double M2G_current[][] = CameraMath.decomposeHomography(H, K, xy_meters.get(0));
+                double M2G_desired[][] = LinAlg.xyzrpyToMatrix(suggestion.MosaicToGlobal);
+
+                ArrayList<double[]> tagBorderMosaic = new ArrayList<double[]>();
+                tagBorderMosaic.add(mosaic.getPositionMeters(minCol, minRow));
+                tagBorderMosaic.add(mosaic.getPositionMeters(maxCol, minRow));
+                tagBorderMosaic.add(mosaic.getPositionMeters(maxCol, maxRow));
+                tagBorderMosaic.add(mosaic.getPositionMeters(minCol, maxRow));
+
+                double Tvis[][] = new double[][] { {  0,  0,  1,  0 },
+                                                   { -1,  0,  0,  0 } ,
+                                                   {  0, -1,  0,  0 } ,
+                                                   {  0,  0,  0,  1 } };
+
+                VisVertexData vertices = new VisVertexData(tagBorderMosaic);
+                vb.addBack(new VisChain(Tvis,
+                                        M2G_current,
+                                        new VzLines(vertices,
+                                                    VzLines.LINE_LOOP,
+                                                    new VzLines.Style(Color.green, 3)),
+                                        new VzMesh(vertices,
+                                                   VzMesh.QUADS,
+                                                   new VzMesh.Style(new Color(0, 255, 0, 100)))));
+                vb.addBack(new VisChain(M2G_desired,
+                                        new VzLines(vertices,
+                                                    VzLines.LINE_LOOP,
+                                                    new VzLines.Style(Color.blue, 3)),
+                                        new VzMesh(vertices,
+                                                   VzMesh.QUADS,
+                                                   new VzMesh.Style(new Color(0, 0, 255, 100)))));
+            }
             vb.swap();
 
             ////////////////////////////////////////
@@ -455,7 +540,7 @@ public class EasyCal implements ParameterListener
         {
             // try to reinitialize
             CameraCalibrator cal = new CameraCalibrator(Arrays.asList(this.initializer),
-                                                        this.tf, this.tagSpacingMeters, this.vlcal);
+                                                        this.tf, this.tagSpacingMeters, this.vlcal, false);
             cal.addImageSet(imagesSet, detsSet, Collections.<double[]>nCopies(imagesSet.size(),null));
             double newMRE = cal.getMRE();
 
@@ -519,12 +604,10 @@ public class EasyCal implements ParameterListener
             vlside.backgroundColor = Color.white;
             vc.addLayer(vlside);
 
-            // tags on a standard 1-page print of the tag mosaic
-            double pitch = 0.0254;
             ArrayList<Integer> tagsToDisplay = new ArrayList<Integer>();
             // small foam board 14-23, 182-191
-            int mosaicWidth  = (int) Math.sqrt(tf.codes.length);
-            int mosaicHeight = tf.codes.length / mosaicWidth + 1;
+            int mosaicWidth  = mosaic.getMosaicWidth();
+            int mosaicHeight = mosaic.getMosaicHeight();
             int minCol =  14 % mosaicWidth;
             int maxCol =  23 % mosaicWidth;
             int minRow =  14 / mosaicWidth;
@@ -539,7 +622,7 @@ public class EasyCal implements ParameterListener
                 }
             }
 
-            simgen = new SyntheticTagMosaicImageGenerator(tf, imwidth, imheight, pitch, tagsToDisplay);
+            simgen = new SyntheticTagMosaicImageGenerator(tf, imwidth, imheight, tagSpacingMeters, tagsToDisplay);
 
             generateSuggestion(null);
 
@@ -570,6 +653,7 @@ public class EasyCal implements ParameterListener
 
         // generate the images
         this.suggestion = simgen.generateImage(cal, xyzrpy, false);
+        this.desiredXyzrpy = xyzrpy;
     }
 
     private double[] generateXyzrpy()

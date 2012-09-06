@@ -40,14 +40,8 @@ public class TagMosaic
                 if (id >= tf.codes.length)
                     continue;
 
-                tagPositionsMeters.add(new double[] { col * tagSpacingMeters ,
-                                                      row * tagSpacingMeters ,
-                                                      0                      });
-
-                tagPositionsPixels.add(new double[] { tagWidthPixels  * (0.5 + col) ,
-                                                      tagHeightPixels * (0.5 + row) ,
-                                                      0                             });
-
+                tagPositionsMeters.add(getPositionMeters(col, row));
+                tagPositionsPixels.add(getPositionPixels(col, row));
                 tagColumnAndRow.add(new int[] { col, row });
 
                 assert(tagPositionsMeters.size() == id+1);
@@ -94,6 +88,24 @@ public class TagMosaic
     public double[] getPositionMeters(int id)
     {
         return tagPositionsMeters.get(id);
+    }
+
+    /** Get the position on the tag mosaic (in meters) from the column and row.
+      */
+    public double[] getPositionMeters(int col, int row)
+    {
+        return new double[] { col*tagSpacingMeters ,
+                              row*tagSpacingMeters ,
+                              0                    };
+    }
+
+    /** Get the position on the tag mosaic (in pixels) from the column and row.
+      */
+    public double[] getPositionPixels(int col, int row)
+    {
+        return new double[] { tagWidthPixels  * (0.5 + col) ,
+                              tagHeightPixels * (0.5 + row) ,
+                              0                             };
     }
 
     /** Get the image of the whole mosaic (from the TagFamily).
