@@ -32,6 +32,11 @@ public class SimpleCaltechInitializer implements CalibrationInitializer
             for (TagDetection d : detections) {
 
                 TagDetection rd = new TagDetection();
+
+                // not supported
+                rd.homography           = null;
+                rd.hxy                  = null;
+
                 // easy stuff
                 rd.good                 = d.good;
                 rd.obsCode              = d.obsCode;
@@ -39,15 +44,13 @@ public class SimpleCaltechInitializer implements CalibrationInitializer
                 rd.id                   = d.id;
                 rd.hammingDistance      = d.hammingDistance;
                 rd.rotation             = d.rotation;
-
-                // these things could be fixed, but aren't used by IntrinsicsEstimator
-                rd.p                    = LinAlg.copy(d.p);
-                rd.homography           = LinAlg.copy(d.homography);
-                rd.hxy                  = LinAlg.copy(d.hxy);
                 rd.observedPerimeter    = d.observedPerimeter;
 
-                // we need to fix this for IntrinsicsEstimator
+                // fix these for estimating the intrinsics
                 rd.cxy                  = distortionEstimator.undistort(d.cxy);
+                rd.p                    = new double[d.p.length][];
+                for (int i=0; i < d.p.length; i++)
+                    rd.p[i] = distortionEstimator.undistort(d.p[i]);
 
                 rectifiedDetections.add(rd);
             }

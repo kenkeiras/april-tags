@@ -21,7 +21,43 @@ public class CaltechInitializer implements CalibrationInitializer
                                         List<List<TagDetection>> allDetections,
                                         TagMosaic tm)
     {
-        IntrinsicsEstimator estimator = new IntrinsicsEstimator(allDetections, tm,
+        IntrinsicsFreeDistortionEstimator distortionEstimator =
+                        new IntrinsicsFreeDistortionEstimator(allDetections, tm,
+                                                              width, height);
+
+        List<List<TagDetection>> allRectifiedDetections = new ArrayList<List<TagDetection>>();
+        for (List<TagDetection> detections : allDetections) {
+
+            List<TagDetection> rectifiedDetections = new ArrayList<TagDetection>();
+            for (TagDetection d : detections) {
+
+                TagDetection rd = new TagDetection();
+
+                // not supported
+                rd.homography           = null;
+                rd.hxy                  = null;
+
+                // easy stuff
+                rd.good                 = d.good;
+                rd.obsCode              = d.obsCode;
+                rd.code                 = d.code;
+                rd.id                   = d.id;
+                rd.hammingDistance      = d.hammingDistance;
+                rd.rotation             = d.rotation;
+                rd.observedPerimeter    = d.observedPerimeter;
+
+                // fix these for estimating the intrinsics
+                rd.cxy                  = distortionEstimator.undistort(d.cxy);
+                rd.p                    = new double[d.p.length][];
+                for (int i=0; i < d.p.length; i++)
+                    rd.p[i] = distortionEstimator.undistort(d.p[i]);
+
+                rectifiedDetections.add(rd);
+            }
+
+            allRectifiedDetections.add(rectifiedDetections);
+        }
+        IntrinsicsEstimator estimator = new IntrinsicsEstimator(allRectifiedDetections, tm,
                                                                 width/2, height/2);
         double K[][] = estimator.getIntrinsics();
         if (K == null)
