@@ -92,7 +92,7 @@ public class TagMosaic
 
     /** Get the position on the tag mosaic (in meters) from the column and row.
       */
-    public double[] getPositionMeters(int col, int row)
+    public double[] getPositionMeters(double col, double row)
     {
         return new double[] { col*tagSpacingMeters ,
                               row*tagSpacingMeters ,

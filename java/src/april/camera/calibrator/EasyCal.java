@@ -55,6 +55,8 @@ public class EasyCal implements ParameterListener
     double waitTime = 3.0; // seconds
     Integer minRow, minCol, maxRow, maxCol;
 
+    boolean captureNext = false;
+
     // save info for reinitialization
     double tagSpacingMeters;
     CalibrationInitializer initializer;
@@ -106,8 +108,8 @@ public class EasyCal implements ParameterListener
 
         pg = new ParameterGUI();
         pg.addButtons("skip","Skip this suggestion",
-                      "save","Save images",
-                      "print","Print calibration");
+                      "manual","Manual capture",
+                      "save","Save calibration and images");
         pg.addListener(this);
 
         jf = new JFrame("EasyCal");
@@ -141,7 +143,6 @@ public class EasyCal implements ParameterListener
         ////////////////////////////////////////
         new AcquisitionThread().start();
         new ProcessingThread().start();
-        new IterateThread().start();
     }
 
     public void parameterChanged(ParameterGUI pg, String name)
@@ -149,11 +150,11 @@ public class EasyCal implements ParameterListener
         if (name.equals("skip"))
             generateSuggestion(generateXyzrpy());
 
-        if (name.equals("print") && calibrator != null)
-            calibrator.printCalibrationBlock();
+        if (name.equals("manual"))
+            captureNext = true;
 
         if (name.equals("save") && calibrator != null)
-            calibrator.saveImages();
+            calibrator.saveCalibrationAndImages();
     }
 
     class AcquisitionThread extends Thread
@@ -293,21 +294,20 @@ public class EasyCal implements ParameterListener
 
         void score(BufferedImage im, List<TagDetection> detections)
         {
+            vb = vwside.getBuffer("Suggestion HUD");
+            vb.setDrawOrder(50);
+            vb.addBack(new VisDepthTest(false,
+                                        new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM,
+                                                         new VzText(VzText.ANCHOR.BOTTOM,
+                                                                    "<<dropshadow=#FF000000>>"+
+                                                                    "<<monospaced-12-bold,white>>"+
+                                                                    "Please align target with synthetic image"))));
+
             if (detections.size() == 0) {
                 vwcal.getBuffer("Suggestion").swap();
-
                 vwside.getBuffer("Matches").swap();
                 vwside.getBuffer("Suggestion Overlay").swap();
-
-                vb = vwside.getBuffer("Suggestion HUD");
-                vb.setDrawOrder(50);
-                vb.addBack(new VisDepthTest(false,
-                                            new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM,
-                                                             new VzText(VzText.ANCHOR.BOTTOM,
-                                                                        "<<dropshadow=#FF000000>>"+
-                                                                        "<<monospaced-12-bold,white>>"+
-                                                                        "Please align target with synthetic image"))));
-                vb.swap();
+                vwside.getBuffer("Suggestion HUD").swap();
 
                 return;
             }
@@ -346,10 +346,10 @@ public class EasyCal implements ParameterListener
 
             // plot border
             ArrayList<double[]> tagBorderMosaic = new ArrayList<double[]>();
-            tagBorderMosaic.add(mosaic.getPositionMeters(minCol, minRow));
-            tagBorderMosaic.add(mosaic.getPositionMeters(maxCol, minRow));
-            tagBorderMosaic.add(mosaic.getPositionMeters(maxCol, maxRow));
-            tagBorderMosaic.add(mosaic.getPositionMeters(minCol, maxRow));
+            tagBorderMosaic.add(mosaic.getPositionMeters(minCol-0.5, minRow-0.5));
+            tagBorderMosaic.add(mosaic.getPositionMeters(maxCol+0.5, minRow-0.5));
+            tagBorderMosaic.add(mosaic.getPositionMeters(maxCol+0.5, maxRow+0.5));
+            tagBorderMosaic.add(mosaic.getPositionMeters(minCol-0.5, maxRow+0.5));
 
             if (H != null) {
                 ArrayList<double[]> tagBorderImage = new ArrayList<double[]>();
@@ -485,11 +485,14 @@ public class EasyCal implements ParameterListener
 
                 vb = vwside.getBuffer("Suggestion HUD");
                 vb.addBack(new VisDepthTest(false,
-                                            new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM,
+                                            new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT,
+                                                             new VisChain(PixelsToVisSug,
+                                                                          LinAlg.translate(im.getWidth()/2, im.getHeight()/2, 0),
+                                                                          LinAlg.scale(-1, -1, 1),
                                                              new VzText(VzText.ANCHOR.BOTTOM,
                                                                         "<<dropshadow=#FF000000>>"+
-                                                                        "<<monospaced-14-bold,green>>"+
-                                                                        "Capturing best image..."))));
+                                                                        "<<monospaced-20-bold,green>>"+
+                                                                        "Hold...")))));
                 vb.swap();
             }
 
@@ -501,28 +504,19 @@ public class EasyCal implements ParameterListener
                 newCandidates.add(candidateImages.get(i));
             candidateImages = newCandidates;
 
-            if (waitingForBest) {
+            if (captureNext || waitingForBest) {
                 double waited = (TimeUtil.utime() - startedWaiting)*1.0e-6;
 
-                if (waited > waitTime) {
+                if (captureNext || waited > waitTime) {
+
+                    captureNext = false;
 
                     ////////////////////////////////////////
                     // "flash"
                     vwside.getBuffer("Suggestion").swap();
                     vwside.getBuffer("Suggestion Overlay").swap();
                     vwside.getBuffer("Matches").swap();
-                    vb = vwside.getBuffer("Suggestion HUD");
-                    vb.setDrawOrder(50);
-                    vb.addBack(new VisDepthTest(false,
-                                                new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT,
-                                                                 new VisChain(PixelsToVisSug,
-                                                                              LinAlg.translate(im.getWidth()/2, im.getHeight()/2, 0),
-                                                                              LinAlg.scale(-1, -1, 1),
-                                                                              new VzText(VzText.ANCHOR.CENTER,
-                                                                                         "<<dropshadow=#FFFFFFFF>>"+
-                                                                                         "<<monospaced-18,black>>"+
-                                                                                         "Image captured")))));
-                    vb.swap();
+                    vwside.getBuffer("Suggestion HUD").swap();
 
                     ////////////////////////////////////////
                     // use acquired image and suggest a new one
@@ -537,54 +531,76 @@ public class EasyCal implements ParameterListener
                 }
             }
             else {
-                // not waiting
-                vb = vwside.getBuffer("Suggestion HUD");
-                vb.setDrawOrder(50);
-                vb.addBack(new VisDepthTest(false,
-                                            new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM,
-                                                             new VzText(VzText.ANCHOR.BOTTOM,
-                                                                        "<<dropshadow=#FF000000>>"+
-                                                                        "<<monospaced-12-bold,white>>"+
-                                                                        "Please align target with synthetic image"))));
-                vb.swap();
+                vwside.getBuffer("Suggestion HUD").swap();
             }
         }
     }
 
     private void addImage(BufferedImage im, List<TagDetection> detections)
     {
+        double origMRE = -1, newMRE = -1;
+        boolean origSPD = true, newSPD = true;
+
         imagesSet.add(Arrays.asList(im));
         detsSet.add(Arrays.asList(detections));
 
         calibrator.addImages(imagesSet.get(imagesSet.size()-1), detsSet.get(detsSet.size()-1));
-        double origMRE = calibrator.getMRE();
 
-        {
-            // try to reinitialize
-            CameraCalibrator cal = new CameraCalibrator(Arrays.asList(this.initializer),
-                                                        this.tf, this.tagSpacingMeters, this.vlcal, false);
+        try {
+            calibrator.iterateUntilConvergence(0.01, 3, 50);
+            origMRE = calibrator.getMRE();
+        } catch (Exception ex) {
+            origSPD = false;
+        }
+
+        if (origSPD == false || origMRE > 1.0)
+        { // Try to reinitialize, check MRE, take the better one:
+            CameraCalibrator cal = new CameraCalibrator(Arrays.asList(initializer), tf,
+                                                        tagSpacingMeters, vlcal, false);
             cal.addImageSet(imagesSet, detsSet, Collections.<double[]>nCopies(imagesSet.size(),null));
-            double newMRE = cal.getMRE();
 
-            if (newMRE < origMRE) {
+            try {
+                cal.iterateUntilConvergence(0.01, 3, 50);
+                newMRE = cal.getMRE();
+            } catch (Exception ex) {
+                newSPD = false;
+            }
+
+            if (origSPD && newSPD) {
+                double MREimprovement = origMRE - newMRE;
+                if (MREimprovement > 0.001)
+                    calibrator = cal;
+
+                System.out.printf("[%3d] [Using %s] Original MRE: %12.6f Re-init MRE: %12.6f\n",
+                                  imagesSet.size(), (calibrator == cal) ? "new " : "orig", origMRE, newMRE);
+
+            } else if (origSPD && !newSPD) {
+                // keep current calibrator
+
+                System.out.printf("[%3d] [Using orig] Original MRE: %12.6f Re-init %17s\n",
+                                  imagesSet.size(), origMRE, "not SPD");
+
+            } else if (!origSPD && newSPD) {
+                // use new calibrator
                 calibrator = cal;
+
+                System.out.printf("[%3d] [Using new ] Original %17s Re-init MRE: %12.6f\n",
+                                  imagesSet.size(), "not SPD", newMRE);
+
+            } else {
+                // oh boy.
+
+                System.out.printf("[%3d] [Using orig] Original %17s Re-init %17s\n",
+                                  imagesSet.size(), "not SPD", "not SPD");
+
             }
         }
-    }
-
-    class IterateThread extends Thread
-    {
-        public void run()
-        {
-            while (true) {
-                if (calibrator != null) {
-                    calibrator.iterate();
-                    calibrator.draw();
-                }
-
-                TimeUtil.sleep(33);
-            }
+        else {
+            System.out.printf("[%3d] [Using orig] Original MRE: %12.6f\n",
+                              imagesSet.size(), origMRE);
         }
+
+        calibrator.draw();
     }
 
     private void updateLayers()

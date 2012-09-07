@@ -63,8 +63,6 @@ public class CameraCalibrator
                                        {  0, -1,  0,  0 } ,
                                        {  0,  0,  0,  1 } };
 
-    int counter = 0;
-
     private static class ProcessedImage
     {
         public BufferedImage image;
@@ -519,9 +517,6 @@ public class CameraCalibrator
                          mosaicIndex,
                          pim.detections);
         }
-
-        if (imagesetIndex+1 == this.images.size())
-            draw();
     }
 
     public synchronized void draw()
@@ -744,7 +739,7 @@ public class CameraCalibrator
                         buf[i] = 0;
                     }
                     else if (v == 0) {
-                        buf[i] = 0xFF00FF00;
+                        buf[i] = 0xFFFF0000;
                     }
                     else {
                         int b = (int) (v * 255 / max);
@@ -986,38 +981,52 @@ public class CameraCalibrator
     {
         // don't try to optimize until we have a few images
         // XXX replace this later with an rank check of the graph
-        if (images.size() < REQUIRED_NUM_IMAGES)
+        if (cameras == null || images.size() < REQUIRED_NUM_IMAGES)
             return;
 
         solver.iterate();
+    }
 
-        if ((counter % 100) == 0) {
+    /** Iterate the calibration until convergence or exceeding the maximum number of iterations.
+      * Returns the number of iterations performed.
+      *
+      * @param improvementThreshold - Maximum percent improvement in the mean
+      * reprojection error that is required for 'minConvergedIterations' in
+      * order for the calibration to be considered converged.
+      * @param minConvergedIterations - The number of iterations for which the
+      * percent improvement in the mean reprojection error must be below the
+      * 'improvementThreshold'
+      * @param maxIterations - The maximum number of iterations ever allowed.
+      */
+    public synchronized int iterateUntilConvergence(double improvementThreshold, int minConvergedIterations, int maxIterations)
+    {
+        // don't try to optimize until we have a few images
+        // XXX replace this later with an rank check of the graph
+        if (cameras == null || images.size() < REQUIRED_NUM_IMAGES)
+            return 0;
 
-            if (verbose) printCalibrationBlock();
+        double lastMRE = getMRE();
+        int convergedCount = 0;
+        int iterationCount = 0;
 
-            //int numTagEdges = 0;
-            //for (GEdge e : g.edges)
-            //    if (e instanceof GTagEdge)
-            //        numTagEdges++;
+        while (iterationCount < maxIterations && convergedCount < minConvergedIterations) {
 
-            //System.out.printf("Time data:\n");
-            //System.out.printf("%s %12.6f seconds\n",
-            //                  "    Linearization            ",
-            //                  1.0e-9 * numTagEdges * GTagEdge.time_linearize / GTagEdge.time_number_of_linearizations);
-            //System.out.printf("%s %12.6f seconds\n",
-            //                  "        Residual             ",
-            //                  1.0e-9 * numTagEdges * GTagEdge.time_residual / GTagEdge.time_number_of_linearizations);
-            //System.out.printf("%s %12.6f seconds\n",
-            //                  "        Jacobian (intrinsics)",
-            //                  1.0e-9 * numTagEdges * GTagEdge.time_jacobian_intrinsics / GTagEdge.time_number_of_linearizations);
-            //System.out.printf("%s %12.6f seconds\n",
-            //                  "        Jacobian (extrinsics)",
-            //                  1.0e-9 * numTagEdges * GTagEdge.time_jacobian_extrinsics / GTagEdge.time_number_of_linearizations);
-            //System.out.printf("%s %12.6f seconds\n",
-            //                  "        Jacobian (mosaics)   ",
-            //                  1.0e-9 * numTagEdges * GTagEdge.time_jacobian_mosaics / GTagEdge.time_number_of_linearizations);
+            solver.iterate();
+            double MRE = getMRE();
+
+            double percentImprovement = (lastMRE - MRE) / lastMRE;
+
+            if (percentImprovement < improvementThreshold)
+                convergedCount++;
+            else
+                convergedCount = 0;
+
+            lastMRE = MRE;
+
+            iterationCount++;
         }
-        counter++;
+
+        return iterationCount;
     }
 
     // Returns mean reprojections error
@@ -1187,12 +1196,12 @@ public class CameraCalibrator
         }
     }
 
-    public void saveImages()
+    public void saveCalibrationAndImages()
     {
-        saveImages("/tmp/CameraCalibration");
+        saveCalibrationAndImages("/tmp/CameraCalibration");
     }
 
-    public void saveImages(String basepath)
+    public void saveCalibrationAndImages(String basepath)
     {
         if (images == null || images.size() < 1)
             return;
@@ -1212,6 +1221,16 @@ public class CameraCalibrator
             return;
         }
 
+        String configpath = String.format("%s/calibration.config", dirName);
+        try {
+            BufferedWriter outs = new BufferedWriter(new FileWriter(new File(configpath)));
+            outs.write(getCalibrationBlockString());
+            outs.flush();
+            outs.close();
+        } catch (Exception ex) {
+            System.err.printf("CameraCalibrator: Failed to output calibration to '%s'\n", configpath);
+            return;
+        }
 
         // dump images
         for (int imageSetIndex = 0; imageSetIndex < images.size(); imageSetIndex++) {
@@ -1231,16 +1250,16 @@ public class CameraCalibrator
                     ImageIO.write(pim.image, "png", imageFile);
 
                 } catch (IllegalArgumentException ex) {
-                    System.err.printf("CameraCalibrator: Failure to output images to %s\n", dirName);
+                    System.err.printf("CameraCalibrator: Failed to output images to '%s'\n", dirName);
                     return;
                 } catch (IOException ex) {
-                    System.err.printf("CameraCalibrator: Failure to output images to %s\n", dirName);
+                    System.err.printf("CameraCalibrator: Failed to output images to '%s'\n", dirName);
                     return;
                 }
             }
         }
 
-        System.out.printf("Successfully saved images to '%s'\n", dirName);
+        System.out.printf("Successfully saved calibration and images to '%s'\n", dirName);
     }
 
     private ArrayList<CameraWrapper> initCameras()

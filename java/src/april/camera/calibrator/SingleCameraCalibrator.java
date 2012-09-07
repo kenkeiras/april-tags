@@ -41,8 +41,6 @@ public class SingleCameraCalibrator implements ParameterListener
     boolean             capture = false;
     boolean             captureOnce = false;
 
-    boolean autoiterate = false;
-
     TagFamily tf;
     TagDetector td;
 
@@ -67,6 +65,15 @@ public class SingleCameraCalibrator implements ParameterListener
         this.initializer = initializer;
         this.tagSpacing_m = tagSpacing_m;
 
+        // silence!
+        CameraCalibrator.verbose = false;
+        IntrinsicsEstimator.verbose = false;
+        april.camera.models.SimpleKannalaBrandtInitializer.verbose = false;
+        april.camera.models.SimpleCaltechInitializer.verbose = false;
+        april.camera.models.KannalaBrandtInitializer.verbose = false;
+        april.camera.models.DistortionFreeInitializer.verbose = false;
+        april.camera.models.CaltechInitializer.verbose = false;
+
         ////////////////////////////////////////////////////////////////////////////////
         // GUI setup
         vw1 = new VisWorld();
@@ -78,13 +85,10 @@ public class SingleCameraCalibrator implements ParameterListener
 
         pg = new ParameterGUI();
         pg.addCheckBoxes("enablecamera","Enable camera",true,
-                         "autocapture","Autocapture",autocapture,
-                         "autoiterate","Autoiterate",false);
+                         "autocapture","Autocapture",autocapture);
         pg.addButtons("captureOnce","Capture once",
-                      "save","Save images",
                       "savedetections","Save detections",
-                      "iterateonce","Iterate once",
-                      "print","Print calibration");
+                      "save","Save calibration and images");
         pg.addListener(this);
 
         jf = new JFrame("Single camera calibrator");
@@ -121,7 +125,6 @@ public class SingleCameraCalibrator implements ParameterListener
         // Threads
         new ProcessingThread().start();
         new AcquisitionThread().start();
-        new GraphUpdateThread().start();
     }
 
     public void parameterChanged(ParameterGUI pg, String name)
@@ -131,14 +134,8 @@ public class SingleCameraCalibrator implements ParameterListener
             else             captureOnce = true;
         }
 
-        if (name.equals("iterateonce") && calibrator != null)
-            calibrator.iterate();
-
-        if (name.equals("print") && calibrator != null)
-            calibrator.printCalibrationBlock();
-
         if (name.equals("save") && calibrator != null)
-            calibrator.saveImages();
+            calibrator.saveCalibrationAndImages();
 
         if (name.equals("savedetections") && calibrator != null)
             calibrator.saveDetections();
@@ -268,50 +265,69 @@ public class SingleCameraCalibrator implements ParameterListener
 
         void process(BufferedImage im, List<TagDetection> detections)
         {
-            System.out.println("Process");
+            double origMRE = -1, newMRE = -1;
+            boolean origSPD = true, newSPD = true;
+
             imagesSet.add(Arrays.asList(im));
             detsSet.add(Arrays.asList(detections));
 
             calibrator.addImages(imagesSet.get(imagesSet.size()-1), detsSet.get(detsSet.size()-1));
-            double origMRE = calibrator.getMRE();
 
+            try {
+                calibrator.iterateUntilConvergence(0.01, 3, 50);
+                origMRE = calibrator.getMRE();
+            } catch (Exception ex) {
+                origSPD = false;
+            }
+
+            if (origSPD == false || origMRE > 1.0)
             { // Try to reinitialize, check MRE, take the better one:
                 CameraCalibrator cal = new CameraCalibrator(Arrays.asList(initializer), tf,
-                                                            tagSpacing_m, vl2);
+                                                            tagSpacing_m, vl2, false);
                 cal.addImageSet(imagesSet, detsSet, Collections.<double[]>nCopies(imagesSet.size(),null));
-                double newMRE = cal.getMRE();
 
-                if (newMRE < origMRE) {
-                    System.out.printf("Using new init on %d images with MRE %.5f instead of MRE of %.5f\n",
-                                      imagesSet.size(), newMRE, origMRE);
+                try {
+                    cal.iterateUntilConvergence(0.01, 3, 50);
+                    newMRE = cal.getMRE();
+                } catch (Exception ex) {
+                    newSPD = false;
+                }
+
+                if (origSPD && newSPD) {
+                    double MREimprovement = origMRE - newMRE;
+                    if (MREimprovement > 0.001)
+                        calibrator = cal;
+
+                    System.out.printf("[%3d] [Using %s] Original MRE: %12.6f Re-init MRE: %12.6f\n",
+                                      imagesSet.size(), (calibrator == cal) ? "new " : "orig", origMRE, newMRE);
+
+                } else if (origSPD && !newSPD) {
+                    // keep current calibrator
+
+                    System.out.printf("[%3d] [Using orig] Original MRE: %12.6f Re-init %17s\n",
+                                      imagesSet.size(), origMRE, "not SPD");
+
+                } else if (!origSPD && newSPD) {
+                    // use new calibrator
                     calibrator = cal;
+
+                    System.out.printf("[%3d] [Using new ] Original %17s Re-init MRE: %12.6f\n",
+                                      imagesSet.size(), "not SPD", newMRE);
+
+                } else {
+                    // oh boy.
+
+                    System.out.printf("[%3d] [Using orig] Original %17s Re-init %17s\n",
+                                      imagesSet.size(), "not SPD", "not SPD");
+
                 }
             }
-        }
-    }
-
-    class GraphUpdateThread extends Thread
-    {
-        long last = 0;
-
-        public void run()
-        {
-            while (true) {
-                if (calibrator == null) {
-                    TimeUtil.sleep(33);
-                    continue;
-                }
-
-                if (pg.gb("autoiterate"))
-                    calibrator.iterate();
-
-                long now = TimeUtil.utime();
-                double dt = (now - last) * 1.0E-6;
-                if (dt > 0.050) {
-                    calibrator.draw();
-                    last = now;
-                }
+            else {
+                System.out.printf("[%3d] [Using orig] Original MRE: %12.6f\n",
+                                  imagesSet.size(), origMRE);
             }
+
+            calibrator.draw();
         }
     }
 
