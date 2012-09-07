@@ -88,6 +88,7 @@ public class SingleCameraCalibrator implements ParameterListener
                          "autocapture","Autocapture",autocapture);
         pg.addButtons("captureOnce","Capture once",
                       "savedetections","Save detections",
+                      "savereprojections","Save reprojection error histogram",
                       "save","Save calibration and images");
         pg.addListener(this);
 
@@ -139,6 +140,9 @@ public class SingleCameraCalibrator implements ParameterListener
 
         if (name.equals("savedetections") && calibrator != null)
             calibrator.saveDetections();
+
+        if (name.equals("savereprojections") && calibrator != null)
+            calibrator.saveReprojectionErrors();
     }
 
     class AcquisitionThread extends Thread

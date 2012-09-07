@@ -419,11 +419,28 @@ public class CameraCalibrator
             else
                 detections = allDetections.get(cameraIndex);
 
-            // skip if we don't have a reasonable number of observed tags?
-            // XXX is this the right thing to do? should we reject the whole image set?
+            // skip we don't have enough tags
             if (detections.size() < REQUIRED_TAGS_PER_IMAGE)
                 return false;
 
+            // skip if the tags don't span multiple rows and columns
+            int minRow = mosaic.getRow(detections.get(0).id);
+            int maxRow = minRow;
+            int minCol = mosaic.getColumn(detections.get(0).id);
+            int maxCol = minCol;
+            for (TagDetection d : detections) {
+                minRow = Math.min(minRow, mosaic.getRow(d.id));
+                maxRow = Math.max(maxRow, mosaic.getRow(d.id));
+                minCol = Math.min(minCol, mosaic.getColumn(d.id));
+                maxCol = Math.max(maxCol, mosaic.getColumn(d.id));
+            }
+
+            int rowSpan = maxRow - minRow + 1;
+            int colSpan = maxCol - minCol + 1;
+            if (rowSpan < 2 || colSpan < 2)
+                return false;
+
+            // looks good. add it.
             processedImages.add(new ProcessedImage(im, detections));
         }
 
@@ -765,59 +782,43 @@ public class CameraCalibrator
         ///////////// Reprojection Histogram
         vb = vw.getBuffer("reprojection-hist");
         {
-            ArrayList<Double> errs = new ArrayList();
-            for (GEdge e : g.edges) {
-                assert(e instanceof GTagEdge);
-                GTagEdge edge = (GTagEdge) e;
+            List<Double> errors = getReprojectionErrors();
 
-                double res[] = edge.getResidualExternal(g);
-                assert((res.length & 0x1) == 0);
-
-                int len = res.length / 2;
-                for (int i=0; i < len; i+=2)
-                    errs.add(Math.sqrt(res[i]*res[i] + res[i+1]*res[i+1]));
+            double minError = errors.get(0);
+            double maxError = errors.get(0);
+            for (Double e : errors) {
+                minError = Math.min(minError, e);
+                maxError = Math.max(maxError, e);
             }
 
-            // Compute histogram of errs.
-            Collections.sort(errs);
+            List<double[]> errorCounts = getReprojectionErrorHistogram(errors);
 
-            double eMin = errs.get(0);
-            double eMax = errs.get(errs.size() -1);
+            double peakError = 0, peakCount = 0;
+            int peakIndex = 0;
+            for (int i=0; i < errorCounts.size(); i++) {
+                double errorcount[] = errorCounts.get(i);
 
-            int nbuckets = 90;
-            double bucket = (eMax - eMin) / nbuckets;
+                double error = errorcount[0];
+                double count = errorcount[1];
 
-            double thresh = eMin + bucket;
-            ArrayList<Integer> counts = new ArrayList();
-            int ct = 0;
-            int maxCt = 0, maxIdx = -1;
-            for (Double e : errs) {
-
-                while (e > thresh) {
-                    thresh += bucket;
-                    if (ct > maxCt) {
-                        maxCt = ct;
-                        maxIdx = counts.size();
-                    }
-                    counts.add(ct);
-                    ct = 0;
+                if (count > peakCount) {
+                    peakCount = count;
+                    peakError = error;
+                    peakIndex = i;
                 }
-                ct++;
             }
-            while(counts.size() < nbuckets)
-                counts.add(0);
-
-            double maxHist = (maxIdx + 0.5)*bucket + eMin;
 
             // Draw histogram:
             int height = 100 - 2*22;//3*counts.size()/2;
-            BufferedImage hist = new BufferedImage(counts.size(), height, BufferedImage.TYPE_INT_ARGB);
+            BufferedImage hist = new BufferedImage(errorCounts.size(), height, BufferedImage.TYPE_INT_ARGB);
 
             int x = 0;
-            for (Integer val : counts) {
+            for (double errorcount[] : errorCounts) {
+                double val = errorcount[1];
+
                 for (int y = 0; y < height; y++) {
 
-                    int ymax = (int)Math.ceil(height*val*1.0/maxCt);
+                    int ymax = (int) Math.ceil(height*val*1.0/peakCount);
 
                     if (ymax != 0 && y <= ymax) {
                         hist.setRGB(x,y, 0xffffffff);
@@ -827,15 +828,14 @@ public class CameraCalibrator
                 }
                 x++;
             }
+
             vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM,
-                                        new VzText(VzText.ANCHOR.BOTTOM, String.format("<<white>>MRE [%.3f, %.3f]", eMin,eMax)),
-                                        LinAlg.translate(-counts.size()/2,22,0),
-                                        new VzImage(new VisTexture(hist, VisTexture.NO_MAG_FILTER | VisTexture.NO_MIN_FILTER),0),
-                                        LinAlg.translate(maxIdx,height,0),
-                                        new VzText(VzText.ANCHOR.BOTTOM_LEFT,String.format("peak %.3f",maxHist))));
-
+                                        new VzText(VzText.ANCHOR.BOTTOM, String.format("<<white>>MRE [%.3f, %.3f]", minError, maxError)),
+                                        LinAlg.translate(-errorCounts.size()/2, 22, 0),
+                                        new VzImage(new VisTexture(hist, VisTexture.NO_MAG_FILTER | VisTexture.NO_MIN_FILTER), 0),
+                                        LinAlg.translate(peakIndex, height, 0),
+                                        new VzText(VzText.ANCHOR.BOTTOM_LEFT,String.format("peak %.3f", peakError))));
         }
-
         vb.swap();
 
         ////////////////////////////////////////
@@ -1032,6 +1032,9 @@ public class CameraCalibrator
     // Returns mean reprojections error
     public synchronized double getMRE()
     {
+        if (cameras == null || images.size() == 0)
+            return Double.NaN;
+
         double reprojError = 0;
         int numObs = 0;
         for (GEdge e : g.edges) {
@@ -1051,6 +1054,9 @@ public class CameraCalibrator
 
     public synchronized double getMSE()
     {
+        if (cameras == null || images.size() == 0)
+            return Double.NaN;
+
         double sqError = 0;
         int numObs = 0;
         for (GEdge e : g.edges) {
@@ -1067,6 +1073,63 @@ public class CameraCalibrator
             numObs += len;
         }
         return sqError / numObs;
+    }
+
+    public synchronized List<Double> getReprojectionErrors()
+    {
+        if (cameras == null)
+            return null;
+
+        ArrayList<Double> errs = new ArrayList();
+        for (GEdge e : g.edges) {
+            assert(e instanceof GTagEdge);
+            GTagEdge edge = (GTagEdge) e;
+
+            double res[] = edge.getResidualExternal(g);
+            assert((res.length & 0x1) == 0);
+
+            int len = res.length / 2;
+            for (int i=0; i < len; i+=2)
+                errs.add(Math.sqrt(res[i]*res[i] + res[i+1]*res[i+1]));
+        }
+
+        return errs;
+    }
+
+    public synchronized List<double[]> getReprojectionErrorHistogram()
+    {
+        return getReprojectionErrorHistogram(getReprojectionErrors());
+    }
+
+    public synchronized List<double[]> getReprojectionErrorHistogram(List<Double> errors)
+    {
+        if (cameras == null || errors == null)
+            return null;
+
+        double min = errors.get(0);
+        double max = errors.get(0);
+        for (Double e : errors) {
+            min = Math.min(min, e);
+            max = Math.max(max, e);
+        }
+
+        int nbuckets = 100;
+
+        double derr = (max - min) / (nbuckets-1);
+
+        int counts[] = new int[nbuckets];
+
+        for (Double e : errors) {
+            int i = (int) ((e - min) / derr);
+            counts[i]++;
+        }
+
+        List<double[]> result = new ArrayList<double[]>();
+
+        for (int i=0; i < counts.length; i++)
+            result.add(new double[] { min + (i+0.5)*derr, counts[i] });
+
+        return result;
     }
 
     public void printCalibrationBlock()
@@ -1193,6 +1256,67 @@ public class CameraCalibrator
 
         } catch (IOException ex) {
             System.out.println("Error saving detections: " + ex);
+        }
+    }
+
+    public void saveReprojectionErrors()
+    {
+        saveReprojectionErrors("/tmp/CameraCalibration");
+    }
+
+    public void saveReprojectionErrors(String basepath)
+    {
+        if (images == null || images.size() < 1 || cameras == null)
+            return;
+
+        String dirName = String.format("%s/", basepath);
+        File dir = new File(dirName);
+
+        if (dir.exists() && !dir.isDirectory()) {
+            System.err.printf("CameraCalibrator: File exists at the desired directory '%s'\n", dirName);
+            return;
+        }
+
+        if (!dir.exists()) {
+            boolean mkdir = dir.mkdirs();
+            if (mkdir != true) {
+                System.err.printf("CameraCalibrator: Failed to create directory '%s'\n", dirName);
+                return;
+            }
+        }
+
+        List<Double> errors = getReprojectionErrors();
+        List<double[]> errorcounts = getReprojectionErrorHistogram(errors);
+
+        try {
+            String filename = String.format("%s/reprojectionErrors.csv", basepath);
+            BufferedWriter outs = new BufferedWriter(new FileWriter(new File(filename)));
+
+            for (double e : errors)
+                outs.write(String.format("%f\n", e));
+
+            outs.close();
+
+            System.out.println("Saved reprojection errors successfully.");
+
+        } catch (IOException ex) {
+            System.out.println("Error saving reprojection errors: " + ex);
+        }
+
+        try {
+            String filename = String.format("%s/reprojectionErrorHistogram.csv", basepath);
+            BufferedWriter outs = new BufferedWriter(new FileWriter(new File(filename)));
+
+
+            for (double ec[] : errorcounts)
+                outs.write(String.format("%f, %d\n", ec[0], (int) ec[1]));
+
+            outs.close();
+
+            System.out.println("Saved reprojection error histogram successfully.");
+
+        } catch (IOException ex) {
+            System.out.println("Error saving reprojection error histogram: " + ex);
         }
     }
 
