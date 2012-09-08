@@ -14,6 +14,7 @@ class Tokenizer
 
     static {
         gt = new GenericTokenizer<String>("ERROR");
+//        gt.showDeadEnds = true;
 
         gt.add("STRING", "\"[^\"]*\"");
         gt.addEscape("OP", "+{ { } = : , ; [ ]");
