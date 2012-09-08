@@ -14,13 +14,14 @@ class Tokenizer
 
     static {
         gt = new GenericTokenizer<String>("ERROR");
+//        gt.showDeadEnds = true;
 
         gt.add("STRING", "\"[^\"]*\"");
         gt.addEscape("OP", "+{ { } = : , ; [ ]");
         gt.add("SYMBOL", "[a-zA-Z_\\.0-9\\-\\+#]+");
 
-        gt.addIgnore("#[^\n]*\\n"); // comment
-        gt.addIgnore("//[^\n]*\\n"); // comment
+        gt.addIgnore("#[^\n]*(\\n|\\$)"); // comment
+        gt.addIgnore("//[^\n]*(\\n|\\$)"); // comment
         gt.addIgnore("\\s+");        // whitespace
         gt.addIgnore("\\$");
     }
