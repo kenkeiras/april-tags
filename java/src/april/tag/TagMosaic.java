@@ -58,6 +58,13 @@ public class TagMosaic
     ////////////////////////////////////////////////////////////////////////////////
     // Utility functions
 
+    /** Get the tag ID for a tag at this {column, row} position.
+      */
+    public int getID(int column, int row)
+    {
+        return row*mosaicWidth+column;
+    }
+
     /** Get the column for a tag.
       */
     public int getColumn(int id)
