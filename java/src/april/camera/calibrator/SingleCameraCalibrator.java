@@ -278,7 +278,7 @@ public class SingleCameraCalibrator implements ParameterListener
             calibrator.addImages(imagesSet.get(imagesSet.size()-1), detsSet.get(detsSet.size()-1));
 
             try {
-                calibrator.iterateUntilConvergence(0.01, 3, 50);
+                calibrator.iterateUntilConvergence(0.01, 1, 50);
                 origMRE = calibrator.getMRE();
             } catch (Exception ex) {
                 origSPD = false;
