@@ -243,6 +243,9 @@ public class CameraCalibrator
      */
     public synchronized List<double[]> getCalibrationParameters()
     {
+        if (cameras == null)
+            return null;
+
         ArrayList<double[]> parameters = new ArrayList<double[]>();
 
         for (CameraWrapper cam : cameras)
