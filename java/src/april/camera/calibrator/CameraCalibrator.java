@@ -1044,10 +1044,10 @@ public class CameraCalibrator
             double res[] = edge.getResidualExternal(g);
             assert((res.length & 0x1) == 0);
 
-            int len = res.length / 2;
-            for (int i=0; i < len; i+=2)
+            for (int i=0; i < res.length; i+=2)
                 reprojError += Math.sqrt(res[i]*res[i] + res[i+1]*res[i+1]);
-            numObs += len;
+
+            numObs += res.length / 2;
         }
         return reprojError / numObs;
     }
@@ -1066,11 +1066,10 @@ public class CameraCalibrator
             double res[] = edge.getResidualExternal(g);
             assert((res.length & 0x1) == 0);
 
-            int len = res.length / 2;
-            for (int i=0; i < len; i+=2)
+            for (int i=0; i < res.length; i+=2)
                 sqError += res[i]*res[i] + res[i+1]*res[i+1];
 
-            numObs += len;
+            numObs += res.length / 2;
         }
         return sqError / numObs;
     }
@@ -1088,8 +1087,7 @@ public class CameraCalibrator
             double res[] = edge.getResidualExternal(g);
             assert((res.length & 0x1) == 0);
 
-            int len = res.length / 2;
-            for (int i=0; i < len; i+=2)
+            for (int i=0; i < res.length; i+=2)
                 errs.add(Math.sqrt(res[i]*res[i] + res[i+1]*res[i+1]));
         }
 
