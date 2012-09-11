@@ -87,6 +87,7 @@ public class SingleCameraCalibrator implements ParameterListener
         pg.addCheckBoxes("enablecamera","Enable camera",true,
                          "autocapture","Autocapture",autocapture);
         pg.addButtons("captureOnce","Capture once",
+                      "printmosaicextrinsics","Print mosaic extrinsics",
                       "savedetections","Save detections",
                       "savereprojections","Save reprojection error histogram",
                       "save","Save calibration and images");
@@ -143,6 +144,17 @@ public class SingleCameraCalibrator implements ParameterListener
 
         if (name.equals("savereprojections") && calibrator != null)
             calibrator.saveReprojectionErrors();
+
+        if (name.equals("printmosaicextrinsics") && calibrator != null) {
+            ArrayList<double[]> xyzrpys = calibrator.getMosaicExtrinsics();
+
+            System.out.println("Mosaic extrinsics (Mosaic to Global XYZRPY)");
+            for (int i=0; i < xyzrpys.size(); i++) {
+                double xyzrpy[] = xyzrpys.get(i);
+                System.out.printf("[%2d] %8.3f, %8.3f, %8.3f, %8.3f, %8.3f, %8.3f\n",
+                                  i, xyzrpy[0], xyzrpy[1], xyzrpy[2], xyzrpy[3], xyzrpy[4], xyzrpy[5]);
+            }
+        }
     }
 
     class AcquisitionThread extends Thread
