@@ -298,6 +298,23 @@ public class EasyCal implements ParameterListener
 
         void score(BufferedImage im, List<TagDetection> detections)
         {
+            // if we haven't detected any tags yet...
+            if (minRow == null || maxRow == null || minCol == null || maxCol == null) {
+                vb = vwside.getBuffer("Suggestion HUD");
+                vb.addBack(new VisDepthTest(false,
+                                            new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT,
+                                                             new VisChain(PixelsToVisSug,
+                                                                          LinAlg.translate(im.getWidth()/2, im.getHeight()/2, 0),
+                                                                          LinAlg.scale(-1, -1, 1),
+                                                             new VzText(VzText.ANCHOR.CENTER,
+                                                                        "<<dropshadow=#FF000000>>"+
+                                                                        "<<monospaced-20-bold,green>>"+
+                                                                        "Please hold target in front of camera")))));
+                vb.swap();
+                return;
+            }
+
+            // give a bit of user instruction
             vb = vwside.getBuffer("Suggestion HUD");
             vb.setDrawOrder(50);
             vb.addBack(new VisDepthTest(false,
@@ -307,11 +324,12 @@ public class EasyCal implements ParameterListener
                                                                     "<<monospaced-12-bold,white>>"+
                                                                     "Please align target with synthetic image"))));
 
+            // clear buffers if we don't have any detections to plot
             if (detections.size() == 0) {
                 vwcal.getBuffer("Suggestion").swap();
                 vwside.getBuffer("Matches").swap();
                 vwside.getBuffer("Suggestion Overlay").swap();
-                vwside.getBuffer("Suggestion HUD").swap();
+                vwside.getBuffer("Mosaic border").swap();
 
                 return;
             }
@@ -336,41 +354,40 @@ public class EasyCal implements ParameterListener
             tagBorderMosaic.add(mosaic.getPositionMeters(maxCol+0.5, maxRow+0.5));
             tagBorderMosaic.add(mosaic.getPositionMeters(minCol-0.5, maxRow+0.5));
 
+            // plot tag squares (for when you can't see the whole border)
+            ArrayList<double[]> tagBlocksMosaic = new ArrayList<double[]>();
+            for (int row=minRow; row <= maxRow; row++) {
+                for (int col=minCol; col <= maxCol; col++) {
+                    tagBlocksMosaic.add(mosaic.getPositionMeters(col-0.4, row-0.4));
+                    tagBlocksMosaic.add(mosaic.getPositionMeters(col-0.4, row+0.4));
+                    tagBlocksMosaic.add(mosaic.getPositionMeters(col+0.4, row+0.4));
+                    tagBlocksMosaic.add(mosaic.getPositionMeters(col+0.4, row-0.4));
+                }
+            }
+
             if (H != null) {
                 ArrayList<double[]> tagBorderImage = new ArrayList<double[]>();
                 for (double p[] : tagBorderMosaic)
                     tagBorderImage.add(CameraMath.pixelTransform(H, new double[] { p[0], p[1] }));
+                ArrayList<double[]> tagBlocksImage = new ArrayList<double[]>();
+                for (double p[] : tagBlocksMosaic)
+                    tagBlocksImage.add(CameraMath.pixelTransform(H, new double[] { p[0], p[1] }));
+
                 vb = vwside.getBuffer("Mosaic border");
                 vb.setDrawOrder(25);
                 vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT,
                                             new VisChain(PixelsToVisSug,
                                                          new VzLines(new VisVertexData(tagBorderImage),
-                                                                     VzLines.LINE_LOOP,
-                                                                     new VzLines.Style(new Color(0, 255, 0), 4)),
+                                                                     VzLines.LINES,
+                                                                     new VzLines.Style(new Color(0, 255, 0), 2)),
+                                                         new VzMesh(new VisVertexData(tagBlocksImage),
+                                                                    VzMesh.QUADS,
+                                                                    new VzMesh.Style(new Color(0, 255, 0, 200))),
                                                          new VzMesh(new VisVertexData(tagBorderImage),
                                                                     VzMesh.QUADS,
                                                                     new VzMesh.Style(new Color(0, 255, 0, 75))))));
                 vb.swap();
             }
-
-            // plot tag detections
-            /*
-            VisChain chain = new VisChain();
-            for (TagDetection d : detections) {
-                double p0[] = d.interpolate(-1,-1);
-                double p1[] = d.interpolate( 1,-1);
-                double p2[] = d.interpolate( 1, 1);
-                double p3[] = d.interpolate(-1, 1);
-
-                chain.add(new VzMesh(new VisVertexData(p0, p1, p2, p3),
-                                     VzMesh.QUADS,
-                                     new VzMesh.Style(new Color(0, 255, 0, 220))));
-            }
-            vb = vwside.getBuffer("Suggestion Overlay");
-            vb.setDrawOrder(10);
-            vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT, new VisChain(PixelsToVisSug, chain)));
-            vb.swap();
-            */
 
             // plot matching lines
             double totaldist = 0;
@@ -402,13 +419,6 @@ public class EasyCal implements ParameterListener
                     if (p != null) {
                         totaldist += LinAlg.distance(d.cxy, p);
                         nmatches++;
-
-                        /*
-                        double line[][] = new double[2][];
-                        line[0] = LinAlg.transform(PixelsToVisSug, d.cxy);
-                        line[1] = LinAlg.transform(PixelsToVisSug, p);
-                        lines.add(line);
-                        */
                     }
                 }
             }
@@ -487,7 +497,7 @@ public class EasyCal implements ParameterListener
             ////////////////////////////////////////
             // meter
             vb = vwside.getBuffer("Error meter");
-            vb.setDrawOrder(25);
+            vb.setDrawOrder(30);
             double maxRectHeight = vc.getHeight()*0.3;
             double rectHeight = Math.min(maxRectHeight, maxRectHeight*meandist/meandistthreshold/3);
             double perc = rectHeight/maxRectHeight;
@@ -534,7 +544,7 @@ public class EasyCal implements ParameterListener
                                                              new VisChain(PixelsToVisSug,
                                                                           LinAlg.translate(im.getWidth()/2, im.getHeight()/2, 0),
                                                                           LinAlg.scale(-1, -1, 1),
-                                                             new VzText(VzText.ANCHOR.BOTTOM,
+                                                             new VzText(VzText.ANCHOR.CENTER,
                                                                         "<<dropshadow=#FF000000>>"+
                                                                         "<<monospaced-20-bold,green>>"+
                                                                         "Almost there...")))));
@@ -562,6 +572,7 @@ public class EasyCal implements ParameterListener
                     vwside.getBuffer("Suggestion Overlay").swap();
                     vwside.getBuffer("Matches").swap();
                     vwside.getBuffer("Suggestion HUD").swap();
+                    vwside.getBuffer("Mosaic border").swap();
 
                     ////////////////////////////////////////
                     // use acquired image and suggest a new one
@@ -715,7 +726,7 @@ public class EasyCal implements ParameterListener
 
     private void updateMosaic(List<TagDetection> detections)
     {
-        if (detections == null || detections.size() < 1)
+        if (detections == null || detections.size() == 0)
             return;
 
         // update the min/max column/row
