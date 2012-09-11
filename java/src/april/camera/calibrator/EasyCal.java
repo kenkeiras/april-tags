@@ -48,6 +48,7 @@ public class EasyCal implements ParameterListener
     Random r = new Random();//(1461234L);
     SyntheticTagMosaicImageGenerator simgen;
     SyntheticTagMosaicImageGenerator.SyntheticImages suggestion;
+    int suggestionNumber = 0;
     double desiredXyzrpy[];
     List<ScoredImage> candidateImages;
     boolean waitingForBest = false;
@@ -484,7 +485,8 @@ public class EasyCal implements ParameterListener
                                         new VzMesh(vertices,
                                                    VzMesh.QUADS,
                                                    new VzMesh.Style(new Color(0, 255, 0, 100)))));
-                vb.addBack(new VisChain(M2G_desired,
+                vb.addBack(new VisChain(Tvis,
+                                        M2G_desired,
                                         new VzLines(vertices,
                                                     VzLines.LINE_LOOP,
                                                     new VzLines.Style(Color.blue, 3)),
@@ -583,6 +585,7 @@ public class EasyCal implements ParameterListener
                     addImage(best.im, best.detections);
 
                     // make a new suggestion
+                    suggestionNumber++;
                     generateSuggestion(generateXyzrpy());
                 }
             }
@@ -780,8 +783,12 @@ public class EasyCal implements ParameterListener
 
     private void generateSuggestion(double xyzrpy[])
     {
-        if (xyzrpy == null)
-            xyzrpy = new double[] {0.4, 0, 0, 0, 0.5, 0.5};
+        if (xyzrpy == null || suggestionNumber < 3) {
+            //System.out.printf("Canned suggestion #%d\n", suggestionNumber);
+            if (suggestionNumber == 0) xyzrpy = new double[] { 0.004,   -0.084,   2*0.315,   -0.161,    0.795,    0.343}; // "good" #1
+            if (suggestionNumber == 1) xyzrpy = new double[] {-0.070,   -0.044,    0.161,   -0.006,   -0.519,   -0.334}; // "good" #2
+            if (suggestionNumber == 2) xyzrpy = new double[] {-0.050,   -0.058,    0.190,    0.863,    0.220,    0.142}; // "good" #3
+        }
 
         // try to get the current calibration object for creating images
         // that match those from the camera
@@ -793,18 +800,22 @@ public class EasyCal implements ParameterListener
             cal = initializer.initializeWithParameters(imwidth, imheight, params);
 
         // generate the images
-        this.suggestion = simgen.generateImage(cal, xyzrpy, false);
+        if (suggestionNumber < 3)
+            this.suggestion = simgen.generateImageNotCentered(cal, xyzrpy, false);
+        else
+            this.suggestion = simgen.generateImageCentered(cal, xyzrpy, false);
+
         this.desiredXyzrpy = xyzrpy;
     }
 
     private double[] generateXyzrpy()
     {
-        double xyzrpy[] = new double[] { 0.2 + 0.35*r.nextDouble(),
+        double xyzrpy[] = new double[] {-0.1 + 0.2*r.nextDouble(),
                                         -0.1 + 0.2*r.nextDouble(),
-                                        -0.1 + 0.2*r.nextDouble(),
-                                        -0.4 + 1.2*r.nextDouble(),
-                                        -0.4 + 1.2*r.nextDouble(),
-                                        -0.4 + 1.2*r.nextDouble() };
+                                         0.2 + 0.4*r.nextDouble(),
+                                        -0.4 + 0.8*r.nextDouble(),
+                                        -0.4 + 0.8*r.nextDouble(),
+                                        -0.4 + 0.8*r.nextDouble() };
         return xyzrpy;
     }
 

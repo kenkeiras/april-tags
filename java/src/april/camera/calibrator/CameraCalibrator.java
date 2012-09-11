@@ -1320,7 +1320,7 @@ public class CameraCalibrator
 
     public void saveCalibrationAndImages()
     {
-        saveCalibrationAndImages("/tmp/CameraCalibration");
+        saveCalibrationAndImages("/tmp/cameraCalibration");
     }
 
     public void saveCalibrationAndImages(String basepath)
@@ -1334,7 +1334,7 @@ public class CameraCalibrator
         File dir = null;
         do {
             dirNum++;
-            dirName = String.format("%s/ImageSet%d/", basepath, dirNum);
+            dirName = String.format("%s/imageSet%d/", basepath, dirNum);
             dir = new File(dirName);
         } while (dir.exists());
 
@@ -1354,16 +1354,28 @@ public class CameraCalibrator
             return;
         }
 
-        // dump images
-        for (int imageSetIndex = 0; imageSetIndex < images.size(); imageSetIndex++) {
+        // save images
+        for (int cameraIndex = 0; cameraIndex < initializers.size(); cameraIndex++) {
 
-            List<ProcessedImage> imageSet = images.get(imageSetIndex);
+            // make a subdirectory if we have multiple cameras
+            if (initializers.size() > 1) {
+                String subDirName = String.format("%s/camera%d/", dirName, cameraIndex);
+                File subDir = new File(subDirName);
 
-            // save images
-            for (int cameraIndex = 0; cameraIndex < imageSet.size(); cameraIndex++) {
+                if (subDir.mkdirs() != true) {
+                    System.err.printf("CameraCalibrator: Failure to create subdirectory '%s'\n", subDirName);
+                    return;
+                }
+
+                dirName = subDirName;
+            }
+
+            for (int imageSetIndex = 0; imageSetIndex < images.size(); imageSetIndex++) {
+
+                List<ProcessedImage> imageSet = images.get(imageSetIndex);
                 ProcessedImage pim = imageSet.get(cameraIndex);
 
-                String fileName = String.format("%s/Camera%d_Image%d.png", dirName, cameraIndex, imageSetIndex);
+                String fileName = String.format("%s/image%04d.png", dirName, imageSetIndex);
                 File imageFile = new File(fileName);
 
                 System.out.printf("Filename '%s'\n", fileName);
