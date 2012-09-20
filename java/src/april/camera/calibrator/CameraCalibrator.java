@@ -37,7 +37,19 @@ public class CameraCalibrator
     List<List<ProcessedImage>>   images             = new ArrayList<List<ProcessedImage>>();
     List<double[]>               mosaicExtInits     = new ArrayList<double[]>();
 
+    // List of camera book-keeping classes. Includes references to calibration
+    // object, intrinsics/extrinsics node, and name
     List<CameraWrapper>          cameras            = null;
+
+    // List of constraints on individual tag observations. Includes enough
+    // information to get the appropriate CameraWrapper
+    ArrayList<TagConstraint> constraints = new ArrayList<TagConstraint>();
+
+    // List of indices of the mosaic GExtrinsicsNodes for each image
+    // e.g. GExtrinsicsNode mosaicExtrinsics =
+    //          (GExtrinsicsNode) g.nodes.get(mosaicExtrinsicsIndices.get(imageIndex))
+    // should work
+    ArrayList<Integer> mosaicExtrinsicsIndices = new ArrayList<Integer>();
 
     TagDetector detector;
     TagFamily   tf;
@@ -54,9 +66,6 @@ public class CameraCalibrator
     GraphSolver solver;
 
     ArrayList<double[]> tagPositions;
-
-    ArrayList<TagConstraint> constraints = new ArrayList<TagConstraint>();
-    ArrayList<Integer> mosaicExtrinsicsIndices = new ArrayList<Integer>();
 
     double Tvis[][] = new double[][] { {  0,  0,  1,  0 },
                                        { -1,  0,  0,  0 } ,
@@ -92,14 +101,14 @@ public class CameraCalibrator
 
     private static class TagConstraint
     {
-        public int      tagid;
-        public int      graphNodeIndex;
+        public int      tagid;          // AprilTag ID
+        public int      graphNodeIndex; // GTagEdge index in graph
 
-        public int      cameraIndex;
-        public int      imageIndex;
+        public int      cameraIndex;    // Camera index in this.cameras (CameraWrapper list)
+        public int      imageIndex;     // Image number in this.images
 
-        public double   xy_px[];
-        public double   xyz_m[];
+        public double   xy_px[];        // xy position observed in image
+        public double   xyz_m[];        // xyz position on the tag mosaic based on the tag ID
     }
 
     /** The constructor for the somewhat-general camera calibrator.  This
@@ -1212,12 +1221,12 @@ public class CameraCalibrator
         return str;
     }
 
-    public void saveDetections()
+    public synchronized void saveDetections()
     {
         saveDetections("/tmp/CameraCalibration");
     }
 
-    public void saveDetections(String basepath)
+    public synchronized void saveDetections(String basepath)
     {
         if (images == null || images.size() < 1 || cameras == null)
             return;
@@ -1266,12 +1275,12 @@ public class CameraCalibrator
         }
     }
 
-    public void saveReprojectionErrors()
+    public synchronized void saveReprojectionErrors()
     {
         saveReprojectionErrors("/tmp/CameraCalibration");
     }
 
-    public void saveReprojectionErrors(String basepath)
+    public synchronized void saveReprojectionErrors(String basepath)
     {
         if (images == null || images.size() < 1 || cameras == null)
             return;
@@ -1296,21 +1305,6 @@ public class CameraCalibrator
         List<double[]> errorcounts = getReprojectionErrorHistogram(errors);
 
         try {
-            String filename = String.format("%s/reprojectionErrors.csv", basepath);
-            BufferedWriter outs = new BufferedWriter(new FileWriter(new File(filename)));
-
-            for (double e : errors)
-                outs.write(String.format("%f\n", e));
-
-            outs.close();
-
-            System.out.println("Saved reprojection errors successfully.");
-
-        } catch (IOException ex) {
-            System.out.println("Error saving reprojection errors: " + ex);
-        }
-
-        try {
             String filename = String.format("%s/reprojectionErrorHistogram.csv", basepath);
             BufferedWriter outs = new BufferedWriter(new FileWriter(new File(filename)));
 
@@ -1325,14 +1319,64 @@ public class CameraCalibrator
         } catch (IOException ex) {
             System.out.println("Error saving reprojection error histogram: " + ex);
         }
+
+        try {
+            String filename = String.format("%s/reprojectionErrors.csv", basepath);
+            BufferedWriter outs = new BufferedWriter(new FileWriter(new File(filename)));
+
+            outs.write("x_obs, y_obs, r_obs, x_pred, y_pred, r_pred, error\n");
+
+            for (TagConstraint c : constraints) {
+
+                // camera
+                CameraWrapper cam = cameras.get(c.cameraIndex);
+                cam.cameraIntrinsics.updateIntrinsics();
+                double K[][] = cam.cal.copyIntrinsics();
+                double cc[] = new double[] { K[0][2], K[1][2] };
+                double CameraToGlobal[][] = null;
+                if (cam.cameraExtrinsics != null) CameraToGlobal = LinAlg.xyzrpyToMatrix(cam.cameraExtrinsics.state);
+                else                              CameraToGlobal = LinAlg.identity(4);
+
+                // mosaic
+                int             mosaicIndex         = mosaicExtrinsicsIndices.get(c.imageIndex);
+                GExtrinsicsNode mosaicExtrinsics    = (GExtrinsicsNode) g.nodes.get(mosaicIndex);
+                double          MosaicToGlobal[][]  = mosaicExtrinsics.getMatrix();
+
+                // the transform that we really need
+                double MosaicToCamera[][] = LinAlg.matrixAB(LinAlg.inverse(CameraToGlobal),
+                                                            MosaicToGlobal);
+
+                // global coordinates of tag center
+                double xyz_camera[] = LinAlg.transform(MosaicToCamera,
+                                                       c.xyz_m);
+
+                // output to file
+                double xy_pred[] = cam.cameraIntrinsics.project(xyz_camera);
+                double r_obs = LinAlg.distance(cc, c.xy_px);
+                double r_pred = LinAlg.distance(cc, xy_pred);
+
+                outs.write(String.format("%14.6f, %14.6f, %14.6f, %14.6f, %14.6f, %14.6f, %14.6f\n",
+                                         c.xy_px[0], c.xy_px[1], r_obs,
+                                         xy_pred[0], xy_pred[1], r_pred,
+                                         LinAlg.distance(xy_pred, c.xy_px)));
+            }
+
+            outs.close();
+
+            System.out.println("Saved reprojection errors successfully.");
+
+        } catch (IOException ex) {
+            System.out.println("Error saving reprojection errors: " + ex);
+        }
+
     }
 
-    public void saveCalibrationAndImages()
+    public synchronized void saveCalibrationAndImages()
     {
         saveCalibrationAndImages("/tmp/cameraCalibration");
     }
 
-    public void saveCalibrationAndImages(String basepath)
+    public synchronized void saveCalibrationAndImages(String basepath)
     {
         if (images == null || images.size() < 1)
             return;
