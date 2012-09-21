@@ -252,8 +252,10 @@ public class CameraCalibrator
      */
     public synchronized List<double[]> getCalibrationParameters()
     {
-        if (cameras == null)
-            return null;
+
+        if (cameras == null) {
+            return initialParameters;
+        }
 
         ArrayList<double[]> parameters = new ArrayList<double[]>();
 
@@ -268,8 +270,12 @@ public class CameraCalibrator
      */
     public synchronized double[] getCalibrationParameters(int cameraIndex)
     {
-        if (cameras == null)
-            return null;
+        if (cameras == null) {
+            if (initialParameters == null)
+                return null;
+
+            return initialParameters.get(cameraIndex);
+        }
 
         if (cameraIndex < 0 || cameraIndex >= cameras.size())
             return null;
