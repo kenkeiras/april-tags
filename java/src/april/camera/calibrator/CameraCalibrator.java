@@ -1405,17 +1405,17 @@ public class CameraCalibrator
         // save images
         for (int cameraIndex = 0; cameraIndex < initializers.size(); cameraIndex++) {
 
+            String subDirName = dirName;
+
             // make a subdirectory if we have multiple cameras
             if (initializers.size() > 1) {
-                String subDirName = String.format("%s/camera%d/", dirName, cameraIndex);
+                subDirName = String.format("%s/camera%d/", dirName, cameraIndex);
                 File subDir = new File(subDirName);
 
                 if (subDir.mkdirs() != true) {
                     System.err.printf("CameraCalibrator: Failure to create subdirectory '%s'\n", subDirName);
                     return;
                 }
-
-                dirName = subDirName;
             }
 
             for (int imageSetIndex = 0; imageSetIndex < images.size(); imageSetIndex++) {
@@ -1423,7 +1423,7 @@ public class CameraCalibrator
                 List<ProcessedImage> imageSet = images.get(imageSetIndex);
                 ProcessedImage pim = imageSet.get(cameraIndex);
 
-                String fileName = String.format("%s/image%04d.png", dirName, imageSetIndex);
+                String fileName = String.format("%s/image%04d.png", subDirName, imageSetIndex);
                 File imageFile = new File(fileName);
 
                 System.out.printf("Filename '%s'\n", fileName);
@@ -1432,10 +1432,10 @@ public class CameraCalibrator
                     ImageIO.write(pim.image, "png", imageFile);
 
                 } catch (IllegalArgumentException ex) {
-                    System.err.printf("CameraCalibrator: Failed to output images to '%s'\n", dirName);
+                    System.err.printf("CameraCalibrator: Failed to output images to '%s'\n", subDirName);
                     return;
                 } catch (IOException ex) {
-                    System.err.printf("CameraCalibrator: Failed to output images to '%s'\n", dirName);
+                    System.err.printf("CameraCalibrator: Failed to output images to '%s'\n", subDirName);
                     return;
                 }
             }
