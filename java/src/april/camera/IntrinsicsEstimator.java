@@ -14,6 +14,7 @@ public class IntrinsicsEstimator
     private double K[][];
     private ArrayList<double[][]> vanishingPoints = new ArrayList<double[][]>();
     private ArrayList<ArrayList<double[][]>> allFitLines = new ArrayList<ArrayList<double[][]>>();
+    private int numGoodImages = 0;
 
     private TagMosaic mosaic;
 
@@ -51,11 +52,11 @@ public class IntrinsicsEstimator
             }
         }
 
-        if (vanishingPoints.size() >= 3) {
+        if (numGoodImages >= 3) {
             // if we have enough points to estimate cx and cy properly, do so
             K = CameraMath.estimateIntrinsicsFromVanishingPoints(vanishingPoints);
 
-        } else if (vanishingPoints.size() >= 1) {
+        } else if (numGoodImages >= 1) {
             // estimate the focal length with the fallback cx, cy given
             K = CameraMath.estimateIntrinsicsFromVanishingPointsWithGivenCxCy(vanishingPoints, fallbackcx, fallbackcy);
         }
@@ -69,6 +70,13 @@ public class IntrinsicsEstimator
     public ArrayList<double[][]> getVanishingPoints()
     {
         return vanishingPoints;
+    }
+
+    /** Get the number of unique and good images observed.
+     */
+    public int getNumberOfGoodImages()
+    {
+        return numGoodImages;
     }
 
     public double[][] getIntrinsics()
@@ -90,6 +98,7 @@ public class IntrinsicsEstimator
         // intersect lines to compute vanishing points
         vanishingPoints.add(new double[][] { bottom.intersectionWith(top) ,
                                              left.intersectionWith(right) });
+        numGoodImages++;
 
         ArrayList<double[][]> fitLines = new ArrayList<double[][]>();
         fitLines.add(getLine(bottom));
@@ -101,94 +110,102 @@ public class IntrinsicsEstimator
 
     private void computeTagMosaicVanishingPoints(List<TagDetection> detections)
     {
-        ArrayList<TagMosaic.GroupedDetections> rowDetections = mosaic.getRowDetections(detections);
+        // group all of the detections
         ArrayList<TagMosaic.GroupedDetections> colDetections = mosaic.getColumnDetections(detections);
-
-        ArrayList<double[][]> fitLines = new ArrayList<double[][]>();
-
-        // get min and max row and column for computing vanishing point
-        int minRow = Integer.MAX_VALUE;
-        int maxRow = Integer.MIN_VALUE;
-        int minCol = Integer.MAX_VALUE;
-        int maxCol = Integer.MIN_VALUE;
-        int minRowIndex = -1;
-        int maxRowIndex = -1;
-        int minColIndex = -1;
-        int maxColIndex = -1;
-
-        for (int i=0; i < rowDetections.size(); i++) {
-            TagMosaic.GroupedDetections gd = rowDetections.get(i);
-            assert(gd.type == TagMosaic.GroupedDetections.ROW_GROUP);
-
-            if (verbose)
-                System.out.printf("Detection group %2d: type %1d index %2d #detections %3d\n",
-                                  i, gd.type, gd.index, gd.detections.size());
-
-            if (gd.detections.size() < 2)
-                continue;
-
-            fitLines.add(getLine(gd.fitLine()));
-
-            if (gd.index < minRow) {
-                minRow = gd.index;
-                minRowIndex = i;
-            }
-            if (gd.index > maxRow) {
-                maxRow = gd.index;
-                maxRowIndex = i;
-            }
-        }
-
-        for (int i=0; i < colDetections.size(); i++) {
-            TagMosaic.GroupedDetections gd = colDetections.get(i);
-            assert(gd.type == TagMosaic.GroupedDetections.COL_GROUP);
-
-            if (verbose)
-                System.out.printf("Detection group %2d: type %1d index %2d #detections %3d\n",
-                                  i, gd.type, gd.index, gd.detections.size());
-
-            if (gd.detections.size() < 2)
-                continue;
-
-            fitLines.add(getLine(gd.fitLine()));
-
-            if (gd.index < minCol) {
-                minCol = gd.index;
-                minColIndex = i;
-            }
-            if (gd.index > maxCol) {
-                maxCol = gd.index;
-                maxColIndex = i;
-            }
-        }
+        ArrayList<TagMosaic.GroupedDetections> rowDetections = mosaic.getRowDetections(detections);
+        ArrayList<TagMosaic.GroupedDetections> posDiagDetections = mosaic.getPositiveDiagonalDetections(detections);
+        ArrayList<TagMosaic.GroupedDetections> negDiagDetections = mosaic.getNegativeDiagonalDetections(detections);
 
         if (verbose)
-            System.out.printf("Row min %2d (%2d) max %2d (%2d) Col min %2d (%2d) max %2d (%2d)\n",
-                              minRow, minRowIndex, maxRow, maxRowIndex,
-                              minCol, minColIndex, maxCol, maxColIndex);
+            System.out.printf("Group sizes: (%3d, %3d, %3d, %3d)\n",
+                              colDetections.size(), rowDetections.size(), posDiagDetections.size(), negDiagDetections.size());
 
-        // if we don't have two distinct lines, we can't do anything
-        if (minRowIndex == maxRowIndex || minColIndex == maxColIndex) {
+        // discard groups with fewer than two detections
+        colDetections     = keepUsefulGroups(colDetections);
+        rowDetections     = keepUsefulGroups(rowDetections);
+        posDiagDetections = keepUsefulGroups(posDiagDetections);
+        negDiagDetections = keepUsefulGroups(negDiagDetections);
+
+        if (verbose)
+            System.out.printf("Group sizes after filtering: (%3d, %3d, %3d, %3d)\n",
+                              colDetections.size(), rowDetections.size(), posDiagDetections.size(), negDiagDetections.size());
+
+        // make all the least-squares fit lines
+        ArrayList<double[][]> fitLines = new ArrayList<double[][]>();
+        for (TagMosaic.GroupedDetections group : colDetections)
+            fitLines.add(getLine(group.fitLine()));
+        for (TagMosaic.GroupedDetections group : rowDetections)
+            fitLines.add(getLine(group.fitLine()));
+        for (TagMosaic.GroupedDetections group : posDiagDetections)
+            fitLines.add(getLine(group.fitLine()));
+        for (TagMosaic.GroupedDetections group : negDiagDetections)
+            fitLines.add(getLine(group.fitLine()));
+
+        if (verbose)
+            System.out.printf("%3d fit lines\n", fitLines.size());
+
+        // get vanishing points from columns and rows
+        double u1[] = getNullSpaceVanishingPoint(colDetections);
+        double v1[] = getNullSpaceVanishingPoint(rowDetections);
+
+        // get vanishing points from positive and negative diagonals
+        double u2[] = getNullSpaceVanishingPoint(posDiagDetections);
+        double v2[] = getNullSpaceVanishingPoint(negDiagDetections);
+
+        // if neither pair of vanishing points exists, we can't estimate the intrinsics
+        if ((u1 == null || v1 == null) && (u2 == null || v2 == null))
+        {
             vanishingPoints.add(null);
             allFitLines.add(fitLines);
             return;
         }
 
-        GLine2D rowMinLine = rowDetections.get(minRowIndex).fitLine();
-        GLine2D rowMaxLine = rowDetections.get(maxRowIndex).fitLine();
-        GLine2D colMinLine = colDetections.get(minColIndex).fitLine();
-        GLine2D colMaxLine = colDetections.get(maxColIndex).fitLine();
+        if (u1 != null && v1 != null)
+            vanishingPoints.add(new double[][] { u1, v1 });
 
-        double rowVanishingPoint[] = rowMinLine.intersectionWith(rowMaxLine);
-        double colVanishingPoint[] = colMinLine.intersectionWith(colMaxLine);
+        if (u2 != null && v2 != null)
+            vanishingPoints.add(new double[][] { u2, v2 });
 
-        if (verbose)
-            System.out.printf("Vanishing points (%7.1f, %7.1f) and (%7.1f, %7.1f)\n",
-                              rowVanishingPoint[0], rowVanishingPoint[1],
-                              colVanishingPoint[0], colVanishingPoint[1]);
-
-        vanishingPoints.add(new double[][] { rowVanishingPoint, colVanishingPoint });
         allFitLines.add(fitLines);
+        numGoodImages++;
+    }
+
+    private ArrayList<TagMosaic.GroupedDetections> keepUsefulGroups(ArrayList<TagMosaic.GroupedDetections> groups)
+    {
+        ArrayList<TagMosaic.GroupedDetections> usefulGroups = new ArrayList<TagMosaic.GroupedDetections>();
+
+        for (TagMosaic.GroupedDetections group : groups) {
+            // we need at least two detections in a group to fit a line
+            if (group.detections.size() >= 2) {
+                usefulGroups.add(group);
+            }
+        }
+
+        return usefulGroups;
+    }
+
+    private double[] getNullSpaceVanishingPoint(List<TagMosaic.GroupedDetections> groups)
+    {
+        if (groups.size() < 2)
+            return null;
+
+        int i=0;
+        double A[][] = new double[groups.size()][];
+        for (TagMosaic.GroupedDetections group : groups) {
+
+            GLine2D line = group.fitLine();
+
+            A[i] = new double[] { -line.getM(), 1, -line.getB() };
+            i++;
+        }
+
+        SingularValueDecomposition SVD = new SingularValueDecomposition(new Matrix(A));
+        Matrix V = SVD.getV();
+
+        double xy[] = V.getColumn(V.getColumnDimension()-1).getDoubles();
+        xy = LinAlg.scale(xy, 1.0 / xy[2]);
+
+        return new double[] { xy[0], xy[1] };
     }
 
     // rendering
