@@ -343,6 +343,15 @@ public class SingleCameraCalibrator implements ParameterListener
                                   imagesSet.size(), origMRE);
             }
 
+            // if both graphs failed, we'll reinitialize and *not* iterate.
+            // this will get us something reasonable to render to the user
+            if (!origSPD && !newSPD) {
+                CameraCalibrator cal = new CameraCalibrator(Arrays.asList(initializer), tf,
+                                                            tagSpacing_m, vl2, false);
+                cal.addImageSet(imagesSet, detsSet, Collections.<double[]>nCopies(imagesSet.size(),null));
+                calibrator = cal;
+            }
+
             calibrator.draw();
         }
     }

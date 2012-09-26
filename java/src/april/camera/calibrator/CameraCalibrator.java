@@ -27,7 +27,6 @@ import april.vis.*;
  */
 public class CameraCalibrator
 {
-    public int REQUIRED_NUM_IMAGES = 3;       // number of images needed before iteration
     public int REQUIRED_TAGS_PER_IMAGE = 8;   // number of constraints needed per image
     public static boolean verbose = true;
 
@@ -997,9 +996,7 @@ public class CameraCalibrator
 
     public synchronized void iterate()
     {
-        // don't try to optimize until we have a few images
-        // XXX replace this later with an rank check of the graph
-        if (cameras == null || images.size() < REQUIRED_NUM_IMAGES)
+        if (cameras == null)
             return;
 
         solver.iterate();
@@ -1018,9 +1015,7 @@ public class CameraCalibrator
       */
     public synchronized int iterateUntilConvergence(double improvementThreshold, int minConvergedIterations, int maxIterations)
     {
-        // don't try to optimize until we have a few images
-        // XXX replace this later with an rank check of the graph
-        if (cameras == null || images.size() < REQUIRED_NUM_IMAGES)
+        if (cameras == null)
             return 0;
 
         double lastMRE = getMRE();
