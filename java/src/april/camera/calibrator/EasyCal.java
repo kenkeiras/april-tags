@@ -12,6 +12,7 @@ import javax.swing.*;
 
 import april.camera.*;
 import april.camera.tools.*;
+import april.camera.models.*;
 import april.jcam.*;
 import april.jmat.*;
 import april.tag.*;
@@ -49,6 +50,9 @@ public class EasyCal implements ParameterListener
     SyntheticTagMosaicImageGenerator simgen;
     // SyntheticTagMosaicImageGenerator.SyntheticImages suggestion;
 
+    ArrayList<SuggestedImage> suggestDictionary = new ArrayList();
+
+    SuggestedImage bestSuggestion;
     int suggestionNumber = 0;
     // double desiredXyzrpy[];
 
@@ -67,6 +71,25 @@ public class EasyCal implements ParameterListener
 
     List<List<BufferedImage>> imagesSet = new ArrayList<List<BufferedImage>>();
     List<List<List<TagDetection>>> detsSet = new ArrayList<List<List<TagDetection>>>();
+
+
+
+
+
+    static class SuggestedImage
+    {
+        // Assumed to be in the actual image
+        ArrayList<TagDetection> detections;
+
+        // could be null
+        BufferedImage im;
+        double xyzrpy[];
+    }
+
+    static double[][] firstExtrinsics = {{ 0.004,   -0.084,   2*0.315,   -0.161,    0.795,    0.343}, // "good" #1
+                                         {-0.070,   -0.044,    0.161,   -0.006,   -0.519,   -0.334}, // "good" #2
+                                         {-0.050,   -0.058,    0.190,    0.863,    0.220,    0.142}}; // "good"
+
 
     private class ScoredImage implements Comparable<ScoredImage>
     {
@@ -603,6 +626,83 @@ public class EasyCal implements ParameterListener
         }
     }
 
+    private void generateSuggestionsDict()
+    {
+
+        double mu[] = {0.162186, 0.021101, 0.222987, -0.019265, -0.000811, 3.14};
+
+        double cov[][] = {{ 0.047790,  0.011413,  0.004247,  0.004409, -0.016715,         0 },
+                          { 0.011413,  0.009917, -0.000494,  0.002122, -0.004196,         0 },
+                          { 0.004247, -0.000494,  0.015034, -0.006155,  0.022634,         0 },
+                          { 0.004409,  0.002122, -0.006155,  0.168764, -0.007430,         0 },
+                          {-0.016715, -0.004196,  0.022634, -0.007430,  0.148120,         0 },
+                          {        0,         0,         0,         0,         0,  0.04     }};
+
+
+        MultiGaussian mg = new MultiGaussian(cov,mu);
+
+        ArrayList<SuggestedImage> sugs = new ArrayList();
+
+        Random r2 = new Random(1034);
+
+        ParameterizableCalibration cal = null;
+        double params[] = null;
+        if (calibrator != null)
+            params = calibrator.getCalibrationParameters(0);
+        if (params != null)
+            cal = initializer.initializeWithParameters(imwidth, imheight, params);
+
+        ArrayList<double[]> samples = mg.sampleMany(r2, 100);
+        if (false) {
+            samples.set(0,new double[] { 0.004,   -0.084,   2*0.315,   -0.161,    0.795,    0.343}); // "good" #1
+            samples.set(1, new double[] {-0.070,   -0.044,    0.161,   -0.006,   -0.519,   -0.334}); // "good" #2
+            samples.set(2, new double[] {-0.050,   -0.058,    0.190,    0.863,    0.220,    0.142}); // "good" #3
+        }
+
+        for (double extSample[] : samples) {
+            SuggestedImage si = new SuggestedImage();
+            si.detections = makeDetectionsFromExt(cal, extSample);
+            sugs.add(si);
+        }
+        suggestDictionary = sugs;
+    }
+
+    private ArrayList<TagDetection> makeDetectionsFromExt(Calibration cal, double mExtrinsics[])
+    {
+        ArrayList<TagDetection> detections = new ArrayList();
+        for (int col = minColUsed; col <= maxColUsed; col++) {
+            for (int row = minRowUsed; row <= maxRowUsed; row++) {
+                TagDetection td = new TagDetection();
+                td.id = row*mosaic.getMosaicWidth() + col;
+                assert(td.id < tf.codes.length);
+                //     continue;
+
+                double world[] = mosaic.getPositionMeters(td.id);
+                td.cxy = CameraMath.project(cal, LinAlg.xyzrpyToMatrix(mExtrinsics), world);
+
+                // XXX Also project the boundaries to make hxy???
+                detections.add(td);
+            }
+        }
+        return detections;
+    }
+
+
+
+    static SuggestedImage getBestSuggestion(List<SuggestedImage> suggestions, FrameScorer fs)
+    {
+        SuggestedImage bestImg = null;
+        double lowestScore = Double.MAX_VALUE;
+        for (SuggestedImage si : suggestions) {
+            double score = fs.scoreFrame(si.detections);
+            if (score < lowestScore) {
+                bestImg = si;
+                lowestScore = score;
+            }
+        }
+        return bestImg;
+    }
+
     // private double[] findMatchingPoint(int id)
     // {
     //     if (suggestion == null)
@@ -796,6 +896,37 @@ public class EasyCal implements ParameterListener
         candidateImages = new ArrayList<ScoredImage>();
 
         // XXX generateSuggestion(desiredXyzrpy);
+    }
+
+    private void generateNextSuggestion()
+    {
+        ParameterizableCalibration cal = null;
+        double params[] = null;
+        if (calibrator != null)
+            params = calibrator.getCalibrationParameters(0);
+        if (params != null)
+            cal = initializer.initializeWithParameters(imwidth, imheight, params);
+
+        if (suggestionNumber < firstExtrinsics.length) {
+
+            // XXX Spoof some arbitrary calibration to get us through the initialization
+            if (cal == null) {
+                double fc = (imwidth + imheight)/2;
+                cal = new DistortionFreeCalibration(new double[]{fc,fc},
+                                                    new double[]{imwidth/2.0, imheight/2.0}, imwidth, imheight);
+            }
+
+            SuggestedImage si = new SuggestedImage();
+            si.detections = makeDetectionsFromExt(cal, firstExtrinsics[suggestionNumber]);
+            si.xyzrpy = firstExtrinsics[suggestionNumber];
+
+            bestSuggestion = si;
+            suggestionNumber++;
+            return;
+        }
+
+        FrameScorer fs = new PixErrScorer(calibrator, imwidth, imheight);
+        bestSuggestion = getBestSuggestion(suggestDictionary, fs);
     }
 
     // private void generateSuggestion(double xyzrpy[])
