@@ -370,6 +370,12 @@ public class CameraCalibrator
         return output;
     }
 
+    public synchronized List<CalibrationInitializer> getInitializers()
+    {
+        return new ArrayList(initializers);
+    }
+
+
     public synchronized Graph getGraphCopy()
     {
         return g.copy();
