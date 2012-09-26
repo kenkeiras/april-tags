@@ -312,6 +312,23 @@ public class CameraCalibrator
         return LinAlg.copy(cam.cameraExtrinsics.state);
     }
 
+    // Returns the extrinsics for each camera *INCLUDING* the first privileged camera
+    // which must be removed in order to call setRelativeExtrinsicsCameraToGlobal()
+    public synchronized ArrayList<double[]> getCalibrationExtrinsics()
+    {
+        if (cameras == null)
+            return null;
+
+        ArrayList<double[]> camExtrinsics = new ArrayList();
+        for (CameraWrapper cam : cameras) {
+            if (cam.cameraExtrinsics == null)
+                camExtrinsics.add(new double[6]); // for idx = 0
+            else
+                camExtrinsics.add(LinAlg.copy(cam.cameraExtrinsics.state));
+        }
+        return camExtrinsics;
+    }
+
     public synchronized double[] getMosaicExtrinsics(int mosaic)
     {
         return LinAlg.copy(g.nodes.get(mosaicExtrinsicsIndices.get(mosaic)).state);
@@ -327,10 +344,65 @@ public class CameraCalibrator
         return extrins;
     }
 
+    public synchronized List<List<BufferedImage>> getImages()
+    {
+        List<List<BufferedImage>> output = new ArrayList();
+
+        for (List<ProcessedImage> plist : images) {
+            List<BufferedImage> blist = new ArrayList();
+            for (ProcessedImage p : plist)
+                blist.add(p.image);
+            output.add(blist);
+        }
+        return output;
+    }
+
+    public synchronized List<List<List<TagDetection>>> getDetections()
+    {
+        List<List<List<TagDetection>>> output = new ArrayList();
+
+        for (List<ProcessedImage> plist : images) {
+            List<List<TagDetection>> tlists = new ArrayList();
+            for (ProcessedImage p : plist)
+                tlists.add(p.detections);
+            output.add(tlists);
+        }
+        return output;
+    }
+
     public synchronized Graph getGraphCopy()
     {
         return g.copy();
     }
+
+    // Returns a "copy" of the Calibrator by recreating one from scratch with the same inputs
+    // The new graph in the new calibrator will have identical state to the current calibrator,
+    // since initializations are specified for all graph nodes.
+    public CameraCalibrator copy()
+    {
+
+        CameraCalibrator out = new CameraCalibrator(new ArrayList(this.initializers), this.tf, this.metersPerTag);
+
+
+        List<double[]> mosaicExtrinsics = this.getMosaicExtrinsics();
+        List<double[]> cameraExtrinsics = this.getCalibrationExtrinsics();
+        List<double[]> calParams = this.getCalibrationParameters();
+
+        if (calParams != null)
+            out.setCalibrationParameters(calParams);
+
+        if (cameraExtrinsics != null){
+            cameraExtrinsics.remove(0); // remove privileged camera
+            out.setRelativeExtrinsicsCameraToGlobal(cameraExtrinsics);
+        }
+
+        if (mosaicExtrinsics.size() == 0)
+            mosaicExtrinsics = Collections.<double[]>nCopies(this.images.size(),null);
+
+        out.addImageSet(this.getImages(), this.getDetections(), mosaicExtrinsics);
+        return out;
+    }
+
 
     private void generateTagPositions(TagFamily tf, double metersPerTag)
     {
