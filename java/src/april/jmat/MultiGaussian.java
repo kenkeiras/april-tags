@@ -99,6 +99,14 @@ public class MultiGaussian
         return LinAlg.add(L.times(x), u);
     }
 
+    public ArrayList<double[]> sampleMany(Random r, int nsamples)
+    {
+        ArrayList<double[]> samples = new ArrayList();
+        for (int i = 0; i < nsamples; i++)
+            samples.add(sample(r));
+        return samples;
+    }
+
     /** compute probability of Nx1 vector v **/
     public double prob(double v[])
     {
