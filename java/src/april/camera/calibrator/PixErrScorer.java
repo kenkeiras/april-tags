@@ -19,21 +19,25 @@ public class PixErrScorer implements FrameScorer
 
     final CameraCalibrator currentCal;
 
-    public PixErrScorer(CameraCalibrator _currentCal)
+    final int width, height;
+    BufferedImage fakeIm;
+
+    public PixErrScorer(CameraCalibrator _currentCal, int _width, int _height)
     {
         currentCal = _currentCal;
 
-        // Compute any initial state
+        width = _width;
+        height = _height;
+        fakeIm = new BufferedImage(width,height, BufferedImage.TYPE_BYTE_BINARY); // cheapest
     }
 
 
-    public double scoreFrame(BufferedImage im, List<TagDetection> dets)
+    public double scoreFrame(List<TagDetection> dets)
     {
-
         CameraCalibrator cal = currentCal.copy();
 
-
-        cal.addImages(Arrays.asList(im), Arrays.asList(dets));
+        // XXX Passing null here
+        cal.addImages(Arrays.asList(fakeIm), Arrays.asList(dets));
         try {
             int itrs = cal.iterateUntilConvergence(.01, 2, 1000);
         } catch(RuntimeException e) {
@@ -59,7 +63,7 @@ public class PixErrScorer implements FrameScorer
 
 
         double errMeanVar[] = computeMaxErrorDist(mg.getMean(), samples, 5,
-                                                  cal.getInitializers().get(0), im.getWidth(), im.getHeight());
+                                                  cal.getInitializers().get(0), width, height);
 
         return errMeanVar[0];
     }

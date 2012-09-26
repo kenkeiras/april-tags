@@ -6,7 +6,10 @@ import april.tag.*;
 
 public interface FrameScorer
 {
+    // All FrameScorers should also have a constructor with signature
+    // public  FrameScorer(CameraCalibrator cal, int width, int height)
 
-    public double scoreFrame(BufferedImage im, List<TagDetection> dets);
+
+    public double scoreFrame(List<TagDetection> dets);
 
 }
