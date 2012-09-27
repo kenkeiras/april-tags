@@ -644,8 +644,12 @@ public class EasyCal implements ParameterListener
         for (double extSample[] : samples) {
             SuggestedImage si = new SuggestedImage();
             si.detections = makeDetectionsFromExt(cal, extSample);
+            if (si.detections.size() < 12)
+                continue;
+            si.xyzrpy = extSample;
             sugs.add(si);
         }
+        System.out.printf("Made new dictionary with %d valid poses\n",sugs.size());
         suggestDictionary = sugs;
     }
 
@@ -661,6 +665,11 @@ public class EasyCal implements ParameterListener
 
                 double world[] = mosaic.getPositionMeters(td.id);
                 td.cxy = CameraMath.project(cal, LinAlg.xyzrpyToMatrix(mExtrinsics), world);
+
+
+                if (td.cxy[0] < 0 || td.cxy[0] >= imwidth ||
+                    td.cxy[1] < 0 || td.cxy[1] >= imheight)
+                    continue;
 
                 // XXX Also project the boundaries to make hxy???
                 detections.add(td);
@@ -682,25 +691,9 @@ public class EasyCal implements ParameterListener
                 lowestScore = score;
             }
         }
+        assert(bestImg != null);
         return bestImg;
     }
-
-    // private double[] findMatchingPoint(int id)
-    // {
-    //     if (suggestion == null)
-    //         return null;
-
-    //     for (int i=0; i < suggestion.tagids.length; i++) {
-    //         if (suggestion.tagids[i] == id) {
-    //             if (suggestion.predictedTagCenters_distorted != null)
-    //                 return suggestion.predictedTagCenters_distorted.get(i);
-    //             else
-    //                 return suggestion.predictedTagCenters_rectified.get(i);
-    //         }
-    //     }
-
-    //     return null;
-    // }
 
     private void addImage(BufferedImage im, List<TagDetection> detections)
     {
@@ -906,50 +899,26 @@ public class EasyCal implements ParameterListener
 
             bestSuggestion = si;
         } else {
+            generateSuggestionsDict();
+
             FrameScorer fs = new PixErrScorer(calibrator, imwidth, imheight);
             bestSuggestion = getBestSuggestion(suggestDictionary, fs);
+            assert(bestSuggestion != null);
         }
 
         bestSuggestion.im = simgen.generateImageNotCentered(cal, bestSuggestion.xyzrpy, false).distorted;
     }
 
-    // private void generateSuggestion(double xyzrpy[])
+    // private double[] generateXyzrpy()
     // {
-    //     if (xyzrpy == null || suggestionNumber < 3) {
-    //         //System.out.printf("Canned suggestion #%d\n", suggestionNumber);
-    //         if (suggestionNumber == 0) xyzrpy = new double[] { 0.004,   -0.084,   2*0.315,   -0.161,    0.795,    0.343}; // "good" #1
-    //         if (suggestionNumber == 1) xyzrpy = new double[] {-0.070,   -0.044,    0.161,   -0.006,   -0.519,   -0.334}; // "good" #2
-    //         if (suggestionNumber == 2) xyzrpy = new double[] {-0.050,   -0.058,    0.190,    0.863,    0.220,    0.142}; // "good" #3
-    //     }
-
-    //     // try to get the current calibration object for creating images
-    //     // that match those from the camera
-    //     ParameterizableCalibration cal = null;
-    //     double params[] = null;
-    //     if (calibrator != null)
-    //         params = calibrator.getCalibrationParameters(0);
-    //     if (params != null)
-    //         cal = initializer.initializeWithParameters(imwidth, imheight, params);
-
-    //     // generate the images
-    //     if (suggestionNumber < 3)
-    //         this.suggestion = simgen.generateImageNotCentered(cal, xyzrpy, false);
-    //     else
-    //         this.suggestion = simgen.generateImageCentered(cal, xyzrpy, false);
-
-    //     this.desiredXyzrpy = xyzrpy;
+    //     double xyzrpy[] = new double[] {-0.1 + 0.2*r.nextDouble(),
+    //                                     -0.1 + 0.2*r.nextDouble(),
+    //                                      0.2 + 0.4*r.nextDouble(),
+    //                                     -0.4 + 0.8*r.nextDouble(),
+    //                                     -0.4 + 0.8*r.nextDouble(),
+    //                                     -0.4 + 0.8*r.nextDouble() };
+    //     return xyzrpy;
     // }
-
-    private double[] generateXyzrpy()
-    {
-        double xyzrpy[] = new double[] {-0.1 + 0.2*r.nextDouble(),
-                                        -0.1 + 0.2*r.nextDouble(),
-                                         0.2 + 0.4*r.nextDouble(),
-                                        -0.4 + 0.8*r.nextDouble(),
-                                        -0.4 + 0.8*r.nextDouble(),
-                                        -0.4 + 0.8*r.nextDouble() };
-        return xyzrpy;
-    }
 
     public static void main(String args[])
     {
