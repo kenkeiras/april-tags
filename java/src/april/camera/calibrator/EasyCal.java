@@ -278,6 +278,21 @@ public class EasyCal implements ParameterListener
                                                                     // "Images are mirrored for display purposes"))));
             vb.swap();
 
+            if (calibrator.getImages().size() > 3)
+            {
+                FrameScorer fs = new PixErrScorer(calibrator, imwidth, imheight);
+                double score = fs.scoreFrame(detections);
+
+                vb = vwside.getBuffer("Score");
+                vb.setDrawOrder(151);
+                String str = String.format("<<dropshadow=#FF000000,monospaced-12-bold,white>>Score: %e\n",score);
+                vb.addBack(new VisDepthTest(false,
+                                            new VisPixCoords(VisPixCoords.ORIGIN.TOP_RIGHT,
+                                                             new VzText(VzText.ANCHOR.TOP_RIGHT, str))));
+                // "Images are mirrored for display purposes"))));
+                vb.swap();
+
+            }
             ////////////////////////////////////////
             // suggested image
             vb = vwside.getBuffer("Suggestion");
@@ -677,8 +692,6 @@ public class EasyCal implements ParameterListener
         }
         return detections;
     }
-
-
 
     static SuggestedImage getBestSuggestion(List<SuggestedImage> suggestions, FrameScorer fs)
     {
