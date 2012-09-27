@@ -72,10 +72,6 @@ public class EasyCal implements ParameterListener
     List<List<BufferedImage>> imagesSet = new ArrayList<List<BufferedImage>>();
     List<List<List<TagDetection>>> detsSet = new ArrayList<List<List<TagDetection>>>();
 
-
-
-
-
     static class SuggestedImage
     {
         // Assumed to be in the actual image
@@ -86,6 +82,7 @@ public class EasyCal implements ParameterListener
         double xyzrpy[];
     }
 
+    // These only work with NotCentered
     static double[][] firstExtrinsics = {{ 0.004,   -0.084,   2*0.315,   -0.161,    0.795,    0.343}, // "good" #1
                                          {-0.070,   -0.044,    0.161,   -0.006,   -0.519,   -0.334}, // "good" #2
                                          {-0.050,   -0.058,    0.190,    0.863,    0.220,    0.142}}; // "good"
@@ -633,17 +630,25 @@ public class EasyCal implements ParameterListener
     private void generateSuggestionsDict()
     {
 
-        double mu[] = {0.162186, 0.021101, 0.222987, -0.019265, -0.000811, 3.14};
-
-        double cov[][] = {{ 0.047790,  0.011413,  0.004247,  0.004409, -0.016715,         0 },
-                          { 0.011413,  0.009917, -0.000494,  0.002122, -0.004196,         0 },
-                          { 0.004247, -0.000494,  0.015034, -0.006155,  0.022634,         0 },
-                          { 0.004409,  0.002122, -0.006155,  0.168764, -0.007430,         0 },
-                          {-0.016715, -0.004196,  0.022634, -0.007430,  0.148120,         0 },
-                          {        0,         0,         0,         0,         0,  0.04     }};
+        MultiGaussian mg = null;
 
 
-        MultiGaussian mg = new MultiGaussian(cov,mu);
+        if (true) { // Use experimental data from expert datasets, works for NotCentered
+
+            double mu[] = {0.162186, 0.021101, 0.222987, -0.019265, -0.000811, 3.14};
+
+            double cov[][] = {{ 0.047790,  0.011413,  0.004247,  0.004409, -0.016715,         0 },
+                              { 0.011413,  0.009917, -0.000494,  0.002122, -0.004196,         0 },
+                              { 0.004247, -0.000494,  0.015034, -0.006155,  0.022634,         0 },
+                              { 0.004409,  0.002122, -0.006155,  0.168764, -0.007430,         0 },
+                              {-0.016715, -0.004196,  0.022634, -0.007430,  0.148120,         0 },
+                              {        0,         0,         0,         0,         0,  0.04     }};
+            mg = new MultiGaussian(cov,mu);
+        } else { // Previous distribution, but only works for Centered
+            double mu[] = {-.1,-.1,.2,.4,.4,.4};
+            double cov[][]  = LinAlg.diag(new double[]{.2,.2,.4,.8,.8,.8});
+            mg = new MultiGaussian(cov,mu);
+        }
 
         ArrayList<SuggestedImage> sugs = new ArrayList();
 
@@ -908,7 +913,7 @@ public class EasyCal implements ParameterListener
 
             // XXX Spoof some arbitrary calibration to get us through the initialization
             if (cal == null) {
-                double fc = (imwidth + imheight)/2;
+                double fc = 650; //(imwidth + imheight)/2;
                 cal = new DistortionFreeCalibration(new double[]{fc,fc},
                                                     new double[]{imwidth/2.0, imheight/2.0}, imwidth, imheight);
             }
@@ -928,17 +933,6 @@ public class EasyCal implements ParameterListener
 
         bestSuggestion.im = simgen.generateImageNotCentered(cal, bestSuggestion.xyzrpy, false).distorted;
     }
-
-    // private double[] generateXyzrpy()
-    // {
-    //     double xyzrpy[] = new double[] {-0.1 + 0.2*r.nextDouble(),
-    //                                     -0.1 + 0.2*r.nextDouble(),
-    //                                      0.2 + 0.4*r.nextDouble(),
-    //                                     -0.4 + 0.8*r.nextDouble(),
-    //                                     -0.4 + 0.8*r.nextDouble(),
-    //                                     -0.4 + 0.8*r.nextDouble() };
-    //     return xyzrpy;
-    // }
 
     public static void main(String args[])
     {
