@@ -278,7 +278,7 @@ public class EasyCal implements ParameterListener
                                                                     // "Images are mirrored for display purposes"))));
             vb.swap();
 
-            if (calibrator.getImages().size() > 3)
+            if (calibrator.getImages().size() >= 3)
             {
                 FrameScorer fs = new PixErrScorer(calibrator, imwidth, imheight);
                 double score = fs.scoreFrame(detections);
@@ -449,45 +449,41 @@ public class EasyCal implements ParameterListener
             double meandistthreshold = im.getWidth()/20.0;
             double meandist = totaldist/nmatches;
 
-            //XXX
-            // double meandistthreshold = im.getWidth()/20.0;
-            // double meandist = im.getWidth()/10.0;
+            if (H != null) {
+                ArrayList<double[]> lines = new ArrayList<double[]>();
+                double p1[] = findMatchingPoint(mosaic.getID(minCol, minRow));
+                double p2[] = findMatchingPoint(mosaic.getID(maxCol, minRow));
+                double p3[] = findMatchingPoint(mosaic.getID(maxCol, maxRow));
+                double p4[] = findMatchingPoint(mosaic.getID(minCol, maxRow));
+                if (p1 != null) {
+                    lines.add(LinAlg.transform(PixelsToVisSug, CameraMath.pixelTransform(H,
+                                                                    LinAlg.select(mosaic.getPositionMeters(minCol, minRow), 0, 1))));
+                    lines.add(LinAlg.transform(PixelsToVisSug, p1));
+                }
+                if (p2 != null) {
+                    lines.add(LinAlg.transform(PixelsToVisSug, CameraMath.pixelTransform(H,
+                                                                    LinAlg.select(mosaic.getPositionMeters(maxCol, minRow), 0, 1))));
+                    lines.add(LinAlg.transform(PixelsToVisSug, p2));
+                }
+                if (p3 != null) {
+                    lines.add(LinAlg.transform(PixelsToVisSug, CameraMath.pixelTransform(H,
+                                                                    LinAlg.select(mosaic.getPositionMeters(maxCol, maxRow), 0, 1))));
+                    lines.add(LinAlg.transform(PixelsToVisSug, p3));
+                }
+                if (p4 != null) {
+                    lines.add(LinAlg.transform(PixelsToVisSug, CameraMath.pixelTransform(H,
+                                                                    LinAlg.select(mosaic.getPositionMeters(minCol, maxRow), 0, 1))));
+                    lines.add(LinAlg.transform(PixelsToVisSug, p4));
+                }
 
-            // if (H != null) {
-            //     ArrayList<double[]> lines = new ArrayList<double[]>();
-            //     double p1[] = findMatchingPoint(mosaic.getID(minCol, minRow));
-            //     double p2[] = findMatchingPoint(mosaic.getID(maxCol, minRow));
-            //     double p3[] = findMatchingPoint(mosaic.getID(maxCol, maxRow));
-            //     double p4[] = findMatchingPoint(mosaic.getID(minCol, maxRow));
-            //     if (p1 != null) {
-            //         lines.add(LinAlg.transform(PixelsToVisSug, CameraMath.pixelTransform(H,
-            //                                                         LinAlg.select(mosaic.getPositionMeters(minCol, minRow), 0, 1))));
-            //         lines.add(LinAlg.transform(PixelsToVisSug, p1));
-            //     }
-            //     if (p2 != null) {
-            //         lines.add(LinAlg.transform(PixelsToVisSug, CameraMath.pixelTransform(H,
-            //                                                         LinAlg.select(mosaic.getPositionMeters(maxCol, minRow), 0, 1))));
-            //         lines.add(LinAlg.transform(PixelsToVisSug, p2));
-            //     }
-            //     if (p3 != null) {
-            //         lines.add(LinAlg.transform(PixelsToVisSug, CameraMath.pixelTransform(H,
-            //                                                         LinAlg.select(mosaic.getPositionMeters(maxCol, maxRow), 0, 1))));
-            //         lines.add(LinAlg.transform(PixelsToVisSug, p3));
-            //     }
-            //     if (p4 != null) {
-            //         lines.add(LinAlg.transform(PixelsToVisSug, CameraMath.pixelTransform(H,
-            //                                                         LinAlg.select(mosaic.getPositionMeters(minCol, maxRow), 0, 1))));
-            //         lines.add(LinAlg.transform(PixelsToVisSug, p4));
-            //     }
-
-            //     vb = vwside.getBuffer("Matches");
-            //     vb.setDrawOrder(20);
-            //     vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT,
-            //                                 new VzLines(new VisVertexData(lines),
-            //                                             VzLines.LINES,
-            //                                             new VzLines.Style(Color.blue, 3))));
-            //     vb.swap();
-            // }
+                vb = vwside.getBuffer("Matches");
+                vb.setDrawOrder(20);
+                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT,
+                                            new VzLines(new VisVertexData(lines),
+                                                        VzLines.LINES,
+                                                        new VzLines.Style(Color.blue, 3))));
+                vb.swap();
+            }
 
             ////////////////////////////////////////
             // plot suggested and current mosaic positions in 3D
@@ -621,6 +617,17 @@ public class EasyCal implements ParameterListener
                 vwside.getBuffer("Suggestion HUD").swap();
             }
         }
+    }
+
+    private double[] findMatchingPoint(int id)
+    {
+        if (bestSuggestion == null)
+            return null;
+
+        for (TagDetection det : bestSuggestion.detections)
+            if (det.id == id)
+                return det.cxy;
+        return null;
     }
 
     private void generateSuggestionsDict()
