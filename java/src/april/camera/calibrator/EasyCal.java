@@ -274,28 +274,25 @@ public class EasyCal implements ParameterListener
                                                          new VzText(VzText.ANCHOR.TOP,
                                                                     "<<dropshadow=#FF000000,"+
                                                                     "monospaced-12-bold,white>>"+
-                                                                    "Images are mirrored for display purposes"))));
+                                                                    "Images in mirror are closer than they appear"))));
+                                                                    // "Images are mirrored for display purposes"))));
             vb.swap();
 
             ////////////////////////////////////////
             // suggested image
-            // XXX
-            // vb = vwside.getBuffer("Suggestion");
-            // vb.setDrawOrder(0);
-            // if (suggestion != null) {
-            //     BufferedImage sugim = suggestion.distorted;
-            //     if (sugim == null)
-            //         sugim = suggestion.rectified;
-            //     vb.addBack(new VisLighting(false,
-            //                                new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT,
-            //                                                 new VisChain(PixelsToVisSug,
-            //                                                              new VzImage(new VisTexture(sugim,
-            //                                                                                         VisTexture.NO_MAG_FILTER |
-            //                                                                                         VisTexture.NO_MIN_FILTER |
-            //                                                                                         VisTexture.NO_REPEAT),
-            //                                                                          0)))));
-            // }
-            // vb.swap();
+            vb = vwside.getBuffer("Suggestion");
+            vb.setDrawOrder(0);
+            if (bestSuggestion != null && bestSuggestion.im != null) {
+                vb.addBack(new VisLighting(false,
+                                           new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT,
+                                                            new VisChain(PixelsToVisSug,
+                                                                         new VzImage(new VisTexture(bestSuggestion.im,
+                                                                                                    VisTexture.NO_MAG_FILTER |
+                                                                                                    VisTexture.NO_MIN_FILTER |
+                                                                                                    VisTexture.NO_REPEAT),
+                                                                                     0)))));
+            }
+            vb.swap();
 
             ////////////////////////////////////////
             // detections
@@ -417,45 +414,29 @@ public class EasyCal implements ParameterListener
                 vb.swap();
             }
 
-            // plot matching lines
-            // double totaldist = 0;
-            // int nmatches = 0;
-            // if (suggestion != null) {
-            //     for (int i=0; i < detections.size(); i++) {
-            //         TagDetection d = detections.get(i);
+            // find matches between observed and suggested
+            double totaldist = 0;
+            int nmatches = 0;
+            if (bestSuggestion != null) {
+                SuggestedImage sim = bestSuggestion;
 
-            //         int matchid = d.id;
+                for (TagDetection det1 : detections) {
+                    for (TagDetection det2 : sim.detections) {
+                        if (det1.id != det2.id)
+                            continue;
 
-            //         double p[] = null;
-            //         for (int j=0; j < suggestion.tagids.length; j++) {
-            //             if (suggestion.tagids[j] == matchid) {
-            //                 double pt[] = null;
-
-            //                 if (suggestion.predictedTagCenters_distorted != null)
-            //                     pt = suggestion.predictedTagCenters_distorted.get(j);
-            //                 else
-            //                     pt = suggestion.predictedTagCenters_rectified.get(j);
-
-            //                 if (pt[0] >= 0 && pt[0] < im.getWidth() &&
-            //                     pt[1] >= 0 && pt[1] < im.getHeight())
-            //                 {
-            //                     p = pt;
-            //                 }
-            //             }
-            //         }
-
-            //         if (p != null) {
-            //             totaldist += LinAlg.distance(d.cxy, p);
-            //             nmatches++;
-            //         }
-            //     }
-            // }
-            // double meandistthreshold = im.getWidth()/20.0;
-            // double meandist = totaldist/nmatches;
+                        totaldist += LinAlg.distance(det1.cxy, det2.cxy);
+                        nmatches++;
+                        break;
+                    }
+                }
+            }
+            double meandistthreshold = im.getWidth()/20.0;
+            double meandist = totaldist/nmatches;
 
             //XXX
-            double meandistthreshold = im.getWidth()/20.0;
-            double meandist = im.getWidth()/10.0;
+            // double meandistthreshold = im.getWidth()/20.0;
+            // double meandist = im.getWidth()/10.0;
 
             // if (H != null) {
             //     ArrayList<double[]> lines = new ArrayList<double[]>();
@@ -618,6 +599,7 @@ public class EasyCal implements ParameterListener
                     // make a new suggestion
                     suggestionNumber++;
                     // XXX generateSuggestion(generateXyzrpy());
+                    generateNextSuggestion();
                 }
             }
             else {
@@ -896,6 +878,8 @@ public class EasyCal implements ParameterListener
         candidateImages = new ArrayList<ScoredImage>();
 
         // XXX generateSuggestion(desiredXyzrpy);
+
+        generateNextSuggestion();
     }
 
     private void generateNextSuggestion()
@@ -921,12 +905,12 @@ public class EasyCal implements ParameterListener
             si.xyzrpy = firstExtrinsics[suggestionNumber];
 
             bestSuggestion = si;
-            suggestionNumber++;
-            return;
+        } else {
+            FrameScorer fs = new PixErrScorer(calibrator, imwidth, imheight);
+            bestSuggestion = getBestSuggestion(suggestDictionary, fs);
         }
 
-        FrameScorer fs = new PixErrScorer(calibrator, imwidth, imheight);
-        bestSuggestion = getBestSuggestion(suggestDictionary, fs);
+        bestSuggestion.im = simgen.generateImageNotCentered(cal, bestSuggestion.xyzrpy, false).distorted;
     }
 
     // private void generateSuggestion(double xyzrpy[])
