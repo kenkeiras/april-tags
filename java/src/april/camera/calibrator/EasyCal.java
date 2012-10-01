@@ -72,6 +72,11 @@ public class EasyCal implements ParameterListener
     List<List<BufferedImage>> imagesSet = new ArrayList<List<BufferedImage>>();
     List<List<List<TagDetection>>> detsSet = new ArrayList<List<List<TagDetection>>>();
 
+    double bestScore, currentScore;
+    BufferedImage bestInitImage;
+    List<TagDetection> bestInitDetections;
+    boolean bestInitUpdated = false;
+
     static class SuggestedImage
     {
         // Assumed to be in the actual image
@@ -231,6 +236,7 @@ public class EasyCal implements ParameterListener
                 }
                 assert(imwidth == im.getWidth() && imheight == im.getHeight());
 
+                updateInitialization(im, detections);
                 updateMosaic(detections);
                 draw(im, detections);
                 score(im, detections);
@@ -244,6 +250,39 @@ public class EasyCal implements ParameterListener
                 }
                 lastutime = utime;
             }
+        }
+
+        void updateInitialization(BufferedImage im, List<TagDetection> detections)
+        {
+            bestInitUpdated = false;
+
+            if (bestInitImage != null && imagesSet.size() > 0)
+                return;
+
+            if (detections.size() < 4)
+                return;
+
+            InitializationVarianceScorer scorer = new InitializationVarianceScorer(calibrator,
+                                                                                   imwidth, imheight);
+
+            double score = scorer.scoreFrame(detections);
+            EasyCal.this.currentScore = score;
+
+            if (bestInitImage == null || score < bestScore) {
+                bestScore = score;
+                bestInitImage = im;
+                bestInitDetections = detections;
+                bestInitUpdated = true;
+
+                System.out.printf("Reinitialized with score %12.6f\n", score);
+
+                calibrator = new CameraCalibrator(Arrays.asList(initializer),
+                                                  tf, tagSpacingMeters,
+                                                  vlcal, false);
+                calibrator.addImages(Arrays.asList(im), Arrays.asList(detections));
+                calibrator.draw();
+            }
+
         }
 
         void draw(BufferedImage im, List<TagDetection> detections)
@@ -271,18 +310,28 @@ public class EasyCal implements ParameterListener
                                                          new VzText(VzText.ANCHOR.TOP,
                                                                     "<<dropshadow=#FF000000,"+
                                                                     "monospaced-12-bold,white>>"+
-                                                                    "Images in mirror are closer than they appear"))));
-                                                                    // "Images are mirrored for display purposes"))));
+                                                                    "Images are mirrored for display purposes"))));
             vb.swap();
 
-            if (calibrator.getImages().size() >= 3)
+            if (true)
             {
-                FrameScorer fs = new PixErrScorer(calibrator, imwidth, imheight);
-                double score = fs.scoreFrame(detections);
+                FrameScorer fs = null;
+                if (calibrator.getImages().size() >= 3) // XXX
+                    fs = new PixErrScorer(calibrator, imwidth, imheight);
+
+                double score = Double.POSITIVE_INFINITY;
+                if (fs != null) score = fs.scoreFrame(detections);
+                else            score = EasyCal.this.currentScore;
 
                 vb = vwside.getBuffer("Score");
                 vb.setDrawOrder(151);
-                String str = String.format("<<dropshadow=#FF000000,monospaced-12-bold,white>>Score: %e\n",score);
+                String str = null;
+
+                if (score > 1000)
+                    str = String.format("<<dropshadow=#FF000000,monospaced-12-bold,white>>Score: %e\n",score);
+                else
+                    str = String.format("<<dropshadow=#FF000000,monospaced-12-bold,white>>Score: %10.3f\n",score);
+
                 vb.addBack(new VisDepthTest(false,
                                             new VisPixCoords(VisPixCoords.ORIGIN.TOP_RIGHT,
                                                              new VzText(VzText.ANCHOR.TOP_RIGHT, str))));
@@ -671,7 +720,7 @@ public class EasyCal implements ParameterListener
         for (double extSample[] : samples) {
             SuggestedImage si = new SuggestedImage();
             si.detections = makeDetectionsFromExt(cal, extSample);
-            if (si.detections.size() < 12)
+            if (si.detections.size() < 12) // XXX
                 continue;
             si.xyzrpy = extSample;
             sugs.add(si);
@@ -709,13 +758,17 @@ public class EasyCal implements ParameterListener
     {
         SuggestedImage bestImg = null;
         double lowestScore = Double.MAX_VALUE;
+
         for (SuggestedImage si : suggestions) {
             double score = fs.scoreFrame(si.detections);
+            System.out.printf("%f ", score);
             if (score < lowestScore) {
                 bestImg = si;
                 lowestScore = score;
             }
         }
+        System.out.println();
+
         assert(bestImg != null);
         return bestImg;
     }
@@ -869,8 +922,13 @@ public class EasyCal implements ParameterListener
         }
 
         // we only need a new synthetic image if the min/max row/col changed
-        if (minRow == minRowUsed && maxRow == maxRowUsed && minCol == minColUsed && maxCol == maxColUsed)
+        // or if the initialization changed
+        if (minRow == minRowUsed && maxRow == maxRowUsed &&
+            minCol == minColUsed && maxCol == maxColUsed &&
+            bestInitUpdated == false)
+        {
             return;
+        }
 
         minRowUsed = minRow;
         maxRowUsed = maxRow;
@@ -896,7 +954,6 @@ public class EasyCal implements ParameterListener
         candidateImages = new ArrayList<ScoredImage>();
 
         // XXX generateSuggestion(desiredXyzrpy);
-
         generateNextSuggestion();
     }
 
@@ -909,28 +966,23 @@ public class EasyCal implements ParameterListener
         if (params != null)
             cal = initializer.initializeWithParameters(imwidth, imheight, params);
 
+        if (cal == null)
+            return;
+
         if (suggestionNumber < firstExtrinsics.length) {
+            generateSuggestionsDict();
 
-            // XXX Spoof some arbitrary calibration to get us through the initialization
-            if (cal == null) {
-                double fc = 650; //(imwidth + imheight)/2;
-                cal = new DistortionFreeCalibration(new double[]{fc,fc},
-                                                    new double[]{imwidth/2.0, imheight/2.0}, imwidth, imheight);
-            }
-
-            SuggestedImage si = new SuggestedImage();
-            si.detections = makeDetectionsFromExt(cal, firstExtrinsics[suggestionNumber]);
-            si.xyzrpy = firstExtrinsics[suggestionNumber];
-
-            bestSuggestion = si;
-        } else {
+            FrameScorer fs = new InitializationVarianceScorer(calibrator, imwidth, imheight);
+            bestSuggestion = getBestSuggestion(suggestDictionary, fs);
+        }
+        else {
             generateSuggestionsDict();
 
             FrameScorer fs = new PixErrScorer(calibrator, imwidth, imheight);
             bestSuggestion = getBestSuggestion(suggestDictionary, fs);
-            assert(bestSuggestion != null);
         }
 
+        assert(bestSuggestion != null);
         bestSuggestion.im = simgen.generateImageNotCentered(cal, bestSuggestion.xyzrpy, false).distorted;
     }
 

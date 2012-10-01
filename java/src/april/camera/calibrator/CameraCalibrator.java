@@ -381,6 +381,11 @@ public class CameraCalibrator
         return g.copy();
     }
 
+    public synchronized TagMosaic getTagMosaic()
+    {
+        return this.mosaic;
+    }
+
     // Returns a "copy" of the Calibrator by recreating one from scratch with the same inputs
     // The new graph in the new calibrator will have identical state to the current calibrator,
     // since initializations are specified for all graph nodes.

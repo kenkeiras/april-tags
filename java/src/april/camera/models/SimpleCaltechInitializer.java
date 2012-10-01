@@ -21,9 +21,13 @@ public class SimpleCaltechInitializer implements CalibrationInitializer
                                         List<List<TagDetection>> allDetections,
                                         TagMosaic tm)
     {
-        IntrinsicsFreeDistortionEstimator distortionEstimator =
-                        new IntrinsicsFreeDistortionEstimator(allDetections, tm,
-                                                              width, height);
+        IntrinsicsFreeDistortionEstimator distortionEstimator = null;
+        try {
+            distortionEstimator = new IntrinsicsFreeDistortionEstimator(allDetections, tm,
+                                                                        width, height);
+        } catch (Exception ex) {
+            return null;
+        }
 
         List<List<TagDetection>> allRectifiedDetections = new ArrayList<List<TagDetection>>();
         for (List<TagDetection> detections : allDetections) {
