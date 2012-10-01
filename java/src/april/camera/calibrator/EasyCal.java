@@ -19,6 +19,8 @@ import april.tag.*;
 import april.util.*;
 import april.vis.*;
 
+import javax.imageio.*;
+
 public class EasyCal implements ParameterListener
 {
     // gui
@@ -85,13 +87,19 @@ public class EasyCal implements ParameterListener
         // could be null
         BufferedImage im;
         double xyzrpy[];
+        double xyzrpy_cen[];
     }
 
     // These only work with NotCentered
-    static double[][] firstExtrinsics = {{ 0.004,   -0.084,   2*0.315,   -0.161,    0.795,    0.343}, // "good" #1
-                                         {-0.070,   -0.044,    0.161,   -0.006,   -0.519,   -0.334}, // "good" #2
-                                         {-0.050,   -0.058,    0.190,    0.863,    0.220,    0.142}}; // "good"
 
+    // double[][] firstExtrinsics = {{ 0.004,   -0.084,   2*0.315,   -0.161,    0.795,    0.343}, // "good" #1
+    //                               {-0.070,   -0.044,    0.161,   -0.006,   -0.519,   -0.334}, // "good" #2
+    //                               {-0.050,   -0.058,    0.190,    0.863,    0.220,    0.142}}; // "good"
+
+    // Cenetered, works with all mosaics
+    static double[][] firstExtrinsics = {{  0.003994, -0.004135	, 0.585182,	-0.161000,  0.795000,  0.343000},
+                                         { -0.003133,  0.013453	, 0.185800, -0.006000, -0.519000, -0.334000},
+                                         {  0.004573, -0.000152	, 0.235415,  0.863000,  0.220000,  0.142000}};
 
     private class ScoredImage implements Comparable<ScoredImage>
     {
@@ -256,10 +264,7 @@ public class EasyCal implements ParameterListener
         {
             bestInitUpdated = false;
 
-            if (bestInitImage != null && imagesSet.size() > 0)
-                return;
-
-            if (detections.size() < 4)
+            if (imagesSet.size() != 0 || detections.size() < 4) // XXX
                 return;
 
             InitializationVarianceScorer scorer = new InitializationVarianceScorer(calibrator,
@@ -355,8 +360,25 @@ public class EasyCal implements ParameterListener
             }
             vb.swap();
 
+
             ////////////////////////////////////////
-            // detections
+            // suggested detections
+            vb = vwside.getBuffer("SuggestedTags");
+            vb.setDrawOrder(10);
+            if (bestSuggestion != null) { // && bestSuggestion.detections != null) {
+                VisChain chain = new VisChain();
+                for (TagDetection d : bestSuggestion.detections) {
+                    chain.add(new VzLines(new VisVertexData(d.p), VzLines.LINE_LOOP, new VzLines.Style(Color.cyan,1.8)));
+                    //chain.add(new VzPoints(new VisVertexData(d.cxy), new VzPoints.Style(Color.green, 6)));
+                }
+
+                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT, new VisChain(PixelsToVisSug, chain)));
+            }
+            vb.swap();
+
+
+            ////////////////////////////////////////
+            // actual detections
             vb = vwside.getBuffer("Detections");
             vb.setDrawOrder(110);
             VisChain chain = new VisChain();
@@ -676,57 +698,92 @@ public class EasyCal implements ParameterListener
         return null;
     }
 
-    private void generateSuggestionsDict()
+    private double[] getObsMosaicCenter()
     {
+        return LinAlg.scale(LinAlg.add(mosaic.getPositionMeters(minRowUsed,minColUsed),
+                                       mosaic.getPositionMeters(maxRowUsed,maxColUsed)),
+                            0.5);
+    }
 
-        MultiGaussian mg = null;
+    private ArrayList<SuggestedImage> generateSuggestionsDict(Calibration cal)
+    {
+        int width = cal.getWidth();
+        int height = cal.getHeight();
 
 
-        if (true) { // Use experimental data from expert datasets, works for NotCentered
+        // Compute single depth for the dictionary XXXX
+        double K[][] = cal.copyIntrinsics();
+        double desiredDepths[] = {(tagSpacingMeters*K[0][0]) / (width/6) ,
+                                  (tagSpacingMeters*K[0][0]) / (width/9) };
 
-            double mu[] = {0.162186, 0.021101, 0.222987, -0.019265, -0.000811, 3.14};
 
-            double cov[][] = {{ 0.047790,  0.011413,  0.004247,  0.004409, -0.016715,         0 },
-                              { 0.011413,  0.009917, -0.000494,  0.002122, -0.004196,         0 },
-                              { 0.004247, -0.000494,  0.015034, -0.006155,  0.022634,         0 },
-                              { 0.004409,  0.002122, -0.006155,  0.168764, -0.007430,         0 },
-                              {-0.016715, -0.004196,  0.022634, -0.007430,  0.148120,         0 },
-                              {        0,         0,         0,         0,         0,  0.04     }};
-            mg = new MultiGaussian(cov,mu);
-        } else { // Previous distribution, but only works for Centered
-            double mu[] = {-.1,-.1,.2,.4,.4,.4};
-            double cov[][]  = LinAlg.diag(new double[]{.2,.2,.4,.8,.8,.8});
-            mg = new MultiGaussian(cov,mu);
+        // Place the center of the target:
+        double centerXy[] = getObsMosaicCenter();
+
+        // Generate ~100 images, 3 angles each, 5 x 5 grid
+
+        // These extrinsics are centered, so we can ensure the observed mosaic is mostly in view
+        // ArrayList<double[]> centeredExt = new ArrayList();
+        ArrayList<SuggestedImage> candidates = new ArrayList();
+
+        int gridY = 4;
+        int gridX = 4;
+        int scaleY = height / gridY;
+        int scaleX = width / gridY;
+
+        for (double desiredDepth : desiredDepths) {
+            for (int gy = 1; gy < gridY; gy++)
+                for (int gx = 1; gx < gridX; gx++) {
+                    double norm[] = cal.pixelsToNorm(new double[]{gx*scaleX,gy*scaleY});
+
+                    double xyz[] = {norm[0], norm[1], 1};
+                    LinAlg.scaleEquals(xyz, desiredDepth);
+
+
+                    // Choose which direction to rotate based on which image quadrant this is
+                    int signRoll = MathUtil.sign(gx - gridX/2);
+                    int signPitch = MathUtil.sign(gy - gridY/2);
+
+                    double rpys[][] = {{0, 0, Math.PI/2},
+                                       {0, .8*signPitch, Math.PI/2},
+                                       {.8*signRoll, 0, Math.PI/2}};
+
+                    for (double rpy[] : rpys) {
+                        SuggestedImage si = new SuggestedImage();
+                        si.xyzrpy_cen = concat(xyz,rpy);
+                        si.xyzrpy = LinAlg.xyzrpyMultiply(si.xyzrpy_cen, LinAlg.xyzrpyInverse(LinAlg.resize(centerXy,6)));
+                        candidates.add(si);
+                    }
+                }
         }
 
-        ArrayList<SuggestedImage> sugs = new ArrayList();
-
-        Random r2 = new Random(1034);
-
-        ParameterizableCalibration cal = null;
-        double params[] = null;
-        if (calibrator != null)
-            params = calibrator.getCalibrationParameters(0);
-        if (params != null)
-            cal = initializer.initializeWithParameters(imwidth, imheight, params);
-
-        ArrayList<double[]> samples = mg.sampleMany(r2, 100);
-        if (false) {
-            samples.set(0,new double[] { 0.004,   -0.084,   2*0.315,   -0.161,    0.795,    0.343}); // "good" #1
-            samples.set(1, new double[] {-0.070,   -0.044,    0.161,   -0.006,   -0.519,   -0.334}); // "good" #2
-            samples.set(2, new double[] {-0.050,   -0.058,    0.190,    0.863,    0.220,    0.142}); // "good" #3
-        }
-
-        for (double extSample[] : samples) {
-            SuggestedImage si = new SuggestedImage();
-            si.detections = makeDetectionsFromExt(cal, extSample);
-            if (si.detections.size() < 12) // XXX
+        ArrayList<SuggestedImage> passed = new ArrayList();
+        for (SuggestedImage si : candidates) {
+            // Pass in non-centered extrinsics
+            si.detections = makeDetectionsFromExt(cal, si.xyzrpy);
+            if (si.detections.size() < 12)
                 continue;
-            si.xyzrpy = extSample;
-            sugs.add(si);
+            passed.add(si);
         }
-        System.out.printf("Made new dictionary with %d valid poses\n",sugs.size());
-        suggestDictionary = sugs;
+        return passed;
+    }
+
+    // Candidate to move to LinAlg?
+    public static double[] concat(double [] ... args)
+    {
+        int len = 0;
+        for (double v[] : args)
+            len += v.length;
+        double out[] = new double[len];
+
+        int off = 0;
+        for (double v[] : args) {
+
+            for (int i = 0; i < v.length; i++)
+                out[off+ i] = v[i];
+            off += v.length;
+        }
+        return out;
     }
 
     private ArrayList<TagDetection> makeDetectionsFromExt(Calibration cal, double mExtrinsics[])
@@ -743,11 +800,28 @@ public class EasyCal implements ParameterListener
                 td.cxy = CameraMath.project(cal, LinAlg.xyzrpyToMatrix(mExtrinsics), world);
 
 
+                // XXX This "contains detection" check is not sufficient, since the distortion function
+                // could be malformed
                 if (td.cxy[0] < 0 || td.cxy[0] >= imwidth ||
                     td.cxy[1] < 0 || td.cxy[1] >= imheight)
                     continue;
 
-                // XXX Also project the boundaries to make hxy???
+                // project the boundaries to make det.p???
+                double metersPerPixel = tagSpacingMeters / (tf.whiteBorder*2 + tf.blackBorder*2 + tf.d);
+                double cOff = metersPerPixel * (tf.blackBorder + tf.d / 2.0);
+
+                // Tag corners are listed bottom-left, bottom-right, top-right, top-left
+                // Note: That the +x is to the right, +y is down (img-style coordinates)
+                double world_corners[][] = {{world[0] - cOff, world[1] + cOff},
+                                            {world[0] + cOff, world[1] + cOff},
+                                            {world[0] + cOff, world[1] - cOff},
+                                            {world[0] - cOff, world[1] - cOff}};
+
+
+                td.p = new double[4][];
+                for (int i = 0; i < 4; i++)
+                    td.p[i] = CameraMath.project(cal, LinAlg.xyzrpyToMatrix(mExtrinsics), world_corners[i]);
+
                 detections.add(td);
             }
         }
@@ -761,20 +835,24 @@ public class EasyCal implements ParameterListener
 
         for (SuggestedImage si : suggestions) {
             double score = fs.scoreFrame(si.detections);
-            System.out.printf("%f ", score);
+
             if (score < lowestScore) {
                 bestImg = si;
                 lowestScore = score;
             }
         }
-        System.out.println();
 
-        assert(bestImg != null);
         return bestImg;
     }
 
     private void addImage(BufferedImage im, List<TagDetection> detections)
     {
+        // add the initialization frame before adding the specified frame
+        if (imagesSet.size() == 0) {
+            imagesSet.add(Arrays.asList(bestInitImage));
+            detsSet.add(Arrays.asList(bestInitDetections));
+        }
+
         double origMRE = -1, newMRE = -1;
         boolean origSPD = true, newSPD = true;
 
@@ -953,7 +1031,6 @@ public class EasyCal implements ParameterListener
         simgen = new SyntheticTagMosaicImageGenerator(tf, imwidth, imheight, tagSpacingMeters, tagsToDisplay);
         candidateImages = new ArrayList<ScoredImage>();
 
-        // XXX generateSuggestion(desiredXyzrpy);
         generateNextSuggestion();
     }
 
@@ -969,21 +1046,37 @@ public class EasyCal implements ParameterListener
         if (cal == null)
             return;
 
-        if (suggestionNumber < firstExtrinsics.length) {
-            generateSuggestionsDict();
+        suggestDictionary = generateSuggestionsDict(cal);
+        System.out.printf("Made new dictionary with %d valid poses\n",suggestDictionary.size());
 
+        // Write the dictionary to file
+        if (false) {
+            System.out.println("Writing suggestion dictionary to /tmp/dict. Standby...");
+            try  {
+                new File("/tmp/dict").mkdirs();
+                int i = 0;
+                for (SuggestedImage si : suggestDictionary) {
+                    BufferedImage im = simgen.generateImageNotCentered(cal, si.xyzrpy, false).distorted;
+                    ImageIO.write(im, "png", new File(String.format("/tmp/dict/IMG%03d.png", i++)));
+                }
+            } catch(IOException e) {}
+        }
+
+        SuggestedImage newSuggestion = null;
+
+        if (suggestionNumber < 3) {
             FrameScorer fs = new InitializationVarianceScorer(calibrator, imwidth, imheight);
-            bestSuggestion = getBestSuggestion(suggestDictionary, fs);
+            newSuggestion = getBestSuggestion(suggestDictionary, fs);
         }
         else {
-            generateSuggestionsDict();
-
             FrameScorer fs = new PixErrScorer(calibrator, imwidth, imheight);
-            bestSuggestion = getBestSuggestion(suggestDictionary, fs);
+            newSuggestion = getBestSuggestion(suggestDictionary, fs);
         }
 
-        assert(bestSuggestion != null);
-        bestSuggestion.im = simgen.generateImageNotCentered(cal, bestSuggestion.xyzrpy, false).distorted;
+        if (newSuggestion != null) {
+            newSuggestion.im = simgen.generateImageNotCentered(cal, newSuggestion.xyzrpy, false).distorted;
+            bestSuggestion = newSuggestion;
+        }
     }
 
     public static void main(String args[])

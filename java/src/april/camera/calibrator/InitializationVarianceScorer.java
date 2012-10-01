@@ -8,7 +8,7 @@ import april.tag.*;
 
 public class InitializationVarianceScorer implements FrameScorer
 {
-    public static int NSAMPLES = 25;
+    public static int NSAMPLES = 10;
 
     CameraCalibrator currentCal;
     int imwidth, imheight;
