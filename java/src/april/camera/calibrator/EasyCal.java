@@ -87,14 +87,14 @@ public class EasyCal implements ParameterListener
 
     // These only work with NotCentered
 
-        double[][] firstExtrinsics = {{ 0.004,   -0.084,   2*0.315,   -0.161,    0.795,    0.343}, // "good" #1
-                                      {-0.070,   -0.044,    0.161,   -0.006,   -0.519,   -0.334}, // "good" #2
-                                      {-0.050,   -0.058,    0.190,    0.863,    0.220,    0.142}}; // "good"
+    // double[][] firstExtrinsics = {{ 0.004,   -0.084,   2*0.315,   -0.161,    0.795,    0.343}, // "good" #1
+    //                               {-0.070,   -0.044,    0.161,   -0.006,   -0.519,   -0.334}, // "good" #2
+    //                               {-0.050,   -0.058,    0.190,    0.863,    0.220,    0.142}}; // "good"
 
-    // XXX Cenetered
-    // static double[][] firstExtrinsics = {{  0.003994, -0.004135	, 0.585182,	-0.161000,  0.795000,  0.343000},
-    //                                      { -0.003133,  0.013453	, 0.185800, -0.006000, -0.519000, -0.334000},
-    //                                      {  0.004573, -0.000152	, 0.235415,  0.863000,  0.220000,  0.142000}};
+    // Cenetered, works with all mosaics
+    static double[][] firstExtrinsics = {{  0.003994, -0.004135	, 0.585182,	-0.161000,  0.795000,  0.343000},
+                                         { -0.003133,  0.013453	, 0.185800, -0.006000, -0.519000, -0.334000},
+                                         {  0.004573, -0.000152	, 0.235415,  0.863000,  0.220000,  0.142000}};
 
     private class ScoredImage implements Comparable<ScoredImage>
     {
@@ -973,8 +973,6 @@ public class EasyCal implements ParameterListener
         simgen = new SyntheticTagMosaicImageGenerator(tf, imwidth, imheight, tagSpacingMeters, tagsToDisplay);
         candidateImages = new ArrayList<ScoredImage>();
 
-        // XXX generateSuggestion(desiredXyzrpy);
-
         generateNextSuggestion();
     }
 
@@ -997,9 +995,17 @@ public class EasyCal implements ParameterListener
             }
 
             SuggestedImage si = new SuggestedImage();
-            si.detections = makeDetectionsFromExt(cal, firstExtrinsics[suggestionNumber]);
-            si.xyzrpy = firstExtrinsics[suggestionNumber];
-            si.xyzrpy_cen = LinAlg.xyzrpyMultiply(si.xyzrpy, LinAlg.resize(getObsMosaicCenter(),6));
+            double cenXY[] = getObsMosaicCenter();
+            // LinAlg.printTranspose(cenXY);
+            // System.out.printf("min/max R (%d, %d)  C (%d, %d)\n", minRowUsed, maxRowUsed, minColUsed, maxColUsed);
+
+            si.xyzrpy_cen = firstExtrinsics[suggestionNumber];
+            si.xyzrpy = LinAlg.xyzrpyMultiply(si.xyzrpy_cen, LinAlg.xyzrpyInverse(LinAlg.resize(cenXY,6)));
+            // LinAlg.printTranspose(si.xyzrpy_cen);
+            // LinAlg.printTranspose(si.xyzrpy);
+            // System.out.println();
+
+            si.detections = makeDetectionsFromExt(cal, si.xyzrpy);
 
             bestSuggestion = si;
         } else {
