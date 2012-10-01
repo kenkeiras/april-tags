@@ -52,7 +52,7 @@ public class IntrinsicsEstimator
             }
         }
 
-        if (numGoodImages >= 3) {
+        if (numGoodImages >= 2) {
             // if we have enough points to estimate cx and cy properly, do so
             K = CameraMath.estimateIntrinsicsFromVanishingPoints(vanishingPoints);
 

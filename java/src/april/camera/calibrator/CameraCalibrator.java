@@ -1444,6 +1444,37 @@ public class CameraCalibrator
 
     }
 
+    public synchronized void saveCalibration()
+    {
+        saveCalibration("/tmp/cameraCalibration");
+    }
+
+    public synchronized void saveCalibration(String basepath)
+    {
+        if (images == null || images.size() < 1)
+            return;
+
+        // find unused name
+        int calNum = -1;
+        String calName = null;
+        File outputConfigFile = null;
+        do {
+            calNum++;
+            calName = String.format("%s/calibration%04d.config/", basepath, calNum);
+            outputConfigFile = new File(calName);
+        } while (outputConfigFile.exists());
+
+        try {
+            BufferedWriter outs = new BufferedWriter(new FileWriter(outputConfigFile));
+            outs.write(getCalibrationBlockString());
+            outs.flush();
+            outs.close();
+        } catch (Exception ex) {
+            System.err.printf("CameraCalibrator: Failed to output calibration to '%s'\n", calName);
+            return;
+        }
+    }
+
     public synchronized void saveCalibrationAndImages()
     {
         saveCalibrationAndImages("/tmp/cameraCalibration");

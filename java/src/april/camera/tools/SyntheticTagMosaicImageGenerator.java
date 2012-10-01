@@ -97,15 +97,15 @@ public class SyntheticTagMosaicImageGenerator
         vc.privateLayer.setEnabled(false);
 
         // get the extreme edges for the specified tag mosaic
-        mosaic_xmin = mosaic.getPositionPixels(this.tagsToDisplay.get(0))[0] - mosaic.getTagWidthPixels()/2;
-        mosaic_xmax = mosaic.getPositionPixels(this.tagsToDisplay.get(0))[0] + mosaic.getTagWidthPixels()/2;
-        mosaic_ymin = mosaic.getPositionPixels(this.tagsToDisplay.get(0))[1] - mosaic.getTagHeightPixels()/2;
-        mosaic_ymax = mosaic.getPositionPixels(this.tagsToDisplay.get(0))[1] + mosaic.getTagHeightPixels()/2;
+        mosaic_xmin = mosaic.getPositionPixels(this.tagsToDisplay.get(0))[0] - mosaic.getTagWidthPixels() /2.0;
+        mosaic_xmax = mosaic.getPositionPixels(this.tagsToDisplay.get(0))[0] + mosaic.getTagWidthPixels() /2.0;
+        mosaic_ymin = mosaic.getPositionPixels(this.tagsToDisplay.get(0))[1] - mosaic.getTagHeightPixels()/2.0;
+        mosaic_ymax = mosaic.getPositionPixels(this.tagsToDisplay.get(0))[1] + mosaic.getTagHeightPixels()/2.0;
         for (Integer id : this.tagsToDisplay) {
-            mosaic_xmin = Math.min(mosaic_xmin, mosaic.getPositionPixels(id)[0] - mosaic.getTagWidthPixels()/2);
-            mosaic_xmax = Math.max(mosaic_xmax, mosaic.getPositionPixels(id)[0] + mosaic.getTagWidthPixels()/2);
-            mosaic_ymin = Math.min(mosaic_ymin, mosaic.getPositionPixels(id)[1] - mosaic.getTagHeightPixels()/2);
-            mosaic_ymax = Math.max(mosaic_ymax, mosaic.getPositionPixels(id)[1] + mosaic.getTagHeightPixels()/2);
+            mosaic_xmin = Math.min(mosaic_xmin, mosaic.getPositionPixels(id)[0] - mosaic.getTagWidthPixels() /2.0);
+            mosaic_xmax = Math.max(mosaic_xmax, mosaic.getPositionPixels(id)[0] + mosaic.getTagWidthPixels() /2.0);
+            mosaic_ymin = Math.min(mosaic_ymin, mosaic.getPositionPixels(id)[1] - mosaic.getTagHeightPixels()/2.0);
+            mosaic_ymax = Math.max(mosaic_ymax, mosaic.getPositionPixels(id)[1] + mosaic.getTagHeightPixels()/2.0);
         }
 
         // camera settings
@@ -140,15 +140,21 @@ public class SyntheticTagMosaicImageGenerator
     {
         double scale = tagSizeMeters / mosaic.getTagWidthPixels();
 
-        double MosaicPixelsToGlobal[][] = LinAlg.matrixAB(LinAlg.xyzrpyToMatrix(xyzrpy),
-                                                          LinAlg.scale(scale, scale, 1));
+        double MosaicPixelsToGlobal[][] = LinAlg.multiplyMany(LinAlg.xyzrpyToMatrix(xyzrpy),
+                                                              LinAlg.scale(scale, scale, 1),
+                                                              LinAlg.translate(-mosaic.getTagWidthPixels() /2.0,
+                                                                               -mosaic.getTagHeightPixels()/2.0,
+                                                                                0                              ));
         double MosaicToGlobal[][] = LinAlg.xyzrpyToMatrix(xyzrpy);
 
         return generateImage(outputDistorted, MosaicPixelsToGlobal, MosaicToGlobal, drawTagCenters);
     }
 
     /** Generate a synthetic image using the MosaicToGlobal XYZRPY specified
-      * <b>for the center of the tag mosaic</b> (not the normal origin of the TagMosaic frame)
+      * <b>for the center of the tag mosaic</b> (not the normal origin of the TagMosaic frame).
+      * The final MosaicToGlobal transformation can be recovered from the returned SyntheticImages
+      * object. This transformation incorporates a translation that puts the center of the rendered
+      * tag mosaic at the point specified by the user.
       */
     public SyntheticImages generateImageCentered(Calibration outputDistorted,
                                                  double xyzrpy[],
@@ -160,11 +166,14 @@ public class SyntheticTagMosaicImageGenerator
                                                               LinAlg.scale(scale, scale, 1),
                                                               LinAlg.translate(-(mosaic_xmin+mosaic_xmax)/2,
                                                                                -(mosaic_ymin+mosaic_ymax)/2,
-                                                                                                          0));
+                                                                                0                          ));
         double MosaicToGlobal[][] = LinAlg.multiplyMany(LinAlg.xyzrpyToMatrix(xyzrpy),
                                                         LinAlg.translate(-scale*(mosaic_xmin+mosaic_xmax)/2,
                                                                          -scale*(mosaic_ymin+mosaic_ymax)/2,
-                                                                                                          0));
+                                                                          0                                ),
+                                                        LinAlg.translate(scale*mosaic.getTagWidthPixels() /2.0,
+                                                                         scale*mosaic.getTagHeightPixels()/2.0,
+                                                                         0                                    ));
 
         return generateImage(outputDistorted, MosaicPixelsToGlobal, MosaicToGlobal, drawTagCenters);
     }
@@ -179,21 +188,11 @@ public class SyntheticTagMosaicImageGenerator
         images.MosaicToGlobal = LinAlg.matrixToXyzrpy(MosaicToGlobal);
 
         ArrayList<double[]> tagPositionsGlobal = new ArrayList<double[]>();
-        for (int id : tagsToDisplay) {
-            double p[] = mosaic.getPositionPixels(id);
-            tagPositionsGlobal.add(LinAlg.transform(MosaicPixelsToGlobal, p));
-        }
-
-        // if we were showing the mosaic as a single image
-        //VisTexture vt = new VisTexture(mosaic, VisTexture.NO_MIN_FILTER |
-        //                                       VisTexture.NO_MAG_FILTER |
-        //                                       VisTexture.NO_REPEAT |
-        //                                       VisTexture.NO_ALPHA_MASK);
-        //int flags = 0;
-        //VzImage vzim = new VzImage(vt, flags);
+        for (int id : tagsToDisplay)
+            tagPositionsGlobal.add(LinAlg.transform(MosaicToGlobal,
+                                                    mosaic.getPositionMeters(id)));
 
         vb = vw.getBuffer("Image");
-        //vb.addBack(new VisChain(MosaicPixelsToGlobal, vzim));
         for (int i=0; i < tagsToDisplay.size(); i++) {
 
             int id              = tagsToDisplay.get(i);
@@ -281,19 +280,20 @@ public class SyntheticTagMosaicImageGenerator
 
             pg = new ParameterGUI();
             pg.addCheckBoxes("showpoints","Show predicted tag centers (vis)",false,
-                             "showPredictedTagCenters","Show predicted tag centers (image coordinates)", false);
+                             "showPredictedTagCenters","Show predicted tag centers (image coordinates)", false,
+                             "usecentered","Center mosaic for rendering",true);
             pg.addDoubleSlider("k1", "Distortion k1", -2, 2, -0.4);
             pg.addDoubleSlider("k2", "Distortion k2", -2, 2,  0.2);
-            pg.addButtons("step","Sample new mosaic position","save","Save image pair");
+            pg.addButtons("norotation","Render without rotation","step","Sample new mosaic position","save","Save image pair");
             pg.addListener(this);
 
             jf = new JFrame("Synthetic image generator");
             jf.setLayout(new BorderLayout());
 
             jimr = new JImage();
-            jimr.setFit(false);
+            jimr.setFit(true);
             jimd = new JImage();
-            jimd.setFit(false);
+            jimd.setFit(true);
 
             chooser = new JFileChooser();
             javax.swing.filechooser.FileNameExtensionFilter filter =
@@ -322,6 +322,13 @@ public class SyntheticTagMosaicImageGenerator
 
         public void parameterChanged(ParameterGUI pg, String name)
         {
+            if (name.equals("norotation")) {
+                double xyzrpy[] = new double[] {0, 0, 0.3, 0, 0, 0};
+                generate(xyzrpy);
+                lastXyzrpy = xyzrpy;
+                return;
+            }
+
             if (name.equals("step")) {
                 double xyzrpy[] = new double[] {-0.1 + 0.2*r.nextDouble(),
                                                 -0.1 + 0.2*r.nextDouble(),
@@ -393,8 +400,11 @@ public class SyntheticTagMosaicImageGenerator
                                                               new double[] {pg.gd("k1"), pg.gd("k2")},
                                                               width, height);
 
-            SyntheticTagMosaicImageGenerator.SyntheticImages images =
-                        gen.generateImageCentered(output, xyzrpy, pg.gb("showpoints"));
+            SyntheticTagMosaicImageGenerator.SyntheticImages images = null;
+            if (pg.gb("usecentered"))
+                images = gen.generateImageCentered(output, xyzrpy, pg.gb("showpoints"));
+            else
+                images = gen.generateImageNotCentered(output, xyzrpy, pg.gb("showpoints"));
 
             if (pg.gb("showPredictedTagCenters")) {
                 int buf[] = ((DataBufferInt) (images.rectified.getRaster().getDataBuffer())).getData();

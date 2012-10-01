@@ -90,6 +90,7 @@ public class SingleCameraCalibrator implements ParameterListener
                       "printmosaicextrinsics","Print mosaic extrinsics",
                       "savedetections","Save detections",
                       "savereprojections","Save reprojection error histogram",
+                      "savecalibration","Save calibration",
                       "save","Save calibration and images");
         pg.addListener(this);
 
@@ -141,6 +142,9 @@ public class SingleCameraCalibrator implements ParameterListener
 
         if (name.equals("savedetections") && calibrator != null)
             calibrator.saveDetections();
+
+        if (name.equals("savecalibration") && calibrator != null)
+            calibrator.saveCalibration();
 
         if (name.equals("savereprojections") && calibrator != null)
             calibrator.saveReprojectionErrors();
