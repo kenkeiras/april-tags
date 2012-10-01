@@ -82,6 +82,7 @@ public class EasyCal implements ParameterListener
         // could be null
         BufferedImage im;
         double xyzrpy[];
+        double xyzrpy_cen[];
     }
 
     // These only work with NotCentered
@@ -646,6 +647,84 @@ public class EasyCal implements ParameterListener
         return null;
     }
 
+    private double[] getObsMosaicCenter()
+    {
+        return LinAlg.scale(LinAlg.add(mosaic.getPositionMeters(minRowUsed,minColUsed),
+                                       mosaic.getPositionMeters(maxRowUsed,maxColUsed)),
+                            0.5);
+    }
+
+    private ArrayList<SuggestedImage> generateSuggestionsDict(Calibration cal)
+    {
+        int width = cal.getWidth();
+        int height = cal.getHeight();
+
+
+        // Compute single depth for the dictionary XXXX
+        double desiredPixWidth = width/8;
+        double K[][] = cal.copyIntrinsics();
+        double desiredDepth = desiredPixWidth / (K[0][0]);
+
+        System.out.println("Desired depth =" +desiredDepth);
+
+        double rpys[][] = {{0, 0, Math.PI/2},
+                           {0, .8, Math.PI/2},
+                           {.8, 0, Math.PI/2}};
+
+        // Place the center of the target:
+        double centerXy[] = getObsMosaicCenter();
+
+        // Generate ~100 images, 3 angles each, 5 x 5 grid
+
+        // These extrinsics are centered, so we can ensure the observed mosaic is mostly in view
+        // ArrayList<double[]> centeredExt = new ArrayList();
+        ArrayList<SuggestedImage> candidates = new ArrayList();
+        for (int y = 1; y < 6; y++)
+            for (int x = 1; x < 6; x++) {
+                double norm[] = cal.pixelsToNorm(new double[]{x,y});
+
+                double xyz[] = {norm[0], norm[1], 1};
+                LinAlg.scaleEquals(xyz, desiredDepth);
+
+                for (double rpy[] : rpys) {
+                    SuggestedImage si = new SuggestedImage();
+                    si.xyzrpy_cen = concat(xyz,rpy);
+                    si.xyzrpy = LinAlg.xyzrpyMultiply(si.xyzrpy_cen, LinAlg.xyzrpyInverse(LinAlg.resize(centerXy,6)));
+                    candidates.add(si);
+                }
+            }
+
+
+        ArrayList<SuggestedImage> passed = new ArrayList();
+        for (SuggestedImage si : candidates) {
+            // Pass in non-centered extrinsics
+            si.detections = makeDetectionsFromExt(cal, si.xyzrpy);
+            if (si.detections.size() < 12)
+                continue;
+            passed.add(si);
+        }
+        return passed;
+    }
+
+    // Candidate to move to LinAlg?
+    public static double[] concat(double [] ... args)
+    {
+        int len = 0;
+        for (double v[] : args)
+            len += v.length;
+        double out[] = new double[len];
+
+        int off = 0;
+        for (double v[] : args) {
+
+            for (int i = 0; i < v.length; i++)
+                out[off+ i] = v[i];
+            off += v.length;
+        }
+        return out;
+    }
+
+
     private void generateSuggestionsDict()
     {
 
@@ -698,18 +777,6 @@ public class EasyCal implements ParameterListener
         System.out.printf("Made new dictionary with %d valid poses\n",sugs.size());
         suggestDictionary = sugs;
 
-        // Write the dictionary to file
-        if (false) {
-            System.out.println("Writing suggestion dictionary to /tmp/dict. Standby...");
-            try  {
-                new File("/tmp/dict").mkdirs();
-                int i = 0;
-                for (SuggestedImage si : sugs) {
-                    BufferedImage im = simgen.generateImageNotCentered(cal, si.xyzrpy, false).distorted;
-                    ImageIO.write(im, "png", new File(String.format("/tmp/dict/IMG%03d.png", i++)));
-                }
-            } catch(IOException e) {}
-        }
     }
 
     private ArrayList<TagDetection> makeDetectionsFromExt(Calibration cal, double mExtrinsics[])
@@ -973,7 +1040,22 @@ public class EasyCal implements ParameterListener
 
             bestSuggestion = si;
         } else {
-            generateSuggestionsDict();
+            suggestDictionary = generateSuggestionsDict(cal);
+            System.out.printf("Made new dictionary with %d valid poses\n",suggestDictionary.size());
+
+            // Write the dictionary to file
+            if (false) {
+                System.out.println("Writing suggestion dictionary to /tmp/dict. Standby...");
+                try  {
+                    new File("/tmp/dict").mkdirs();
+                    int i = 0;
+                    for (SuggestedImage si : suggestDictionary) {
+                        BufferedImage im = simgen.generateImageNotCentered(cal, si.xyzrpy, false).distorted;
+                        ImageIO.write(im, "png", new File(String.format("/tmp/dict/IMG%03d.png", i++)));
+                    }
+                } catch(IOException e) {}
+            }
+
 
             FrameScorer fs = new PixErrScorer(calibrator, imwidth, imheight);
             bestSuggestion = getBestSuggestion(suggestDictionary, fs);
