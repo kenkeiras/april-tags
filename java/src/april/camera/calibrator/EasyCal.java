@@ -19,6 +19,8 @@ import april.tag.*;
 import april.util.*;
 import april.vis.*;
 
+import javax.imageio.*;
+
 public class EasyCal implements ParameterListener
 {
     // gui
@@ -306,8 +308,25 @@ public class EasyCal implements ParameterListener
             }
             vb.swap();
 
+
             ////////////////////////////////////////
-            // detections
+            // suggested detections
+            vb = vwside.getBuffer("SuggestedTags");
+            vb.setDrawOrder(10);
+            if (bestSuggestion != null) { // && bestSuggestion.detections != null) {
+                VisChain chain = new VisChain();
+                for (TagDetection d : bestSuggestion.detections) {
+                    chain.add(new VzLines(new VisVertexData(d.p), VzLines.LINE_LOOP, new VzLines.Style(Color.cyan,1.8)));
+                    chain.add(new VzPoints(new VisVertexData(d.cxy), new VzPoints.Style(Color.green, 6)));
+                }
+
+                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT, new VisChain(PixelsToVisSug, chain)));
+            }
+            vb.swap();
+
+
+            ////////////////////////////////////////
+            // actual detections
             vb = vwside.getBuffer("Detections");
             vb.setDrawOrder(110);
             VisChain chain = new VisChain();
@@ -678,6 +697,19 @@ public class EasyCal implements ParameterListener
         }
         System.out.printf("Made new dictionary with %d valid poses\n",sugs.size());
         suggestDictionary = sugs;
+
+        // Write the dictionary to file
+        if (false) {
+            System.out.println("Writing suggestion dictionary to /tmp/dict. Standby...");
+            try  {
+                new File("/tmp/dict").mkdirs();
+                int i = 0;
+                for (SuggestedImage si : sugs) {
+                    BufferedImage im = simgen.generateImageNotCentered(cal, si.xyzrpy, false).distorted;
+                    ImageIO.write(im, "png", new File(String.format("/tmp/dict/IMG%03d.png", i++)));
+                }
+            } catch(IOException e) {}
+        }
     }
 
     private ArrayList<TagDetection> makeDetectionsFromExt(Calibration cal, double mExtrinsics[])
@@ -694,11 +726,28 @@ public class EasyCal implements ParameterListener
                 td.cxy = CameraMath.project(cal, LinAlg.xyzrpyToMatrix(mExtrinsics), world);
 
 
+                // XXX This "contains detection" check is not sufficient, since the distortion function
+                // could be malformed
                 if (td.cxy[0] < 0 || td.cxy[0] >= imwidth ||
                     td.cxy[1] < 0 || td.cxy[1] >= imheight)
                     continue;
 
-                // XXX Also project the boundaries to make hxy???
+                // project the boundaries to make det.p???
+                double metersPerPixel = tagSpacingMeters / (tf.whiteBorder*2 + tf.blackBorder*2 + tf.d);
+                double cOff = metersPerPixel * (tf.blackBorder + tf.d / 2.0);
+
+                // Tag corners are listed bottom-left, bottom-right, top-right, top-left
+                // Note: That the +x is to the right, +y is down (img-style coordinates)
+                double world_corners[][] = {{world[0] - cOff, world[1] + cOff},
+                                            {world[0] + cOff, world[1] + cOff},
+                                            {world[0] + cOff, world[1] - cOff},
+                                            {world[0] - cOff, world[1] - cOff}};
+
+
+                td.p = new double[4][];
+                for (int i = 0; i < 4; i++)
+                    td.p[i] = CameraMath.project(cal, LinAlg.xyzrpyToMatrix(mExtrinsics), world_corners[i]);
+
                 detections.add(td);
             }
         }
@@ -931,7 +980,7 @@ public class EasyCal implements ParameterListener
             assert(bestSuggestion != null);
         }
 
-        bestSuggestion.im = simgen.generateImageNotCentered(cal, bestSuggestion.xyzrpy, false).distorted;
+        bestSuggestion.im = simgen.generateImageNotCentered(cal, bestSuggestion.xyzrpy, false ).distorted;
     }
 
     public static void main(String args[])
