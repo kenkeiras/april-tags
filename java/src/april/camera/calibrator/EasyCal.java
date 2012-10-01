@@ -86,10 +86,15 @@ public class EasyCal implements ParameterListener
     }
 
     // These only work with NotCentered
-    static double[][] firstExtrinsics = {{ 0.004,   -0.084,   2*0.315,   -0.161,    0.795,    0.343}, // "good" #1
-                                         {-0.070,   -0.044,    0.161,   -0.006,   -0.519,   -0.334}, // "good" #2
-                                         {-0.050,   -0.058,    0.190,    0.863,    0.220,    0.142}}; // "good"
 
+        double[][] firstExtrinsics = {{ 0.004,   -0.084,   2*0.315,   -0.161,    0.795,    0.343}, // "good" #1
+                                      {-0.070,   -0.044,    0.161,   -0.006,   -0.519,   -0.334}, // "good" #2
+                                      {-0.050,   -0.058,    0.190,    0.863,    0.220,    0.142}}; // "good"
+
+    // XXX Cenetered
+    // static double[][] firstExtrinsics = {{  0.003994, -0.004135	, 0.585182,	-0.161000,  0.795000,  0.343000},
+    //                                      { -0.003133,  0.013453	, 0.185800, -0.006000, -0.519000, -0.334000},
+    //                                      {  0.004573, -0.000152	, 0.235415,  0.863000,  0.220000,  0.142000}};
 
     private class ScoredImage implements Comparable<ScoredImage>
     {
@@ -661,15 +666,10 @@ public class EasyCal implements ParameterListener
 
 
         // Compute single depth for the dictionary XXXX
-        double desiredPixWidth = width/8;
         double K[][] = cal.copyIntrinsics();
-        double desiredDepth = desiredPixWidth / (K[0][0]);
+        double desiredDepths[] = {(tagSpacingMeters*K[0][0]) / (width/6) ,
+                                  (tagSpacingMeters*K[0][0]) / (width/9) };
 
-        System.out.println("Desired depth =" +desiredDepth);
-
-        double rpys[][] = {{0, 0, Math.PI/2},
-                           {0, .8, Math.PI/2},
-                           {.8, 0, Math.PI/2}};
 
         // Place the center of the target:
         double centerXy[] = getObsMosaicCenter();
@@ -679,20 +679,37 @@ public class EasyCal implements ParameterListener
         // These extrinsics are centered, so we can ensure the observed mosaic is mostly in view
         // ArrayList<double[]> centeredExt = new ArrayList();
         ArrayList<SuggestedImage> candidates = new ArrayList();
-        for (int y = 1; y < 6; y++)
-            for (int x = 1; x < 6; x++) {
-                double norm[] = cal.pixelsToNorm(new double[]{x,y});
 
-                double xyz[] = {norm[0], norm[1], 1};
-                LinAlg.scaleEquals(xyz, desiredDepth);
+        int gridY = 4;
+        int gridX = 4;
+        int scaleY = height / gridY;
+        int scaleX = width / gridY;
 
-                for (double rpy[] : rpys) {
-                    SuggestedImage si = new SuggestedImage();
-                    si.xyzrpy_cen = concat(xyz,rpy);
-                    si.xyzrpy = LinAlg.xyzrpyMultiply(si.xyzrpy_cen, LinAlg.xyzrpyInverse(LinAlg.resize(centerXy,6)));
-                    candidates.add(si);
+        for (double desiredDepth : desiredDepths) {
+            for (int gy = 1; gy < gridY; gy++)
+                for (int gx = 1; gx < gridX; gx++) {
+                    double norm[] = cal.pixelsToNorm(new double[]{gx*scaleX,gy*scaleY});
+
+                    double xyz[] = {norm[0], norm[1], 1};
+                    LinAlg.scaleEquals(xyz, desiredDepth);
+
+
+                    // Choose which direction to rotate based on which image quadrant this is
+                    int signRoll = MathUtil.sign(gx - gridX/2);
+                    int signPitch = MathUtil.sign(gy - gridY/2);
+
+                    double rpys[][] = {{0, 0, Math.PI/2},
+                                       {0, .8*signPitch, Math.PI/2},
+                                       {.8*signRoll, 0, Math.PI/2}};
+
+                    for (double rpy[] : rpys) {
+                        SuggestedImage si = new SuggestedImage();
+                        si.xyzrpy_cen = concat(xyz,rpy);
+                        si.xyzrpy = LinAlg.xyzrpyMultiply(si.xyzrpy_cen, LinAlg.xyzrpyInverse(LinAlg.resize(centerXy,6)));
+                        candidates.add(si);
+                    }
                 }
-            }
+        }
 
 
         ArrayList<SuggestedImage> passed = new ArrayList();
@@ -722,61 +739,6 @@ public class EasyCal implements ParameterListener
             off += v.length;
         }
         return out;
-    }
-
-
-    private void generateSuggestionsDict()
-    {
-
-        MultiGaussian mg = null;
-
-
-        if (true) { // Use experimental data from expert datasets, works for NotCentered
-
-            double mu[] = {0.162186, 0.021101, 0.222987, -0.019265, -0.000811, 3.14};
-
-            double cov[][] = {{ 0.047790,  0.011413,  0.004247,  0.004409, -0.016715,         0 },
-                              { 0.011413,  0.009917, -0.000494,  0.002122, -0.004196,         0 },
-                              { 0.004247, -0.000494,  0.015034, -0.006155,  0.022634,         0 },
-                              { 0.004409,  0.002122, -0.006155,  0.168764, -0.007430,         0 },
-                              {-0.016715, -0.004196,  0.022634, -0.007430,  0.148120,         0 },
-                              {        0,         0,         0,         0,         0,  0.04     }};
-            mg = new MultiGaussian(cov,mu);
-        } else { // Previous distribution, but only works for Centered
-            double mu[] = {-.1,-.1,.2,.4,.4,.4};
-            double cov[][]  = LinAlg.diag(new double[]{.2,.2,.4,.8,.8,.8});
-            mg = new MultiGaussian(cov,mu);
-        }
-
-        ArrayList<SuggestedImage> sugs = new ArrayList();
-
-        Random r2 = new Random(1034);
-
-        ParameterizableCalibration cal = null;
-        double params[] = null;
-        if (calibrator != null)
-            params = calibrator.getCalibrationParameters(0);
-        if (params != null)
-            cal = initializer.initializeWithParameters(imwidth, imheight, params);
-
-        ArrayList<double[]> samples = mg.sampleMany(r2, 100);
-        if (false) {
-            samples.set(0,new double[] { 0.004,   -0.084,   2*0.315,   -0.161,    0.795,    0.343}); // "good" #1
-            samples.set(1, new double[] {-0.070,   -0.044,    0.161,   -0.006,   -0.519,   -0.334}); // "good" #2
-            samples.set(2, new double[] {-0.050,   -0.058,    0.190,    0.863,    0.220,    0.142}); // "good" #3
-        }
-
-        for (double extSample[] : samples) {
-            SuggestedImage si = new SuggestedImage();
-            si.detections = makeDetectionsFromExt(cal, extSample);
-            if (si.detections.size() < 12)
-                continue;
-            si.xyzrpy = extSample;
-            sugs.add(si);
-        }
-        System.out.printf("Made new dictionary with %d valid poses\n",sugs.size());
-        suggestDictionary = sugs;
-
     }
 
     private ArrayList<TagDetection> makeDetectionsFromExt(Calibration cal, double mExtrinsics[])
@@ -1037,6 +999,7 @@ public class EasyCal implements ParameterListener
             SuggestedImage si = new SuggestedImage();
             si.detections = makeDetectionsFromExt(cal, firstExtrinsics[suggestionNumber]);
             si.xyzrpy = firstExtrinsics[suggestionNumber];
+            si.xyzrpy_cen = LinAlg.xyzrpyMultiply(si.xyzrpy, LinAlg.resize(getObsMosaicCenter(),6));
 
             bestSuggestion = si;
         } else {
