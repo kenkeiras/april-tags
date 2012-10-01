@@ -12,6 +12,7 @@ import javax.swing.*;
 
 import april.camera.*;
 import april.camera.tools.*;
+import april.camera.models.*;
 import april.jcam.*;
 import april.jmat.*;
 import april.tag.*;
@@ -47,9 +48,14 @@ public class EasyCal implements ParameterListener
 
     Random r = new Random();//(1461234L);
     SyntheticTagMosaicImageGenerator simgen;
-    SyntheticTagMosaicImageGenerator.SyntheticImages suggestion;
+    // SyntheticTagMosaicImageGenerator.SyntheticImages suggestion;
+
+    ArrayList<SuggestedImage> suggestDictionary = new ArrayList();
+
+    SuggestedImage bestSuggestion;
     int suggestionNumber = 0;
-    double desiredXyzrpy[];
+    // double desiredXyzrpy[];
+
     List<ScoredImage> candidateImages;
     boolean waitingForBest = false;
     long startedWaiting = 0;
@@ -65,6 +71,22 @@ public class EasyCal implements ParameterListener
 
     List<List<BufferedImage>> imagesSet = new ArrayList<List<BufferedImage>>();
     List<List<List<TagDetection>>> detsSet = new ArrayList<List<List<TagDetection>>>();
+
+    static class SuggestedImage
+    {
+        // Assumed to be in the actual image
+        ArrayList<TagDetection> detections;
+
+        // could be null
+        BufferedImage im;
+        double xyzrpy[];
+    }
+
+    // These only work with NotCentered
+    static double[][] firstExtrinsics = {{ 0.004,   -0.084,   2*0.315,   -0.161,    0.795,    0.343}, // "good" #1
+                                         {-0.070,   -0.044,    0.161,   -0.006,   -0.519,   -0.334}, // "good" #2
+                                         {-0.050,   -0.058,    0.190,    0.863,    0.220,    0.142}}; // "good"
+
 
     private class ScoredImage implements Comparable<ScoredImage>
     {
@@ -149,8 +171,9 @@ public class EasyCal implements ParameterListener
 
     public void parameterChanged(ParameterGUI pg, String name)
     {
-        if (name.equals("skip"))
-            generateSuggestion(generateXyzrpy());
+        // XXX Skip may not be possible when using a specific heuristic unless underlying state changes
+        // if (name.equals("skip"))
+        //     generateSuggestion(generateXyzrpy());
 
         if (name.equals("manual"))
             captureNext = true;
@@ -248,21 +271,34 @@ public class EasyCal implements ParameterListener
                                                          new VzText(VzText.ANCHOR.TOP,
                                                                     "<<dropshadow=#FF000000,"+
                                                                     "monospaced-12-bold,white>>"+
-                                                                    "Images are mirrored for display purposes"))));
+                                                                    "Images in mirror are closer than they appear"))));
+                                                                    // "Images are mirrored for display purposes"))));
             vb.swap();
 
+            if (calibrator.getImages().size() >= 3)
+            {
+                FrameScorer fs = new PixErrScorer(calibrator, imwidth, imheight);
+                double score = fs.scoreFrame(detections);
+
+                vb = vwside.getBuffer("Score");
+                vb.setDrawOrder(151);
+                String str = String.format("<<dropshadow=#FF000000,monospaced-12-bold,white>>Score: %e\n",score);
+                vb.addBack(new VisDepthTest(false,
+                                            new VisPixCoords(VisPixCoords.ORIGIN.TOP_RIGHT,
+                                                             new VzText(VzText.ANCHOR.TOP_RIGHT, str))));
+                // "Images are mirrored for display purposes"))));
+                vb.swap();
+
+            }
             ////////////////////////////////////////
             // suggested image
             vb = vwside.getBuffer("Suggestion");
             vb.setDrawOrder(0);
-            if (suggestion != null) {
-                BufferedImage sugim = suggestion.distorted;
-                if (sugim == null)
-                    sugim = suggestion.rectified;
+            if (bestSuggestion != null && bestSuggestion.im != null) {
                 vb.addBack(new VisLighting(false,
                                            new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT,
                                                             new VisChain(PixelsToVisSug,
-                                                                         new VzImage(new VisTexture(sugim,
+                                                                         new VzImage(new VisTexture(bestSuggestion.im,
                                                                                                     VisTexture.NO_MAG_FILTER |
                                                                                                     VisTexture.NO_MIN_FILTER |
                                                                                                     VisTexture.NO_REPEAT),
@@ -390,36 +426,20 @@ public class EasyCal implements ParameterListener
                 vb.swap();
             }
 
-            // plot matching lines
+            // find matches between observed and suggested
             double totaldist = 0;
             int nmatches = 0;
-            if (suggestion != null) {
-                for (int i=0; i < detections.size(); i++) {
-                    TagDetection d = detections.get(i);
+            if (bestSuggestion != null) {
+                SuggestedImage sim = bestSuggestion;
 
-                    int matchid = d.id;
+                for (TagDetection det1 : detections) {
+                    for (TagDetection det2 : sim.detections) {
+                        if (det1.id != det2.id)
+                            continue;
 
-                    double p[] = null;
-                    for (int j=0; j < suggestion.tagids.length; j++) {
-                        if (suggestion.tagids[j] == matchid) {
-                            double pt[] = null;
-
-                            if (suggestion.predictedTagCenters_distorted != null)
-                                pt = suggestion.predictedTagCenters_distorted.get(j);
-                            else
-                                pt = suggestion.predictedTagCenters_rectified.get(j);
-
-                            if (pt[0] >= 0 && pt[0] < im.getWidth() &&
-                                pt[1] >= 0 && pt[1] < im.getHeight())
-                            {
-                                p = pt;
-                            }
-                        }
-                    }
-
-                    if (p != null) {
-                        totaldist += LinAlg.distance(d.cxy, p);
+                        totaldist += LinAlg.distance(det1.cxy, det2.cxy);
                         nmatches++;
+                        break;
                     }
                 }
             }
@@ -465,36 +485,36 @@ public class EasyCal implements ParameterListener
             ////////////////////////////////////////
             // plot suggested and current mosaic positions in 3D
 
-            vb = vwcal.getBuffer("Suggestion");
-            if (K != null && H != null && suggestion != null) {
+            // vb = vwcal.getBuffer("Suggestion");
+            // if (K != null && H != null && suggestion != null) {
 
-                double M2G_current[][] = CameraMath.decomposeHomography(H, K, xy_meters.get(0));
-                double M2G_desired[][] = LinAlg.xyzrpyToMatrix(suggestion.MosaicToGlobal);
+            //     double M2G_current[][] = CameraMath.decomposeHomography(H, K, xy_meters.get(0));
+            //     double M2G_desired[][] = LinAlg.xyzrpyToMatrix(suggestion.MosaicToGlobal);
 
-                double Tvis[][] = new double[][] { {  0,  0,  1,  0 },
-                                                   { -1,  0,  0,  0 } ,
-                                                   {  0, -1,  0,  0 } ,
-                                                   {  0,  0,  0,  1 } };
+            //     double Tvis[][] = new double[][] { {  0,  0,  1,  0 },
+            //                                        { -1,  0,  0,  0 } ,
+            //                                        {  0, -1,  0,  0 } ,
+            //                                        {  0,  0,  0,  1 } };
 
-                VisVertexData vertices = new VisVertexData(tagBorderMosaic);
-                vb.addBack(new VisChain(Tvis,
-                                        M2G_current,
-                                        new VzLines(vertices,
-                                                    VzLines.LINE_LOOP,
-                                                    new VzLines.Style(Color.green, 3)),
-                                        new VzMesh(vertices,
-                                                   VzMesh.QUADS,
-                                                   new VzMesh.Style(new Color(0, 255, 0, 100)))));
-                vb.addBack(new VisChain(Tvis,
-                                        M2G_desired,
-                                        new VzLines(vertices,
-                                                    VzLines.LINE_LOOP,
-                                                    new VzLines.Style(Color.blue, 3)),
-                                        new VzMesh(vertices,
-                                                   VzMesh.QUADS,
-                                                   new VzMesh.Style(new Color(0, 0, 255, 100)))));
-            }
-            vb.swap();
+            //     VisVertexData vertices = new VisVertexData(tagBorderMosaic);
+            //     vb.addBack(new VisChain(Tvis,
+            //                             M2G_current,
+            //                             new VzLines(vertices,
+            //                                         VzLines.LINE_LOOP,
+            //                                         new VzLines.Style(Color.green, 3)),
+            //                             new VzMesh(vertices,
+            //                                        VzMesh.QUADS,
+            //                                        new VzMesh.Style(new Color(0, 255, 0, 100)))));
+            //     vb.addBack(new VisChain(Tvis,
+            //                             M2G_desired,
+            //                             new VzLines(vertices,
+            //                                         VzLines.LINE_LOOP,
+            //                                         new VzLines.Style(Color.blue, 3)),
+            //                             new VzMesh(vertices,
+            //                                        VzMesh.QUADS,
+            //                                        new VzMesh.Style(new Color(0, 0, 255, 100)))));
+            // }
+            // vb.swap();
 
             ////////////////////////////////////////
             // meter
@@ -586,7 +606,8 @@ public class EasyCal implements ParameterListener
 
                     // make a new suggestion
                     suggestionNumber++;
-                    generateSuggestion(generateXyzrpy());
+                    // XXX generateSuggestion(generateXyzrpy());
+                    generateNextSuggestion();
                 }
             }
             else {
@@ -597,19 +618,106 @@ public class EasyCal implements ParameterListener
 
     private double[] findMatchingPoint(int id)
     {
-        if (suggestion == null)
+        if (bestSuggestion == null)
             return null;
 
-        for (int i=0; i < suggestion.tagids.length; i++) {
-            if (suggestion.tagids[i] == id) {
-                if (suggestion.predictedTagCenters_distorted != null)
-                    return suggestion.predictedTagCenters_distorted.get(i);
-                else
-                    return suggestion.predictedTagCenters_rectified.get(i);
-            }
+        for (TagDetection det : bestSuggestion.detections)
+            if (det.id == id)
+                return det.cxy;
+        return null;
+    }
+
+    private void generateSuggestionsDict()
+    {
+
+        MultiGaussian mg = null;
+
+
+        if (true) { // Use experimental data from expert datasets, works for NotCentered
+
+            double mu[] = {0.162186, 0.021101, 0.222987, -0.019265, -0.000811, 3.14};
+
+            double cov[][] = {{ 0.047790,  0.011413,  0.004247,  0.004409, -0.016715,         0 },
+                              { 0.011413,  0.009917, -0.000494,  0.002122, -0.004196,         0 },
+                              { 0.004247, -0.000494,  0.015034, -0.006155,  0.022634,         0 },
+                              { 0.004409,  0.002122, -0.006155,  0.168764, -0.007430,         0 },
+                              {-0.016715, -0.004196,  0.022634, -0.007430,  0.148120,         0 },
+                              {        0,         0,         0,         0,         0,  0.04     }};
+            mg = new MultiGaussian(cov,mu);
+        } else { // Previous distribution, but only works for Centered
+            double mu[] = {-.1,-.1,.2,.4,.4,.4};
+            double cov[][]  = LinAlg.diag(new double[]{.2,.2,.4,.8,.8,.8});
+            mg = new MultiGaussian(cov,mu);
         }
 
-        return null;
+        ArrayList<SuggestedImage> sugs = new ArrayList();
+
+        Random r2 = new Random(1034);
+
+        ParameterizableCalibration cal = null;
+        double params[] = null;
+        if (calibrator != null)
+            params = calibrator.getCalibrationParameters(0);
+        if (params != null)
+            cal = initializer.initializeWithParameters(imwidth, imheight, params);
+
+        ArrayList<double[]> samples = mg.sampleMany(r2, 100);
+        if (false) {
+            samples.set(0,new double[] { 0.004,   -0.084,   2*0.315,   -0.161,    0.795,    0.343}); // "good" #1
+            samples.set(1, new double[] {-0.070,   -0.044,    0.161,   -0.006,   -0.519,   -0.334}); // "good" #2
+            samples.set(2, new double[] {-0.050,   -0.058,    0.190,    0.863,    0.220,    0.142}); // "good" #3
+        }
+
+        for (double extSample[] : samples) {
+            SuggestedImage si = new SuggestedImage();
+            si.detections = makeDetectionsFromExt(cal, extSample);
+            if (si.detections.size() < 12)
+                continue;
+            si.xyzrpy = extSample;
+            sugs.add(si);
+        }
+        System.out.printf("Made new dictionary with %d valid poses\n",sugs.size());
+        suggestDictionary = sugs;
+    }
+
+    private ArrayList<TagDetection> makeDetectionsFromExt(Calibration cal, double mExtrinsics[])
+    {
+        ArrayList<TagDetection> detections = new ArrayList();
+        for (int col = minColUsed; col <= maxColUsed; col++) {
+            for (int row = minRowUsed; row <= maxRowUsed; row++) {
+                TagDetection td = new TagDetection();
+                td.id = row*mosaic.getMosaicWidth() + col;
+                assert(td.id < tf.codes.length);
+                //     continue;
+
+                double world[] = mosaic.getPositionMeters(td.id);
+                td.cxy = CameraMath.project(cal, LinAlg.xyzrpyToMatrix(mExtrinsics), world);
+
+
+                if (td.cxy[0] < 0 || td.cxy[0] >= imwidth ||
+                    td.cxy[1] < 0 || td.cxy[1] >= imheight)
+                    continue;
+
+                // XXX Also project the boundaries to make hxy???
+                detections.add(td);
+            }
+        }
+        return detections;
+    }
+
+    static SuggestedImage getBestSuggestion(List<SuggestedImage> suggestions, FrameScorer fs)
+    {
+        SuggestedImage bestImg = null;
+        double lowestScore = Double.MAX_VALUE;
+        for (SuggestedImage si : suggestions) {
+            double score = fs.scoreFrame(si.detections);
+            if (score < lowestScore) {
+                bestImg = si;
+                lowestScore = score;
+            }
+        }
+        assert(bestImg != null);
+        return bestImg;
     }
 
     private void addImage(BufferedImage im, List<TagDetection> detections)
@@ -787,20 +895,13 @@ public class EasyCal implements ParameterListener
         simgen = new SyntheticTagMosaicImageGenerator(tf, imwidth, imheight, tagSpacingMeters, tagsToDisplay);
         candidateImages = new ArrayList<ScoredImage>();
 
-        generateSuggestion(desiredXyzrpy);
+        // XXX generateSuggestion(desiredXyzrpy);
+
+        generateNextSuggestion();
     }
 
-    private void generateSuggestion(double xyzrpy[])
+    private void generateNextSuggestion()
     {
-        if (xyzrpy == null || suggestionNumber < 3) {
-            //System.out.printf("Canned suggestion #%d\n", suggestionNumber);
-            if (suggestionNumber == 0) xyzrpy = new double[] { 0.004,   -0.084,   2*0.315,   -0.161,    0.795,    0.343}; // "good" #1
-            if (suggestionNumber == 1) xyzrpy = new double[] {-0.070,   -0.044,    0.161,   -0.006,   -0.519,   -0.334}; // "good" #2
-            if (suggestionNumber == 2) xyzrpy = new double[] {-0.050,   -0.058,    0.190,    0.863,    0.220,    0.142}; // "good" #3
-        }
-
-        // try to get the current calibration object for creating images
-        // that match those from the camera
         ParameterizableCalibration cal = null;
         double params[] = null;
         if (calibrator != null)
@@ -808,24 +909,29 @@ public class EasyCal implements ParameterListener
         if (params != null)
             cal = initializer.initializeWithParameters(imwidth, imheight, params);
 
-        // generate the images
-        if (suggestionNumber < 3)
-            this.suggestion = simgen.generateImageNotCentered(cal, xyzrpy, false);
-        else
-            this.suggestion = simgen.generateImageCentered(cal, xyzrpy, false);
+        if (suggestionNumber < firstExtrinsics.length) {
 
-        this.desiredXyzrpy = xyzrpy;
-    }
+            // XXX Spoof some arbitrary calibration to get us through the initialization
+            if (cal == null) {
+                double fc = 650; //(imwidth + imheight)/2;
+                cal = new DistortionFreeCalibration(new double[]{fc,fc},
+                                                    new double[]{imwidth/2.0, imheight/2.0}, imwidth, imheight);
+            }
 
-    private double[] generateXyzrpy()
-    {
-        double xyzrpy[] = new double[] {-0.1 + 0.2*r.nextDouble(),
-                                        -0.1 + 0.2*r.nextDouble(),
-                                         0.2 + 0.4*r.nextDouble(),
-                                        -0.4 + 0.8*r.nextDouble(),
-                                        -0.4 + 0.8*r.nextDouble(),
-                                        -0.4 + 0.8*r.nextDouble() };
-        return xyzrpy;
+            SuggestedImage si = new SuggestedImage();
+            si.detections = makeDetectionsFromExt(cal, firstExtrinsics[suggestionNumber]);
+            si.xyzrpy = firstExtrinsics[suggestionNumber];
+
+            bestSuggestion = si;
+        } else {
+            generateSuggestionsDict();
+
+            FrameScorer fs = new PixErrScorer(calibrator, imwidth, imheight);
+            bestSuggestion = getBestSuggestion(suggestDictionary, fs);
+            assert(bestSuggestion != null);
+        }
+
+        bestSuggestion.im = simgen.generateImageNotCentered(cal, bestSuggestion.xyzrpy, false).distorted;
     }
 
     public static void main(String args[])
