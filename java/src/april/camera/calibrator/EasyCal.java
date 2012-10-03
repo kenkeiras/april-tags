@@ -710,15 +710,15 @@ public class EasyCal implements ParameterListener
         int width = cal.getWidth();
         int height = cal.getHeight();
 
-
-        // Compute single depth for the dictionary XXXX
+        // Compute single depth for the dictionary XXX
         double K[][] = cal.copyIntrinsics();
         double desiredDepths[] = {(tagSpacingMeters*K[0][0]) / (width/6) ,
                                   (tagSpacingMeters*K[0][0]) / (width/9) };
 
-
         // Place the center of the target:
         double centerXy[] = getObsMosaicCenter();
+
+        DistortionFunctionVerifier verifier = new DistortionFunctionVerifier(cal);
 
         // Generate ~100 images, 3 angles each, 5 x 5 grid
 
@@ -734,19 +734,19 @@ public class EasyCal implements ParameterListener
         for (double desiredDepth : desiredDepths) {
             for (int gy = 1; gy < gridY; gy++)
                 for (int gx = 1; gx < gridX; gx++) {
-                    double norm[] = cal.pixelsToNorm(new double[]{gx*scaleX,gy*scaleY});
+                    double norm[] = cal.pixelsToNorm(new double[]{ gx*scaleX + r.nextGaussian()*2.0,
+                                                                   gy*scaleY + r.nextGaussian()*2.0});
 
                     double xyz[] = {norm[0], norm[1], 1};
-                    LinAlg.scaleEquals(xyz, desiredDepth);
-
+                    LinAlg.scaleEquals(xyz, desiredDepth + r.nextGaussian() * 0.01 );
 
                     // Choose which direction to rotate based on which image quadrant this is
                     int signRoll = MathUtil.sign(gx - gridX/2);
                     int signPitch = MathUtil.sign(gy - gridY/2);
 
-                    double rpys[][] = {{0, 0, Math.PI/2},
-                                       {0, .8*signPitch, Math.PI/2},
-                                       {.8*signRoll, 0, Math.PI/2}};
+                    double rpys[][] = {{ 0            + r.nextGaussian()*0.1, 0             + r.nextGaussian()*0.1, Math.PI/2 },
+                                       { 0            + r.nextGaussian()*0.1, 0.8*signPitch + r.nextGaussian()*0.1, Math.PI/2 },
+                                       { 0.8*signRoll + r.nextGaussian()*0.1, 0             + r.nextGaussian()*0.1, Math.PI/2 }};
 
                     for (double rpy[] : rpys) {
                         SuggestedImage si = new SuggestedImage();
@@ -760,7 +760,7 @@ public class EasyCal implements ParameterListener
         ArrayList<SuggestedImage> passed = new ArrayList();
         for (SuggestedImage si : candidates) {
             // Pass in non-centered extrinsics
-            si.detections = makeDetectionsFromExt(cal, si.xyzrpy);
+            si.detections = makeDetectionsFromExt(verifier, cal, si.xyzrpy);
             if (si.detections.size() < 12)
                 continue;
             passed.add(si);
@@ -786,27 +786,34 @@ public class EasyCal implements ParameterListener
         return out;
     }
 
-    private ArrayList<TagDetection> makeDetectionsFromExt(Calibration cal, double mExtrinsics[])
+    private ArrayList<TagDetection> makeDetectionsFromExt(DistortionFunctionVerifier verifier,
+                                                          Calibration cal, double mExtrinsics[])
     {
         ArrayList<TagDetection> detections = new ArrayList();
         for (int col = minColUsed; col <= maxColUsed; col++) {
+            outer:
             for (int row = minRowUsed; row <= maxRowUsed; row++) {
+
                 TagDetection td = new TagDetection();
                 td.id = row*mosaic.getMosaicWidth() + col;
-                assert(td.id < tf.codes.length);
-                //     continue;
+
+                if (td.id >= tf.codes.length)
+                    continue;
 
                 double world[] = mosaic.getPositionMeters(td.id);
-                td.cxy = CameraMath.project(cal, LinAlg.xyzrpyToMatrix(mExtrinsics), world);
+                td.cxy = CameraMath.project(cal, verifier, LinAlg.xyzrpyToMatrix(mExtrinsics), world);
 
+                // CameraMath.project() with a verifier will return null if the
+                // point is outside of the valid range
+                if (td.cxy == null)
+                    continue;
 
-                // XXX This "contains detection" check is not sufficient, since the distortion function
-                // could be malformed
+                // the point should also project into the distorted image
                 if (td.cxy[0] < 0 || td.cxy[0] >= imwidth ||
                     td.cxy[1] < 0 || td.cxy[1] >= imheight)
                     continue;
 
-                // project the boundaries to make det.p???
+                // project the boundaries to make det.p
                 double metersPerPixel = tagSpacingMeters / (tf.whiteBorder*2 + tf.blackBorder*2 + tf.d);
                 double cOff = metersPerPixel * (tf.blackBorder + tf.d / 2.0);
 
@@ -819,12 +826,18 @@ public class EasyCal implements ParameterListener
 
 
                 td.p = new double[4][];
-                for (int i = 0; i < 4; i++)
-                    td.p[i] = CameraMath.project(cal, LinAlg.xyzrpyToMatrix(mExtrinsics), world_corners[i]);
+                for (int i = 0; i < 4; i++) {
+                    td.p[i] = CameraMath.project(cal, verifier, LinAlg.xyzrpyToMatrix(mExtrinsics), world_corners[i]);
+
+                    // enforce that the whole tag projects correctly
+                    if (td.p[i] == null)
+                        continue outer;
+                }
 
                 detections.add(td);
             }
         }
+
         return detections;
     }
 

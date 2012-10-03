@@ -595,6 +595,24 @@ public class CameraMath
         return view.normToPixels(xy_rn);
     }
 
+    // View-based projection with a distortion function verifier
+
+    public final static double[] project(View view, DistortionFunctionVerifier verifier,
+                                         double L2C[][], double xyz[])
+    {
+        double xyz_camera[] = xyz;
+        if (L2C != null)
+            xyz_camera = LinAlg.transform(L2C, xyz);
+
+        double xy_rn[] = new double[] { xyz_camera[0] / xyz_camera[2] ,
+                                        xyz_camera[1] / xyz_camera[2] };
+
+        if (verifier.validNormalizedCoord(xy_rn))
+            return view.normToPixels(xy_rn);
+
+        return null;
+    }
+
     ////////////////////////////////////////////////////////////////////////////////
 
     public final static double[][] makeVisPlottingTransform(View view, double XY0[], double XY1[], boolean flip)

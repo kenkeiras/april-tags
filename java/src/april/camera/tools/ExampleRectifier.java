@@ -17,7 +17,7 @@ public class ExampleRectifier
     View output;
     Rasterizer      rasterizer;
 
-    public ExampleRectifier(Config config, String imagepath) throws IOException
+    public ExampleRectifier(Config config, String imagepath, String rectifierclass) throws IOException
     {
         ////////////////////////////////////////
         // Get output image path
@@ -49,9 +49,18 @@ public class ExampleRectifier
         ////////////////////////////////////////
         // Output view
         System.out.println("Creating rectified view");
-        output = new MaxRectifiedView(input);
-        //output = new MaxInscribedRectifiedView(input);
-        //output = new ScaledView(2, output);
+        Object robj = null;
+        try {
+            robj = Class.forName(rectifierclass).getConstructor(new Class[] { Class.forName("april.camera.View") }).newInstance(input);
+        } catch (Exception ex) {
+            System.out.println("Exception when creating rectifier via reflection: "+ex);
+            ex.printStackTrace();
+            System.exit(-1);
+        }
+        assert(robj != null);
+        assert(robj instanceof View);
+        output = (View) robj;
+        //output = new ScaledView(1.0/5, output);
 
         ////////////////////////////////////////
         // Make rasterizer
@@ -80,7 +89,8 @@ public class ExampleRectifier
 
         opts.addBoolean('h',"help",false,"See the help screen");
         opts.addString('c',"config","","Config file path");
-        opts.addString('s',"childstring","aprilCameraCalibration","CameraSet child name (e.g. aprilCameraCalibration.camera0)");
+        opts.addString('s',"childstring","aprilCameraCalibration.camera0","CameraSet child name (e.g. aprilCameraCalibration.camera0)");
+        opts.addString('r',"rectifier","april.camera.MaxRectifiedView","Rectifier class to use");
         opts.addString('i',"image","","Image path");
 
         if (!opts.parse(args)) {
@@ -89,6 +99,7 @@ public class ExampleRectifier
 
         String configpath = opts.getString("config");
         String childstring = opts.getString("childstring");
+        String rectifierclass = opts.getString("rectifier");
         String imagepath = opts.getString("image");
 
         if (opts.getBoolean("help") || configpath.isEmpty() || childstring.isEmpty() || imagepath.isEmpty()) {
@@ -101,7 +112,7 @@ public class ExampleRectifier
             Config config = new ConfigFile(configpath);
             Config child = config.getChild(childstring);
 
-            new ExampleRectifier(child, imagepath);
+            new ExampleRectifier(child, imagepath, rectifierclass);
 
         } catch (IOException ex) {
             System.err.println("Exception: " + ex);

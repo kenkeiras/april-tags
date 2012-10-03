@@ -3,6 +3,7 @@ package april.camera;
 import java.awt.image.*;
 
 import april.jmat.*;
+import april.util.*;
 
 public class BilinearRasterizer implements Rasterizer
 {
@@ -20,6 +21,9 @@ public class BilinearRasterizer implements Rasterizer
     public BilinearRasterizer(View input, double G2C_input[][],
                               View output, double G2C_output[][])
     {
+        DistortionFunctionVerifier inVerifier = new DistortionFunctionVerifier(input);
+        DistortionFunctionVerifier outVerifier = new DistortionFunctionVerifier(output);
+
         ////////////////////////////////////////
         inputWidth  = input.getWidth();
         inputHeight = input.getHeight();
@@ -30,6 +34,9 @@ public class BilinearRasterizer implements Rasterizer
 
         indices = new int[size];
         weights = new int[size*4];
+
+        for (int i=0; i < indices.length; i++)
+            indices[i] = -1;
 
         int twoPow16 = (int) Math.pow(2, 16);
 
@@ -46,8 +53,16 @@ public class BilinearRasterizer implements Rasterizer
             for (int x_rp = 0; x_rp < outputWidth; x_rp++) {
 
                 double xy_rp[] = new double[] { x_rp, y_rp };
+                if (!outVerifier.validPixelCoord(xy_rp))
+                    continue;
 
-                double xy_dp[] = input.normToPixels(CameraMath.pixelTransform(R_OutToIn, output.pixelsToNorm(xy_rp)));
+                double xy_rn[] = output.pixelsToNorm(xy_rp);
+                xy_rn = CameraMath.pixelTransform(R_OutToIn, xy_rn);
+
+                if (!inVerifier.validNormalizedCoord(xy_rn))
+                    continue;
+
+                double xy_dp[] = input.normToPixels(xy_rn);
 
                 int x_dp = (int) Math.floor(xy_dp[0]);
                 int y_dp = (int) Math.floor(xy_dp[1]);
