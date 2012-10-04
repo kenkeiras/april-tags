@@ -331,8 +331,9 @@ public class EasyCal2
         {
             bestInitUpdated = false;
 
-            // we don't need a standard deviation lower than 20
-            if (bestScore < 20)
+            // we don't need a standard deviation lower than 100
+            // was 20 when we added the bestInitImage to the actual calibration
+            if (bestScore < 100)
                 return;
 
             if (imagesSet.size() != 0 || detections.size() < 8) // XXX
@@ -789,10 +790,12 @@ public class EasyCal2
     private void addImage(BufferedImage im, List<TagDetection> detections)
     {
         // add the initialization frame before adding the specified frame
+        /* // disable this to make a more generous initialization
         if (imagesSet.size() == 0) {
             imagesSet.add(Arrays.asList(bestInitImage));
             detsSet.add(Arrays.asList(bestInitDetections));
         }
+        */
 
         double origMRE = -1, newMRE = -1;
         boolean origSPD = true, newSPD = true;
@@ -970,14 +973,12 @@ public class EasyCal2
         SuggestedImage newSuggestion = null;
 
         FrameScorer fs = null;
-        if (suggestionNumber < 3)
-             fs = new InitializationVarianceScorer(calibrator, imwidth, imheight);
+        if (calibrator.getNumImages() < 3)
+            fs = new InitializationVarianceScorer(calibrator, imwidth, imheight);
         else
             fs = new PixErrScorer(calibrator, imwidth, imheight);
 
-
         ArrayList<SuggestedImage> ranked = scoreSuggestions(suggestDictionary, fs);
-
 
         // Pick the single best suggestion
         if (true) {

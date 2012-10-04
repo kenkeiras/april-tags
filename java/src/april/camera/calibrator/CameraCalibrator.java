@@ -344,6 +344,11 @@ public class CameraCalibrator
         return extrins;
     }
 
+    public synchronized int getNumImages()
+    {
+        return this.images.size();
+    }
+
     public synchronized List<List<BufferedImage>> getImages()
     {
         List<List<BufferedImage>> output = new ArrayList();
