@@ -878,7 +878,7 @@ public class EasyCal2
             return;
 
         suggestDictionary = generateSuggestionsDict(cal);
-        System.out.printf("Made new dictionary with %d valid poses\n",suggestDictionary.size());
+        //System.out.printf("Made new dictionary with %d valid poses\n",suggestDictionary.size());
 
         // Write the dictionary to file
         if (false) {
