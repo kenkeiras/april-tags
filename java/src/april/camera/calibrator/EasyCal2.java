@@ -53,7 +53,7 @@ public class EasyCal2
     List<ScoredImage> candidateImages;
     boolean waitingForBest = false;
     long startedWaiting = 0;
-    double waitTime = 3.0; // seconds
+    double waitTime = 5.0; // seconds
     Integer minRow, minCol, maxRow, maxCol;
     int minRowUsed = -1, minColUsed = -1, maxRowUsed = -1, maxColUsed = -1;
 
@@ -69,6 +69,8 @@ public class EasyCal2
     BufferedImage bestInitImage;
     List<TagDetection> bestInitDetections;
     boolean bestInitUpdated = false;
+
+    List<Color> colorList;
 
     static class SuggestedImage
     {
@@ -132,6 +134,11 @@ public class EasyCal2
         jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         jf.setVisible(true);
 
+        // colors
+        colorList = Palette.listAll();
+        colorList.remove(0);
+        Collections.shuffle(colorList, new Random(283819));
+
         ////////////////////////////////////////
         // Camera setup
         try {
@@ -193,7 +200,10 @@ public class EasyCal2
                 FrameData frmd = imageQueue.get();
 
                 BufferedImage im = ImageConvert.convertToImage(frmd);
+                Tic tic = new Tic();
                 List<TagDetection> detections = td.process(im, new double[] {im.getWidth()/2.0, im.getHeight()/2.0});
+                double dt = tic.toc();
+                System.out.printf("\rDetection time: %8.3f seconds", dt);
 
                 if (imwidth == null || imheight == null) {
                     imwidth = im.getWidth();
@@ -296,7 +306,11 @@ public class EasyCal2
                                                                          new VzMesh.Style(new Color(0, 0, 0, 128))))));
                 VisChain chain = new VisChain();
                 for (TagDetection d : bestSuggestion.detections) {
-                    chain.add(new VzLines(new VisVertexData(d.p), VzLines.LINE_LOOP, new VzLines.Style(Color.cyan,1.8)));
+
+                    Color color = colorList.get(d.id % colorList.size());
+                    chain.add(new VzLines(new VisVertexData(d.p),
+                                          VzLines.LINE_LOOP,
+                                          new VzLines.Style(color, 2)));
                 }
                 vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
                                             new VisChain(PixelsToVis, chain)));
@@ -305,18 +319,21 @@ public class EasyCal2
 
             vb = vw.getBuffer("Detections");
             vb.setDrawOrder(10);
-            ArrayList<double[]> quads = new ArrayList<double[]>();
             for (TagDetection d : detections) {
-                quads.add(d.interpolate(-1,-1));
-                quads.add(d.interpolate( 1,-1));
-                quads.add(d.interpolate( 1, 1));
-                quads.add(d.interpolate(-1, 1));
+                Color color = colorList.get(d.id % colorList.size());
+
+                ArrayList<double[]> quad = new ArrayList<double[]>();
+                quad.add(d.interpolate(-1,-1));
+                quad.add(d.interpolate( 1,-1));
+                quad.add(d.interpolate( 1, 1));
+                quad.add(d.interpolate(-1, 1));
+
+                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
+                                            new VisChain(PixelsToVis,
+                                                         new VzMesh(new VisVertexData(quad),
+                                                                    VzMesh.QUADS,
+                                                                    new VzMesh.Style(color)))));
             }
-            vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
-                                        new VisChain(PixelsToVis,
-                                                     new VzMesh(new VisVertexData(quads),
-                                                                VzMesh.QUADS,
-                                                                new VzMesh.Style(Palette.friendly.blue)))));
             vb.swap();
         }
 
@@ -355,63 +372,6 @@ public class EasyCal2
                 return;
             }
 
-            // fit a homography to the distorted tag detections
-            /*
-            List<double[]> xy_meters = new ArrayList<double[]>();
-            List<double[]> xy_pixels = new ArrayList<double[]>();
-            for (TagDetection d : detections) {
-                xy_meters.add(LinAlg.select(tm.getPositionMeters(d.id), 0, 1));
-                xy_pixels.add(LinAlg.select(d.cxy, 0, 1));
-            }
-
-            double K[][] = calibrator.getCalibrationIntrinsics(0);
-            double H[][] = null;
-            if (detections.size() > 4)
-                H = CameraMath.estimateHomography(xy_meters, xy_pixels);
-
-            // plot border
-            ArrayList<double[]> tagBorderMosaic = new ArrayList<double[]>();
-            tagBorderMosaic.add(tm.getPositionMeters(minCol-0.5, minRow-0.5));
-            tagBorderMosaic.add(tm.getPositionMeters(maxCol+0.5, minRow-0.5));
-            tagBorderMosaic.add(tm.getPositionMeters(maxCol+0.5, maxRow+0.5));
-            tagBorderMosaic.add(tm.getPositionMeters(minCol-0.5, maxRow+0.5));
-
-            // plot tag squares (for when you can't see the whole border)
-            ArrayList<double[]> tagBlocksMosaic = new ArrayList<double[]>();
-            for (int row=minRow; row <= maxRow; row++) {
-                for (int col=minCol; col <= maxCol; col++) {
-                    tagBlocksMosaic.add(tm.getPositionMeters(col-0.4, row-0.4));
-                    tagBlocksMosaic.add(tm.getPositionMeters(col-0.4, row+0.4));
-                    tagBlocksMosaic.add(tm.getPositionMeters(col+0.4, row+0.4));
-                    tagBlocksMosaic.add(tm.getPositionMeters(col+0.4, row-0.4));
-                }
-            }
-
-            if (H != null) {
-                ArrayList<double[]> tagBorderImage = new ArrayList<double[]>();
-                for (double p[] : tagBorderMosaic)
-                    tagBorderImage.add(CameraMath.pixelTransform(H, new double[] { p[0], p[1] }));
-                ArrayList<double[]> tagBlocksImage = new ArrayList<double[]>();
-                for (double p[] : tagBlocksMosaic)
-                    tagBlocksImage.add(CameraMath.pixelTransform(H, new double[] { p[0], p[1] }));
-
-                vb = vw.getBuffer("Mosaic border");
-                vb.setDrawOrder(25);
-                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM,
-                                            new VisChain(PixelsToVis,
-                                                         new VzLines(new VisVertexData(tagBorderImage),
-                                                                     VzLines.LINES,
-                                                                     new VzLines.Style(new Color(0, 255, 0), 2)),
-                                                         new VzMesh(new VisVertexData(tagBlocksImage),
-                                                                    VzMesh.QUADS,
-                                                                    new VzMesh.Style(new Color(0, 255, 0, 200))),
-                                                         new VzMesh(new VisVertexData(tagBorderImage),
-                                                                    VzMesh.QUADS,
-                                                                    new VzMesh.Style(new Color(0, 255, 0, 75))))));
-                vb.swap();
-            }
-            */
-
             // find matches between observed and suggested
             double totaldist = 0;
             int nmatches = 0;
@@ -432,44 +392,6 @@ public class EasyCal2
             double meandistthreshold = im.getWidth()/20.0;
             double meandist = totaldist/nmatches;
 
-            /*
-            if (H != null) {
-                ArrayList<double[]> lines = new ArrayList<double[]>();
-                double p1[] = findMatchingPoint(tm.getID(minCol, minRow));
-                double p2[] = findMatchingPoint(tm.getID(maxCol, minRow));
-                double p3[] = findMatchingPoint(tm.getID(maxCol, maxRow));
-                double p4[] = findMatchingPoint(tm.getID(minCol, maxRow));
-                if (p1 != null) {
-                    lines.add(LinAlg.transform(PixelsToVis, CameraMath.pixelTransform(H,
-                                                                    LinAlg.select(tm.getPositionMeters(minCol, minRow), 0, 1))));
-                    lines.add(LinAlg.transform(PixelsToVis, p1));
-                }
-                if (p2 != null) {
-                    lines.add(LinAlg.transform(PixelsToVis, CameraMath.pixelTransform(H,
-                                                                    LinAlg.select(tm.getPositionMeters(maxCol, minRow), 0, 1))));
-                    lines.add(LinAlg.transform(PixelsToVis, p2));
-                }
-                if (p3 != null) {
-                    lines.add(LinAlg.transform(PixelsToVis, CameraMath.pixelTransform(H,
-                                                                    LinAlg.select(tm.getPositionMeters(maxCol, maxRow), 0, 1))));
-                    lines.add(LinAlg.transform(PixelsToVis, p3));
-                }
-                if (p4 != null) {
-                    lines.add(LinAlg.transform(PixelsToVis, CameraMath.pixelTransform(H,
-                                                                    LinAlg.select(tm.getPositionMeters(minCol, maxRow), 0, 1))));
-                    lines.add(LinAlg.transform(PixelsToVis, p4));
-                }
-
-                vb = vw.getBuffer("Matches");
-                vb.setDrawOrder(20);
-                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM,
-                                            new VzLines(new VisVertexData(lines),
-                                                        VzLines.LINES,
-                                                        new VzLines.Style(Color.blue, 3))));
-                vb.swap();
-            }
-            */
-
             ////////////////////////////////////////
             // meter
             vb = vw.getBuffer("Error meter");
@@ -478,9 +400,7 @@ public class EasyCal2
             double rectHeight = Math.min(maxRectHeight, maxRectHeight*meandist/meandistthreshold/3);
             double perc = rectHeight/maxRectHeight;
             double rectWidth = 25;
-            //Color barcolor = (perc < 0.33) ? Color.green : Color.red;
-            Color barcolor = new Color(128, 128, 128);
-            VzRectangle tickmark = new VzRectangle(rectWidth, 0.01*maxRectHeight, new VzMesh.Style(Color.white));
+            Color barcolor = Color.white;
 
             vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT,
                                         LinAlg.translate(rectWidth/2, vc.getHeight()/2-maxRectHeight/2, 0),
@@ -489,7 +409,7 @@ public class EasyCal2
                                         new VisChain(LinAlg.translate(0, rectHeight/2, 0),
                                                      new VzRectangle(rectWidth, rectHeight, new VzMesh.Style(barcolor))),
                                         new VisChain(LinAlg.translate(0, maxRectHeight/2, 0),
-                                                     new VzRectangle(rectWidth, maxRectHeight, new VzLines.Style(Color.white, 2))),
+                                                     new VzRectangle(rectWidth, maxRectHeight, new VzLines.Style(new Color(150, 150, 150), 2))),
 
                                         LinAlg.translate(-rectWidth/2, 0, 0),
                                         new VisDepthTest(false, new VzText(VzText.ANCHOR.LEFT,
@@ -557,6 +477,7 @@ public class EasyCal2
                     ScoredImage best = candidateImages.get(0);
                     candidateImages.clear();
 
+                    draw(best.im, best.detections);
                     addImage(best.im, best.detections);
 
                     // make a new suggestion
