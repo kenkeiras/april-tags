@@ -5,7 +5,7 @@ import april.config.*;
 import april.jmat.*;
 import april.util.*;
 
-public class SimpleCaltechCalibration implements Calibration, ParameterizableCalibration
+public class Radial4thOrderCaltechCalibration implements Calibration, ParameterizableCalibration
 {
     // constants for iteratively rectifying coordinates (e.g. max allowed error)
     private static final int max_iterations = 20;
@@ -38,7 +38,7 @@ public class SimpleCaltechCalibration implements Calibration, ParameterizableCal
     private int             width;
     private int             height;
 
-    public SimpleCaltechCalibration(double fc[], double cc[], double kc[],
+    public Radial4thOrderCaltechCalibration(double fc[], double cc[], double kc[],
                                     int width, int height)
     {
         this.fc     = LinAlg.copy(fc);
@@ -51,7 +51,7 @@ public class SimpleCaltechCalibration implements Calibration, ParameterizableCal
         createIntrinsicsMatrix();
     }
 
-    public SimpleCaltechCalibration(Config config)
+    public Radial4thOrderCaltechCalibration(Config config)
     {
         this.fc     = config.requireDoubles("intrinsics.fc");
         this.cc     = config.requireDoubles("intrinsics.cc");
@@ -63,7 +63,7 @@ public class SimpleCaltechCalibration implements Calibration, ParameterizableCal
         createIntrinsicsMatrix();
     }
 
-    public SimpleCaltechCalibration(double params[], int width, int height)
+    public Radial4thOrderCaltechCalibration(double params[], int width, int height)
     {
         this.width = width;
         this.height = height;

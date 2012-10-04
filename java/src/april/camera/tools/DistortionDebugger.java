@@ -8,6 +8,7 @@ import javax.swing.*;
 
 import april.config.*;
 import april.camera.*;
+import april.camera.models.*;
 import april.jmat.*;
 import april.vis.*;
 import april.util.*;
@@ -23,24 +24,12 @@ public class DistortionDebugger implements ParameterListener
     VisCanvas vc;
     VisWorld.Buffer vb;
 
-    double  f;
-    int     width;
-    int     height;
-    double  cx;
-    double  cy;
-    int     rmax;
-    int     iterations;
+    int iterations = 10;
+
+    boolean once = true;
 
     public DistortionDebugger()
     {
-        f           = 650;
-        width       = 752;
-        height      = 480;
-        cx          = width/2;
-        cy          = height/2;
-        rmax        = (int) Math.sqrt(Math.pow(width-cx, 2) + Math.pow(height-cy, 2));
-        iterations  = 10;
-
         setupGUI();
         plot();
     }
@@ -57,10 +46,14 @@ public class DistortionDebugger implements ParameterListener
 
         // gui tools
         pg = new ParameterGUI();
+
+        pg.addIntSlider("width","Width", 0, 2000, 752);
+        pg.addIntSlider("height","Height", 0, 2000, 480);
+        pg.addDoubleSlider("f","Focal length", 0, 2000, 650);
         pg.addDoubleSlider("kc1","KC1",-1, 1, -0.4);
         pg.addDoubleSlider("kc2","KC2",-1, 1,  0.1);
         pg.addDoubleSlider("kc3","KC3",-1, 1,  0.0);
-        pg.addDoubleSlider("d","Distorted pixel (radius)", 0, rmax, 0);
+        pg.addDoubleSlider("d","Distorted pixel (radius)", 0, 2000, 0);
         pg.addListener(this);
 
         // jframe
@@ -79,6 +72,32 @@ public class DistortionDebugger implements ParameterListener
 
     private void plot()
     {
+        int width   = pg.gi("width");
+        int height  = pg.gi("height");
+        double cx   = width/2;
+        double cy   = height/2;
+        double f    = pg.gd("f");
+        double rmax = (int) Math.sqrt(Math.pow(width-cx, 2) + Math.pow(height-cy, 2));
+        double kc1 = pg.gd("kc1");
+        double kc2 = pg.gd("kc2");
+        double kc3 = pg.gd("kc3");
+
+        //
+        View view = new CaltechCalibration(new double[] { f, f },
+                                           new double[] { cx, cy},
+                                           new double[] { kc1, kc2, 0, 0, kc3 },
+                                           0,
+                                           width, height);
+        Tic tic = new Tic();
+        DistortionFunctionVerifier verifier = new DistortionFunctionVerifier(view);
+        double dt = tic.toc();
+        System.out.printf("Took %12.6f seconds to build DistortionFunctionVerifier\n", dt);
+
+        double K[][] = new double[][] { {  f,  0, cx },
+                                        {  0,  f, cy },
+                                        {  0,  0,  1 } };
+        double Kinv[][] = LinAlg.inverse(K);
+
         ArrayList<double[]> points = new ArrayList<double[]>();
         ArrayList<double[]> multipliers = new ArrayList<double[]>();
         ArrayList<double[]> chain = new ArrayList<double[]>();
@@ -100,6 +119,15 @@ public class DistortionDebugger implements ParameterListener
             maxdist = Math.max(maxdist, d*f);
         }
 
+        int colors[] = new int[points.size()];
+        for (int i=0; i < points.size(); i++) {
+            double r = points.get(i)[0];
+            double xy_rp[] = new double[] { cx + f*r, cy };
+            double xy_rn[] = CameraMath.pixelTransform(Kinv, xy_rp);
+            colors[i] = verifier.validNormalizedCoord(xy_rn) ? 0xFFFF0000 : 0xFF0000FF;
+        }
+        VisColorData colorData = new VisColorData(colors);
+
         {
             VisWorld.Buffer vb = vw.getBuffer("Background");
             vb.setDrawOrder(-100);
@@ -113,9 +141,9 @@ public class DistortionDebugger implements ParameterListener
             VisWorld.Buffer vb = vw.getBuffer("Error");
             vb.setDrawOrder(-99);
             if (maxdist < rmax) {
-                double height = rmax - maxdist;
-                vb.addBack(new VisChain(LinAlg.translate(5*rmax, rmax - height/2, 0),
-                                        new VzRectangle(10*rmax, height,
+                double h = rmax - maxdist;
+                vb.addBack(new VisChain(LinAlg.translate(5*rmax, rmax - h/2, 0),
+                                        new VzRectangle(10*rmax, h,
                                                         new VzMesh.Style(new Color(60, 0, 0)))));
             }
             vb.swap();
@@ -144,11 +172,15 @@ public class DistortionDebugger implements ParameterListener
             vb.addBack(new VisChain(LinAlg.scale(f, f, 1),
                                     new VzLines(new VisVertexData(points),
                                                 VzLines.LINE_STRIP,
-                                                new VzLines.Style(Color.blue, 2))));
+                                                new VzLines.Style(colorData, 2))));
+                                                //new VzLines.Style(Color.blue, 2))));
             vb.swap();
 
-            vl.cameraManager.fit2D(new double[] {-rmax*0.2, -rmax*0.2},
-                                   new double[] { rmax*2.0,  rmax*1.2}, true);
+            if (once) {
+                once = false;
+                vl.cameraManager.fit2D(new double[] {-rmax*0.2, -rmax*0.2},
+                                       new double[] { rmax*2.0,  rmax*1.2}, true);
+            }
         }
 
         {
@@ -188,6 +220,7 @@ public class DistortionDebugger implements ParameterListener
 
         if (name.equals("d")) {
 
+            double f = pg.gd("f");
             double d = pg.gd("d") / f;
 
             double rs[] = rectify(d);

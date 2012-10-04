@@ -10,7 +10,8 @@ public class SuggestUtil
 {
 
 
-    public static ArrayList<TagDetection> makeDetectionsFromExt(Calibration cal, double mExtrinsics[],
+    public static ArrayList<TagDetection> makeDetectionsFromExt(Calibration cal, DistortionFunctionVerifier verifier,
+                                                                double mExtrinsics[],
                                                                 int minTagId, int maxTagId,
                                                                 TagMosaic tm)
     {
@@ -28,19 +29,21 @@ public class SuggestUtil
         int maxCol = tm.getColumn(maxTagId);
 
         for (int col = minCol; col <= maxCol; col++) {
+          outer:
             for (int row = minRow; row <= maxRow; row++) {
                 TagDetection det = new TagDetection();
                 det.id = tm.getID(col, row); // XXX TagMosaic is col, row;
                 assert(det.id < tf.codes.length);
 
                 double world[] = tm.getPositionMeters(det.id);
-                double camera[] = LinAlg.transform(LinAlg.xyzrpyToMatrix(mExtrinsics), world);
-                if (camera[2] < 0) // remove things behind the camera
+                det.cxy = CameraMath.project(cal, verifier, LinAlg.xyzrpyToMatrix(mExtrinsics), world);
+
+                // CameraMath.project() with a verifier will return null if the
+                // point is outside of the valid range
+                if (det.cxy == null)
                     continue;
 
-                det.cxy = CameraMath.project(cal, null, camera);
-
-                // XXX This "contains detection" check is not sufficient, since the distortion function
+                // XXX This check now redundant? XXX This "contains detection" check is not sufficient, since the distortion function
                 // could be malformed
                 if (det.cxy[0] < 0 || det.cxy[0] >= width ||
                     det.cxy[1] < 0 || det.cxy[1] >= height)
@@ -59,9 +62,11 @@ public class SuggestUtil
 
 
                 det.p = new double[4][];
-                for (int i = 0; i < 4; i++)
-                    det.p[i] = CameraMath.project(cal, LinAlg.xyzrpyToMatrix(mExtrinsics), world_corners[i]);
-
+                for (int i = 0; i < 4; i++) {
+                    det.p[i] = CameraMath.project(cal, verifier, LinAlg.xyzrpyToMatrix(mExtrinsics), world_corners[i]);
+                    if (det.p[i] == null)
+                        continue outer;
+                }
                 detections.add(det);
             }
         }
