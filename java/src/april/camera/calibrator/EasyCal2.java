@@ -7,6 +7,7 @@ import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.awt.image.*;
 import java.util.*;
+import java.awt.event.*;
 
 import javax.swing.*;
 
@@ -129,6 +130,11 @@ public class EasyCal2
         vl = new VisLayer("EasyCal2", vw);
         vc = new VisCanvas(vl);
 
+        VisConsole vcon = new VisConsole(vw,vl,vc);
+        VisHandler vlis = new VisHandler();
+        vcon.addListener(vlis);
+        vl.addEventHandler(vlis);
+
         jf = new JFrame("EasyCal2");
         jf.setLayout(new BorderLayout());
         jf.add(vc, BorderLayout.CENTER);
@@ -171,6 +177,7 @@ public class EasyCal2
             jf2.setSize(752, 480);
             jf2.setLocation(1200,0);
             jf2.setVisible(true);
+            jf2.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         }
 
         calibrator = new CameraCalibrator(Arrays.asList(initializer), tf, tagSpacingMeters, vl2, vl2 != null);
@@ -180,6 +187,60 @@ public class EasyCal2
         ////////////////////////////////////////
         new AcquisitionThread().start();
         new ProcessingThread().start();
+    }
+
+
+    class VisHandler extends VisEventAdapter implements VisConsole.Listener
+    {
+        /** Return true if the command was valid. **/
+        public boolean consoleCommand(VisConsole vc, PrintStream out, String command)
+        {
+            String toks[] = command.split("\\s+");
+            if (toks.length == 1 && toks[0].equals("print-calibration")) {
+                calibrator.printCalibrationBlock();
+                return true;
+            }
+
+            if (toks.length == 2 && toks[0].equals("save-calibration")) {
+                calibrator.saveCalibration(toks[1]);
+                return true;
+            }
+
+            if (toks.length == 2 && toks[0].equals("save-calibration-images")) {
+                calibrator.saveCalibrationAndImages(toks[1]);
+                return true;
+            }
+
+            return false;
+        }
+
+        /** Return commands that start with prefix. (You can return
+         * non-matching completions; VisConsole will filter them
+         * out.) You may return null. **/
+        public ArrayList<String> consoleCompletions(VisConsole vc, String prefix)
+        {
+            return new ArrayList(Arrays.asList("print-calibration", "save-calibration /tmp/cameraCalibration", "save-calibration-images /tmp/cameraCalibration"));
+        }
+
+
+        public boolean keyPressed(VisCanvas vc, VisLayer vl, VisCanvas.RenderInfo rinfo, KeyEvent e)
+        {
+            char c = e.getKeyChar();
+            int code = e.getKeyCode();
+
+            int mods = e.getModifiersEx();
+            boolean shift = (mods&KeyEvent.SHIFT_DOWN_MASK) > 0;
+            boolean ctrl = (mods&KeyEvent.CTRL_DOWN_MASK) > 0;
+            boolean alt = (mods&KeyEvent.ALT_DOWN_MASK) > 0;
+
+            if (code == KeyEvent.VK_SPACE) {
+                // Manual Capture
+                captureNext = true;
+                return true;
+            }
+
+            return false;
+        }
     }
 
     class AcquisitionThread extends Thread
@@ -919,7 +980,7 @@ public class EasyCal2
 
         opts.addBoolean('h',"help",false,"See this help screen");
         opts.addString('u',"url","","Camera URL");
-        opts.addString('c',"class","april.camera.models.CaltechInitializer","Calibration model initializer class name");
+        opts.addString('c',"class","april.camera.models.Radial6thOrderCaltechInitializer","Calibration model initializer class name");
         opts.addDouble('m',"spacing",0.0254,"Spacing between tags (meters)");
         opts.addBoolean('\0',"debug-gui",false,"Display additional debugging information");
 

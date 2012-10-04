@@ -1301,7 +1301,7 @@ public class CameraCalibrator
 
     public synchronized void saveDetections()
     {
-        saveDetections("/tmp/CameraCalibration");
+        saveDetections("/tmp/cameraCalibration");
     }
 
     public synchronized void saveDetections(String basepath)
