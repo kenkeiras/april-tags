@@ -562,8 +562,8 @@ public class EasyCal2
 
     private double[] getObsMosaicCenter()
     {
-        return LinAlg.scale(LinAlg.add(tm.getPositionMeters(minRowUsed,minColUsed),
-                                       tm.getPositionMeters(maxRowUsed,maxColUsed)),
+        return LinAlg.scale(LinAlg.add(tm.getPositionMeters(minRow,minCol),
+                                       tm.getPositionMeters(maxRow,maxCol)),
                             0.5);
     }
 
@@ -651,8 +651,8 @@ public class EasyCal2
     private ArrayList<TagDetection> makeDetectionsFromExt(DistortionFunctionVerifier verifier,
                                                           Calibration cal, double mExtrinsics[])
     {
-        return SuggestUtil.makeDetectionsFromExt(cal, verifier, mExtrinsics, tm.getID(minColUsed, minRowUsed),
-                                                 tm.getID(maxColUsed, maxRowUsed),
+        return SuggestUtil.makeDetectionsFromExt(cal, verifier, mExtrinsics, tm.getID(minCol, minRow),
+                                                 tm.getID(maxCol, maxRow),
                                                  tm);
     }
 
