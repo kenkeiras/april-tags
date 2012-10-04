@@ -26,60 +26,12 @@ public class MaxGrownInscribedRectifiedView implements View
 
     private void computeMaxGrownInscribedRectifiedRectangle(View view)
     {
-        int x_dp, y_dp;
-
         K = view.copyIntrinsics();
 
         ////////////////////////////////////////////////////////////////////////////////
         // undistort border
 
-        DistortionFunctionVerifier verifier = new DistortionFunctionVerifier(view);
-
-        ArrayList<double[]> border = new ArrayList<double[]>();
-
-        // TL -> TR
-        y_dp = 0;
-        for (x_dp = 0; x_dp < view.getWidth(); x_dp++)
-        {
-            double xy_dp[] = new double[] { x_dp, y_dp };
-            xy_dp = verifier.clampPixels(xy_dp);
-            double xy_rn[] = view.pixelsToNorm(xy_dp);
-            double xy_rp[] = CameraMath.pixelTransform(K, xy_rn);
-            border.add(xy_rp);
-        }
-
-        // TR -> BR
-        x_dp = view.getWidth()-1;
-        for (y_dp = 0; y_dp < view.getHeight(); y_dp++)
-        {
-            double xy_dp[] = new double[] { x_dp, y_dp };
-            xy_dp = verifier.clampPixels(xy_dp);
-            double xy_rn[] = view.pixelsToNorm(xy_dp);
-            double xy_rp[] = CameraMath.pixelTransform(K, xy_rn);
-            border.add(xy_rp);
-        }
-
-        // BR -> BL
-        y_dp = view.getHeight()-1;
-        for (x_dp = view.getWidth()-1; x_dp >= 0; x_dp--)
-        {
-            double xy_dp[] = new double[] { x_dp, y_dp };
-            xy_dp = verifier.clampPixels(xy_dp);
-            double xy_rn[] = view.pixelsToNorm(xy_dp);
-            double xy_rp[] = CameraMath.pixelTransform(K, xy_rn);
-            border.add(xy_rp);
-        }
-
-        // BL -> TL
-        x_dp = 0;
-        for (y_dp = view.getHeight()-1; y_dp >= 0; y_dp--)
-        {
-            double xy_dp[] = new double[] { x_dp, y_dp };
-            xy_dp = verifier.clampPixels(xy_dp);
-            double xy_rn[] = view.pixelsToNorm(xy_dp);
-            double xy_rp[] = CameraMath.pixelTransform(K, xy_rn);
-            border.add(xy_rp);
-        }
+        ArrayList<double[]> border = computeRectifiedBorder(view);
 
         ////////////////////////////////////////////////////////////////////////////////
         // grow inscribed rectangle
@@ -142,6 +94,63 @@ public class MaxGrownInscribedRectifiedView implements View
 
         width   = (int) Math.floor(Rr - Rl + 1);
         height  = (int) Math.floor(Rt - Rb + 1);
+    }
+
+    public static ArrayList<double[]> computeRectifiedBorder(View view)
+    {
+        int x_dp, y_dp;
+
+        double K[][] = view.copyIntrinsics();
+
+        DistortionFunctionVerifier verifier = new DistortionFunctionVerifier(view);
+
+        ArrayList<double[]> border = new ArrayList<double[]>();
+
+        // TL -> TR
+        y_dp = 0;
+        for (x_dp = 0; x_dp < view.getWidth(); x_dp++)
+        {
+            double xy_dp[] = new double[] { x_dp, y_dp };
+            xy_dp = verifier.clampPixels(xy_dp);
+            double xy_rn[] = view.pixelsToNorm(xy_dp);
+            double xy_rp[] = CameraMath.pixelTransform(K, xy_rn);
+            border.add(xy_rp);
+        }
+
+        // TR -> BR
+        x_dp = view.getWidth()-1;
+        for (y_dp = 0; y_dp < view.getHeight(); y_dp++)
+        {
+            double xy_dp[] = new double[] { x_dp, y_dp };
+            xy_dp = verifier.clampPixels(xy_dp);
+            double xy_rn[] = view.pixelsToNorm(xy_dp);
+            double xy_rp[] = CameraMath.pixelTransform(K, xy_rn);
+            border.add(xy_rp);
+        }
+
+        // BR -> BL
+        y_dp = view.getHeight()-1;
+        for (x_dp = view.getWidth()-1; x_dp >= 0; x_dp--)
+        {
+            double xy_dp[] = new double[] { x_dp, y_dp };
+            xy_dp = verifier.clampPixels(xy_dp);
+            double xy_rn[] = view.pixelsToNorm(xy_dp);
+            double xy_rp[] = CameraMath.pixelTransform(K, xy_rn);
+            border.add(xy_rp);
+        }
+
+        // BL -> TL
+        x_dp = 0;
+        for (y_dp = view.getHeight()-1; y_dp >= 0; y_dp--)
+        {
+            double xy_dp[] = new double[] { x_dp, y_dp };
+            xy_dp = verifier.clampPixels(xy_dp);
+            double xy_rn[] = view.pixelsToNorm(xy_dp);
+            double xy_rp[] = CameraMath.pixelTransform(K, xy_rn);
+            border.add(xy_rp);
+        }
+
+        return border;
     }
 
     private boolean acceptMove(ArrayList<double[]> border, double xmin, double xmax, double ymin, double ymax)

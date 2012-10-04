@@ -26,7 +26,6 @@ import april.util.*;
  */
 public class DistortionFunctionVerifier
 {
-    public static final int MAX_SEARCH_RADIUS = 10000;
     private boolean warned = false;
 
     double maxValidNormalizedRadius;
@@ -52,6 +51,7 @@ public class DistortionFunctionVerifier
         int height = view.getHeight();
 
         double maxObservedPixelRadius = getMaxObservedPixelRadius(cc, width, height);
+        int MAX_SEARCH_RADIUS = (int) (maxObservedPixelRadius*10);
 
         // compute the various representations for the center pixel
         center_rp = new double[] { cc[0], cc[1] };
@@ -63,6 +63,11 @@ public class DistortionFunctionVerifier
         // until either the distortion function is non-monotonic or we're outside
         // of the observed distorted image
         double xy_rp[] = new double[] { center_rp[0], center_rp[1] };
+
+        double normBuffer[] = new double[10];
+        double pixelBuffer[] = new double[10];
+        int iteration = 0;
+        boolean functionWasNonMonotonic = false;
         while (true)
         {
             // assuming the distortion is primarily radial, we only increase x
@@ -77,6 +82,7 @@ public class DistortionFunctionVerifier
             // if the distorted radius "shrinks", the distortion function
             // is no longer monotonic and is now invalid.
             if (pixelsRadius < lastPixelRadius) {
+                functionWasNonMonotonic = true;
                 break;
             }
 
@@ -84,6 +90,10 @@ public class DistortionFunctionVerifier
             // radius, so update "rmax"
             this.maxValidNormalizedRadius = normalizedRadius;
             this.maxValidPixelRadius = pixelsRadius;
+
+            normBuffer[iteration % normBuffer.length]   = normalizedRadius;
+            pixelBuffer[iteration % pixelBuffer.length] = pixelsRadius;
+            iteration++;
 
             lastPixelRadius = pixelsRadius;
 
@@ -98,6 +108,13 @@ public class DistortionFunctionVerifier
                                   MAX_SEARCH_RADIUS);
                 break;
             }
+        }
+
+        if (functionWasNonMonotonic) {
+            // set the max radius a few pixels in from what was found numerically
+            int desiredIteration = (iteration-1 - 5 + normBuffer.length) % normBuffer.length;
+            this.maxValidNormalizedRadius = normBuffer[desiredIteration];
+            this.maxValidPixelRadius      = pixelBuffer[desiredIteration];
         }
 
         //System.out.printf("Maximum normalized radius is %12.6f\n", maxValidNormalizedRadius);

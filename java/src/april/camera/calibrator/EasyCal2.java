@@ -28,7 +28,6 @@ public class EasyCal2
     VisWorld        vw;
     VisLayer        vl;
     VisCanvas       vc;
-    VisWorld.Buffer vb;
 
     // camera
     String          url;
@@ -53,7 +52,7 @@ public class EasyCal2
     List<ScoredImage> candidateImages;
     boolean waitingForBest = false;
     long startedWaiting = 0;
-    double waitTime = 5.0; // seconds
+    double waitTime = 3.5; // seconds
     Integer minRow, minCol, maxRow, maxCol;
     int minRowUsed = -1, minColUsed = -1, maxRowUsed = -1, maxColUsed = -1;
 
@@ -115,6 +114,7 @@ public class EasyCal2
         IntrinsicsEstimator.verbose = false;
         april.camera.models.SimpleKannalaBrandtInitializer.verbose = false;
         april.camera.models.SimpleCaltechInitializer.verbose = false;
+        april.camera.models.RadialCaltechInitializer.verbose = false;
         april.camera.models.KannalaBrandtInitializer.verbose = false;
         april.camera.models.DistortionFreeInitializer.verbose = false;
         april.camera.models.CaltechInitializer.verbose = false;
@@ -128,7 +128,7 @@ public class EasyCal2
         jf = new JFrame("EasyCal2");
         jf.setLayout(new BorderLayout());
         jf.add(vc, BorderLayout.CENTER);
-        jf.setSize(1000, 800);
+        jf.setSize(1200, 600);
         //GraphicsDevice device = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
         //device.setFullScreenWindow(jf);
         jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -200,10 +200,10 @@ public class EasyCal2
                 FrameData frmd = imageQueue.get();
 
                 BufferedImage im = ImageConvert.convertToImage(frmd);
-                Tic tic = new Tic();
+                //Tic tic = new Tic();
                 List<TagDetection> detections = td.process(im, new double[] {im.getWidth()/2.0, im.getHeight()/2.0});
-                double dt = tic.toc();
-                System.out.printf("\rDetection time: %8.3f seconds", dt);
+                //double dt = tic.toc();
+                //System.out.printf("\rDetection time: %8.3f seconds", dt);
 
                 if (imwidth == null || imheight == null) {
                     imwidth = im.getWidth();
@@ -259,6 +259,8 @@ public class EasyCal2
 
         void draw(BufferedImage im, List<TagDetection> detections)
         {
+            VisWorld.Buffer vb;
+
             updateLayers();
 
             ////////////////////////////////////////
@@ -339,6 +341,8 @@ public class EasyCal2
 
         void score(BufferedImage im, List<TagDetection> detections)
         {
+            VisWorld.Buffer vb;
+
             // if we haven't detected any tags yet...
             if (minRow == null || maxRow == null || minCol == null || maxCol == null) {
                 vb = vw.getBuffer("Suggestion HUD");
@@ -362,15 +366,9 @@ public class EasyCal2
                                                                     "<<monospaced-12-bold,white>>"+
                                                                     "Please align target with synthetic image"))));
 
-            // clear buffers if we don't have any detections to plot
-            if (detections.size() == 0) {
-                vw.getBuffer("Suggestion").swap();
-                vw.getBuffer("Matches").swap();
-                vw.getBuffer("Suggestion Overlay").swap();
-                vw.getBuffer("Mosaic border").swap();
-
+            // nothing more to do without detections
+            if (detections.size() == 0)
                 return;
-            }
 
             // find matches between observed and suggested
             double totaldist = 0;
@@ -463,12 +461,7 @@ public class EasyCal2
 
                     ////////////////////////////////////////
                     // "flash"
-                    vw.getBuffer("Suggestion").swap();
-                    vw.getBuffer("Suggestion Overlay").swap();
-                    vw.getBuffer("Matches").swap();
                     vw.getBuffer("Suggestion HUD").swap();
-                    vw.getBuffer("Mosaic border").swap();
-
                     new FlashThread().start();
 
                     ////////////////////////////////////////
@@ -483,12 +476,53 @@ public class EasyCal2
                     // make a new suggestion
                     suggestionNumber++;
                     generateNextSuggestion();
+
+                    updateRectifiedBorder();
                 }
             }
             else {
                 vw.getBuffer("Suggestion HUD").swap();
             }
         }
+    }
+
+    private void updateRectifiedBorder()
+    {
+        VisWorld.Buffer vb;
+
+        vb = vw.getBuffer("Rectified outline");
+        vb.setDrawOrder(1000);
+
+        ParameterizableCalibration cal = null;
+        double params[] = null;
+        if (calibrator != null) params = calibrator.getCalibrationParameters(0);
+        if (params != null)     cal    = initializer.initializeWithParameters(imwidth, imheight, params);
+
+        if (cal != null) {
+            ArrayList<double[]> border = MaxGrownInscribedRectifiedView.computeRectifiedBorder(cal);
+
+            double minx = border.get(0)[0];
+            double miny = border.get(0)[1];
+            double maxx = minx, maxy = miny;
+            for (double xy[] : border) {
+                minx = Math.min(minx, xy[0]);
+                maxx = Math.max(maxx, xy[0]);
+                miny = Math.min(miny, xy[1]);
+                maxy = Math.max(maxy, xy[1]);
+            }
+
+            double h = vc.getHeight()*0.25;
+            double scale = h / (maxy - miny);
+
+            vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.TOP_LEFT,
+                                        new VisChain(LinAlg.scale(scale, -scale, 1),
+                                                     LinAlg.translate(-minx, -miny, 0),
+                                                     new VzLines(new VisVertexData(border),
+                                                                 VzLines.LINE_LOOP,
+                                                                 new VzLines.Style(Color.white, 2)))));
+        }
+
+        vb.swap();
     }
 
     private double[] findMatchingPoint(int id)
@@ -658,6 +692,9 @@ public class EasyCal2
                 lowestScore = score;
             }
         }
+
+        if (lowestScore == 1.0e-6)
+            return null;
 
         return bestImg;
     }
@@ -867,16 +904,16 @@ public class EasyCal2
             newSuggestion = getBestSuggestion(suggestDictionary, fs);
         }
 
-        if (newSuggestion != null) {
-            //newSuggestion.im = simgen.generateImageNotCentered(cal, newSuggestion.xyzrpy, false).distorted;
+        if (newSuggestion != null)
             bestSuggestion = newSuggestion;
-        }
     }
 
     private class FlashThread extends Thread
     {
         public void run()
         {
+            VisWorld.Buffer vb;
+
             vb = vw.getBuffer("Flash");
             vb.setDrawOrder(100);
 
