@@ -117,6 +117,7 @@ public class EasyCal2
         this.initializer = initializer;
 
         // silence!
+        ImageConvert.verbose = false;
         CameraCalibrator.verbose = false;
         IntrinsicsEstimator.verbose = false;
         april.camera.models.SimpleKannalaBrandtInitializer.verbose = false;
@@ -376,14 +377,17 @@ public class EasyCal2
             // camera image
             vb = vw.getBuffer("Camera");
             vb.setDrawOrder(0);
-            vb.addBack(new VisLighting(false,
-                                       new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
-                                                        new VisChain(PixelsToVis,
-                                                                     new VzImage(new VisTexture(im,
-                                                                                                VisTexture.NO_MAG_FILTER |
-                                                                                                VisTexture.NO_MIN_FILTER |
-                                                                                                VisTexture.NO_REPEAT),
-                                                                                 0)))));
+            {
+                BufferedImage gray = ImageConvert.convertImage(im, BufferedImage.TYPE_BYTE_GRAY);
+                vb.addBack(new VisLighting(false,
+                                           new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
+                                                            new VisChain(PixelsToVis,
+                                                                         new VzImage(new VisTexture(gray,
+                                                                                                    VisTexture.NO_MAG_FILTER |
+                                                                                                    VisTexture.NO_MIN_FILTER |
+                                                                                                    VisTexture.NO_REPEAT),
+                                                                                     0)))));
+            }
             vb.swap();
 
             vb = vw.getBuffer("HUD");
@@ -393,7 +397,7 @@ public class EasyCal2
                                                          new VzText(VzText.ANCHOR.TOP,
                                                                     "<<dropshadow=#FF000000,"+
                                                                     "monospaced-12-bold,white>>"+
-                                                                    "Images are mirrored for display purposes"))));
+                                                                    "Images are shown in grayscale and mirrored for display purposes"))));
             vb.swap();
 
             vb = vw.getBuffer("Shade");
