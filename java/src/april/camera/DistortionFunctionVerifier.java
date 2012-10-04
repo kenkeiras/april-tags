@@ -28,6 +28,11 @@ public class DistortionFunctionVerifier
 {
     private boolean warned = false;
 
+    // How much further should we go beyond the furthest corner when looking
+    // for the max radius? a value of 0.00 goes to the furthest corner exactly.
+    // A value of 0.10 goes 10% beyond the corner radius
+    public double radiusBuffer = 0.10;
+
     double maxValidNormalizedRadius;
     double maxValidPixelRadius;
 
@@ -98,8 +103,10 @@ public class DistortionFunctionVerifier
             lastPixelRadius = pixelsRadius;
 
             // if the distorted radius has now stepped outside of the distorted
-            // image boundary, it's time to quit
-            if (pixelsRadius > maxObservedPixelRadius) {
+            // image boundary, it's time to quit. we add a big off buffer
+            // because it is useful to know if something almost projects into
+            // the image (sometimes we detect tags with one corner just outside)
+            if (pixelsRadius > (1.0 + this.radiusBuffer) * maxObservedPixelRadius) {
                 break;
             }
 

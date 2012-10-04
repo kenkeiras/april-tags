@@ -69,12 +69,13 @@ public class EasyCal2
     List<List<BufferedImage>> imagesSet = new ArrayList<List<BufferedImage>>();
     List<List<List<TagDetection>>> detsSet = new ArrayList<List<List<TagDetection>>>();
 
-    double bestScore, currentScore;
+    double bestScore = Double.POSITIVE_INFINITY;
+    double currentScore = Double.POSITIVE_INFINITY;
     BufferedImage bestInitImage;
     List<TagDetection> bestInitDetections;
     boolean bestInitUpdated = false;
 
-    List<Color> colorList;
+    List<Color> colorList = new ArrayList<Color>();
 
     static class SuggestedImage
     {
@@ -145,9 +146,14 @@ public class EasyCal2
         jf.setVisible(true);
 
         // colors
-        colorList = Palette.listAll();
-        colorList.remove(0);
+        while (colorList.size() < this.tf.codes.length)
+        {
+            List<Color> colors = Palette.listAll();
+            colors.remove(0);
+            colorList.addAll(colors);
+        }
         Collections.shuffle(colorList, new Random(283819));
+
 
 
 
@@ -201,13 +207,21 @@ public class EasyCal2
                 return true;
             }
 
-            if (toks.length == 2 && toks[0].equals("save-calibration")) {
-                calibrator.saveCalibration(toks[1]);
+            if (toks[0].equals("save-calibration")) {
+                if (toks.length == 2)
+                    calibrator.saveCalibration(toks[1]);
+                else
+                    calibrator.saveCalibration();
+
                 return true;
             }
 
-            if (toks.length == 2 && toks[0].equals("save-calibration-images")) {
-                calibrator.saveCalibrationAndImages(toks[1]);
+            if (toks[0].equals("save-calibration-images")) {
+                if (toks.length == 2)
+                    calibrator.saveCalibrationAndImages(toks[1]);
+                else
+                    calibrator.saveCalibrationAndImages();
+
                 return true;
             }
 
@@ -315,6 +329,10 @@ public class EasyCal2
         {
             bestInitUpdated = false;
 
+            // we don't need a standard deviation lower than 20
+            if (bestScore < 20)
+                return;
+
             if (imagesSet.size() != 0 || detections.size() < 8) // XXX
                 return;
 
@@ -322,9 +340,14 @@ public class EasyCal2
                                                                                    imwidth, imheight);
 
             double score = scorer.scoreFrame(detections);
+
+            // we can sometimes get unlucky with the random samples from the InitializationVarianceScorer
+            if (score <= 1.0e-6)
+                return;
+
             EasyCal2.this.currentScore = score;
 
-            if (bestInitImage == null || (score < 0.9*bestScore && bestScore > 20)) {
+            if (bestInitImage == null || (score < 0.75*bestScore)) {
                 bestScore = score;
                 bestInitImage = im;
                 bestInitDetections = detections;
@@ -394,7 +417,7 @@ public class EasyCal2
                 VisChain chain = new VisChain();
                 for (TagDetection d : bestSuggestion.detections) {
 
-                    Color color = colorList.get(d.id % colorList.size());
+                    Color color = colorList.get(d.id);
                     chain.add(new VzLines(new VisVertexData(d.p),
                                           VzLines.LINE_LOOP,
                                           new VzLines.Style(color, 2)));
@@ -407,7 +430,7 @@ public class EasyCal2
             vb = vw.getBuffer("Detections");
             vb.setDrawOrder(10);
             for (TagDetection d : detections) {
-                Color color = colorList.get(d.id % colorList.size());
+                Color color = colorList.get(d.id);
 
                 ArrayList<double[]> quad = new ArrayList<double[]>();
                 quad.add(d.interpolate(-1,-1));
@@ -635,8 +658,10 @@ public class EasyCal2
 
         // Compute single depth for the dictionary XXX
         double K[][] = cal.copyIntrinsics();
-        double desiredDepths[] = {(tagSpacingMeters*K[0][0]) / (width/6) ,
-                                  (tagSpacingMeters*K[0][0]) / (width/9) };
+        //double desiredDepths[] = { (K[0][0] / (width*1.0)) * (7*tagSpacingMeters),
+        //                           (K[0][0] / (width*0.6)) * (7*tagSpacingMeters) };
+        double desiredDepths[] = { (K[1][1] / (height*1.0)) * (5*tagSpacingMeters),
+                                   (K[1][1] / (height*0.6)) * (5*tagSpacingMeters) };
 
         // Place the center of the target:
         double centerXy[] = getObsMosaicCenter();
@@ -730,9 +755,6 @@ public class EasyCal2
                 lowestScore = score;
             }
         }
-
-        if (lowestScore == 1.0e-6) //JS: Why?
-            return null;
 
         return bestImg;
     }
