@@ -21,11 +21,13 @@ public class ExampleRectifier
     {
         ////////////////////////////////////////
         // Get output image path
-        String toks[] = imagepath.split("\\.");
-        String newpath = toks[0];
-        for (int i=1; i+1 < toks.length; i++)
-            newpath = String.format("%s.%s", newpath, toks[i]);
-        newpath = String.format("%s.rectified.%s", newpath, toks[toks.length-1]);
+        String classtoks[] = rectifierclass.split("\\.");
+        String pathtoks[] = imagepath.split("\\.");
+        String newpath = pathtoks[0];
+        for (int i=1; i+1 < pathtoks.length; i++)
+            newpath = String.format("%s.%s", newpath, pathtoks[i]);
+        newpath = String.format("%s.%s.%s",
+                                newpath, classtoks[classtoks.length-1], pathtoks[pathtoks.length-1]);
         System.out.printf("Output image path: '%s'\n", newpath);
 
         ////////////////////////////////////////
