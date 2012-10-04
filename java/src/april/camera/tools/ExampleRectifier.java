@@ -17,7 +17,7 @@ public class ExampleRectifier
     View output;
     Rasterizer      rasterizer;
 
-    public ExampleRectifier(Config config, String imagepath, String rectifierclass) throws IOException
+    public ExampleRectifier(Config config, String imagepath, String rectifierclass, int maxdimension) throws IOException
     {
         ////////////////////////////////////////
         // Get output image path
@@ -62,7 +62,12 @@ public class ExampleRectifier
         assert(robj != null);
         assert(robj instanceof View);
         output = (View) robj;
-        //output = new ScaledView(1.0/5, output);
+
+        int maxOutputDimension = Math.max(output.getWidth(), output.getHeight());
+        if (maxdimension > 0 && maxOutputDimension > maxdimension) {
+            output = new ScaledView(((double) maxdimension) / maxOutputDimension,
+                                    output);
+        }
 
         ////////////////////////////////////////
         // Make rasterizer
@@ -94,6 +99,7 @@ public class ExampleRectifier
         opts.addString('s',"childstring","aprilCameraCalibration.camera0","CameraSet child name (e.g. aprilCameraCalibration.camera0)");
         opts.addString('r',"rectifier","april.camera.MaxRectifiedView","Rectifier class to use");
         opts.addString('i',"image","","Image path");
+        opts.addInt('m',"maxdimension",-1,"Maximum image dimension after rectifying");
 
         if (!opts.parse(args)) {
             System.out.println("Option error: " + opts.getReason());
@@ -103,6 +109,7 @@ public class ExampleRectifier
         String childstring = opts.getString("childstring");
         String rectifierclass = opts.getString("rectifier");
         String imagepath = opts.getString("image");
+        int maxdim = opts.getInt("maxdimension");
 
         if (opts.getBoolean("help") || configpath.isEmpty() || childstring.isEmpty() || imagepath.isEmpty()) {
             System.out.println("Usage:");
@@ -114,7 +121,7 @@ public class ExampleRectifier
             Config config = new ConfigFile(configpath);
             Config child = config.getChild(childstring);
 
-            new ExampleRectifier(child, imagepath, rectifierclass);
+            new ExampleRectifier(child, imagepath, rectifierclass, maxdim);
 
         } catch (IOException ex) {
             System.err.println("Exception: " + ex);
