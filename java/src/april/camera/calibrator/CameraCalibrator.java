@@ -891,7 +891,7 @@ public class CameraCalibrator
                 maxError = Math.max(maxError, e);
             }
 
-            List<double[]> errorCounts = getReprojectionErrorHistogram(errors);
+            List<double[]> errorCounts = getHistogram(errors);
 
             double peakError = 0, peakCount = 0;
             int peakIndex = 0;
@@ -1192,12 +1192,12 @@ public class CameraCalibrator
 
     public synchronized List<double[]> getReprojectionErrorHistogram()
     {
-        return getReprojectionErrorHistogram(getReprojectionErrors());
+        return getHistogram(getReprojectionErrors());
     }
 
-    public synchronized List<double[]> getReprojectionErrorHistogram(List<Double> errors)
+    public static ArrayList<double[]> getHistogram(List<Double> errors)
     {
-        if (cameras == null || errors == null)
+        if (errors == null)
             return null;
 
         double min = errors.get(0);
@@ -1218,7 +1218,7 @@ public class CameraCalibrator
             counts[i]++;
         }
 
-        List<double[]> result = new ArrayList<double[]>();
+        ArrayList<double[]> result = new ArrayList<double[]>();
 
         for (int i=0; i < counts.length; i++)
             result.add(new double[] { min + (i+0.5)*derr, counts[i] });
@@ -1380,7 +1380,7 @@ public class CameraCalibrator
         }
 
         List<Double> errors = getReprojectionErrors();
-        List<double[]> errorcounts = getReprojectionErrorHistogram(errors);
+        List<double[]> errorcounts = getHistogram(errors);
 
         try {
             String filename = String.format("%s/reprojectionErrorHistogram.csv", basepath);
