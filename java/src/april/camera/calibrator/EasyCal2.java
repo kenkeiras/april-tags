@@ -29,6 +29,10 @@ public class EasyCal2
     VisLayer        vl;
     VisCanvas       vc;
 
+    // debug gui
+    VisLayer vl2 = null;
+
+
     // camera
     String          url;
     ImageSource     isrc;
@@ -101,7 +105,7 @@ public class EasyCal2
         }
     }
 
-    public EasyCal2(CalibrationInitializer initializer, String url, double tagSpacingMeters)
+    public EasyCal2(CalibrationInitializer initializer, String url, double tagSpacingMeters, boolean debugGUI)
     {
         this.tf = new Tag36h11();
         this.tm = new TagMosaic(tf, tagSpacingMeters);
@@ -139,6 +143,8 @@ public class EasyCal2
         colorList.remove(0);
         Collections.shuffle(colorList, new Random(283819));
 
+
+
         ////////////////////////////////////////
         // Camera setup
         try {
@@ -152,7 +158,24 @@ public class EasyCal2
 
         ////////////////////////////////////////
         // Calibrator setup
-        calibrator = new CameraCalibrator(Arrays.asList(initializer), tf, tagSpacingMeters, null, false);
+
+        if (debugGUI) {
+            System.out.println("Making debug gui");
+            VisWorld vw2 = new VisWorld();
+            vl2 = new VisLayer(vw2);
+            VisCanvas vc2 = new VisCanvas(vl2);
+
+            JFrame jf2 = new JFrame("Debug");
+            jf2.setLayout(new BorderLayout());
+            jf2.add(vc2, BorderLayout.CENTER);
+            jf2.setSize(752, 480);
+            jf2.setLocation(1200,0);
+            jf2.setVisible(true);
+        }
+
+        calibrator = new CameraCalibrator(Arrays.asList(initializer), tf, tagSpacingMeters, vl2, vl2 != null);
+
+
 
         ////////////////////////////////////////
         new AcquisitionThread().start();
@@ -250,7 +273,8 @@ public class EasyCal2
 
                 calibrator = new CameraCalibrator(Arrays.asList(initializer),
                                                   tf, tagSpacingMeters,
-                                                  null, false);
+                                                  vl2, vl2 != null);
+
                 calibrator.addImages(Arrays.asList(im), Arrays.asList(detections));
                 calibrator.draw();
             }
@@ -646,7 +670,7 @@ public class EasyCal2
             }
         }
 
-        if (lowestScore == 1.0e-6)
+        if (lowestScore == 1.0e-6) //JS: Why?
             return null;
 
         return bestImg;
@@ -678,7 +702,7 @@ public class EasyCal2
         if (origSPD == false || origMRE > 1.0)
         { // Try to reinitialize, check MRE, take the better one:
             CameraCalibrator cal = new CameraCalibrator(Arrays.asList(initializer), tf,
-                                                        tagSpacingMeters, null, false);
+                                                        tagSpacingMeters, vl2, vl2 != null);
             cal.addImageSet(imagesSet, detsSet, Collections.<double[]>nCopies(imagesSet.size(),null));
 
             try {
@@ -726,7 +750,7 @@ public class EasyCal2
         // this will get us something reasonable to render to the user
         if (!origSPD && !newSPD) {
             CameraCalibrator cal = new CameraCalibrator(Arrays.asList(initializer), tf,
-                                                        tagSpacingMeters, null, false);
+                                                        tagSpacingMeters, vl2, vl2 != null);
             cal.addImageSet(imagesSet, detsSet, Collections.<double[]>nCopies(imagesSet.size(),null));
             calibrator = cal;
         }
@@ -897,6 +921,7 @@ public class EasyCal2
         opts.addString('u',"url","","Camera URL");
         opts.addString('c',"class","april.camera.models.CaltechInitializer","Calibration model initializer class name");
         opts.addDouble('m',"spacing",0.0254,"Spacing between tags (meters)");
+        opts.addBoolean('\0',"debug-gui",false,"Display additional debugging information");
 
         if (!opts.parse(args)) {
             System.out.println("Option error: "+opts.getReason());
@@ -917,7 +942,7 @@ public class EasyCal2
         assert(obj instanceof CalibrationInitializer);
         CalibrationInitializer initializer = (CalibrationInitializer) obj;
 
-        new EasyCal2(initializer, url, spacing);
+        new EasyCal2(initializer, url, spacing, opts.getBoolean("debug-gui"));
     }
 }
 
