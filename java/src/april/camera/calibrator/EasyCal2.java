@@ -85,6 +85,8 @@ public class EasyCal2
         BufferedImage im;
         double xyzrpy[];
         double xyzrpy_cen[];
+
+        double score;
     }
 
     private class ScoredImage implements Comparable<ScoredImage>
@@ -717,24 +719,22 @@ public class EasyCal2
                                                  tm);
     }
 
-    static SuggestedImage getBestSuggestion(List<SuggestedImage> suggestions, FrameScorer fs)
+    static ArrayList<SuggestedImage> scoreSuggestions(List<SuggestedImage> suggestions, FrameScorer fs)
     {
-        SuggestedImage bestImg = null;
-        double lowestScore = Double.MAX_VALUE;
+        ArrayList<SuggestedImage> outputs = new ArrayList(suggestions);
 
-        for (SuggestedImage si : suggestions) {
-            double score = fs.scoreFrame(si.detections);
+        for (SuggestedImage si : outputs)
+            si.score = fs.scoreFrame(si.detections);
 
-            if (score < lowestScore) {
-                bestImg = si;
-                lowestScore = score;
-            }
-        }
+        Collections.sort(outputs, new Comparator<SuggestedImage>()
+                         {
+                             public int compare(SuggestedImage s1, SuggestedImage s2)
+                             {
+                                 return Double.compare(s1.score, s2.score);
+                             }
+                         });
 
-        if (lowestScore == 1.0e-6) //JS: Why?
-            return null;
-
-        return bestImg;
+        return outputs;
     }
 
     private void addImage(BufferedImage im, List<TagDetection> detections)
@@ -918,32 +918,27 @@ public class EasyCal2
         suggestDictionary = generateSuggestionsDict(cal);
         System.out.printf("Made new dictionary with %d valid poses\n",suggestDictionary.size());
 
-        // Write the dictionary to file
-        if (false) {
-            System.out.println("Writing suggestion dictionary to /tmp/dict. Standby...");
-            try  {
-                new File("/tmp/dict").mkdirs();
-                int i = 0;
-                for (SuggestedImage si : suggestDictionary) {
-                    BufferedImage im = simgen.generateImageNotCentered(cal, si.xyzrpy, false).distorted;
-                    ImageIO.write(im, "png", new File(String.format("/tmp/dict/IMG%03d.png", i++)));
-                }
-            } catch(IOException e) {}
-        }
-
         SuggestedImage newSuggestion = null;
 
-        if (suggestionNumber < 3) {
-            FrameScorer fs = new InitializationVarianceScorer(calibrator, imwidth, imheight);
-            newSuggestion = getBestSuggestion(suggestDictionary, fs);
-        }
-        else {
-            FrameScorer fs = new PixErrScorer(calibrator, imwidth, imheight);
-            newSuggestion = getBestSuggestion(suggestDictionary, fs);
+        FrameScorer fs = null;
+        if (suggestionNumber < 3)
+             fs = new InitializationVarianceScorer(calibrator, imwidth, imheight);
+        else
+            fs = new PixErrScorer(calibrator, imwidth, imheight);
+
+
+        ArrayList<SuggestedImage> ranked = scoreSuggestions(suggestDictionary, fs);
+
+
+        // Pick the single best suggestion
+        if (true) {
+
+            if (ranked.size() > 0)
+                bestSuggestion = ranked.get(0);
+            else
+                bestSuggestion = null;
         }
 
-        if (newSuggestion != null)
-            bestSuggestion = newSuggestion;
     }
 
     private class FlashThread extends Thread
