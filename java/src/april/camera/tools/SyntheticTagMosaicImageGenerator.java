@@ -31,7 +31,7 @@ public class SyntheticTagMosaicImageGenerator
     TagMosaic mosaic;
     double tagSizeMeters;
 
-    ArrayList<Integer> tagsToDisplay;
+    public ArrayList<Integer> tagsToDisplay;
     double mosaic_xmin, mosaic_xmax, mosaic_ymin, mosaic_ymax;
 
     double MosaicPixelsToVis[][];

@@ -5,6 +5,9 @@ import java.util.*;
 
 import april.jmat.geom.GLine2D;
 
+// NOTE: This class uses a COLUMN major convention to match the x,y convention for indexing the mosaic.
+//       e.g mosaic.getPositionMeters(col, row)
+
 public class TagMosaic
 {
     List<double[]> tagPositionsMeters = new ArrayList<double[]>();
@@ -13,8 +16,8 @@ public class TagMosaic
     // x=column, y=row
     List<int[]> tagColumnAndRow = new ArrayList<int[]>();
 
-    TagFamily tf;
-    double tagSpacingMeters;
+    public TagFamily tf;
+    public double tagSpacingMeters;
 
     int mosaicWidth, mosaicHeight;
     int tagWidthPixels, tagHeightPixels;

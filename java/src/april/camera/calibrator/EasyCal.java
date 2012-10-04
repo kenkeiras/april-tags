@@ -701,8 +701,8 @@ public class EasyCal implements ParameterListener
 
     private double[] getObsMosaicCenter()
     {
-        return LinAlg.scale(LinAlg.add(mosaic.getPositionMeters(minRowUsed,minColUsed),
-                                       mosaic.getPositionMeters(maxRowUsed,maxColUsed)),
+        return LinAlg.scale(LinAlg.add(mosaic.getPositionMeters(minColUsed, minRowUsed),
+                                       mosaic.getPositionMeters(maxColUsed, maxRowUsed)),
                             0.5);
     }
 
@@ -790,56 +790,9 @@ public class EasyCal implements ParameterListener
     private ArrayList<TagDetection> makeDetectionsFromExt(DistortionFunctionVerifier verifier,
                                                           Calibration cal, double mExtrinsics[])
     {
-        ArrayList<TagDetection> detections = new ArrayList();
-        for (int col = minColUsed; col <= maxColUsed; col++) {
-            outer:
-            for (int row = minRowUsed; row <= maxRowUsed; row++) {
-
-                TagDetection td = new TagDetection();
-                td.id = row*mosaic.getMosaicWidth() + col;
-
-                if (td.id >= tf.codes.length)
-                    continue;
-
-                double world[] = mosaic.getPositionMeters(td.id);
-                td.cxy = CameraMath.project(cal, verifier, LinAlg.xyzrpyToMatrix(mExtrinsics), world);
-
-                // CameraMath.project() with a verifier will return null if the
-                // point is outside of the valid range
-                if (td.cxy == null)
-                    continue;
-
-                // the point should also project into the distorted image
-                if (td.cxy[0] < 0 || td.cxy[0] >= imwidth ||
-                    td.cxy[1] < 0 || td.cxy[1] >= imheight)
-                    continue;
-
-                // project the boundaries to make det.p
-                double metersPerPixel = tagSpacingMeters / (tf.whiteBorder*2 + tf.blackBorder*2 + tf.d);
-                double cOff = metersPerPixel * (tf.blackBorder + tf.d / 2.0);
-
-                // Tag corners are listed bottom-left, bottom-right, top-right, top-left
-                // Note: That the +x is to the right, +y is down (img-style coordinates)
-                double world_corners[][] = {{world[0] - cOff, world[1] + cOff},
-                                            {world[0] + cOff, world[1] + cOff},
-                                            {world[0] + cOff, world[1] - cOff},
-                                            {world[0] - cOff, world[1] - cOff}};
-
-
-                td.p = new double[4][];
-                for (int i = 0; i < 4; i++) {
-                    td.p[i] = CameraMath.project(cal, verifier, LinAlg.xyzrpyToMatrix(mExtrinsics), world_corners[i]);
-
-                    // enforce that the whole tag projects correctly
-                    if (td.p[i] == null)
-                        continue outer;
-                }
-
-                detections.add(td);
-            }
-        }
-
-        return detections;
+        return SuggestUtil.makeDetectionsFromExt(cal, verifier, mExtrinsics, mosaic.getID(minColUsed, minRowUsed),
+                                                 mosaic.getID(maxColUsed, maxRowUsed),
+                                                 mosaic);
     }
 
     static SuggestedImage getBestSuggestion(List<SuggestedImage> suggestions, FrameScorer fs)
@@ -1079,8 +1032,12 @@ public class EasyCal implements ParameterListener
         SuggestedImage newSuggestion = null;
 
         if (suggestionNumber < 3) {
-            FrameScorer fs = new InitializationVarianceScorer(calibrator, imwidth, imheight);
-            newSuggestion = getBestSuggestion(suggestDictionary, fs);
+            if (true) {
+                FrameScorer fs = new InitializationVarianceScorer(calibrator, imwidth, imheight);
+                newSuggestion = getBestSuggestion(suggestDictionary, fs);
+            } else {
+                newSuggestion = makeSuggestionCentered(cal,firstExtrinsics[suggestionNumber]);
+            }
         }
         else {
             FrameScorer fs = new PixErrScorer(calibrator, imwidth, imheight);
@@ -1091,6 +1048,21 @@ public class EasyCal implements ParameterListener
             newSuggestion.im = simgen.generateImageNotCentered(cal, newSuggestion.xyzrpy, false).distorted;
             bestSuggestion = newSuggestion;
         }
+
+    }
+
+
+    private SuggestedImage makeSuggestionCentered(Calibration cal, double mExtrinsics_cen[])
+    {
+        DistortionFunctionVerifier verifier = new DistortionFunctionVerifier(cal);
+
+        SuggestedImage si = new SuggestedImage();
+        double cenXY[] = getObsMosaicCenter();
+
+        si.xyzrpy_cen = mExtrinsics_cen;
+        si.xyzrpy = LinAlg.xyzrpyMultiply(si.xyzrpy_cen, LinAlg.xyzrpyInverse(LinAlg.resize(cenXY,6)));
+        si.detections = makeDetectionsFromExt(verifier, cal, si.xyzrpy);
+        return si;
     }
 
     public static void main(String args[])

@@ -7,6 +7,7 @@ import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.awt.image.*;
 import java.util.*;
+import java.awt.event.*;
 
 import javax.swing.*;
 
@@ -28,6 +29,10 @@ public class EasyCal2
     VisWorld        vw;
     VisLayer        vl;
     VisCanvas       vc;
+
+    // debug gui
+    VisLayer vl2 = null;
+
 
     // camera
     String          url;
@@ -101,7 +106,7 @@ public class EasyCal2
         }
     }
 
-    public EasyCal2(CalibrationInitializer initializer, String url, double tagSpacingMeters)
+    public EasyCal2(CalibrationInitializer initializer, String url, double tagSpacingMeters, boolean debugGUI)
     {
         this.tf = new Tag36h11();
         this.tm = new TagMosaic(tf, tagSpacingMeters);
@@ -125,6 +130,11 @@ public class EasyCal2
         vl = new VisLayer("EasyCal2", vw);
         vc = new VisCanvas(vl);
 
+        VisConsole vcon = new VisConsole(vw,vl,vc);
+        VisHandler vlis = new VisHandler();
+        vcon.addListener(vlis);
+        vl.addEventHandler(vlis);
+
         jf = new JFrame("EasyCal2");
         jf.setLayout(new BorderLayout());
         jf.add(vc, BorderLayout.CENTER);
@@ -139,6 +149,8 @@ public class EasyCal2
         colorList.remove(0);
         Collections.shuffle(colorList, new Random(283819));
 
+
+
         ////////////////////////////////////////
         // Camera setup
         try {
@@ -152,11 +164,83 @@ public class EasyCal2
 
         ////////////////////////////////////////
         // Calibrator setup
-        calibrator = new CameraCalibrator(Arrays.asList(initializer), tf, tagSpacingMeters, null, false);
+
+        if (debugGUI) {
+            System.out.println("Making debug gui");
+            VisWorld vw2 = new VisWorld();
+            vl2 = new VisLayer(vw2);
+            VisCanvas vc2 = new VisCanvas(vl2);
+
+            JFrame jf2 = new JFrame("Debug");
+            jf2.setLayout(new BorderLayout());
+            jf2.add(vc2, BorderLayout.CENTER);
+            jf2.setSize(752, 480);
+            jf2.setLocation(1200,0);
+            jf2.setVisible(true);
+            jf2.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        }
+
+        calibrator = new CameraCalibrator(Arrays.asList(initializer), tf, tagSpacingMeters, vl2, vl2 != null);
+
+
 
         ////////////////////////////////////////
         new AcquisitionThread().start();
         new ProcessingThread().start();
+    }
+
+
+    class VisHandler extends VisEventAdapter implements VisConsole.Listener
+    {
+        /** Return true if the command was valid. **/
+        public boolean consoleCommand(VisConsole vc, PrintStream out, String command)
+        {
+            String toks[] = command.split("\\s+");
+            if (toks.length == 1 && toks[0].equals("print-calibration")) {
+                calibrator.printCalibrationBlock();
+                return true;
+            }
+
+            if (toks.length == 2 && toks[0].equals("save-calibration")) {
+                calibrator.saveCalibration(toks[1]);
+                return true;
+            }
+
+            if (toks.length == 2 && toks[0].equals("save-calibration-images")) {
+                calibrator.saveCalibrationAndImages(toks[1]);
+                return true;
+            }
+
+            return false;
+        }
+
+        /** Return commands that start with prefix. (You can return
+         * non-matching completions; VisConsole will filter them
+         * out.) You may return null. **/
+        public ArrayList<String> consoleCompletions(VisConsole vc, String prefix)
+        {
+            return new ArrayList(Arrays.asList("print-calibration", "save-calibration /tmp/cameraCalibration", "save-calibration-images /tmp/cameraCalibration"));
+        }
+
+
+        public boolean keyPressed(VisCanvas vc, VisLayer vl, VisCanvas.RenderInfo rinfo, KeyEvent e)
+        {
+            char c = e.getKeyChar();
+            int code = e.getKeyCode();
+
+            int mods = e.getModifiersEx();
+            boolean shift = (mods&KeyEvent.SHIFT_DOWN_MASK) > 0;
+            boolean ctrl = (mods&KeyEvent.CTRL_DOWN_MASK) > 0;
+            boolean alt = (mods&KeyEvent.ALT_DOWN_MASK) > 0;
+
+            if (code == KeyEvent.VK_SPACE) {
+                // Manual Capture
+                captureNext = true;
+                return true;
+            }
+
+            return false;
+        }
     }
 
     class AcquisitionThread extends Thread
@@ -250,7 +334,8 @@ public class EasyCal2
 
                 calibrator = new CameraCalibrator(Arrays.asList(initializer),
                                                   tf, tagSpacingMeters,
-                                                  null, false);
+                                                  vl2, vl2 != null);
+
                 calibrator.addImages(Arrays.asList(im), Arrays.asList(detections));
                 calibrator.draw();
             }
@@ -538,8 +623,8 @@ public class EasyCal2
 
     private double[] getObsMosaicCenter()
     {
-        return LinAlg.scale(LinAlg.add(tm.getPositionMeters(minRowUsed,minColUsed),
-                                       tm.getPositionMeters(maxRowUsed,maxColUsed)),
+        return LinAlg.scale(LinAlg.add(tm.getPositionMeters(minRow,minCol),
+                                       tm.getPositionMeters(maxRow,maxCol)),
                             0.5);
     }
 
@@ -627,56 +712,9 @@ public class EasyCal2
     private ArrayList<TagDetection> makeDetectionsFromExt(DistortionFunctionVerifier verifier,
                                                           Calibration cal, double mExtrinsics[])
     {
-        ArrayList<TagDetection> detections = new ArrayList();
-        for (int col = minColUsed; col <= maxColUsed; col++) {
-            outer:
-            for (int row = minRowUsed; row <= maxRowUsed; row++) {
-
-                TagDetection td = new TagDetection();
-                td.id = row*tm.getMosaicWidth() + col;
-
-                if (td.id >= tf.codes.length)
-                    continue;
-
-                double world[] = tm.getPositionMeters(td.id);
-                td.cxy = CameraMath.project(cal, verifier, LinAlg.xyzrpyToMatrix(mExtrinsics), world);
-
-                // CameraMath.project() with a verifier will return null if the
-                // point is outside of the valid range
-                if (td.cxy == null)
-                    continue;
-
-                // the point should also project into the distorted image
-                if (td.cxy[0] < 0 || td.cxy[0] >= imwidth ||
-                    td.cxy[1] < 0 || td.cxy[1] >= imheight)
-                    continue;
-
-                // project the boundaries to make det.p
-                double metersPerPixel = tagSpacingMeters / (tf.whiteBorder*2 + tf.blackBorder*2 + tf.d);
-                double cOff = metersPerPixel * (tf.blackBorder + tf.d / 2.0);
-
-                // Tag corners are listed bottom-left, bottom-right, top-right, top-left
-                // Note: That the +x is to the right, +y is down (img-style coordinates)
-                double world_corners[][] = {{world[0] - cOff, world[1] + cOff},
-                                            {world[0] + cOff, world[1] + cOff},
-                                            {world[0] + cOff, world[1] - cOff},
-                                            {world[0] - cOff, world[1] - cOff}};
-
-
-                td.p = new double[4][];
-                for (int i = 0; i < 4; i++) {
-                    td.p[i] = CameraMath.project(cal, verifier, LinAlg.xyzrpyToMatrix(mExtrinsics), world_corners[i]);
-
-                    // enforce that the whole tag projects correctly
-                    if (td.p[i] == null)
-                        continue outer;
-                }
-
-                detections.add(td);
-            }
-        }
-
-        return detections;
+        return SuggestUtil.makeDetectionsFromExt(cal, verifier, mExtrinsics, tm.getID(minCol, minRow),
+                                                 tm.getID(maxCol, maxRow),
+                                                 tm);
     }
 
     static SuggestedImage getBestSuggestion(List<SuggestedImage> suggestions, FrameScorer fs)
@@ -693,7 +731,7 @@ public class EasyCal2
             }
         }
 
-        if (lowestScore == 1.0e-6)
+        if (lowestScore == 1.0e-6) //JS: Why?
             return null;
 
         return bestImg;
@@ -725,7 +763,7 @@ public class EasyCal2
         if (origSPD == false || origMRE > 1.0)
         { // Try to reinitialize, check MRE, take the better one:
             CameraCalibrator cal = new CameraCalibrator(Arrays.asList(initializer), tf,
-                                                        tagSpacingMeters, null, false);
+                                                        tagSpacingMeters, vl2, vl2 != null);
             cal.addImageSet(imagesSet, detsSet, Collections.<double[]>nCopies(imagesSet.size(),null));
 
             try {
@@ -773,7 +811,7 @@ public class EasyCal2
         // this will get us something reasonable to render to the user
         if (!origSPD && !newSPD) {
             CameraCalibrator cal = new CameraCalibrator(Arrays.asList(initializer), tf,
-                                                        tagSpacingMeters, null, false);
+                                                        tagSpacingMeters, vl2, vl2 != null);
             cal.addImageSet(imagesSet, detsSet, Collections.<double[]>nCopies(imagesSet.size(),null));
             calibrator = cal;
         }
@@ -942,8 +980,9 @@ public class EasyCal2
 
         opts.addBoolean('h',"help",false,"See this help screen");
         opts.addString('u',"url","","Camera URL");
-        opts.addString('c',"class","april.camera.models.CaltechInitializer","Calibration model initializer class name");
+        opts.addString('c',"class","april.camera.models.Radial6thOrderCaltechInitializer","Calibration model initializer class name");
         opts.addDouble('m',"spacing",0.0254,"Spacing between tags (meters)");
+        opts.addBoolean('\0',"debug-gui",false,"Display additional debugging information");
 
         if (!opts.parse(args)) {
             System.out.println("Option error: "+opts.getReason());
@@ -964,7 +1003,7 @@ public class EasyCal2
         assert(obj instanceof CalibrationInitializer);
         CalibrationInitializer initializer = (CalibrationInitializer) obj;
 
-        new EasyCal2(initializer, url, spacing);
+        new EasyCal2(initializer, url, spacing, opts.getBoolean("debug-gui"));
     }
 }
 
