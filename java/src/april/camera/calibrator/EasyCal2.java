@@ -627,56 +627,9 @@ public class EasyCal2
     private ArrayList<TagDetection> makeDetectionsFromExt(DistortionFunctionVerifier verifier,
                                                           Calibration cal, double mExtrinsics[])
     {
-        ArrayList<TagDetection> detections = new ArrayList();
-        for (int col = minColUsed; col <= maxColUsed; col++) {
-            outer:
-            for (int row = minRowUsed; row <= maxRowUsed; row++) {
-
-                TagDetection td = new TagDetection();
-                td.id = row*tm.getMosaicWidth() + col;
-
-                if (td.id >= tf.codes.length)
-                    continue;
-
-                double world[] = tm.getPositionMeters(td.id);
-                td.cxy = CameraMath.project(cal, verifier, LinAlg.xyzrpyToMatrix(mExtrinsics), world);
-
-                // CameraMath.project() with a verifier will return null if the
-                // point is outside of the valid range
-                if (td.cxy == null)
-                    continue;
-
-                // the point should also project into the distorted image
-                if (td.cxy[0] < 0 || td.cxy[0] >= imwidth ||
-                    td.cxy[1] < 0 || td.cxy[1] >= imheight)
-                    continue;
-
-                // project the boundaries to make det.p
-                double metersPerPixel = tagSpacingMeters / (tf.whiteBorder*2 + tf.blackBorder*2 + tf.d);
-                double cOff = metersPerPixel * (tf.blackBorder + tf.d / 2.0);
-
-                // Tag corners are listed bottom-left, bottom-right, top-right, top-left
-                // Note: That the +x is to the right, +y is down (img-style coordinates)
-                double world_corners[][] = {{world[0] - cOff, world[1] + cOff},
-                                            {world[0] + cOff, world[1] + cOff},
-                                            {world[0] + cOff, world[1] - cOff},
-                                            {world[0] - cOff, world[1] - cOff}};
-
-
-                td.p = new double[4][];
-                for (int i = 0; i < 4; i++) {
-                    td.p[i] = CameraMath.project(cal, verifier, LinAlg.xyzrpyToMatrix(mExtrinsics), world_corners[i]);
-
-                    // enforce that the whole tag projects correctly
-                    if (td.p[i] == null)
-                        continue outer;
-                }
-
-                detections.add(td);
-            }
-        }
-
-        return detections;
+        return SuggestUtil.makeDetectionsFromExt(cal, verifier, mExtrinsics, tm.getID(minColUsed, minRowUsed),
+                                                 tm.getID(maxColUsed, maxRowUsed),
+                                                 tm);
     }
 
     static SuggestedImage getBestSuggestion(List<SuggestedImage> suggestions, FrameScorer fs)
