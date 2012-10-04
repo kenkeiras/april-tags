@@ -50,8 +50,7 @@ public class EasyCal2
 
     Random r = new Random();//(1461234L);
     SyntheticTagMosaicImageGenerator simgen;
-    ArrayList<SuggestedImage> suggestDictionary = new ArrayList();
-    SuggestedImage bestSuggestion;
+    List<SuggestedImage> bestSuggestions = new ArrayList();
     int suggestionNumber = 0;
 
     List<ScoredImage> candidateImages;
@@ -376,7 +375,7 @@ public class EasyCal2
 
             vb = vw.getBuffer("Shade");
             vb.setDrawOrder(1);
-            if (bestSuggestion != null) {
+            if (bestSuggestions.size() > 0) {
                 vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
                                             new VisChain(PixelsToVis,
                                                          LinAlg.translate(imwidth/2, imheight/2, 0),
@@ -387,22 +386,21 @@ public class EasyCal2
 
             vb = vw.getBuffer("SuggestedTags");
             vb.setDrawOrder(20);
-            if (bestSuggestion != null) {
-                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
-                                            new VisChain(PixelsToVis,
-                                                         LinAlg.translate(imwidth/2, imheight/2, 0),
-                                                         new VzRectangle(imwidth, imheight,
-                                                                         new VzMesh.Style(new Color(0, 0, 0, 128))))));
-                VisChain chain = new VisChain();
-                for (TagDetection d : bestSuggestion.detections) {
+            if (false && bestSuggestions.size() > 0) {
+                for (SuggestedImage si : bestSuggestions) {
 
-                    Color color = colorList.get(d.id % colorList.size());
-                    chain.add(new VzLines(new VisVertexData(d.p),
-                                          VzLines.LINE_LOOP,
-                                          new VzLines.Style(color, 2)));
+                    // Draw all the suggestions in muted colors
+                    VisChain chain = new VisChain();
+                    for (TagDetection d : si.detections) {
+
+                        Color color = colorList.get(d.id % colorList.size());
+                        chain.add(new VzLines(new VisVertexData(d.p),
+                                              VzLines.LINE_LOOP,
+                                              new VzLines.Style(new Color(64,64,64,64),2)));//color, 2)));;
+                    }
+                    vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
+                                                new VisChain(PixelsToVis, chain)));
                 }
-                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
-                                            new VisChain(PixelsToVis, chain)));
             }
             vb.swap();
 
@@ -428,6 +426,9 @@ public class EasyCal2
 
         void score(BufferedImage im, List<TagDetection> detections)
         {
+            if (bestSuggestions.size() == 0)
+                return;
+
             VisWorld.Buffer vb;
 
             // if we haven't detected any tags yet...
@@ -458,10 +459,13 @@ public class EasyCal2
                 return;
 
             // find matches between observed and suggested
-            double totaldist = 0;
-            int nmatches = 0;
-            if (bestSuggestion != null) {
-                SuggestedImage sim = bestSuggestion;
+            // Find the suggested image with the best score. Draw solids for that??
+            SuggestedImage bestSug = bestSuggestions.get(0);
+            double bestMeanDist = Double.MAX_VALUE;
+
+            for (SuggestedImage sim : bestSuggestions) {
+                double totaldist = 0;
+                int nmatches = 0;
 
                 for (TagDetection det1 : detections) {
                     for (TagDetection det2 : sim.detections) {
@@ -473,9 +477,36 @@ public class EasyCal2
                         break;
                     }
                 }
+
+                double meandist = totaldist/nmatches;
+
+                if (meandist < bestMeanDist) {
+                    bestMeanDist = meandist;
+                    bestSug = sim;
+                }
             }
+            double meandist = bestMeanDist;
             double meandistthreshold = im.getWidth()/20.0;
-            double meandist = totaldist/nmatches;
+
+
+            // Draw selected pose in color
+            {
+                vb= vw.getBuffer("Selected-best-color");
+                vb.setDrawOrder(25);
+
+                // Draw all the suggestions in muted colors
+                VisChain chain = new VisChain();
+                for (TagDetection d : bestSug.detections) {
+
+                    Color color = colorList.get(d.id % colorList.size());
+                    chain.add(new VzLines(new VisVertexData(d.p),
+                                          VzLines.LINE_LOOP,
+                                          new VzLines.Style(color, 2)));
+                }
+                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
+                                            new VisChain(PixelsToVis, chain)));
+                vb.swap();
+            }
 
             ////////////////////////////////////////
             // meter
@@ -554,11 +585,11 @@ public class EasyCal2
                     ////////////////////////////////////////
                     // use acquired image and suggest a new one
                     waitingForBest = false;
-                    ScoredImage best = candidateImages.get(0);
+                    ScoredImage bestSI = candidateImages.get(0);
                     candidateImages.clear();
 
-                    draw(best.im, best.detections);
-                    addImage(best.im, best.detections);
+                    draw(bestSI.im, bestSI.detections);
+                    addImage(bestSI.im, bestSI.detections);
 
                     // make a new suggestion
                     suggestionNumber++;
@@ -610,17 +641,6 @@ public class EasyCal2
         }
 
         vb.swap();
-    }
-
-    private double[] findMatchingPoint(int id)
-    {
-        if (bestSuggestion == null)
-            return null;
-
-        for (TagDetection det : bestSuggestion.detections)
-            if (det.id == id)
-                return det.cxy;
-        return null;
     }
 
     private double[] getObsMosaicCenter()
@@ -915,7 +935,7 @@ public class EasyCal2
         if (cal == null)
             return;
 
-        suggestDictionary = generateSuggestionsDict(cal);
+        ArrayList<SuggestedImage> suggestDictionary = generateSuggestionsDict(cal);
         System.out.printf("Made new dictionary with %d valid poses\n",suggestDictionary.size());
 
         SuggestedImage newSuggestion = null;
@@ -932,13 +952,26 @@ public class EasyCal2
 
         // Pick the single best suggestion
         if (true) {
-
             if (ranked.size() > 0)
-                bestSuggestion = ranked.get(0);
+                bestSuggestions = Arrays.asList(ranked.get(0));
             else
-                bestSuggestion = null;
+                bestSuggestions = new ArrayList();
+        } else {
+            double worstAllowedScore = ranked.get(0).score * 1.2;
+
+            int maxSize  = (int)(ranked.size()*.10);
+
+            ArrayList<SuggestedImage> allowed = new ArrayList();
+            for (SuggestedImage si : ranked) {
+                if (si.score <= worstAllowedScore)
+                    allowed.add(si);
+                if (allowed.size() == maxSize)
+                    break;
+            }
+            bestSuggestions = allowed;
         }
 
+        System.out.printf("Picked %d of %d as best suggestions\n", bestSuggestions.size(), suggestDictionary.size());
     }
 
     private class FlashThread extends Thread
