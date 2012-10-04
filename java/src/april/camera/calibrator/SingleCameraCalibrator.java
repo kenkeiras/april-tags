@@ -69,10 +69,11 @@ public class SingleCameraCalibrator implements ParameterListener
         CameraCalibrator.verbose = false;
         IntrinsicsEstimator.verbose = false;
         april.camera.models.SimpleKannalaBrandtInitializer.verbose = false;
-        april.camera.models.SimpleCaltechInitializer.verbose = false;
         april.camera.models.KannalaBrandtInitializer.verbose = false;
         april.camera.models.DistortionFreeInitializer.verbose = false;
         april.camera.models.CaltechInitializer.verbose = false;
+        april.camera.models.Radial4thOrderCaltechInitializer.verbose = false;
+        april.camera.models.Radial6thOrderCaltechInitializer.verbose = false;
 
         ////////////////////////////////////////////////////////////////////////////////
         // GUI setup

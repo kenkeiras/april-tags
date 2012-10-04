@@ -395,10 +395,10 @@ public class SyntheticTagMosaicImageGenerator
         private void generate(double xyzrpy[])
         {
             double K[][] = gen.getIntrinsics();
-            Calibration output = new SimpleCaltechCalibration(new double[] {K[0][0], K[1][1]},
-                                                              new double[] {K[0][2], K[1][2]},
-                                                              new double[] {pg.gd("k1"), pg.gd("k2")},
-                                                              width, height);
+            Calibration output = new Radial4thOrderCaltechCalibration(new double[] {K[0][0], K[1][1]},
+                                                                      new double[] {K[0][2], K[1][2]},
+                                                                      new double[] {pg.gd("k1"), pg.gd("k2")},
+                                                                      width, height);
 
             SyntheticTagMosaicImageGenerator.SyntheticImages images = null;
             if (pg.gb("usecentered"))
