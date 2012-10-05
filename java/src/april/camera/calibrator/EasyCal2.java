@@ -458,6 +458,7 @@ public class EasyCal2
             vb.swap();
         }
 
+        /*
         void scoreFS(BufferedImage im, List<TagDetection> detections)
         {
             if (bestSuggestions.size() == 0)
@@ -543,6 +544,7 @@ public class EasyCal2
                 vb.swap();
             }
         }
+        */
 
         void scorePix(BufferedImage im, List<TagDetection> detections)
         {
