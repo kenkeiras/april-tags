@@ -16,6 +16,7 @@ import april.camera.tools.*;
 import april.camera.models.*;
 import april.jcam.*;
 import april.jmat.*;
+import april.jmat.geom.*;
 import april.tag.*;
 import april.util.*;
 import april.vis.*;
@@ -45,6 +46,7 @@ public class EasyCal2
 
     CameraCalibrator calibrator;
     Rasterizer rasterizer;
+    double clickWidthFraction = 0.25, clickHeightFraction = 0.25;
 
     TagFamily tf;
     TagMosaic tm;
@@ -198,7 +200,6 @@ public class EasyCal2
         new ProcessingThread().start();
     }
 
-
     class VisHandler extends VisEventAdapter implements VisConsole.Listener
     {
         /** Return true if the command was valid. **/
@@ -275,6 +276,27 @@ public class EasyCal2
             if (code == KeyEvent.VK_R) {
                 applicationMode = MODE_RECTIFY;
                 return true;
+            }
+
+            return false;
+        }
+
+        public boolean mouseClicked(VisCanvas vc, VisLayer vl, VisCanvas.RenderInfo rinfo, GRay3D ray, MouseEvent e)
+        {
+            int x = e.getX();
+            int y = e.getY();
+
+            if (x >= 0 && x < vc.getWidth()*clickWidthFraction &&
+                y >= 0 && y < vc.getHeight()*clickHeightFraction)
+            {
+                if (applicationMode == MODE_CALIBRATE) {
+                    applicationMode = MODE_RECTIFY;
+                    return true;
+                }
+                else if (applicationMode == MODE_RECTIFY) {
+                    applicationMode = MODE_CALIBRATE;
+                    return true;
+                }
             }
 
             return false;
@@ -363,12 +385,8 @@ public class EasyCal2
         {
             if (applicationMode != MODE_RECTIFY) {
                 vw.getBuffer("Rectified").swap();
+                vw.getBuffer("Distorted outline").swap();
                 rasterizer = null;
-                return;
-            }
-
-            if (calibrator == null) {
-                applicationMode = MODE_CALIBRATE;
                 return;
             }
 
@@ -378,6 +396,8 @@ public class EasyCal2
             if (params != null)     cal    = initializer.initializeWithParameters(imwidth, imheight, params);
 
             if (cal == null) {
+                vw.getBuffer("Rectified").swap();
+                vw.getBuffer("Distorted outline").swap();
                 applicationMode = MODE_CALIBRATE;
                 return;
             }
@@ -419,6 +439,33 @@ public class EasyCal2
                                                                                                 VisTexture.NO_MIN_FILTER |
                                                                                                 VisTexture.NO_REPEAT),
                                                                                  0)))));
+            vb.swap();
+
+            vb = vw.getBuffer("Distorted outline");
+            vb.setDrawOrder(1010);
+            {
+                double h = vc.getHeight()*0.25;
+                double scale = h / imheight;
+
+                clickHeightFraction = 0.25;
+                clickWidthFraction  = 0.25*(imwidth/imheight)/(vc.getWidth()/vc.getHeight());
+
+                //System.out.printf("im %4d %4d vc %4d %4d percent %5.2f %5.2f\n",
+                //                  imwidth, imheight, vc.getWidth(), vc.getHeight(),
+                //                  clickWidthFraction, clickHeightFraction);
+
+                ArrayList<double[]> border = new ArrayList<double[]>();
+                border.add(new double[] {       0,        0 });
+                border.add(new double[] { imwidth,        0 });
+                border.add(new double[] { imwidth, imheight });
+                border.add(new double[] {       0, imheight });
+
+                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.TOP_LEFT,
+                                            new VisChain(LinAlg.scale(scale, -scale, 1),
+                                                         new VzLines(new VisVertexData(border),
+                                                                     VzLines.LINE_LOOP,
+                                                                     new VzLines.Style(Color.white, 2)))));
+            }
             vb.swap();
         }
 
@@ -549,10 +596,18 @@ public class EasyCal2
 
         void score(BufferedImage im, List<TagDetection> detections)
         {
-            if (bestSuggestions.size() == 0)
-                return;
-
             VisWorld.Buffer vb;
+
+            if (bestSuggestions.size() == 0) {
+                vb = vw.getBuffer("Selected-best-color");
+                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
+                                            new VzText(VzText.ANCHOR.CENTER,
+                                                       "<<dropshadow=#FF000000>>"+
+                                                       "<<monospaced-20-bold,red>>"+
+                                                       "Error")));
+                vb.swap();
+                return;
+            }
 
             // if we haven't detected any tags yet...
             if (minRow == null || maxRow == null || minCol == null || maxCol == null) {
@@ -614,7 +669,7 @@ public class EasyCal2
 
             // Draw selected pose in color
             {
-                vb= vw.getBuffer("Selected-best-color");
+                vb = vw.getBuffer("Selected-best-color");
                 vb.setDrawOrder(25);
 
                 // Draw all the suggestions in muted colors
@@ -756,6 +811,14 @@ public class EasyCal2
 
             double h = vc.getHeight()*0.25;
             double scale = h / (maxy - miny);
+
+            clickHeightFraction = 0.25;
+            clickWidthFraction  = 0.25*((maxx-minx)/(maxy-miny))/(vc.getWidth()/vc.getHeight());
+
+            //System.out.printf("im %4d %4d vc %4d %4d percent %5.2f %5.2f :: %6.1f %6.1f %6.1f %6.1f\n",
+            //                  imwidth, imheight, vc.getWidth(), vc.getHeight(),
+            //                  clickWidthFraction, clickHeightFraction,
+            //                  minx, maxx, miny, maxy);
 
             vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.TOP_LEFT,
                                         new VisChain(LinAlg.scale(scale, -scale, 1),
