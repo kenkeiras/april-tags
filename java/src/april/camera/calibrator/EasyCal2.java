@@ -16,6 +16,7 @@ import april.camera.tools.*;
 import april.camera.models.*;
 import april.jcam.*;
 import april.jmat.*;
+import april.jmat.geom.*;
 import april.tag.*;
 import april.util.*;
 import april.vis.*;
@@ -24,6 +25,10 @@ import javax.imageio.*;
 
 public class EasyCal2
 {
+    final int MODE_CALIBRATE = 0;
+    final int MODE_RECTIFY = 1;
+    int applicationMode = MODE_CALIBRATE;
+
     // gui
     JFrame          jf;
     VisWorld        vw;
@@ -40,6 +45,9 @@ public class EasyCal2
     BlockingSingleQueue<FrameData> imageQueue = new BlockingSingleQueue<FrameData>();
 
     CameraCalibrator calibrator;
+    Rasterizer rasterizer;
+    double clickWidthFraction = 0.25, clickHeightFraction = 0.25;
+
     TagFamily tf;
     TagMosaic tm;
     TagDetector td;
@@ -161,9 +169,6 @@ public class EasyCal2
         }
         Collections.shuffle(colorList, new Random(283819));
 
-
-
-
         ////////////////////////////////////////
         // Camera setup
         try {
@@ -195,13 +200,10 @@ public class EasyCal2
 
         calibrator = new CameraCalibrator(Arrays.asList(initializer), tf, tagSpacingMeters, vl2, vl2 != null);
 
-
-
         ////////////////////////////////////////
         new AcquisitionThread().start();
         new ProcessingThread().start();
     }
-
 
     class VisHandler extends VisEventAdapter implements VisConsole.Listener
     {
@@ -232,6 +234,17 @@ public class EasyCal2
                 return true;
             }
 
+            if (toks.length == 2 && toks[0].equals("mode")) {
+                if (toks[1].equals("calibrate")) {
+                    applicationMode = MODE_CALIBRATE;
+                    return true;
+                }
+                else if (toks[1].equals("rectify")) {
+                    applicationMode = MODE_RECTIFY;
+                    return true;
+                }
+            }
+
             return false;
         }
 
@@ -240,7 +253,7 @@ public class EasyCal2
          * out.) You may return null. **/
         public ArrayList<String> consoleCompletions(VisConsole vc, String prefix)
         {
-            return new ArrayList(Arrays.asList("print-calibration", "save-calibration /tmp/cameraCalibration", "save-calibration-images /tmp/cameraCalibration"));
+            return new ArrayList(Arrays.asList("print-calibration", "save-calibration /tmp/cameraCalibration", "save-calibration-images /tmp/cameraCalibration", "mode calibrate", "mode rectify"));
         }
 
 
@@ -258,6 +271,37 @@ public class EasyCal2
                 // Manual Capture
                 captureNext = true;
                 return true;
+            }
+
+            if (code == KeyEvent.VK_C) {
+                applicationMode = MODE_CALIBRATE;
+                return true;
+            }
+
+            if (code == KeyEvent.VK_R) {
+                applicationMode = MODE_RECTIFY;
+                return true;
+            }
+
+            return false;
+        }
+
+        public boolean mouseClicked(VisCanvas vc, VisLayer vl, VisCanvas.RenderInfo rinfo, GRay3D ray, MouseEvent e)
+        {
+            int x = e.getX();
+            int y = e.getY();
+
+            if (x >= 0 && x < vc.getWidth()*clickWidthFraction &&
+                y >= 0 && y < vc.getHeight()*clickHeightFraction)
+            {
+                if (applicationMode == MODE_CALIBRATE) {
+                    applicationMode = MODE_RECTIFY;
+                    return true;
+                }
+                else if (applicationMode == MODE_RECTIFY) {
+                    applicationMode = MODE_CALIBRATE;
+                    return true;
+                }
             }
 
             return false;
@@ -305,22 +349,14 @@ public class EasyCal2
                 FrameData frmd = imageQueue.get();
 
                 BufferedImage im = ImageConvert.convertToImage(frmd);
-                //Tic tic = new Tic();
-                List<TagDetection> detections = td.process(im, new double[] {im.getWidth()/2.0, im.getHeight()/2.0});
-                //double dt = tic.toc();
-                //System.out.printf("\rDetection time: %8.3f seconds", dt);
-
                 if (imwidth == null || imheight == null) {
                     imwidth = im.getWidth();
                     imheight = im.getHeight();
                 }
                 assert(imwidth == im.getWidth() && imheight == im.getHeight());
 
-                updateInitialization(im, detections);
-                updateMosaic(detections);
-                draw(im, detections);
-                scorePix(im, detections);
-                // scoreFS(im,detections);
+                calibrationUpdate(im);
+                rectificationUpdate(im);
 
                 // sleep a little if we're spinning too fast
                 long utime = TimeUtil.utime();
@@ -331,6 +367,112 @@ public class EasyCal2
                 }
                 lastutime = utime;
             }
+        }
+
+        void calibrationUpdate(BufferedImage im)
+        {
+            if (applicationMode != MODE_CALIBRATE) {
+                return;
+            }
+
+            //Tic tic = new Tic();
+            List<TagDetection> detections = td.process(im, new double[] {im.getWidth()/2.0, im.getHeight()/2.0});
+            //double dt = tic.toc();
+            //System.out.printf("\rDetection time: %8.3f seconds", dt);
+
+            updateInitialization(im, detections);
+            updateMosaic(detections);
+            draw(im, detections);
+            scorePix(im, detections);
+            //scoreFS(im, detections);
+        }
+
+        void rectificationUpdate(BufferedImage im)
+        {
+            if (applicationMode != MODE_RECTIFY) {
+                vw.getBuffer("Rectified").swap();
+                vw.getBuffer("Distorted outline").swap();
+                rasterizer = null;
+                return;
+            }
+
+            ParameterizableCalibration cal = null;
+            double params[] = null;
+            if (calibrator != null) params = calibrator.getCalibrationParameters(0);
+            if (params != null)     cal    = initializer.initializeWithParameters(imwidth, imheight, params);
+
+            if (cal == null) {
+                vw.getBuffer("Rectified").swap();
+                vw.getBuffer("Distorted outline").swap();
+                applicationMode = MODE_CALIBRATE;
+                return;
+            }
+
+            if (rasterizer == null) {
+                View rectifiedView = new MaxRectifiedView(cal);
+
+                // rescale if necessary
+                int maxdimension = 800;
+                int maxOutputDimension = Math.max(rectifiedView.getWidth(), rectifiedView.getHeight());
+                if (maxOutputDimension > maxdimension)
+                    rectifiedView = new ScaledView(((double) maxdimension) / maxOutputDimension,
+                                                   rectifiedView);
+
+                rasterizer = new BilinearRasterizer(cal, rectifiedView);
+
+                vw.getBuffer("Camera").swap();
+                vw.getBuffer("HUD").swap();
+                vw.getBuffer("Shade").swap();
+                vw.getBuffer("SuggestedTags").swap();
+                vw.getBuffer("Detections").swap();
+                vw.getBuffer("Suggestion HUD").swap();
+                vw.getBuffer("Selected-best-color").swap();
+                vw.getBuffer("Error meter").swap();
+                vw.getBuffer("Rectified outline").swap();
+                vw.getBuffer("Flash").swap();
+            }
+
+            BufferedImage rectified = rasterizer.rectifyImage(im);
+
+            VisWorld.Buffer vb;
+            vb = vw.getBuffer("Rectified");
+            vb.setDrawOrder(1000);
+            vb.addBack(new VisLighting(false,
+                                       new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
+                                                        new VisChain(getPlottingTransformation(rectified, false),
+                                                                     new VzImage(new VisTexture(rectified,
+                                                                                                VisTexture.NO_MAG_FILTER |
+                                                                                                VisTexture.NO_MIN_FILTER |
+                                                                                                VisTexture.NO_REPEAT),
+                                                                                 0)))));
+            vb.swap();
+
+            vb = vw.getBuffer("Distorted outline");
+            vb.setDrawOrder(1010);
+            {
+                double h = vc.getHeight()*0.25;
+                double scale = h / imheight;
+
+                clickHeightFraction = 0.25;
+                clickWidthFraction  = 0.25*(imwidth/imheight)/(vc.getWidth()/vc.getHeight());
+
+                //System.out.printf("im %4d %4d vc %4d %4d percent %5.2f %5.2f\n",
+                //                  imwidth, imheight, vc.getWidth(), vc.getHeight(),
+                //                  clickWidthFraction, clickHeightFraction);
+
+                ArrayList<double[]> border = new ArrayList<double[]>();
+                border.add(new double[] {       0,        0 });
+                border.add(new double[] { imwidth,        0 });
+                border.add(new double[] { imwidth, imheight });
+                border.add(new double[] {       0, imheight });
+
+                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.TOP_LEFT,
+                                            new VisChain(LinAlg.scale(scale, -scale, 1),
+                                                         new VzLines(new VisVertexData(border),
+                                                                     VzLines.LINE_LOOP,
+                                                                     new VzLines.Style(Color.white, 2)))));
+            }
+            vb.swap();
         }
 
         void updateInitialization(BufferedImage im, List<TagDetection> detections)
@@ -378,7 +520,7 @@ public class EasyCal2
         {
             VisWorld.Buffer vb;
 
-            updateLayers();
+            PixelsToVis = getPlottingTransformation(im, true);
 
             ////////////////////////////////////////
             // camera image
@@ -548,10 +690,18 @@ public class EasyCal2
 
         void scorePix(BufferedImage im, List<TagDetection> detections)
         {
-            if (bestSuggestions.size() == 0)
-                return;
-
             VisWorld.Buffer vb;
+
+            if (bestSuggestions.size() == 0) {
+                vb = vw.getBuffer("Selected-best-color");
+                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
+                                            new VzText(VzText.ANCHOR.CENTER,
+                                                       "<<dropshadow=#FF000000>>"+
+                                                       "<<monospaced-20-bold,red>>"+
+                                                       "Error")));
+                vb.swap();
+                return;
+            }
 
             // if we haven't detected any tags yet...
             if (minRow == null || maxRow == null || minCol == null || maxCol == null) {
@@ -613,7 +763,7 @@ public class EasyCal2
 
             // Draw selected pose in color
             {
-                vb= vw.getBuffer("Selected-best-color");
+                vb = vw.getBuffer("Selected-best-color");
                 vb.setDrawOrder(25);
 
                 // Draw all the suggestions in muted colors
@@ -697,8 +847,6 @@ public class EasyCal2
 
                 if (captureNext || waited > waitTime) {
 
-                    captureNext = false;
-
                     ////////////////////////////////////////
                     // "flash"
                     vw.getBuffer("Suggestion HUD").swap();
@@ -710,7 +858,9 @@ public class EasyCal2
                     ScoredImage bestSI = candidateImages.get(0);
                     candidateImages.clear();
 
-                    draw(bestSI.im, bestSI.detections);
+                    if (!captureNext)
+                        draw(bestSI.im, bestSI.detections);
+
                     addImage(bestSI.im, bestSI.detections);
 
                     // make a new suggestion
@@ -719,8 +869,11 @@ public class EasyCal2
 
                     updateRectifiedBorder();
 
+                    captureNext = false;
+
                     // XXX
                     minFSScore = Double.MAX_VALUE;
+
                 }
             }
             else {
@@ -756,6 +909,14 @@ public class EasyCal2
 
             double h = vc.getHeight()*0.25;
             double scale = h / (maxy - miny);
+
+            clickHeightFraction = 0.25;
+            clickWidthFraction  = 0.25*((maxx-minx)/(maxy-miny))/(vc.getWidth()/vc.getHeight());
+
+            //System.out.printf("im %4d %4d vc %4d %4d percent %5.2f %5.2f :: %6.1f %6.1f %6.1f %6.1f\n",
+            //                  imwidth, imheight, vc.getWidth(), vc.getHeight(),
+            //                  clickWidthFraction, clickHeightFraction,
+            //                  minx, maxx, miny, maxy);
 
             vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.TOP_LEFT,
                                         new VisChain(LinAlg.scale(scale, -scale, 1),
@@ -968,9 +1129,9 @@ public class EasyCal2
         calibrator.draw();
     }
 
-    private void updateLayers()
+    private double[][] getPlottingTransformation(BufferedImage im, boolean mirror)
     {
-        double imaspect = ((double) imwidth) / imheight;
+        double imaspect = ((double) im.getWidth()) / im.getHeight();
         double visaspect = ((double) vc.getWidth()) / vc.getHeight();
 
         double h = 0;
@@ -984,13 +1145,18 @@ public class EasyCal2
             w = h*imaspect;
         }
 
-        PixelsToVis = LinAlg.multiplyMany(LinAlg.translate(-w/2, -h/2, 0),
-                                          CameraMath.makeVisPlottingTransform(imwidth, imheight,
-                                                                              new double[] {   0,   0 },
-                                                                              new double[] {   w,   h },
-                                                                              true),
-                                          LinAlg.translate(imwidth, 0, 0),
-                                          LinAlg.scale(-1, 1, 1));
+        double T[][] = LinAlg.multiplyMany(LinAlg.translate(-w/2, -h/2, 0),
+                                           CameraMath.makeVisPlottingTransform(im.getWidth(), im.getHeight(),
+                                                                               new double[] {   0,   0 },
+                                                                               new double[] {   w,   h },
+                                                                               true));
+
+        if (mirror)
+            T = LinAlg.multiplyMany(T,
+                                    LinAlg.translate(im.getWidth(), 0, 0),
+                                    LinAlg.scale(-1, 1, 1));
+
+        return T;
     }
 
     private void updateMosaic(List<TagDetection> detections)
