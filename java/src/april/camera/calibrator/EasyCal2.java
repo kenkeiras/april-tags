@@ -55,6 +55,7 @@ public class EasyCal2
 
     // Score FrameScorer
     double minFSScore = Double.MAX_VALUE;
+    int debugCT = 0;
 
     // Score Pix
     List<ScoredImage> candidateImages;
@@ -319,7 +320,7 @@ public class EasyCal2
                 updateMosaic(detections);
                 draw(im, detections);
                 scorePix(im, detections);
-                scoreFS(im,detections);
+                // scoreFS(im,detections);
 
                 // sleep a little if we're spinning too fast
                 long utime = TimeUtil.utime();
@@ -471,12 +472,21 @@ public class EasyCal2
             double fsScore  = fs.scoreFrame(detections);
             double fsThresh = bestSuggestions.get(bestSuggestions.size()-1).score;
 
+            if (fsScore <= .5)
+                return;
+
+
             if (fsScore < minFSScore) {
 
                 minFSScore = fsScore;
 
-                System.out.printf("Got new min, with %d dections, value %f\n",detections.size(),fsScore);
-
+                // System.out.printf("Got new min, with %d dections, value %f\n",detections.size(),fsScore);
+                // try {
+                //     String filename = String.format("/tmp/DEBUG%02d.png", debugCT++);
+                //     javax.imageio.ImageIO.write(im, "png", new File(filename));
+                //     System.out.printf("Saved debug to %s\n",filename);
+                // } catch(IOException e) {
+                // }
 
 
             }
