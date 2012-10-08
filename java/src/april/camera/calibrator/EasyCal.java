@@ -137,6 +137,8 @@ public class EasyCal implements ParameterListener
         april.camera.models.CaltechInitializer.verbose = false;
         april.camera.models.Radial4thOrderCaltechInitializer.verbose = false;
         april.camera.models.Radial6thOrderCaltechInitializer.verbose = false;
+        april.camera.models.Radial8thOrderCaltechInitializer.verbose = false;
+        april.camera.models.Radial10thOrderCaltechInitializer.verbose = false;
 
         ////////////////////////////////////////
         // GUI
