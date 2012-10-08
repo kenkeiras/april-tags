@@ -598,26 +598,29 @@ public class EasyCal2
         {
             VisWorld.Buffer vb;
 
-            if (bestSuggestions.size() == 0) {
-                vb = vw.getBuffer("Selected-best-color");
-                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
-                                            new VzText(VzText.ANCHOR.CENTER,
-                                                       "<<dropshadow=#FF000000>>"+
-                                                       "<<monospaced-20-bold,red>>"+
-                                                       "Error")));
-                vb.swap();
-                return;
-            }
-
             // if we haven't detected any tags yet...
             if (minRow == null || maxRow == null || minCol == null || maxCol == null) {
                 vb = vw.getBuffer("Suggestion HUD");
                 vb.setDrawOrder(1000);
-                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
+                vb.addBack(new VisDepthTest(false,
+                                            new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
                                             new VzText(VzText.ANCHOR.CENTER,
-                                                       "<<dropshadow=#FF000000>>"+
+                                                       "<<dropshadow=#AA000000>>"+
                                                        "<<monospaced-20-bold,green>>"+
-                                                       "Please hold target in front of camera")));
+                                                       "Hold target in front of camera"))));
+                vb.swap();
+                return;
+            }
+
+            if (bestSuggestions.size() == 0) {
+                vb = vw.getBuffer("Selected-best-color");
+                vb.setDrawOrder(1000);
+                vb.addBack(new VisDepthTest(false,
+                                            new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
+                                            new VzText(VzText.ANCHOR.CENTER,
+                                                       "<<dropshadow=#AA000000>>"+
+                                                       "<<monospaced-20-bold,red>>"+
+                                                       "Error"))));
                 vb.swap();
                 return;
             }
@@ -627,10 +630,10 @@ public class EasyCal2
             vb.setDrawOrder(1000);
             vb.addBack(new VisDepthTest(false,
                                         new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM,
-                                                         new VzText(VzText.ANCHOR.BOTTOM,
-                                                                    "<<dropshadow=#FF000000>>"+
-                                                                    "<<monospaced-12-bold,white>>"+
-                                                                    "Please align target with synthetic image"))));
+                                        new VzText(VzText.ANCHOR.BOTTOM,
+                                                   "<<dropshadow=#FF000000>>"+
+                                                   "<<monospaced-14-bold,white>>"+
+                                                   "Align live detections with similarly-colored outlines"))));
 
             // nothing more to do without detections
             if (detections.size() == 0)
@@ -733,10 +736,10 @@ public class EasyCal2
                 vb.setDrawOrder(1000);
                 vb.addBack(new VisDepthTest(false,
                                             new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
-                                                             new VzText(VzText.ANCHOR.CENTER,
-                                                                        "<<dropshadow=#FF000000>>"+
-                                                                        "<<monospaced-20-bold,green>>"+
-                                                                        "Almost there..."))));
+                                            new VzText(VzText.ANCHOR.CENTER,
+                                                       "<<dropshadow=#AA000000>>"+
+                                                       "<<monospaced-20-bold,green>>"+
+                                                       "Almost there..."))));
                 vb.swap();
             }
 
@@ -779,7 +782,33 @@ public class EasyCal2
                 }
             }
             else {
-                vw.getBuffer("Suggestion HUD").swap();
+                vb = vw.getBuffer("Suggestion HUD");
+                vb.setDrawOrder(1000);
+
+
+                if (detections.size() > 0 && bestSug != null && bestSug.detections.size() > 0) {
+                    double detectionSizeError = getMeanDetectionSizeErrors(bestSug.detections, detections);
+                    //System.out.printf("Detection size error %10.3f\r", detectionSizeError);
+
+                    String str = null;
+                    if (detectionSizeError < -5.0)
+                        str = "Move target away from camera";
+
+                    if (detectionSizeError > 10.0)
+                        str = "Move target closer to camera";
+
+                    if (str != null) {
+                        str = "<<dropshadow=#AA000000>>"+
+                              "<<monospaced-20-bold,green>>"+
+                              str;
+
+                        vb.addBack(new VisDepthTest(false,
+                                                    new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
+                                                    new VzText(VzText.ANCHOR.CENTER, str))));
+                    }
+                }
+
+                vb.swap();
             }
         }
     }
@@ -829,6 +858,36 @@ public class EasyCal2
         }
 
         vb.swap();
+    }
+
+    private double getMeanDetectionSizeErrors(List<TagDetection> detections1,
+                                              List<TagDetection> detections2)
+    {
+        double perimeter1 = 0;
+        double perimeter2 = 0;
+        int n = 0;
+
+        for (TagDetection d1 : detections1) {
+
+            for (TagDetection d2 : detections2) {
+                if (d2.id != d1.id)
+                    continue;
+
+                perimeter1 += LinAlg.distance(d1.p[0], d1.p[1]);
+                perimeter1 += LinAlg.distance(d1.p[1], d1.p[2]);
+                perimeter1 += LinAlg.distance(d1.p[2], d1.p[3]);
+                perimeter1 += LinAlg.distance(d1.p[3], d1.p[0]);
+
+                perimeter2 += LinAlg.distance(d2.p[0], d2.p[1]);
+                perimeter2 += LinAlg.distance(d2.p[1], d2.p[2]);
+                perimeter2 += LinAlg.distance(d2.p[2], d2.p[3]);
+                perimeter2 += LinAlg.distance(d2.p[3], d2.p[0]);
+
+                n++;
+            }
+        }
+
+        return (perimeter1 - perimeter2) / 4.0 / n;
     }
 
     private double[] getObsMosaicCenter()
