@@ -930,9 +930,14 @@ public class EasyCal2
         for (double desiredDepth : desiredDepths) {
             for (int gy = 1; gy < gridY; gy++)
                 for (int gx = 1; gx < gridX; gx++) {
-                    double norm[] = cal.pixelsToNorm(new double[]{ gx*scaleX + r.nextGaussian()*2.0,
-                                                                   gy*scaleY + r.nextGaussian()*2.0});
+                    double x = gx*scaleX + r.nextGaussian()*2.0;
+                    double y = gy*scaleY + r.nextGaussian()*2.0;
+                    double xy_dp[] = new double[] { x, y };
 
+                    if (!verifier.validPixelCoord(xy_dp))
+                        continue;
+
+                    double norm[] = cal.pixelsToNorm(xy_dp);
                     double xyz[] = {norm[0], norm[1], 1};
                     LinAlg.scaleEquals(xyz, desiredDepth + r.nextGaussian() * 0.01 );
 

@@ -182,7 +182,7 @@ public class CameraCalibrator
         g = new Graph();
 
         CholeskySolver gs   = new CholeskySolver(g, new MinimumDegreeOrdering());
-        //LMSolver gs = new LMSolver(g, new MinimumDegreeOrdering(), 10e-1, 10e10, 10);
+        //LMSolver gs = new LMSolver(g, new MinimumDegreeOrdering(), 10e-4, 10e10, 10);
         gs.verbose          = false;
         gs.matrixType       = Matrix.SPARSE;
         solver = gs;
