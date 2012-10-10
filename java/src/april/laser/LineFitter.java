@@ -365,6 +365,11 @@ public class LineFitter
                 // compute line parameters
                 line=new GLine2D(-Math.sin(phi), Math.cos(phi), new double[] {Ex, Ey});
 
+                if (true) {
+                    double theta = 0.5*Math.atan2(Cxy, (Cxx-Cyy));
+                    line = new GLine2D(Math.cos(theta), Math.sin(theta), new double[] {Ex, Ey});
+                }
+
                 // compute the error
                 error=0;
 
