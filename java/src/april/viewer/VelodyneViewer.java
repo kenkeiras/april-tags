@@ -36,7 +36,7 @@ public class VelodyneViewer implements ViewObject, LCMSubscriber
     ArrayList<ArrayList<double[]>> points = new ArrayList<ArrayList<double[]>>();
     ArrayList<VzPoints> visPoints = new ArrayList<VzPoints>();
 
-    public VelodyneViewer(Viewer viewer, Config config, String channel)
+    public VelodyneViewer(Viewer viewer, String channel, Config config)
     {
         this.channel = channel;
         this.vw = viewer.getVisWorld();
