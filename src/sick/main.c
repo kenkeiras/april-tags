@@ -62,7 +62,7 @@ void on_report_timer(state_t *state)
     int64_t now = timestamp_now();
 
     double dt = (now - state->report_last_utime)/1000000.0;
-    if (fabs(dt) < 0.001) 
+    if (fabs(dt) < 0.001)
         dt = 0.001;
 
     double in_hz = state->report_scancount_in / dt;
@@ -81,7 +81,7 @@ void on_report_timer(state_t *state)
         state->fail_count = 0;
     }
 
-    
+
     state->report_max_lag = 0;
     state->report_last_utime = now;
     state->report_scancount_in = 0;
@@ -91,7 +91,7 @@ void on_report_timer(state_t *state)
 
 }
 
-void my_scan_callback(sick_t *sick, void *user, int64_t ts, 
+void my_scan_callback(sick_t *sick, void *user, int64_t ts,
                       float rad0, float radstep, int nranges, float *ranges, float *intensities)
 {
     state_t *state = (state_t*) user;
@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
 {
     int res;
     state_t *state = (state_t*) calloc(1, sizeof(state_t));
-    
+
     setlinebuf (stdout);
     state->gopt = getopt_create();
 
@@ -148,16 +148,16 @@ int main(int argc, char *argv[])
     getopt_add_int(state->gopt,   'b',  "baud",            "500000", "Baud rate");
     getopt_add_int(state->gopt,   'r',  "resolution",      "25",     "Angular resolution (hundredths of a degree)");
     getopt_add_int(state->gopt,   'f',  "fov",             "180",    "Field of view (Degrees)");
-    getopt_add_bool(state->gopt,  'i',  "interlaced",      1,        "Interlaced (required for most high-res modes)"); 
+    getopt_add_bool(state->gopt,  'i',  "interlaced",      1,        "Interlaced (required for most high-res modes)");
     getopt_add_bool(state->gopt,  '\0', "intensities",     0,        "Request intensities");
-    getopt_add_bool(state->gopt,  '\0', "exit-on-failure", 1,        "Exit -1 if sick connection fails"); 
+    getopt_add_bool(state->gopt,  '\0', "exit-on-failure", 1,        "Exit -1 if sick connection fails");
     getopt_add_bool(state->gopt,  '\0', "dump",            0,        "Dump all packets to stdout");
 
     getopt_add_spacer(state->gopt, "");
 
     if (!getopt_parse(state->gopt, argc, argv, 1) || getopt_get_bool(state->gopt,"help")
-        || state->gopt->extraargs->len!=0) {
-        
+        || varray_size(state->gopt->extraargs) != 0) {
+
         printf("Usage: %s [options]\n\n", argv[0]);
         getopt_do_usage(state->gopt);
         return 0;
@@ -175,10 +175,10 @@ int main(int argc, char *argv[])
 
     char *device = getopt_get_string(state->gopt, "device");
 
-    printf("Sick: Connecting to:%s\n",device); 
+    printf("Sick: Connecting to:%s\n",device);
 
     if ((res=sick_connect(state->sick,device, getopt_get_int(state->gopt, "baud")))) {
-        printf("Couldn't connect to scanner. Exiting. (%i)\n",res);                
+        printf("Couldn't connect to scanner. Exiting. (%i)\n",res);
         perror("Error");
         return -1;
     }
@@ -192,8 +192,8 @@ int main(int argc, char *argv[])
     }
 
     if ((res = sick_set_variant(state->sick,
-                                getopt_get_int(state->gopt,"fov"), 
-                                getopt_get_int(state->gopt, "resolution"), 
+                                getopt_get_int(state->gopt,"fov"),
+                                getopt_get_int(state->gopt, "resolution"),
                                 getopt_get_bool(state->gopt, "interlaced"),
                                 getopt_get_bool(state->gopt, "intensities")))) {
         printf("Couldn't set variant (%d)\n", res);
