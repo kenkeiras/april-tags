@@ -210,6 +210,8 @@ int getopt_parse(getopt_t *gopt, int argc, char *argv[], int showErrors)
     if (tok != NULL)
         free(tok);
 
+    varray_destroy(toks);
+
     return okay;
 }
 
