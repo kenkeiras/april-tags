@@ -25,14 +25,14 @@ void getopt_destroy(getopt_t *gopt)
 {
     // free the extra arguments and container
     for (int i = 0; i < varray_size(gopt->extraargs); i++)
-        free((char*) varray_get(gopt->extraargs,i));
+        free(varray_get(gopt->extraargs,i));
     varray_destroy(gopt->extraargs);
 
 
     // deep free of the getopt_option structs. Also frees key/values, so
     // after this loop, hash tables will no longer work
     for (int i = 0; i < varray_size(gopt->options); i++) {
-        getopt_option_t *goo = (getopt_option_t *) varray_get(gopt->options, i);
+        getopt_option_t *goo = varray_get(gopt->options, i);
         free(goo->lname);
         free(goo->sname);
         free(goo->svalue);
@@ -103,11 +103,11 @@ int getopt_parse(getopt_t *gopt, int argc, char *argv[], int showErrors)
         if (tok != NULL)
             free(tok);
 
-        tok = (char*) varray_get(toks, i);
+        tok = varray_get(toks, i);
 
         if (!strncmp(tok,"--", 2)) {
             char *optname = &tok[2];
-            getopt_option_t *goo = (getopt_option_t*) vhash_get(gopt->lopts, optname); // XXX cast to (void*) here?
+            getopt_option_t *goo = vhash_get(gopt->lopts, optname);
             if (goo == NULL) {
                 okay = 0;
                 if (showErrors)
@@ -118,7 +118,7 @@ int getopt_parse(getopt_t *gopt, int argc, char *argv[], int showErrors)
 
             if (goo->type == GOO_BOOL_TYPE) {
                 if ((i+1) < varray_size(toks)) {
-                    char *val = (char*) varray_get(toks, i+1);
+                    char *val = varray_get(toks, i+1);
 
                     if (!strcmp(val,"true")) {
                         i+=2;
@@ -138,7 +138,7 @@ int getopt_parse(getopt_t *gopt, int argc, char *argv[], int showErrors)
 
             if (goo->type == GOO_STRING_TYPE) {
                 if ((i+1) < varray_size(toks)) {
-                    char *val = (char*) varray_get(toks, i+1);
+                    char *val = varray_get(toks, i+1);
                     i+=2;
                     getopt_modify_string(&goo->svalue, val);
                     continue;
@@ -157,7 +157,7 @@ int getopt_parse(getopt_t *gopt, int argc, char *argv[], int showErrors)
                 char sopt[2];
                 sopt[0] = tok[pos];
                 sopt[1] = 0;
-                getopt_option_t *goo = (getopt_option_t*) vhash_get(gopt->sopts, sopt);
+                getopt_option_t *goo = vhash_get(gopt->sopts, sopt);
 
                 if (goo==NULL) {
                     // is the argument a numerical literal that happens to be negative?
@@ -181,7 +181,7 @@ int getopt_parse(getopt_t *gopt, int argc, char *argv[], int showErrors)
 
                 if (goo->type == GOO_STRING_TYPE) {
                     if ((i+1) < varray_size(toks)) {
-                        char *val = (char*) varray_get(toks, i+1);
+                        char *val = varray_get(toks, i+1);
                         if (val[0]=='-')
                         {
                             okay = 0;
@@ -266,7 +266,7 @@ void getopt_add_string(getopt_t *gopt, char sopt, const char *lname, const char 
 
 char *getopt_get_string(getopt_t *gopt, const char *lname)
 {
-    getopt_option_t *goo = (getopt_option_t*) vhash_get(gopt->lopts, lname);
+    getopt_option_t *goo = vhash_get(gopt->lopts, lname);
     if (goo == NULL)
         return NULL;
     return strdup(goo->svalue);
@@ -302,7 +302,7 @@ void getopt_do_usage(getopt_t *gopt)
     int valuewidth=10;
 
     for (unsigned int i = 0; i < varray_size(gopt->options); i++) {
-        getopt_option_t *goo = (getopt_option_t*) varray_get(gopt->options, i);
+        getopt_option_t *goo = varray_get(gopt->options, i);
 
         if (goo->spacer)
             continue;
@@ -314,7 +314,7 @@ void getopt_do_usage(getopt_t *gopt)
     }
 
     for (unsigned int i = 0; i < varray_size(gopt->options); i++) {
-        getopt_option_t *goo = (getopt_option_t*) varray_get(gopt->options, i);
+        getopt_option_t *goo = varray_get(gopt->options, i);
 
         if (goo->spacer)
         {
