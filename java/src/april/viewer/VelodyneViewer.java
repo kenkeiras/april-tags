@@ -31,10 +31,15 @@ public class VelodyneViewer implements ViewObject, LCMSubscriber
     VisLayer                       vl;
     VisWorld                       vw;
     LCM                            lcm        = LCM.getSingleton();
-    VelodyneCalibration            calib      = VelodyneCalibration.makeMITCalibration();
+    VelodyneCalibration            calib      = null;
     int                            lastbucket = 0;
     ArrayList<ArrayList<double[]>> points = new ArrayList<ArrayList<double[]>>();
+    ArrayList<ArrayList<double[]>> intensities = new ArrayList<ArrayList<double[]>>();
     ArrayList<VzPoints> visPoints = new ArrayList<VzPoints>();
+
+    ParameterGUI pg;
+    ColorMapper cmz = ColorMapper.makeJetWhite(-1, +3); // height (jet white)
+    ColorMapper cmi = ColorMapper.makeGray(0, 1);       // intensity (gray)
 
     public VelodyneViewer(Viewer viewer, String channel, Config config)
     {
@@ -45,8 +50,19 @@ public class VelodyneViewer implements ViewObject, LCMSubscriber
         this.spos = ConfigUtil.getPosition(config, channel);
         this.squat = ConfigUtil.getQuaternion(config, channel);
 
+        if (config.requireString("calibration").equals("MIT64"))
+            calib = VelodyneCalibration.makeMITCalibration();
+        else if (config.requireString("calibration").equals("CARL32"))
+            calib = VelodyneCalibration.makeCARLCalibration();
+        assert(calib != null);
+
+        pg = new ParameterGUI();
+        pg.addCheckBoxes("intensities","Show intensities", config.requireBoolean("showIntensities"));
+        viewer.addParamPanel(new CollapsiblePanel("Velodyne", pg));
+
         for (int i = 0; i < 360; i++) {
             points.add(new ArrayList<double[]>());
+            intensities.add(new ArrayList<double[]>());
             visPoints.add(null);
         }
 
@@ -88,21 +104,23 @@ public class VelodyneViewer implements ViewObject, LCMSubscriber
                 if (bucket != lastbucket)
                 {
                     points.get(bucket).clear();
+                    intensities.get(bucket).clear();
                     lastbucket = bucket;
                 }
 
                 visPoints.set(bucket, null);
                 points.get(bucket).add(LinAlg.transform(T, vs.xyz));
-
+                intensities.get(bucket).add(new double[] { vs.intensity });
             }
 
             // Step 2: Make VisColorData and VisVertexData for any bucket that has changed
-
-            ColorMapper cm = ColorMapper.makeJetWhite(-1, +3);
             for (int i = 0; i < visPoints.size(); i++) {
                 if (visPoints.get(i) == null) {
+                    VisColorData colorData = pg.gb("intensities") ? cmi.makeColorData(intensities.get(i), 0) :
+                                                                    cmz.makeColorData(points.get(i), 2);
+
                     VzPoints  vp = new VzPoints(new VisVertexData(points.get(i)),
-                                                new VzPoints.Style(cm.makeColorData(points.get(i),2), 1));
+                                                new VzPoints.Style(colorData, 1));
 
                     visPoints.set(i,vp);
                 }

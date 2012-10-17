@@ -103,6 +103,7 @@ public class Viewer
                 viewObjects.add(o);
             } catch (Exception ex) {
                 System.out.println("Viewer: Unable to create "+viewobject+": "+ex);
+                ex.printStackTrace();
                 System.exit(0);
             }
         }
