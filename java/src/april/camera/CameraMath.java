@@ -379,7 +379,7 @@ public class CameraMath
         double T[][]        = getPointNormalizationTransform(xys);
         double Tprime[][]   = getPointNormalizationTransform(xy_primes);
 
-        double A[][] = new double[2*n][];
+        double A[][] = new double[Math.max(2*n, 10)][];
         for (int i=0; i < n; i++) {
 
             double xy[]         = xys.get(i);
@@ -400,6 +400,12 @@ public class CameraMath
             A[2*i+1] = new double[] {  wp*x,  wp*y,  wp*w,     0,     0,     0, -xp*x, -xp*y, -xp*w };
         }
 
+        // add a zero entry because of the economical SVD
+        if (n == 4) {
+            A[8] = new double[9];
+            A[9] = new double[9];
+        }
+
         SingularValueDecomposition A_SVD = new SingularValueDecomposition(new Matrix(A));
 
         int rank = A_SVD.rank();
@@ -411,6 +417,12 @@ public class CameraMath
         Matrix U = A_SVD.getU();
         Matrix S = A_SVD.getS();
         Matrix V = A_SVD.getV();
+
+        /*
+        System.out.println("U:"); U.print();
+        System.out.println("S:"); S.print();
+        System.out.println("V:"); V.print();
+        */
 
         double hvec[] = V.getColumn(V.getColumnDimension()-1).getDoubles();
 
