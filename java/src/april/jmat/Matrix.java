@@ -460,6 +460,11 @@ public class Matrix
         return new LUDecomposition(this).det();
     }
 
+    public double logDet()
+    {
+        return new LUDecomposition(this).logDet();
+    }
+
     public double[] getColumnPackedCopy()
     {
         double vals[] = new double[m*n];

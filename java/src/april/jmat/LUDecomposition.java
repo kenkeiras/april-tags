@@ -192,6 +192,25 @@ public class LUDecomposition
         return d;
     }
 
+    public double logDet()
+    {
+        if (LU.m != LU.n)
+            throw new IllegalArgumentException("Matrix must be square.");
+
+        double sign = (double) pivsign;
+        double logD = 0;
+        for (int j = 0; j < LU.n; j++) {
+            final double v = LU.get(j,j);
+            sign *= Math.signum(v);
+            logD += Math.log(Math.abs(v));
+        }
+
+        if (sign <= 0)
+            throw new IllegalArgumentException("logDet of a negative matrix.");
+
+        return logD;
+    }
+
     public boolean isSingular()
     {
         int m = LU.m, n = LU.n;
