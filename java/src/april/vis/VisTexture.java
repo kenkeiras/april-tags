@@ -17,7 +17,7 @@ public class VisTexture implements VisSerializable
     int width, height;
     int bytes_per_pixel;
 
-    static boolean warnedSlowConversion = false;
+    static boolean warnedSlowConversion[] = {false,false};
 
     boolean alphaMask;
 
@@ -72,12 +72,14 @@ public class VisTexture implements VisSerializable
                 glformat = GL.GL_LUMINANCE;
                 gltype = GL.GL_UNSIGNED_BYTE;
                 bytes_per_pixel = 1;
+/* GL_ABGR_EXT isn't portable (fails on ed's ATI hardware.) Let this fall through to default.
             } else if (imtype ==  BufferedImage.TYPE_4BYTE_ABGR) {
                 im = input;
                 glinternal = GL.GL_RGBA8;
                 glformat = GL.GL_ABGR_EXT;
                 gltype = GL.GL_UNSIGNED_INT_8_8_8_8_REV;
                 bytes_per_pixel = 4;
+*/
             } else if (imtype ==  BufferedImage.TYPE_INT_RGB) {
                 im = input;
                 glinternal = GL.GL_RGB8;
@@ -85,10 +87,16 @@ public class VisTexture implements VisSerializable
                 gltype = GL.GL_UNSIGNED_INT_8_8_8_8_REV;
                 bytes_per_pixel = 4;
             } else {
-                if (imtype == BufferedImage.TYPE_BYTE_GRAY && !warnedSlowConversion) {
+                if (imtype == BufferedImage.TYPE_BYTE_GRAY && !warnedSlowConversion[0]) {
                     System.out.println("Warning(once): VisTexture using slow image conversion due to bad stride in BYTE_GRAY image");
-                    warnedSlowConversion = true;
+                    warnedSlowConversion[0] = true;
                 }
+
+                if (imtype == BufferedImage.TYPE_4BYTE_ABGR && !warnedSlowConversion[1]) {
+                    System.out.println("Warning(once): VisTexture using slow image conversion due to lacking ATI support for 4BYTE_ABGR");
+                    warnedSlowConversion[1] = true;
+                }
+
 
                 // coerce texture format to a type we know.
                 im = VisUtil.coerceImage(input, BufferedImage.TYPE_INT_ARGB);

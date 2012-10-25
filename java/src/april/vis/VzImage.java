@@ -29,6 +29,11 @@ public class VzImage implements VisObject, VisSerializable
         this(new VisTexture(im), flags);
     }
 
+    public VzImage(VisTexture texture)
+    {
+        this(texture, 0);
+    }
+
     public VzImage(VisTexture texture, int flags)
     {
         this.texture = texture;

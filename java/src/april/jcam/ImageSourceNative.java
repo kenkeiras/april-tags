@@ -18,9 +18,9 @@ public class ImageSourceNative extends ImageSource
     protected static native int image_source_stop_jni(int isrc);
     protected static native int image_source_close_jni(int isrc);
     protected static native int image_source_get_num_features(int isrc);
+    protected static native boolean image_source_is_feature_available(int isrc, int idx);
     protected static native String image_source_get_feature_name(int isrc, int idx);
-    protected static native double image_source_get_feature_min(int isrc, int idx);
-    protected static native double image_source_get_feature_max(int isrc, int idx);
+    protected static native String image_source_get_feature_type(int isrc, int idx);
     protected static native double image_source_get_feature_value(int isrc, int idx);
     protected static native int image_source_set_feature_value(int isrc, int idx, double v);
     protected static native void image_source_print_info(int isrc);
@@ -111,14 +111,14 @@ public class ImageSourceNative extends ImageSource
         return image_source_get_feature_name(srcid, idx);
     }
 
-    public synchronized double getFeatureMin(int idx)
+    public synchronized String getFeatureType(int idx)
     {
-        return image_source_get_feature_min(srcid, idx);
+        return image_source_get_feature_type(srcid, idx);
     }
 
-    public synchronized double getFeatureMax(int idx)
+    public synchronized boolean isFeatureAvailable(int idx)
     {
-        return image_source_get_feature_max(srcid, idx);
+        return image_source_is_feature_available(srcid, idx);
     }
 
     public synchronized double getFeatureValue(int idx)

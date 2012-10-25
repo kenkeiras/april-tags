@@ -51,6 +51,11 @@ public class ColorMapper implements VisSerializable
         this.opaqueMin = opaqueMin;
     }
 
+    public int[] getColors()
+    {
+        return colors;
+    }
+
     public boolean isVisible(double v)
     {
         if (v > opaqueMax || v < opaqueMin)

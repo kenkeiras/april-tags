@@ -125,14 +125,14 @@ static const char* get_feature_name(image_source_t *isrc, int idx)
     return NULL;
 }
 
-static double get_feature_min(image_source_t *isrc, int idx)
+static int is_feature_available(image_source_t *isrc, int idx)
 {
     return 0;
 }
 
-static double get_feature_max(image_source_t *isrc, int idx)
+static char *get_feature_type(image_source_t *isrc, int idx)
 {
-    return 0;
+    return NULL;
 }
 
 static double get_feature_value(image_source_t *isrc, int idx)
@@ -399,8 +399,8 @@ image_source_t *image_source_v4l2_open(const char *path)
     isrc->set_named_format = set_named_format;
     isrc->num_features = num_features;
     isrc->get_feature_name = get_feature_name;
-    isrc->get_feature_min = get_feature_min;
-    isrc->get_feature_max = get_feature_max;
+    isrc->is_feature_available = is_feature_available;
+    isrc->get_feature_type = get_feature_type;
     isrc->get_feature_value = get_feature_value;
     isrc->set_feature_value = set_feature_value;
     isrc->start = start;
