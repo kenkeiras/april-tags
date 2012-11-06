@@ -5,7 +5,24 @@ public class VxWorld
 {
 
     VxServer vxs;
-    ArrayList<Buffer> buffers = new ArrayList();
+    HashMap<String, Buffer> bufferMap = new HashMap();
+
+    public VxWorld(VxServer serv)
+    {
+        this.vxs = serv;
+    }
+
+    public Buffer getBuffer(String name)
+    {
+        Buffer buf = bufferMap.get(name);
+        if (buf == null) {
+            buf = new Buffer();
+            buf.name = name;
+            bufferMap.put(name, buf);
+        }
+
+        return buf;
+    }
 
     public class Buffer
     {
@@ -13,7 +30,7 @@ public class VxWorld
 
         String name;
 
-        public synchronized void add(VxObject vxp)
+        public synchronized void stage(VxObject vxp)
         {
             objs.add(vxp);
         }

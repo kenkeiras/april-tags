@@ -48,6 +48,7 @@ public class VxProgram implements VxObject
         voo.addObject(Vx.VX_INT_ARRAY, vxid.data, vxid.data.length, vxid.id);
 
 
+        voo.addCode(attribMap.size());
         for (String name :  attribMap.keySet()) {
             VxVertexAttrib vva = attribMap.get(name);
             voo.addCode(Vx.OP_VERT_ATTRIB);
