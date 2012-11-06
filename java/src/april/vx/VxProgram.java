@@ -38,14 +38,14 @@ public class VxProgram implements VxObject
     {
 
         voo.addCode(Vx.OP_VERT_SHADER);
-        voo.addObject(vertArr, vertId);
+        voo.addObject(Vx.VX_BYTE_ARRAY, vertArr, vertArr.length, vertId);
         voo.addCode(Vx.OP_FRAG_SHADER);
-        voo.addObject(fragArr, fragId);
+        voo.addObject(Vx.VX_BYTE_ARRAY, fragArr, fragArr.length, fragId);
 
 
         voo.addCode(Vx.OP_ELEMENT_ARRAY);
         voo.addCode(vxidtype);
-        voo.addObject(vxid.data, vxid.id);
+        voo.addObject(Vx.VX_INT_ARRAY, vxid.data, vxid.data.length, vxid.id);
 
 
         for (String name :  attribMap.keySet()) {
@@ -53,7 +53,7 @@ public class VxProgram implements VxObject
             voo.addCode(Vx.OP_VERT_ATTRIB);
             voo.addString(name);
             voo.addCode(vva.dim);
-            voo.addObject(vva.fdata, vva.id);
+            voo.addObject(Vx.VX_FLOAT_ARRAY, vva.fdata, vva.fdata.length, vva.id);
         }
 
     }
