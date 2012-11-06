@@ -1,7 +1,6 @@
 package april.vx;
 
-
 public interface VxObject
 {
-    public void append(VxObjOpcodes voo);
+    public void appendTo(VxObjOpcodes voo);
 }

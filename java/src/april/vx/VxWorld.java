@@ -36,7 +36,7 @@ public class VxWorld
             VxObjOpcodes voo = new VxObjOpcodes();
 
             for (VxObject vxo : cobjs) {
-                vxo.append(voo);
+                vxo.appendTo(voo);
             }
 
             // Notify the Layer we need to be rem
