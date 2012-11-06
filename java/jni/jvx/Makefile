@@ -43,7 +43,7 @@ all:  $(DESTLIB)
 $(DESTLIB) : $(LIB)
 	cp $(LIB) $(DESTLIB)
 
-LIBJGL_OBJS += vx_jni.o #glcontext.o  lphash.o parray.o
+LIBJGL_OBJS += vx_jni.o vx.o glcontext.o  #lphash.o parray.o
 $(LIB): april_vx_VxLocalServer.h $(LIBJGL_OBJS)
 	$(LD) $(LDFLAGS) $(LIBJGL_OBJS) -o $@
 

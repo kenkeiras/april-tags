@@ -25,7 +25,7 @@ public class VxTest
         vp.setElementArray(index, Vx.GL_TRIANGLES);
 
 
-        VxLocalServer vxls = new VxLocalServer();
+        VxLocalServer vxls = new VxLocalServer(420,420);
         VxWorld vw = new VxWorld(vxls);
 
         vw.getBuffer("first-buffer").stage(vp);
