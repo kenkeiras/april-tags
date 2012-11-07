@@ -1,3 +1,6 @@
+COMMON_INCLUDES=-I../../../src/
+LDFLAGS_COMMON=../../../lib/libcommon.a
+
 #############################################################
 # Linux
 ifeq "$(shell uname)" "Linux"
@@ -43,13 +46,13 @@ all:  $(DESTLIB)
 $(DESTLIB) : $(LIB)
 	cp $(LIB) $(DESTLIB)
 
-LIBJGL_OBJS += vx_jni.o vx.o glcontext.o  #lphash.o parray.o
+LIBJGL_OBJS += vx_jni.o vx.o glcontext.o  lphash.o #parray.o
 $(LIB): april_vx_VxLocalServer.h $(LIBJGL_OBJS)
-	$(LD) $(LDFLAGS) $(LIBJGL_OBJS) -o $@
+	$(LD) $(LDFLAGS) $(LDFLAGS_COMMON) $(LIBJGL_OBJS) -o $@
 
 #############################################################
 %.o: %.c
-	$(CC) $(CCFLAGS) -c $(JNI_INCLUDES) $<
+	$(CC) $(CCFLAGS) -c $(JNI_INCLUDES) $(COMMON_INCLUDES) $<
 
 april_vx_VxLocalServer.h: ../../src/april/vx/VxLocalServer.java
 	@echo "NOTICE: Rebuilding JNI headers. Ensure java file has been recently built."

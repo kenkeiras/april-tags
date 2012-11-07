@@ -7,7 +7,7 @@
 JNIEXPORT jint JNICALL Java_april_vx_VxLocalServer_gl_1initialize
   (JNIEnv *jenv, jclass jcls)
 {
-    return init_glcontext();
+    return vx_init();
 }
 
 JNIEXPORT jint JNICALL Java_april_vx_VxLocalServer_update_1buffer
@@ -41,28 +41,32 @@ JNIEXPORT jint JNICALL Java_april_vx_VxLocalServer_update_1buffer
         // primitive fields
         vr->type = types_env[i];
         vr->count = counts_env[i];
+        vr->fieldwidth = fieldwidths_env[i];
         vr->id = ids_env[i];
+        vr->res = malloc(vr->count * vr->fieldwidth);
 
 
-
+        // Copy over the resource XXX Do we need to case the array access?
         jobject jres  = (*jenv)->GetObjectArrayElement(jenv, jrescs, i);
+        jbyte* res_env = (*jenv)->GetPrimitiveArrayCritical(jenv, jres, NULL);
+        memcpy(vr->res, res_env, vr->count * vr->fieldwidth);
+        (*jenv)->ReleasePrimitiveArrayCritical(jenv, jres, res_env, 0);
 
-        jbyte* res = (*jenv)->GetPrimitiveArrayCritical(jenv, jres, NULL);
-
-
+        // Copy over the name XXXX This isn't the correct design
+        jobject jname  = (*jenv)->GetObjectArrayElement(jenv, jnames, i);
+        jbyte* name_env = (*jenv)->GetPrimitiveArrayCritical(jenv, jname, NULL);
+        vr->name = strdup(name_env);
+        (*jenv)->ReleasePrimitiveArrayCritical(jenv, jname, name_env, 0);
     }
     (*jenv)->ReleasePrimitiveArrayCritical(jenv, jtypes, types_env, 0);
     (*jenv)->ReleasePrimitiveArrayCritical(jenv, jcounts, counts_env, 0);
     (*jenv)->ReleasePrimitiveArrayCritical(jenv, jfieldwidths, fieldwidths_env, 0);
     (*jenv)->ReleasePrimitiveArrayCritical(jenv, jids, ids_env, 0);
 
-    /* jint *codes_env = (*jenv)->GetPrimitiveArrayCritical(jenv, jcodes, NULL); */
 
 
 
 
-
-    //XXX Free buf_name, since it doesn't go in the struct!!!
     return 0;
 }
 
