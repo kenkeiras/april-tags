@@ -7,12 +7,14 @@
 // XXX Maybe this needs to be moved to vx_resc_mgr?
 typedef struct vx_resc vx_resc_t;
 struct vx_resc {
-    uint32_t type;
+    uint32_t type; // GL_FLOAT, GL_BYTE, etc
     void* res;
-    uint32_t length; // in units of sizeof(type)
+    uint32_t count; // in units of sizeof(type)
+    uint32_t fieldwidth; // how many bytes per primitive
+
     uint64_t id; // unique id for this resource
 
-    // optional?
+    // Set to empty string if not used
     char * name;
 };
 
@@ -30,6 +32,7 @@ struct vx_obj_opcodes
 };
 
 
-vx_obj_opcodes_t * vx_obj_opcodes_create(int ncodes, int nstrs, int nresc);
+// Allocates a struct, sets size fields, and allocates enough memory at each pointer
+vx_obj_opcodes_t * vx_obj_opcodes_create(int ncodes, int nresc);
 
 #endif

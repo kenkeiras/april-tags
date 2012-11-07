@@ -38,23 +38,22 @@ public class VxProgram implements VxObject
     {
 
         voo.addCode(Vx.OP_VERT_SHADER);
-        voo.addObject(Vx.VX_BYTE_ARRAY, vertArr, vertArr.length, vertId);
+        voo.addResource(null, Vx.VX_BYTE_ARRAY, vertArr, vertArr.length, 1, vertId);
         voo.addCode(Vx.OP_FRAG_SHADER);
-        voo.addObject(Vx.VX_BYTE_ARRAY, fragArr, fragArr.length, fragId);
+        voo.addResource(null, Vx.VX_BYTE_ARRAY, fragArr, fragArr.length, 1, fragId);
 
 
         voo.addCode(Vx.OP_ELEMENT_ARRAY);
         voo.addCode(vxidtype);
-        voo.addObject(Vx.VX_INT_ARRAY, vxid.data, vxid.data.length, vxid.id);
+        voo.addResource(null, Vx.VX_INT_ARRAY, vxid.data, vxid.data.length, 4, vxid.id);
 
 
         voo.addCode(attribMap.size());
         for (String name :  attribMap.keySet()) {
             VxVertexAttrib vva = attribMap.get(name);
             voo.addCode(Vx.OP_VERT_ATTRIB);
-            voo.addString(name);
             voo.addCode(vva.dim);
-            voo.addObject(Vx.VX_FLOAT_ARRAY, vva.fdata, vva.fdata.length, vva.id);
+            voo.addResource(name, Vx.VX_FLOAT_ARRAY, vva.fdata, vva.fdata.length, 4, vva.id);
         }
 
     }

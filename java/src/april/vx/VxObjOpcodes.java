@@ -5,33 +5,43 @@ import java.util.*;
 public class VxObjOpcodes
 {
 
+    // managed resource
+    static class Resource
+    {
+        long id;
+
+        int type;
+        Object res;
+        int count;
+        int fieldwidth;
+
+        byte name[]; // Null terminated string
+    }
+
     // Add methods for adding opcodes and object pointers
     IntArray codes = new IntArray();
-    ArrayList<String> strs = new ArrayList();
 
     // Tracking resources:
-    IntArray types = new IntArray();
-    ArrayList<Object> resArrs = new ArrayList();
-    IntArray lengths = new IntArray();
-    LongArray ids = new LongArray();
+    ArrayList<Resource> resources = new ArrayList();
 
     public void addCode(int c)
     {
         codes.add(c);
     }
 
-    public void addString(String str)
+    // Name can be null (e.g. for element data
+    public void addResource(String name, int type, Object arr, int count, int fieldwidth,  long id)
     {
-        strs.add(str);
-    }
+        Resource r = new Resource();
+        r.type = type;
+        r.res = arr;
+        r.count = count;
+        r.fieldwidth = fieldwidth;
+        r.id = id;
 
-    public void addObject(int type, Object arr, int len,  long id)
-    {
-        types.add(type);
-        resArrs.add(arr);
-        lengths.add(len);
-        ids.add(id);
+        r.name = name.getBytes();
 
+        resources.add(r);
     }
 
 }
