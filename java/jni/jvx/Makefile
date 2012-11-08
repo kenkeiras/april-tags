@@ -6,7 +6,7 @@ LDFLAGS_COMMON=../../../lib/libcommon.a
 ifeq "$(shell uname)" "Linux"
 
 CC = colorgcc
-CCFLAGS = -std=gnu99 -fno-stack-protector -fPIC -O2 -D_REENTRANT -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -Wno-unused-parameter -Wno-format-zero-length -Wall
+CCFLAGS = -std=gnu99 -fno-stack-protector -fPIC -O2 -D_REENTRANT -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -Wno-unused-parameter -Wno-format-zero-length -Wall -Werror=implicit-function-declaration
 
 JNI_INCLUDES = -I/usr/lib/jvm/java-6-sun/include/ -I/usr/lib/jvm/java-6-sun/include/linux -I/usr/lib/jvm/java-6-openjdk/include/ -I/usr/lib/jvm/java-7-openjdk-amd64/include/
 

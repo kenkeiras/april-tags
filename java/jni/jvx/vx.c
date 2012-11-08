@@ -222,7 +222,7 @@ int vx_render_program(vx_code_input_stream_t * codes)
         // Rebind, then attach
         glBindBuffer(GL_ARRAY_BUFFER, vbo_id);
         GLint attr_loc = glGetAttribLocation(prog_id, name);
-        glVetexAttribPointer(attr_loc, dim, vr->type, 0, 0, 0); // XXX java link error
+        glVertexAttribPointer(attr_loc, dim, vr->type, 0, 0, 0); // XXX java link error
     }
 
     {
