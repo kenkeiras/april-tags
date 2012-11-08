@@ -138,57 +138,6 @@ int vx_update_resources(int nresc, vx_resc_t ** resources)
     return 0;
 }
 
-void glslDrawTri(GLuint p)
-{
-
-    int nverts = 4;
-    int ddim = 2;
-    float data[] = { 1.0, 1.0,
-                     0.0, 1.0,
-                     0.0, 0.0,
-                     1.0, 0.0};
-
-    int cdim = 3;
-    float colors[] = { 1.0, 0.0, 0.0,
-                       1.0, 0.0, 1.0,
-                       0.0, 1.0, 0.0,
-                       1.0, 1.0, 0.0};
-
-    // Vertex Data
-    GLuint vbo_data;
-    glGenBuffers(1, &vbo_data);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_data);
-    glBufferData(GL_ARRAY_BUFFER, nverts*ddim*sizeof(float), data, GL_STATIC_DRAW);
-    int attrLoc = glGetAttribLocation(p, "position");
-    glEnableVertexAttribArray(attrLoc);
-    glVertexAttribPointer(attrLoc, 2, GL_FLOAT, 0, 0, 0);
-
-    // Color Data
-    GLuint vbo_colors;
-    glGenBuffers(1, &vbo_colors);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo_colors);
-    glBufferData(GL_ARRAY_BUFFER, nverts*cdim*sizeof(float), colors, GL_STATIC_DRAW);
-    int attrCol = glGetAttribLocation(p, "color");
-    glEnableVertexAttribArray(attrCol);
-    glVertexAttribPointer(attrCol, 3, GL_FLOAT, 0, 0,  0);
-
-}
-
-void glslElement(GLuint p)
-{
-    int nidxs = 6;
-    uint32_t idxs_tri[] = {0,1,2,
-                           2,3,0};
-
-    // Index data
-    GLuint vbo_idxs;
-    glGenBuffers(1, &vbo_idxs);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_idxs);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, nidxs*sizeof(uint32_t), idxs_tri, GL_STATIC_DRAW);
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, NULL);
-}
-
-
 int vx_render_program(vx_code_input_stream_t * codes)
 {
     if (codes->len == codes->pos) // exhausted the stream
@@ -240,14 +189,7 @@ int vx_render_program(vx_code_input_stream_t * codes)
         printf("Vertex Shader:\n%s\n", (char *)vertResc->res);
         printf("Fragment Shader:\n%s\n", (char *)fragResc->res);
     }
-/*
 
-    glslDrawTri(prog_id);
-    glslElement(prog_id);
-
-    return 1;//XXX Stop processing after this
-}
-*/
     uint32_t attribCountOp = codes->read_uint32(codes);
     assert(attribCountOp == OP_VERT_ATTRIB_COUNT);
     uint32_t attribCount = codes->read_uint32(codes);
@@ -259,7 +201,6 @@ int vx_render_program(vx_code_input_stream_t * codes)
         uint32_t dim = codes->read_uint32(codes);
         char * name = codes->read_str(codes); //Not a copy!
 
-/*
         // This should never fail!
         vx_resc_t * vr  = lphash_get(state.resource_map, attribId);
         assert(vr != NULL);
@@ -278,16 +219,14 @@ int vx_render_program(vx_code_input_stream_t * codes)
         // Rebind, then attach
         glBindBuffer(GL_ARRAY_BUFFER, vbo_id);
         GLint attr_loc = glGetAttribLocation(prog_id, name);
-        glVertexAttribPointer(attr_loc, dim, vr->type, 0, 0, 0); // XXX java link error
+        glEnableVertexAttribArray(attr_loc);
+       glVertexAttribPointer(attr_loc, dim, vr->type, 0, 0, 0); // XXX java link error
         assert(vr->type == GL_FLOAT);
 
         printf("VBO dim = %d count %d\n", dim, vr->count);
         for (float *id = vr->res; id < vr->res + vr->count*vr->fieldwidth; id++)
             printf("%f\n",*id);
-        */
     }
-
-    glslDrawTri(prog_id);
 
     {
         uint32_t elementOp =codes->read_uint32(codes);
@@ -300,7 +239,7 @@ int vx_render_program(vx_code_input_stream_t * codes)
         assert(vr != NULL);
         printf("element  len %d id %ld\n", vr->count, elementId);
 
-        /*
+
         int success = 0;
         GLuint vbo_id = lihash_get(state.vbo_map, elementId, &success);
         if (!success) {
@@ -316,8 +255,6 @@ int vx_render_program(vx_code_input_stream_t * codes)
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_id);
         glDrawElements(elementType, vr->count, vr->type, NULL);
-        */
-        glslElement(prog_id);
     }
 
     return 0;
