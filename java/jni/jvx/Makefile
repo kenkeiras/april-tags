@@ -11,7 +11,7 @@ CCFLAGS = -std=gnu99 -fno-stack-protector -fPIC -O2 -D_REENTRANT -D_FILE_OFFSET_
 JNI_INCLUDES = -I/usr/lib/jvm/java-6-sun/include/ -I/usr/lib/jvm/java-6-sun/include/linux -I/usr/lib/jvm/java-6-openjdk/include/ -I/usr/lib/jvm/java-7-openjdk-amd64/include/
 
 LD = ld
-LDFLAGS = -shared -lX11 -lGL
+LDFLAGS = -shared -lX11 -lGL -lGLEW
 SHARED_EXT = so
 
 LIBJGL_OBJS = glcontext-x11.o
@@ -27,7 +27,7 @@ CCFLAGS = -std=gnu99 -O2 -D_REENTRANT -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE
 JNI_INCLUDES = -I/System/Library/Frameworks/JavaVM.framework/Headers/ -I/usr/X11/include/
 
 LD = gcc
-LDFLAGS = -dynamiclib -framework OpenGL -framework JavaVM -L/usr/X11/lib -lX11 -lGL
+LDFLAGS = -dynamiclib -framework OpenGL -framework JavaVM -L/usr/X11/lib -lX11 -lGL -lGLEW
 SHARED_EXT = jnilib
 
 LIBJGL_OBJS = glcontext-x11.o

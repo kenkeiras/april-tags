@@ -1,7 +1,11 @@
 #include "vx.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <malloc.h>
 #include <assert.h>
+#include <GL/glew.h>
+#include <GL/gl.h>
+#include <GL/glx.h>
 
 #include "vx_codes.h"
 #include "glcontext.h"
@@ -11,8 +15,6 @@
 
 #include "vx_resc.h"
 #define MAX_FBOS 128
-
-
 
 
 typedef struct vx vx_t;
@@ -28,12 +30,40 @@ struct vx
 
 };
 
+typedef struct vbo_resc vbo_resc_t;
+struct vbo_resc {
+
+    vx_resc_t * vresc;
+
+    GLuint vbo_id;
+};
+
+
 
 static vx_t state;
+
+
+static void checkVersions()
+{
+	if (glewIsSupported("GL_VERSION_2_0"))
+		printf("Ready for OpenGL 2.0\n");
+	else {
+		printf("OpenGL 2.0 not supported\n");
+		exit(1);
+	}
+
+    const GLubyte *glslVersion =
+        glGetString( GL_SHADING_LANGUAGE_VERSION );
+    printf("GLSL version %s\n",glslVersion);
+}
 
 int vx_init()
 {
     state.glc = glcontext_X11_create();
+
+    glewInit(); // Call this after GL context created XXX How sure are we that we need this?
+    checkVersions();
+
 
     state.resource_map = lphash_create();
     state.buffer_codes_map = vhash_create(vhash_str_hash, vhash_str_equals);
@@ -82,10 +112,18 @@ int vx_update_resources(int nresc, vx_resc_t ** resources)
     for (int i = 0; i < nresc; i++) {
         vx_resc_t *vr = resources[i];
 
-        vx_resc_t * old_vr = lphash_get(state.resource_map, vr->id);
+        /* vx_resc_t * old_vr = lphash_get(state.resource_map, vr->id); */
+        vbo_resc_t * old_vr = lphash_get(state.resource_map, vr->id);
 
         if (old_vr == NULL) {
-            lphash_put(state.resource_map, vr->id, vr);
+            vbo_resc_t * new_vr = malloc(sizeof(vbo_resc_t));
+            lphash_put(state.resource_map, vr->id, new_vr);
+
+            new_vr->vresc = vr;
+            glGenBuffers(1, &(new_vr->vbo_id));
+            glBindBuffer(GL_ARRAY_BUFFER, new_vr->vbo_id);
+            glBufferData(GL_ARRAY_BUFFER, new_vr->vresc->count*new_vr->vresc->fieldwidth, new_vr->vresc->res, GL_STATIC_DRAW);
+
 
             // XXX Also need to allocate VBOs at somepoint.
         } else {
