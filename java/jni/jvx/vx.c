@@ -12,6 +12,7 @@
 
 #include "lphash.h"
 #include "vhash.h"
+#include "lihash.h"
 
 #include "vx_resc.h"
 #define MAX_FBOS 128
@@ -25,6 +26,12 @@ struct vx
     gl_fbo_t *fbos[MAX_FBOS];
 
     lphash_t * resource_map;
+
+    //XXX Really these should be lihash (64-bit key, 32 bit value, GLuint)
+    //XXX Problem with lihash is how to distinguish a failed return
+    lihash_t * program_map;
+    lihash_t * vbo_map;
+
     vhash_t * buffer_codes_map;
 
 
@@ -66,6 +73,10 @@ int vx_init()
 
 
     state.resource_map = lphash_create();
+
+    state.program_map = lihash_create();
+    state.vbo_map = lihash_create();
+
     state.buffer_codes_map = vhash_create(vhash_str_hash, vhash_str_equals);
 
     return 0;
@@ -112,20 +123,11 @@ int vx_update_resources(int nresc, vx_resc_t ** resources)
     for (int i = 0; i < nresc; i++) {
         vx_resc_t *vr = resources[i];
 
-        /* vx_resc_t * old_vr = lphash_get(state.resource_map, vr->id); */
-        vbo_resc_t * old_vr = lphash_get(state.resource_map, vr->id);
+        vx_resc_t * old_vr = lphash_get(state.resource_map, vr->id);
 
         if (old_vr == NULL) {
-            vbo_resc_t * new_vr = malloc(sizeof(vbo_resc_t));
-            lphash_put(state.resource_map, vr->id, new_vr);
+            lphash_put(state.resource_map, vr->id, vr);
 
-            new_vr->vresc = vr;
-            glGenBuffers(1, &(new_vr->vbo_id));
-            glBindBuffer(GL_ARRAY_BUFFER, new_vr->vbo_id);
-            glBufferData(GL_ARRAY_BUFFER, new_vr->vresc->count*new_vr->vresc->fieldwidth, new_vr->vresc->res, GL_STATIC_DRAW);
-
-
-            // XXX Also need to allocate VBOs at somepoint.
         } else {
             printf("WRN: ID collision, 0x%lx resource already exists\n", vr->id);
             vx_resc_destroy(vr);
@@ -140,12 +142,54 @@ int vx_render_program(vx_code_input_stream_t * codes)
         return 1;
     printf("Processing program, codes has %d remaining\n",codes->len-codes->pos);
 
-    uint32_t vertOp = codes->read_uint32(codes);
-    assert(vertOp == OP_VERT_SHADER);
-    uint64_t vertId = codes->read_uint64(codes);
-    uint32_t fragOp = codes->read_uint32(codes);
-    assert(fragOp == OP_FRAG_SHADER);
-    uint64_t fragId = codes->read_uint64(codes);
+    GLuint prog_id = -1;
+    {
+        uint32_t vertOp = codes->read_uint32(codes);
+        assert(vertOp == OP_VERT_SHADER);
+        uint64_t vertId = codes->read_uint64(codes);
+        uint32_t fragOp = codes->read_uint32(codes);
+        assert(fragOp == OP_FRAG_SHADER);
+        uint64_t fragId = codes->read_uint64(codes);
+
+        vx_resc_t * vertResc = lphash_get(state.resource_map, vertId);
+        vx_resc_t * fragResc = lphash_get(state.resource_map, fragId);
+
+        int success = 0;
+        // Programs can be found by the guid of the either shader resource
+        prog_id = lihash_get(state.program_map, vertId, &success);
+        if (!success) {
+            // Allocate a program if we haven't made it yet
+            GLuint v = glCreateShader(GL_VERTEX_SHADER);
+            GLuint f = glCreateShader(GL_FRAGMENT_SHADER);
+
+            const char * vertSource = vertResc->res;
+            const char * fragSource = fragResc->res;
+
+            glShaderSource(v, 1, &vertSource, NULL);
+            glShaderSource(f, 1, &fragSource, NULL);
+
+
+            glCompileShader(v);
+            glCompileShader(f);
+
+            prog_id = glCreateProgram();
+
+            glAttachShader(prog_id,v);
+            glAttachShader(prog_id,f);
+
+            glLinkProgram(prog_id);
+
+            lihash_put(state.program_map, vertId, prog_id);
+            lihash_put(state.program_map, fragId, prog_id);
+        }
+        glUseProgram(prog_id);
+
+        printf("Vertex Shader:\n%s\n", (char *)vertResc->res);
+        printf("Fragment Shader:\n%s\n", (char *)fragResc->res);
+    }
+
+
+
 
     uint32_t attribCountOp = codes->read_uint32(codes);
     assert(attribCountOp == OP_VERT_ATTRIB_COUNT);
@@ -157,6 +201,26 @@ int vx_render_program(vx_code_input_stream_t * codes)
         uint64_t attribId = codes->read_uint64(codes);
         uint32_t dim = codes->read_uint32(codes);
         char * name = codes->read_str(codes); //Not a copy!
+
+        // This should never fail!
+        vx_resc_t * vr  = lphash_get(state.resource_map, attribId);
+        assert(vr != NULL);
+
+        int success = 0;
+        GLuint vbo_id = lihash_get(state.vbo_map, attribId, &success);
+        if (!success) { // A VBO may not be already allocated yet
+            printf("Allocating a VBO for guid %ld\n", attribId);
+            glGenBuffers(1, &vbo_id);
+            glBindBuffer(GL_ARRAY_BUFFER, vbo_id);
+            glBufferData(GL_ARRAY_BUFFER, vr->count*vr->fieldwidth, vr->res, GL_STATIC_DRAW);
+        }
+        // lazily create VBOs
+
+
+            // XXX Binding the VBOs here forces the text description of a shader to be bound to a VBO
+            // Doing this lazily later would be a better plan
+
+
     }
     uint32_t elementOp =codes->read_uint32(codes);
     assert(elementOp == OP_ELEMENT_ARRAY);
