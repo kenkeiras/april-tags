@@ -31,5 +31,7 @@ public class VxTest
         vw.getBuffer("first-buffer").stage(vp);
         vw.getBuffer("first-buffer").commit();
 
+
+        vxls.render();
     }
 }

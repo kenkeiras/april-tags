@@ -76,7 +76,6 @@ int vx_update_buffer(char * name, vx_code_input_stream_t * codes)
 
 int vx_update_resources(int nresc, vx_resc_t ** resources)
 {
-    // XXX Also need to allocate VBOs at somepoint.
     for (int i = 0; i < nresc; i++) {
         vx_resc_t *vr = resources[i];
 
@@ -84,6 +83,8 @@ int vx_update_resources(int nresc, vx_resc_t ** resources)
 
         if (old_vr == NULL) {
             lphash_put(state.resource_map, vr->id, vr);
+
+            // XXX Also need to allocate VBOs at somepoint.
         } else {
             printf("WRN: ID collision, 0x%lx resource already exists\n", vr->id);
             vx_resc_destroy(vr);

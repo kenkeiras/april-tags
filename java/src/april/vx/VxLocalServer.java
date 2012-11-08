@@ -57,5 +57,8 @@ public class VxLocalServer implements VxServer
     private static native int update_buffer(byte[] buf_name, int code_len, byte[] codes,
                                             int nresc, int types[], Object[] rescs, int counts[], int fieldwidths[], long ids[]);
     private static native int gl_initialize();
+    // XXX access control
+    static native int render();
+    static native int read_pixels(int width, int height, byte[] img);
     private static native int fbo_create(int width, int height);
 }

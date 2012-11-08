@@ -66,6 +66,21 @@ JNIEXPORT jint JNICALL Java_april_vx_VxLocalServer_update_1buffer
     return 0;
 }
 
+JNIEXPORT jint JNICALL Java_april_vx_VxLocalServer_render
+  (JNIEnv * jenv, jclass jcls)
+{
+    vx_render();
+}
+
+JNIEXPORT jint JNICALL Java_april_vx_VxLocalServer_read_1pixels
+  (JNIEnv * jenv, jclass jcls, jint width, jint height, jbyteArray jimg)
+{
+
+    jbyte* img_env = (*jenv)->GetPrimitiveArrayCritical(jenv, jimg, NULL);
+    vx_read_pixels_bgr(width,height, (uint8_t *) img_env);
+    (*jenv)->ReleasePrimitiveArrayCritical(jenv, jimg, img_env, 0);
+}
+
 
 JNIEXPORT jint JNICALL Java_april_vx_VxLocalServer_fbo_1create
   (JNIEnv * jenv, jclass jcls, jint width, jint height)
