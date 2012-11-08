@@ -223,6 +223,12 @@ int vx_render_program(vx_code_input_stream_t * codes)
         glBindBuffer(GL_ARRAY_BUFFER, vbo_id);
         GLint attr_loc = glGetAttribLocation(prog_id, name);
         glVertexAttribPointer(attr_loc, dim, vr->type, 0, 0, 0); // XXX java link error
+        assert(vr->type == GL_FLOAT);
+
+        printf("VBO dim = %d count %d\n", dim, vr->count);
+        for (float *id = vr->res; id < vr->res + vr->count*vr->fieldwidth; id++)
+            printf("%f\n",*id);
+
     }
 
     {
@@ -234,14 +240,20 @@ int vx_render_program(vx_code_input_stream_t * codes)
         // This should never fail!
         vx_resc_t * vr  = lphash_get(state.resource_map, elementId);
         assert(vr != NULL);
+        printf("element  len %d id %ld\n", vr->count, elementId);
 
 
         int success = 0;
         GLuint vbo_id = lihash_get(state.vbo_map, elementId, &success);
         if (!success) {
+            printf("Allocating a VBO for guid %ld\n", elementId);
             glGenBuffers(1, &vbo_id);
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_id);
             glBufferData(GL_ELEMENT_ARRAY_BUFFER, vr->count * vr->fieldwidth, vr->res, GL_STATIC_DRAW);
+
+
+            for (uint32_t *id = vr->res; id < vr->res + vr->count*vr->fieldwidth; id++)
+                printf("%d\n",*id);
         } //XXX minor code duplication, see attributes
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_id);

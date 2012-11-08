@@ -63,6 +63,7 @@ public class VxProgram implements VxObject
         codes.writeLong(vxid.id);
         codes.writeInt(vxidtype);
 
+        System.out.printf("Element len %d, elementID %d\n",vxid.data.length, vxid.id);
         resources.add(new VxResource(Vx.GL_INT, vxid.data, vxid.data.length, 4, vxid.id));
 
     }
