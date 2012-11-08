@@ -26,37 +26,71 @@ public class VxTest
     public static void main(String args[]) throws IOException
     {
         int width = 480, height = 480;
-
-        VxProgram vp = new VxProgram(readFile(args[0]+"/attr.vert").getBytes(), VxUtil.allocateID(),
-                                     readFile(args[0]+"/attr.frag").getBytes(), VxUtil.allocateID());
-
-        float pts[] = { 1.0f, 1.0f,
-                        0.0f, 1.0f,
-                        0.0f, 0.0f,
-                        1.0f, 0.0f};
-
-        VxVertexAttrib points = new VxVertexAttrib(pts, 2);
-        vp.setVertexAttrib("position", points);
-
-        float cls[] = { 1.0f, 0.0f, 0.0f,
-                        1.0f, 0.0f, 1.0f,
-                        0.0f, 1.0f, 0.0f,
-                        1.0f, 1.0f, 0.0f};
-        VxVertexAttrib colors = new VxVertexAttrib(cls, 3);
-        vp.setVertexAttrib("color", colors);
-
-
-        int idxs[] = {0,1,2,
-                      2,3,0};
-        VxIndexData index = new VxIndexData(idxs);
-        vp.setElementArray(index, Vx.GL_TRIANGLES);
-
-
         VxLocalServer vxls = new VxLocalServer(width,height);
         VxWorld vw = new VxWorld(vxls);
 
-        vw.getBuffer("first-buffer").stage(vp);
+        {
+            VxProgram vp = new VxProgram(readFile(args[0]+"/attr.vert").getBytes(), VxUtil.allocateID(),
+                                         readFile(args[0]+"/attr.frag").getBytes(), VxUtil.allocateID());
+
+            float pts[] = { 1.0f, 1.0f,
+                            0.0f, 1.0f,
+                            0.0f, 0.0f,
+                            1.0f, 0.0f};
+
+            VxVertexAttrib points = new VxVertexAttrib(pts, 2);
+            vp.setVertexAttrib("position", points);
+
+            float cls[] = { 1.0f, 0.0f, 0.0f,
+                            1.0f, 0.0f, 1.0f,
+                            0.0f, 1.0f, 0.0f,
+                            1.0f, 1.0f, 0.0f};
+            VxVertexAttrib colors = new VxVertexAttrib(cls, 3);
+            vp.setVertexAttrib("color", colors);
+
+
+            int idxs[] = {0,1,2,
+                          2,3,0};
+            VxIndexData index = new VxIndexData(idxs);
+            vp.setElementArray(index, Vx.GL_TRIANGLES);
+
+            vw.getBuffer("first-buffer").stage(vp);
+        }
+
+        {
+            VxProgram vp = new VxProgram(readFile(args[0]+"/attr.vert").getBytes(), VxUtil.allocateID(),
+                                         readFile(args[0]+"/attr.frag").getBytes(), VxUtil.allocateID());
+
+            float pts[] = {0.0f, 0.0f,
+                           -1.0f, 0.0f,
+                           -1.0f, -1.0f,
+                           0.0f, -1.0f};
+
+            VxVertexAttrib points = new VxVertexAttrib(pts, 2);
+            vp.setVertexAttrib("position", points);
+
+            float cls[] = { 0.0f, .3f, 1.0f,
+                            0.5f, 0.3f, 1.0f,
+                            0.0f, 1.0f, 1.0f,
+                            0.0f, 1.0f, 1.0f};
+            VxVertexAttrib colors = new VxVertexAttrib(cls, 3);
+            vp.setVertexAttrib("color", colors);
+
+
+            int idxs[] = {0,1,2,
+                          2,3,0};
+            VxIndexData index = new VxIndexData(idxs);
+            vp.setElementArray(index, Vx.GL_TRIANGLES);
+
+            vw.getBuffer("first-buffer").stage(vp);
+        }
+
+
         vw.getBuffer("first-buffer").commit();
+
+
+
+
 
 
         vxls.render(width,height);
