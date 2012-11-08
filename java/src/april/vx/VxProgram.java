@@ -42,8 +42,8 @@ public class VxProgram implements VxObject
         codes.writeInt(Vx.OP_FRAG_SHADER);
         codes.writeLong(fragId);
 
-        resources.add(new VxResource(Vx.VX_BYTE_ARRAY, vertArr, vertArr.length, 1, vertId));
-        resources.add(new VxResource(Vx.VX_BYTE_ARRAY, fragArr, fragArr.length, 1, fragId));
+        resources.add(new VxResource(Vx.GL_BYTE, vertArr, vertArr.length, 1, vertId));
+        resources.add(new VxResource(Vx.GL_BYTE, fragArr, fragArr.length, 1, fragId));
 
         codes.writeInt(Vx.OP_VERT_ATTRIB_COUNT);
         codes.writeInt(attribMap.size());
@@ -55,7 +55,7 @@ public class VxProgram implements VxObject
             codes.writeInt(vva.dim);
             codes.writeStringZ(name);
 
-            resources.add(new VxResource(Vx.VX_FLOAT_ARRAY, vva.fdata, vva.fdata.length, 4, vva.id));
+            resources.add(new VxResource(Vx.GL_FLOAT, vva.fdata, vva.fdata.length, 4, vva.id));
         }
 
 
@@ -63,7 +63,7 @@ public class VxProgram implements VxObject
         codes.writeLong(vxid.id);
         codes.writeInt(vxidtype);
 
-        resources.add(new VxResource(Vx.VX_INT_ARRAY, vxid.data, vxid.data.length, 4, vxid.id));
+        resources.add(new VxResource(Vx.GL_INT, vxid.data, vxid.data.length, 4, vxid.id));
 
     }
 }

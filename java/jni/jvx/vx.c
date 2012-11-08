@@ -1,3 +1,5 @@
+#define GL_GLEXT_PROTOTYPES
+
 #include "vx.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -208,25 +210,44 @@ int vx_render_program(vx_code_input_stream_t * codes)
 
         int success = 0;
         GLuint vbo_id = lihash_get(state.vbo_map, attribId, &success);
-        if (!success) { // A VBO may not be already allocated yet
+
+        // lazily create VBOs
+        if (!success) {
             printf("Allocating a VBO for guid %ld\n", attribId);
             glGenBuffers(1, &vbo_id);
             glBindBuffer(GL_ARRAY_BUFFER, vbo_id);
             glBufferData(GL_ARRAY_BUFFER, vr->count*vr->fieldwidth, vr->res, GL_STATIC_DRAW);
         }
-        // lazily create VBOs
+
+        // Rebind, then attach
+        glBindBuffer(GL_ARRAY_BUFFER, vbo_id);
+        GLint attr_loc = glGetAttribLocation(prog_id, name);
+        glVetexAttribPointer(attr_loc, dim, vr->type, 0, 0, 0); // XXX java link error
+    }
+
+    {
+        uint32_t elementOp =codes->read_uint32(codes);
+        assert(elementOp == OP_ELEMENT_ARRAY);
+        uint64_t elementId = codes->read_uint64(codes);
+        uint32_t elementType = codes->read_uint32(codes);
+
+        // This should never fail!
+        vx_resc_t * vr  = lphash_get(state.resource_map, elementId);
+        assert(vr != NULL);
 
 
-            // XXX Binding the VBOs here forces the text description of a shader to be bound to a VBO
-            // Doing this lazily later would be a better plan
+        int success = 0;
+        GLuint vbo_id = lihash_get(state.vbo_map, elementId, &success);
+        if (!success) {
+            glGenBuffers(1, &vbo_id);
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_id);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, vr->count * vr->fieldwidth, vr->res, GL_STATIC_DRAW);
+        } //XXX minor code duplication, see attributes
 
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_id);
+        glDrawElements(elementType, vr->count, vr->type, NULL);
 
     }
-    uint32_t elementOp =codes->read_uint32(codes);
-    assert(elementOp == OP_ELEMENT_ARRAY);
-    uint64_t elementId = codes->read_uint64(codes);
-    uint32_t elementType = codes->read_uint32(codes);
-
 
     return 0;
 }
