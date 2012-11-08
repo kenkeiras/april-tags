@@ -1,7 +1,9 @@
 #include "vx.h"
-
 #include <stdio.h>
+#include <malloc.h>
+#include <assert.h>
 
+#include "vx_codes.h"
 #include "glcontext.h"
 
 #include "lphash.h"
@@ -74,7 +76,7 @@ int vx_update_buffer(char * name, vx_code_input_stream_t * codes)
 
 int vx_update_resources(int nresc, vx_resc_t ** resources)
 {
-
+    // XXX Also need to allocate VBOs at somepoint.
     for (int i = 0; i < nresc; i++) {
         vx_resc_t *vr = resources[i];
 
@@ -90,9 +92,31 @@ int vx_update_resources(int nresc, vx_resc_t ** resources)
 
 }
 
-vx_code_input_stream_t * vx_render_program(vx_code_input_stream_t * codes)
+int vx_render_program(vx_code_input_stream_t * codes)
 {
+    if (codes->len == codes->pos) // exhausted the stream
+        return 1;
 
+    assert(codes->read_uint32(codes) == OP_VERT_SHADER);
+    uint64_t vertId = codes->read_uint64(codes);
+    assert(codes->read_uint32(codes) == OP_FRAG_SHADER);
+    uint64_t fragId = codes->read_uint64(codes);
+
+    assert(codes->read_uint32(codes) == OP_ELEMENT_ARRAY);
+    uint64_t elementId = codes->read_uint64(codes);
+    uint32_t elementType = codes->read_uint32(codes);
+
+    assert(codes->read_uint32(codes) == OP_VERT_ATTRIB_COUNT);
+    uint32_t attribCount = codes->read_uint32(codes);
+
+    for (int i = 0; i < attribCount; i++) {
+        assert(codes->read_uint32(codes) == OP_VERT_ATTRIB);
+        uint64_t attribId = codes->read_uint64(codes);
+        uint32_t dim = codes->read_uint32(codes);
+        char * name = codes->read_str(codes); //XXX Is this copy really necessary?
+
+        free(name);
+    }
 
 }
 
