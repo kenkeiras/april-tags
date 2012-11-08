@@ -29,16 +29,15 @@ uint64_t vx_read_uint64(vx_code_input_stream_t * stream)
     return be64toh(result);
 }
 
-// Returns a string which caller must free
+// Returns a string reference which only valid as long as stream->data is valid
 char * vx_read_str(vx_code_input_stream_t * stream)
 {
     uint32_t remaining  = stream->len - stream->pos;
 
-    char * str_start = (char*)(stream->data+stream->pos);
-    uint32_t str_size = strnlen(str_start, remaining);
+    char * str = (char*)(stream->data+stream->pos);
+    uint32_t str_size = strnlen(str, remaining);
     assert(remaining != str_size);  // Ensure there's a '\0' terminator
 
-    char * str = strdup(str_start); //XXX Do we really need this copy?
     stream->pos += str_size + 1; // +1 to account for null terminator
 
     return str;

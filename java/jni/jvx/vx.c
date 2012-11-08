@@ -118,9 +118,7 @@ int vx_render_program(vx_code_input_stream_t * codes)
         assert(codes->read_uint32(codes) == OP_VERT_ATTRIB);
         uint64_t attribId = codes->read_uint64(codes);
         uint32_t dim = codes->read_uint32(codes);
-        char * name = codes->read_str(codes); //XXX Is this copy really necessary?
-
-        free(name);
+        char * name = codes->read_str(codes); //Not a copy!
     }
 
     return 0;
