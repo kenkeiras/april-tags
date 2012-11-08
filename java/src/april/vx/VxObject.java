@@ -1,6 +1,8 @@
 package april.vx;
 
+import java.util.*;
+
 public interface VxObject
 {
-    public void appendTo(VxObjOpcodes voo);
+    public void appendTo(ArrayList<VxResource> resources, VxCodeOutputStream vxout);
 }

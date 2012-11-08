@@ -1,0 +1,18 @@
+#ifndef __VX_CODE_INPUT_STREAM_H__
+#define __VX_CODE_INPUT_STREAM_H__
+#include <stdint.h>
+#include <string.h>
+
+typedef struct vx_code_input_stream vx_code_input_stream_t;
+
+struct vx_code_input_stream
+{
+    uint8_t *data;
+    uint32_t pos;
+    uint32_t len;
+};
+
+vx_code_input_stream_t * vx_code_input_stream_init(uint8_t *data, uint32_t codes_len);
+void vx_code_input_stream_destroy(vx_code_input_stream_t * stream);
+
+#endif

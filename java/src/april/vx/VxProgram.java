@@ -34,26 +34,35 @@ public class VxProgram implements VxObject
         attribMap.put(name, vva);
     }
 
-    public void appendTo(VxObjOpcodes voo)
+    public void appendTo(ArrayList<VxResource> resources, VxCodeOutputStream codes)
     {
 
-        voo.addCode(Vx.OP_VERT_SHADER);
-        voo.addResource(null, Vx.VX_BYTE_ARRAY, vertArr, vertArr.length, 1, vertId);
-        voo.addCode(Vx.OP_FRAG_SHADER);
-        voo.addResource(null, Vx.VX_BYTE_ARRAY, fragArr, fragArr.length, 1, fragId);
+        codes.writeInt(Vx.OP_VERT_SHADER);
+        codes.writeLong(vertId);
+        codes.writeInt(Vx.OP_FRAG_SHADER);
+        codes.writeLong(fragId);
+
+        resources.add(new VxResource(Vx.VX_BYTE_ARRAY, vertArr, vertArr.length, 1, vertId));
+        resources.add(new VxResource(Vx.VX_BYTE_ARRAY, fragArr, fragArr.length, 1, fragId));
 
 
-        voo.addCode(Vx.OP_ELEMENT_ARRAY);
-        voo.addCode(vxidtype);
-        voo.addResource(null, Vx.VX_INT_ARRAY, vxid.data, vxid.data.length, 4, vxid.id);
+        codes.writeInt(Vx.OP_ELEMENT_ARRAY);
+        codes.writeLong(vxid.id);
+        codes.writeInt(vxidtype);
 
+        resources.add(new VxResource(Vx.VX_INT_ARRAY, vxid.data, vxid.data.length, 4, vxid.id));
 
-        voo.addCode(attribMap.size());
+        codes.writeInt(Vx.OP_VERT_ATTRIB_COUNT);
+        codes.writeInt(attribMap.size());
+
         for (String name :  attribMap.keySet()) {
             VxVertexAttrib vva = attribMap.get(name);
-            voo.addCode(Vx.OP_VERT_ATTRIB);
-            voo.addCode(vva.dim);
-            voo.addResource(name, Vx.VX_FLOAT_ARRAY, vva.fdata, vva.fdata.length, 4, vva.id);
+            codes.writeInt(Vx.OP_VERT_ATTRIB);
+            codes.writeLong(vva.id);
+            codes.writeInt(vva.dim);
+            codes.writeStringZ(name);
+
+            resources.add(new VxResource(Vx.VX_FLOAT_ARRAY, vva.fdata, vva.fdata.length, 4, vva.id));
         }
 
     }

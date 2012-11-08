@@ -4,7 +4,7 @@ package april.vx;
 public class Vx
 {
     public static final int OP_VERT_SHADER = 0, OP_FRAG_SHADER = 1,
-        OP_ELEMENT_ARRAY = 2, OP_VERT_ATTRIB = 3;
+        OP_ELEMENT_ARRAY = 2, OP_VERT_ATTRIB = 3, OP_VERT_ATTRIB_COUNT = 4;
 
     public static final int VX_FLOAT_ARRAY = 0, VX_BYTE_ARRAY = 1, VX_INT_ARRAY =2;
 

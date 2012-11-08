@@ -50,14 +50,15 @@ public class VxWorld
             }
 
             // Opcodify all the objects in this list, s
-            VxObjOpcodes voo = new VxObjOpcodes();
+            ArrayList<VxResource> resources = new ArrayList();
+            VxCodeOutputStream codes = new VxCodeOutputStream();
 
             for (VxObject vxo : cobjs) {
-                vxo.appendTo(voo);
+                vxo.appendTo(resources, codes);
             }
 
             // Notify the Layer we need to be rem
-            vxs.update(name, voo);
+            vxs.update(name, resources, codes);
         }
     }
 

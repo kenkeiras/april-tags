@@ -2,7 +2,7 @@
 #include "glcontext.h"
 
 #include "lphash.h"
-#include "vx_obj_opcodes.h"
+#include "vx_resc.h"
 #define MAX_FBOS 128
 
 
@@ -51,19 +51,15 @@ int fbo_create(int width, int height)
 
 }
 
-
-//XXXX This needs to change
-// Caller needs to free *name
-int paint_buffer(char * name, vx_obj_opcodes_t *voo)
+int vx_update_buffer(char * name, vx_code_input_stream_t * codes)
 {
-
-    // Hack: Process the opcodes, etc
-
-
-
 
 }
 
+int vx_update_resources(int nresc, vx_resc_t ** resources)
+{
+
+}
 
 
 int read_pixels_bgr(int width, int height, uint8_t * out_buf)

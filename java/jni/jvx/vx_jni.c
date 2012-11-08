@@ -1,7 +1,7 @@
 #include "april_vx_VxLocalServer.h"
 
 #include "vx.h"
-#include "vx_obj_opcodes.h"
+#include "vx_code_input_stream.h"
 #include "string.h"
 
 JNIEXPORT jint JNICALL Java_april_vx_VxLocalServer_gl_1initialize
@@ -11,11 +11,9 @@ JNIEXPORT jint JNICALL Java_april_vx_VxLocalServer_gl_1initialize
 }
 
 JNIEXPORT jint JNICALL Java_april_vx_VxLocalServer_update_1buffer
-  (JNIEnv * jenv, jclass jcls, jbyteArray jbuf_name, jint ncodes, jintArray jcodes,
-   jint nresc, jobjectArray jnames, jintArray jtypes, jobjectArray jrescs, jintArray jcounts, jintArray jfieldwidths, jlongArray jids)
+ (JNIEnv * jenv, jclass jcls, jbyteArray jbuf_name, jint codes_len, jbyteArray jcodes,
+   jint nresc, jintArray jtypes, jobjectArray jrescs, jintArray jcounts, jintArray jfieldwidths, jlongArray jids)
 {
-    vx_obj_opcodes_t * v = vx_obj_opcodes_create(ncodes, nresc);
-
 
     // Grab buffer name
     jbyte *buf_name_env = (*jenv)->GetPrimitiveArrayCritical(jenv, jbuf_name, NULL);
@@ -26,10 +24,12 @@ JNIEXPORT jint JNICALL Java_april_vx_VxLocalServer_update_1buffer
 
 
     // Copy over the Opcodes and integer parameters
-    jint * codes_env = (*jenv)->GetPrimitiveArrayCritical(jenv, jcodes, NULL);
-    memcpy(v->codes, codes_env, sizeof(uint32_t) * ncodes);
+    jbyte * codes_env = (*jenv)->GetPrimitiveArrayCritical(jenv, jcodes, NULL);
+    vx_code_input_stream_t * codes = vx_code_input_stream_init(codes_env, codes_len);
     (*jenv)->ReleasePrimitiveArrayCritical(jenv, jcodes, codes_env, 0);
 
+
+    vx_resc_t ** resources = malloc(sizeof(vx_resc_t*)*nresc);
 
     jint * types_env = (*jenv)->GetPrimitiveArrayCritical(jenv, jtypes, NULL);
     jint * counts_env = (*jenv)->GetPrimitiveArrayCritical(jenv, jcounts, NULL);
@@ -52,20 +52,16 @@ JNIEXPORT jint JNICALL Java_april_vx_VxLocalServer_update_1buffer
         memcpy(vr->res, res_env, vr->count * vr->fieldwidth);
         (*jenv)->ReleasePrimitiveArrayCritical(jenv, jres, res_env, 0);
 
-        // Copy over the name XXXX This isn't the correct design
-        jobject jname  = (*jenv)->GetObjectArrayElement(jenv, jnames, i);
-        jbyte* name_env = (*jenv)->GetPrimitiveArrayCritical(jenv, jname, NULL);
-        vr->name = strdup(name_env);
-        (*jenv)->ReleasePrimitiveArrayCritical(jenv, jname, name_env, 0);
+
+        resources[i] = vr;
     }
     (*jenv)->ReleasePrimitiveArrayCritical(jenv, jtypes, types_env, 0);
     (*jenv)->ReleasePrimitiveArrayCritical(jenv, jcounts, counts_env, 0);
     (*jenv)->ReleasePrimitiveArrayCritical(jenv, jfieldwidths, fieldwidths_env, 0);
     (*jenv)->ReleasePrimitiveArrayCritical(jenv, jids, ids_env, 0);
 
-
-
-
+    vx_update_resources(nresc, resources);
+    vx_update_buffer(buf_name, codes);
 
     return 0;
 }
