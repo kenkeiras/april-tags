@@ -14,8 +14,8 @@ struct vx_resc {
 
     uint64_t id; // unique id for this resource
 
-    // Set to empty string if not used
-    char * name;
 };
+
+void vx_resc_destroy(vx_resc_t * r);
 
 #endif

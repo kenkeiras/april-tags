@@ -10,6 +10,8 @@ struct vx_code_input_stream
     uint8_t *data;
     uint32_t pos;
     uint32_t len;
+
+    uint32_t (* read_uint32)(vx_code_input_stream_t * stream);
 };
 
 vx_code_input_stream_t * vx_code_input_stream_init(uint8_t *data, uint32_t codes_len);

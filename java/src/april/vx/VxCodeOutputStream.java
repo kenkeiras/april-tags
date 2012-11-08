@@ -2,6 +2,8 @@ package april.vx;
 
 import java.io.*;
 
+
+// Big endian (network byte order)
 public final class VxCodeOutputStream
 {
     byte buf[];
