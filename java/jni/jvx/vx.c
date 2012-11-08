@@ -125,8 +125,9 @@ int vx_render_program(vx_code_input_stream_t * codes)
 }
 
 // NOTE: Thread safety must be guaranteed externally
-int vx_render()
+int vx_render(int width, int height)
 {
+    glViewport(0,0,width,height);
 
     // For each buffer, process all the programs
 

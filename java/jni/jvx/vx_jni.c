@@ -65,9 +65,9 @@ JNIEXPORT jint JNICALL Java_april_vx_VxLocalServer_update_1buffer
 }
 
 JNIEXPORT jint JNICALL Java_april_vx_VxLocalServer_render
-  (JNIEnv * jenv, jclass jcls)
+(JNIEnv * jenv, jclass jcls, jint width, jint height)
 {
-    vx_render();
+    vx_render(width, height);
     return 0;
 }
 

@@ -58,7 +58,7 @@ public class VxLocalServer implements VxServer
                                             int nresc, int types[], Object[] rescs, int counts[], int fieldwidths[], long ids[]);
     private static native int gl_initialize();
     // XXX access control
-    static native int render();
+    static native int render(int width, int height);
     static native int read_pixels(int width, int height, byte[] img);
     private static native int fbo_create(int width, int height);
 }
