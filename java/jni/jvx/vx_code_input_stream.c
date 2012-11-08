@@ -12,13 +12,9 @@ uint32_t vx_read_uint32(vx_code_input_stream_t * stream)
 {
     vx_ensure_space(stream, 4);
 
-    uint32_t result =
-        (((uint32_t)stream->data[stream->pos + 0]) << 24) |
-        (((uint32_t)stream->data[stream->pos + 1]) << 16) |
-        (((uint32_t)stream->data[stream->pos + 2]) << 8 ) |
-        (((uint32_t)stream->data[stream->pos + 3]) << 0 );
-
+    uint32_t result = * ((uint32_t*)(stream->data + stream->pos));
     stream->pos += 4;
+
     return be32toh(result);
 }
 
@@ -27,17 +23,9 @@ uint64_t vx_read_uint64(vx_code_input_stream_t * stream)
 {
     vx_ensure_space(stream, 8);
 
-    uint64_t result =
-        (((uint64_t)stream->data[stream->pos + 0]) << 56) |
-        (((uint64_t)stream->data[stream->pos + 1]) << 48) |
-        (((uint64_t)stream->data[stream->pos + 2]) << 40) |
-        (((uint64_t)stream->data[stream->pos + 3]) << 32) |
-        (((uint64_t)stream->data[stream->pos + 4]) << 24) |
-        (((uint64_t)stream->data[stream->pos + 5]) << 16) |
-        (((uint64_t)stream->data[stream->pos + 6]) << 8 ) |
-        (((uint64_t)stream->data[stream->pos + 7]) << 0 );
-
+    uint64_t result = * ((uint64_t*)(stream->data + stream->pos));
     stream->pos += 8;
+
     return be64toh(result);
 }
 
@@ -51,7 +39,7 @@ char * vx_read_str(vx_code_input_stream_t * stream)
     assert(remaining != str_size);  // Ensure there's a '\0' terminator
 
     char * str = strdup(str_start); //XXX Do we really need this copy?
-    stream->pos += str_size;
+    stream->pos += str_size + 1; // +1 to account for null terminator
 
     return str;
 }
@@ -60,14 +48,11 @@ char * vx_read_str(vx_code_input_stream_t * stream)
 vx_code_input_stream_t * vx_code_input_stream_init(uint8_t *data, uint32_t codes_len)
 {
     vx_code_input_stream_t * stream = malloc(sizeof(vx_code_input_stream_t));
-    printf("Initializing buffer: len %d\n", codes_len);
     stream->len = codes_len;
     stream->pos = 0;
-    printf("Initializing buffer: stream->len %d stream->pos %d\n", stream->len, stream->pos);
+
     stream->data = malloc(sizeof(uint8_t)*stream->len);
-    printf("Initializing buffer: stream->len %d stream->pos %d\n", stream->len, stream->pos);
     memcpy(stream->data, data, sizeof(uint8_t)*stream->len);
-    printf("Initializing buffer: stream->len %d stream->pos %d\n", stream->len, stream->pos);
 
     // Set function pointers
     stream->read_uint32 = vx_read_uint32;
