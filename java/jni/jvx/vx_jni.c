@@ -1,4 +1,5 @@
 #include "april_vx_VxLocalServer.h"
+#include <malloc.h>
 
 #include "vx.h"
 #include "vx_code_input_stream.h"
@@ -17,12 +18,12 @@ JNIEXPORT jint JNICALL Java_april_vx_VxLocalServer_update_1buffer
 
     // Grab buffer name
     jbyte *buf_name_env = (*jenv)->GetPrimitiveArrayCritical(jenv, jbuf_name, NULL);
-    char * buf_name = strdup(buf_name_env);
+    char * buf_name = strdup((char*)buf_name_env);
     (*jenv)->ReleasePrimitiveArrayCritical(jenv, jbuf_name, buf_name, 0);
 
     // Copy over the Opcodes and integer parameters
     jbyte * codes_env = (*jenv)->GetPrimitiveArrayCritical(jenv, jcodes, NULL);
-    vx_code_input_stream_t * codes = vx_code_input_stream_init(codes_env, codes_len);
+    vx_code_input_stream_t * codes = vx_code_input_stream_init((uint8_t *)codes_env, (uint32_t)codes_len);
     printf("Initialized buffer: %s codes->len %d codes->pos %d\n", buf_name, codes->len, codes->pos);
     (*jenv)->ReleasePrimitiveArrayCritical(jenv, jcodes, codes_env, 0);
 
@@ -68,6 +69,7 @@ JNIEXPORT jint JNICALL Java_april_vx_VxLocalServer_render
   (JNIEnv * jenv, jclass jcls)
 {
     vx_render();
+    return 0;
 }
 
 JNIEXPORT jint JNICALL Java_april_vx_VxLocalServer_read_1pixels
@@ -75,8 +77,10 @@ JNIEXPORT jint JNICALL Java_april_vx_VxLocalServer_read_1pixels
 {
 
     jbyte* img_env = (*jenv)->GetPrimitiveArrayCritical(jenv, jimg, NULL);
-    vx_read_pixels_bgr(width,height, (uint8_t *) img_env);
+    int res = vx_read_pixels_bgr(width,height, (uint8_t *) img_env);
     (*jenv)->ReleasePrimitiveArrayCritical(jenv, jimg, img_env, 0);
+
+    return res;
 }
 
 

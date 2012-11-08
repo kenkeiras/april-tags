@@ -74,6 +74,7 @@ int vx_update_buffer(char * name, vx_code_input_stream_t * codes)
     }
 
     vhash_put(state.buffer_codes_map, name, codes);
+    return 0;
 }
 
 int vx_update_resources(int nresc, vx_resc_t ** resources)
@@ -92,7 +93,7 @@ int vx_update_resources(int nresc, vx_resc_t ** resources)
             vx_resc_destroy(vr);
         }
     }
-
+    return 0;
 }
 
 int vx_render_program(vx_code_input_stream_t * codes)
@@ -141,6 +142,7 @@ int vx_render()
         while (!vx_render_program(codes));
     }
 
+    return 0;
 }
 
 
@@ -149,4 +151,5 @@ int vx_read_pixels_bgr(int width, int height, uint8_t * out_buf)
 {
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glReadPixels(0, 0, width, height, GL_BGR, GL_UNSIGNED_BYTE, out_buf);
+    return 0;
 }
