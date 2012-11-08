@@ -20,12 +20,10 @@ JNIEXPORT jint JNICALL Java_april_vx_VxLocalServer_update_1buffer
     char * buf_name = strdup(buf_name_env);
     (*jenv)->ReleasePrimitiveArrayCritical(jenv, jbuf_name, buf_name, 0);
 
-    printf("Buffer name: %s\n", (char *)buf_name);
-
-
     // Copy over the Opcodes and integer parameters
     jbyte * codes_env = (*jenv)->GetPrimitiveArrayCritical(jenv, jcodes, NULL);
     vx_code_input_stream_t * codes = vx_code_input_stream_init(codes_env, codes_len);
+    printf("Initialized buffer: %s codes->len %d codes->pos %d\n", buf_name, codes->len, codes->pos);
     (*jenv)->ReleasePrimitiveArrayCritical(jenv, jcodes, codes_env, 0);
 
 

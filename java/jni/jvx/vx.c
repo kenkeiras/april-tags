@@ -61,6 +61,8 @@ int fbo_create(int width, int height)
 
 int vx_update_buffer(char * name, vx_code_input_stream_t * codes)
 {
+    printf("Updating buffer: %s codes->len %d codes->pos %d\n", name, codes->len, codes->pos);
+
     if (vhash_get(state.buffer_codes_map, name) != NULL) {
         vhash_pair_t prev = vhash_remove(state.buffer_codes_map, name);
 
@@ -97,6 +99,7 @@ int vx_render_program(vx_code_input_stream_t * codes)
 {
     if (codes->len == codes->pos) // exhausted the stream
         return 1;
+    printf("Processing program, codes has %d remaining\n",codes->len-codes->pos);
 
     assert(codes->read_uint32(codes) == OP_VERT_SHADER);
     uint64_t vertId = codes->read_uint64(codes);
@@ -119,6 +122,7 @@ int vx_render_program(vx_code_input_stream_t * codes)
         free(name);
     }
 
+    return 0;
 }
 
 // NOTE: Thread safety must be guaranteed externally
@@ -132,8 +136,9 @@ int vx_render()
     char * buffer_name = NULL;
     while ((buffer_name = vhash_iterator_next_key(state.buffer_codes_map, &itr)) != NULL) {
         vx_code_input_stream_t *codes = vhash_get(state.buffer_codes_map, buffer_name);
+        printf("Rendering buffer: %s codes->len %d codes->pos %d\n", buffer_name, codes->len, codes->pos);
 
-        while (vx_render_program(codes) != 0);
+        while (!vx_render_program(codes));
     }
 
 }

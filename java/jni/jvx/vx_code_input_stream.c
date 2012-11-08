@@ -56,9 +56,11 @@ char * vx_read_str(vx_code_input_stream_t * stream)
 vx_code_input_stream_t * vx_code_input_stream_init(uint8_t *data, uint32_t codes_len)
 {
     vx_code_input_stream_t * stream = malloc(sizeof(vx_code_input_stream_t));
+    printf("Initializing buffer: len %d\n", codes_len);
     stream->len = codes_len;
+    printf("Initializing buffer: stream->len %d\n", stream->len);
     stream->data = malloc(sizeof(uint8_t)*stream->len);
-    memcpy(stream->data,data, sizeof(uint8_t)*stream->len);
+    memcpy(stream->data, data, sizeof(uint8_t)*stream->len);
     stream->pos = 0;
 
     // Set function pointers
