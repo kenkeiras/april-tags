@@ -320,6 +320,7 @@ int vx_render(int width, int height)
     /* GLuint p = makeProgram("shaders/attr.vert","shaders/attr.frag"); */
     //glslDrawTri(p);
 
+
     glViewport(0,0,width,height);
     // For each buffer, process all the programs
 

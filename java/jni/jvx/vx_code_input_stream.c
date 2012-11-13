@@ -44,18 +44,6 @@ char * vx_read_str(vx_code_input_stream_t * stream)
 }
 
 
-void * vx_read_ptr(vx_code_input_stream_t * stream, uint32_t length)
-{
-    int32_t remaining  = stream->len - stream->pos;
-    assert(remaining > length);
-
-    void* ptr = (void*)(stream->data+stream->pos);
-
-    stream->pos += length;
-
-    return ptr;
-}
-
 vx_code_input_stream_t * vx_code_input_stream_init(uint8_t *data, uint32_t codes_len)
 {
     vx_code_input_stream_t * stream = malloc(sizeof(vx_code_input_stream_t));
@@ -69,7 +57,6 @@ vx_code_input_stream_t * vx_code_input_stream_init(uint8_t *data, uint32_t codes
     stream->read_uint32 = vx_read_uint32;
     stream->read_uint64 = vx_read_uint64;
     stream->read_str = vx_read_str;
-    stream->read_ptr = vx_read_ptr;
 
     return stream;
 }
