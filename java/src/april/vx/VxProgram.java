@@ -74,7 +74,7 @@ public class VxProgram implements VxObject
             codes.writeInt(Vx.OP_UNIFORM_MATRIX_FV);
             codes.writeStringZ(name);
             int dim = fv.length;
-            codes.writeInt(dim); // Only square matrices are supported in ES 2.0
+            codes.writeInt(dim*dim); // Only square matrices are supported in ES 2.0
             codes.writeInt(1); //count, right now only sending one matrix
             codes.writeInt(1); // Transpose = true to convert to column-major
 

@@ -7,7 +7,7 @@ typedef struct vx_code_input_stream vx_code_input_stream_t;
 
 struct vx_code_input_stream
 {
-    uint8_t *data;
+    uint8_t * data;
     uint32_t pos;
     uint32_t len;
 

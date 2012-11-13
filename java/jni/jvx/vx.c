@@ -226,7 +226,7 @@ int vx_render_program(vx_code_input_stream_t * codes)
         glBindBuffer(GL_ARRAY_BUFFER, vbo_id);
         GLint attr_loc = glGetAttribLocation(prog_id, name);
         glEnableVertexAttribArray(attr_loc);
-       glVertexAttribPointer(attr_loc, dim, vr->type, 0, 0, 0); // XXX java link error
+        glVertexAttribPointer(attr_loc, dim, vr->type, 0, 0, 0); // XXX java link error
         assert(vr->type == GL_FLOAT);
 
         printf("VBO dim = %d count %d\n", dim, vr->count);
@@ -243,8 +243,8 @@ int vx_render_program(vx_code_input_stream_t * codes)
         uint32_t uniOp = codes->read_uint32(codes);
 
         char* name = NULL;
-        uint32_t dim = 0;
-        uint32_t count = 0;
+        uint32_t nper = 0; // how many per unit?
+        uint32_t count = 0; // how many units?
         uint32_t transpose = 0;
 
         GLint unif_loc = -1;
@@ -253,19 +253,22 @@ int vx_render_program(vx_code_input_stream_t * codes)
                 name = codes->read_str(codes);
                 unif_loc = glGetUniformLocation(prog_id, name);
 
-                dim = codes->read_uint32(codes);
+                nper = codes->read_uint32(codes);
                 count = codes->read_uint32(codes);
                 transpose = codes->read_uint32(codes);
         }
 
-        // The uniform data is stored at the end, so it can be copied into a statically allocated
+        // The uniform data is stored at the end, so it can be copied
+        // into statically allocated array
+        int vals[count*nper];
+        for (int j = 0; j < nper*count; j++)
+            vals[i++] = codes->read_uint32(codes);
 
-        float fv[count*dim*dim];
-        for (int j = 0; j < dim*dim*count; j++) {
-            fv[i++] = (float)codes->read_uint32(codes);
+        switch(uniOp) {
+            case OP_UNIFORM_MATRIX_FV:
+                if (nper == 16)
+                    glUniformMatrix4fv(unif_loc, count, transpose, (GLfloat *)vals);
         }
-
-        glUniformMatrix4fv(unif_loc, count, transpose, fv);
     }
 
     if (1) {
