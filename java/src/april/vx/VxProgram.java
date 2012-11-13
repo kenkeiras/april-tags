@@ -39,9 +39,8 @@ public class VxProgram implements VxObject
 
     public void setUniform(String name, float  vec[][])
     {
-
+        uniformMatrixfvMap.put(name, vec);
     }
-
 
     public void appendTo(ArrayList<VxResource> resources, VxCodeOutputStream codes)
     {

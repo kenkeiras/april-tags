@@ -240,7 +240,6 @@ int vx_render_program(vx_code_input_stream_t * codes)
         uint32_t transpose = 0;
 
         GLint unif_loc = -1;
-        float * fv = NULL;
         switch(uniOp) {
             case OP_UNIFORM_MATRIX_FV:
                 name = codes->read_str(codes);
@@ -249,10 +248,16 @@ int vx_render_program(vx_code_input_stream_t * codes)
                 dim = codes->read_uint32(codes);
                 count = codes->read_uint32(codes);
                 transpose = codes->read_uint32(codes);
-                fv = codes->read_ptr(codes,dim*dim*count*sizeof(float));// dim*dim since matrix
-                glUniformMatrix4fv(unif_loc, count, transpose, fv);
         }
 
+        // The uniform data is stored at the end, so it can be copied into a statically allocated
+
+        float fv[count*dim*dim];
+        for (int j = 0; j < dim*dim*count; j++) {
+            fv[i++] = (float)codes->read_uint32(codes);
+        }
+
+        glUniformMatrix4fv(unif_loc, count, transpose, fv);
     }
 
 
