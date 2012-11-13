@@ -73,6 +73,7 @@ public class VxProgram implements VxObject
         for (String name :  uniformMatrixfvMap.keySet()) {
             float fv[][] = uniformMatrixfvMap.get(name);
             codes.writeInt(Vx.OP_UNIFORM_MATRIX_FV);
+            codes.writeStringZ(name);
             int dim = fv.length;
             codes.writeInt(dim); // Only square matrices are supported in ES 2.0
             codes.writeInt(1); //count, right now only sending one matrix

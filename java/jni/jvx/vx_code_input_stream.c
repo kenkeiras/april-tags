@@ -32,10 +32,10 @@ uint64_t vx_read_uint64(vx_code_input_stream_t * stream)
 // Returns a string reference which only valid as long as stream->data is valid
 char * vx_read_str(vx_code_input_stream_t * stream)
 {
-    uint32_t remaining  = stream->len - stream->pos;
+    int32_t remaining  = stream->len - stream->pos;
 
     char * str = (char*)(stream->data+stream->pos);
-    uint32_t str_size = strnlen(str, remaining);
+    int32_t str_size = strnlen(str, remaining);
     assert(remaining != str_size);  // Ensure there's a '\0' terminator
 
     stream->pos += str_size + 1; // +1 to account for null terminator
@@ -43,6 +43,18 @@ char * vx_read_str(vx_code_input_stream_t * stream)
     return str;
 }
 
+
+void * vx_read_ptr(vx_code_input_stream_t * stream, uint32_t length)
+{
+    int32_t remaining  = stream->len - stream->pos;
+    assert(remaining > length);
+
+    void* ptr = (void*)(stream->data+stream->pos);
+
+    stream->pos += length;
+
+    return ptr;
+}
 
 vx_code_input_stream_t * vx_code_input_stream_init(uint8_t *data, uint32_t codes_len)
 {
@@ -57,6 +69,7 @@ vx_code_input_stream_t * vx_code_input_stream_init(uint8_t *data, uint32_t codes
     stream->read_uint32 = vx_read_uint32;
     stream->read_uint64 = vx_read_uint64;
     stream->read_str = vx_read_str;
+    stream->read_ptr = vx_read_ptr;
 
     return stream;
 }

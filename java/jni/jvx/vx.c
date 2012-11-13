@@ -226,10 +226,35 @@ int vx_render_program(vx_code_input_stream_t * codes)
             printf("%f\n",*id);
     }
 
-    uint32_t uniMatrixfvCountOp = codes->read_uint32(codes);
-    assert(uniMatrixfvCountOp == OP_UNIFORM_COUNT);
-    uint32_t uniMatrixfvCount = codes->read_uint32(codes);
-    //XXX Insert uniform code here
+    uint32_t uniCountOp = codes->read_uint32(codes);
+    assert(uniCountOp == OP_UNIFORM_COUNT);
+    uint32_t uniCount = codes->read_uint32(codes);
+
+    for (int i = 0; i < uniCount; i++) {
+
+        uint32_t uniOp = codes->read_uint32(codes);
+
+        char* name = NULL;
+        uint32_t dim = 0;
+        uint32_t count = 0;
+        uint32_t transpose = 0;
+
+        GLint unif_loc = -1;
+        float * fv = NULL;
+        switch(uniOp) {
+            case OP_UNIFORM_MATRIX_FV:
+                name = codes->read_str(codes);
+                unif_loc = glGetUniformLocation(prog_id, name);
+
+                dim = codes->read_uint32(codes);
+                count = codes->read_uint32(codes);
+                transpose = codes->read_uint32(codes);
+                fv = codes->read_ptr(codes,dim*dim*count*sizeof(float));// dim*dim since matrix
+                glUniformMatrix4fv(unif_loc, count, transpose, fv);
+        }
+
+    }
+
 
     {
         uint32_t elementOp =codes->read_uint32(codes);

@@ -14,6 +14,7 @@ struct vx_code_input_stream
     uint32_t (* read_uint32)(vx_code_input_stream_t * stream);
     uint64_t (* read_uint64)(vx_code_input_stream_t * stream);
     char * (* read_str)(vx_code_input_stream_t * stream);
+    void * (* read_ptr)(vx_code_input_stream_t * stream, uint32_t length);
 };
 
 vx_code_input_stream_t * vx_code_input_stream_init(uint8_t *data, uint32_t codes_len);
