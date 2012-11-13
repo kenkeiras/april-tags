@@ -5,6 +5,9 @@ import java.util.*;
 public class VxLocalServer implements VxServer
 {
 
+    // For each buffer, keep track of which guids have been uploaded
+    HashSet<VxResource> rescSet = new HashSet();
+
     public VxLocalServer(int width, int height)
     {
         initialize();
@@ -16,6 +19,18 @@ public class VxLocalServer implements VxServer
     // Should result in an atomic update to the program database
     public void update(String name, ArrayList<VxResource> resources, VxCodeOutputStream codes)
     {
+
+        // Step 1: Determine which resources are new, and which are no longer needed.
+
+        HashSet<VxResource> existing = bufferRescMap.get(name);
+        if (existing == null) existing = new HashSet();
+
+        HashSet<VxResource> next = new HashSet(resources);
+        HashSet<VxResource> send = new HashSet(resources);
+        send.removeAll(stale); // Don't resen
+
+        stale.removeAll(next);
+
 
         byte codeData[] = codes.getBuffer();
         int codeLen = codes.size();

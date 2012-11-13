@@ -20,4 +20,13 @@ public class VxResource
         this.id = id;
     }
 
+    public int hashCode()
+    {
+        return (int)((id >>> 32) ^ id);
+    }
+
+    public boolean equals(VxResource other)
+    {
+        return other.id == this.id;
+    }
 }
