@@ -3,8 +3,9 @@ package april.vx;
 
 public class Vx
 {
-    public static final int OP_VERT_SHADER = 0, OP_FRAG_SHADER = 1,
-        OP_ELEMENT_ARRAY = 2, OP_VERT_ATTRIB = 3, OP_VERT_ATTRIB_COUNT = 4;
+    public static final int OP_PROGRAM = 1,
+        OP_ELEMENT_ARRAY = 2, OP_VERT_ATTRIB = 3, OP_VERT_ATTRIB_COUNT = 4,
+        OP_UNIFORM_COUNT = 5, OP_UNIFORM_MATRIX_FV = 6;
 
 
 /* Data types */

@@ -146,11 +146,9 @@ int vx_render_program(vx_code_input_stream_t * codes)
 
     GLuint prog_id = -1;
     {
-        uint32_t vertOp = codes->read_uint32(codes);
-        assert(vertOp == OP_VERT_SHADER);
+        uint32_t programOp = codes->read_uint32(codes);
+        assert(programOp == OP_PROGRAM);
         uint64_t vertId = codes->read_uint64(codes);
-        uint32_t fragOp = codes->read_uint32(codes);
-        assert(fragOp == OP_FRAG_SHADER);
         uint64_t fragId = codes->read_uint64(codes);
 
         vx_resc_t * vertResc = lphash_get(state.resource_map, vertId);
@@ -227,6 +225,11 @@ int vx_render_program(vx_code_input_stream_t * codes)
         for (float *id = vr->res; id < vr->res + vr->count*vr->fieldwidth; id++)
             printf("%f\n",*id);
     }
+
+    uint32_t uniMatrixfvCountOp = codes->read_uint32(codes);
+    assert(uniMatrixfvCountOp == OP_UNIFORM_COUNT);
+    uint32_t uniMatrixfvCount = codes->read_uint32(codes);
+    //XXX Insert uniform code here
 
     {
         uint32_t elementOp =codes->read_uint32(codes);
