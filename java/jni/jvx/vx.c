@@ -329,6 +329,7 @@ int vx_render(int width, int height)
     while ((buffer_name = vhash_iterator_next_key(state.buffer_codes_map, &itr)) != NULL) {
         vx_code_input_stream_t *codes = vhash_get(state.buffer_codes_map, buffer_name);
         printf("Rendering buffer: %s codes->len %d codes->pos %d\n", buffer_name, codes->len, codes->pos);
+        //XXX need to reset codes to render multiple times
 
         while (!vx_render_program(codes));
     }

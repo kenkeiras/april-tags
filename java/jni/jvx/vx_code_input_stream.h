@@ -17,6 +17,7 @@ struct vx_code_input_stream
     void * (* read_ptr)(vx_code_input_stream_t * stream, uint32_t length);
 };
 
+// Copies the data
 vx_code_input_stream_t * vx_code_input_stream_init(uint8_t *data, uint32_t codes_len);
 void vx_code_input_stream_destroy(vx_code_input_stream_t * stream);
 
