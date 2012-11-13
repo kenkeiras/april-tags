@@ -165,9 +165,12 @@ int vx_render_program(vx_code_input_stream_t * codes)
             const char * vertSource = vertResc->res;
             const char * fragSource = fragResc->res;
 
+            printf("vertSource len %d\n", strlen(vertSource));
+            printf("fragSource len %d\n", strlen(fragSource));
+
             glShaderSource(v, 1, &vertSource, NULL);
             glShaderSource(f, 1, &fragSource, NULL);
-
+            //XXX We need a way to remove these old shaders when no longer needed
 
             glCompileShader(v);
             glCompileShader(f);
@@ -184,6 +187,7 @@ int vx_render_program(vx_code_input_stream_t * codes)
         }
         glUseProgram(prog_id);
 
+        printf("Prog_id %d\n", prog_id);
         printf("Vertex Shader:\n%s\n", (char *)vertResc->res);
         printf("Fragment Shader:\n%s\n", (char *)fragResc->res);
     }

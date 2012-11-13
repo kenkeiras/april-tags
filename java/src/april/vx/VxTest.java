@@ -8,18 +8,27 @@ import java.awt.image.*;
 public class VxTest
 {
 
-    public static String readFile(String filename) throws IOException
+    public static byte[] readFileStringZ(String filename) throws IOException
     {
-        StringBuilder sb = new StringBuilder();
-        BufferedReader bins = new BufferedReader(new FileReader(filename));
+        File file = new File(filename);
+        FileInputStream fis = new FileInputStream(file);
 
-        String line = null;
-        while( (line = bins.readLine()) != null) {
-            sb.append(line);
-            sb.append("\n");
+        int len = (int)file.length();
+
+        byte fbytes[] = new byte[len+1];
+        int rd = fis.read(fbytes);
+        assert(rd == len);
+        //last index of fbytes is implicitly '\0'
+
+        return fbytes;
+    }
+
+    static int strlen(byte vals[])
+    {
+        for (int i = 0; ; i++) {
+            if (vals[i] == 0)
+                return i+1;
         }
-
-        return sb.toString();
     }
 
     // arg[0] is path to april/java/shaders/ directory
@@ -29,9 +38,14 @@ public class VxTest
         VxLocalServer vxls = new VxLocalServer(width,height);
         VxWorld vw = new VxWorld(vxls);
 
+        byte vertAttr[] = readFileStringZ(args[0]+"/attr.vert");
+        byte fragAttr[] = readFileStringZ(args[0]+"/attr.frag");
+
+        System.out.printf("Vertex Shader length %d %d fragment shader length %d %d\n",
+                          vertAttr.length, strlen(vertAttr), fragAttr.length, strlen(vertAttr));
         {
-            VxProgram vp = new VxProgram(readFile(args[0]+"/attr.vert").getBytes(), VxUtil.allocateID(),
-                                         readFile(args[0]+"/attr.frag").getBytes(), VxUtil.allocateID());
+            VxProgram vp = new VxProgram(vertAttr, VxUtil.allocateID(),
+                                         fragAttr, VxUtil.allocateID());
 
             float pts[] = { 1.0f, 1.0f,
                             0.0f, 1.0f,
@@ -64,8 +78,8 @@ public class VxTest
         }
 
         {
-            VxProgram vp = new VxProgram(readFile(args[0]+"/attr.vert").getBytes(), VxUtil.allocateID(),
-                                         readFile(args[0]+"/attr.frag").getBytes(), VxUtil.allocateID());
+            VxProgram vp = new VxProgram(vertAttr, VxUtil.allocateID(),
+                                         fragAttr, VxUtil.allocateID());
 
             float pts[] = {0.0f, 0.0f,
                            -1.0f, 0.0f,
