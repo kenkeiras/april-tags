@@ -43,6 +43,10 @@ char * vx_read_str(vx_code_input_stream_t * stream)
     return str;
 }
 
+void vx_code_reset(vx_code_input_stream_t *stream)
+{
+    stream->pos = 0;
+}
 
 vx_code_input_stream_t * vx_code_input_stream_init(uint8_t *data, uint32_t codes_len)
 {
@@ -57,7 +61,7 @@ vx_code_input_stream_t * vx_code_input_stream_init(uint8_t *data, uint32_t codes
     stream->read_uint32 = vx_read_uint32;
     stream->read_uint64 = vx_read_uint64;
     stream->read_str = vx_read_str;
-
+    stream->reset = vx_code_reset;
     return stream;
 }
 

@@ -14,6 +14,7 @@ struct vx_code_input_stream
     uint32_t (* read_uint32)(vx_code_input_stream_t * stream);
     uint64_t (* read_uint64)(vx_code_input_stream_t * stream);
     char * (* read_str)(vx_code_input_stream_t * stream);
+    void (* reset)(vx_code_input_stream_t * stream);
 };
 
 // Copies the data

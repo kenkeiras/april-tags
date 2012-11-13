@@ -122,11 +122,7 @@ public class VxTest
 
 
 
-        vxls.render(width,height);
 
-        BufferedImage im = new BufferedImage(width,height, BufferedImage.TYPE_3BYTE_BGR);
-        byte img[] = ((DataBufferByte) (im.getRaster().getDataBuffer())).getData();
-        vxls.read_pixels(width,height,img);
 
 
         JFrame jf = new JFrame();
@@ -137,6 +133,18 @@ public class VxTest
         jf.setVisible(true);
         jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        jim.setImage(im);
+
+        for (int i = 0; i < 2; i++) {
+            vxls.render(width,height);
+
+            BufferedImage im = new BufferedImage(width,height, BufferedImage.TYPE_3BYTE_BGR);
+            byte img[] = ((DataBufferByte) (im.getRaster().getDataBuffer())).getData();
+            vxls.read_pixels(width,height,img);
+
+            jim.setImage(im);
+            System.out.printf("Render %d \n",i);
+
+            TimeUtil.sleep(1000);
+        }
     }
 }

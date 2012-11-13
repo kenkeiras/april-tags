@@ -196,9 +196,9 @@ int vx_render_program(vx_code_input_stream_t * codes)
         prog_id = prog->prog_id;
         glUseProgram(prog_id);
 
-        printf("Prog_id %d\n", prog_id);
-        printf("Vertex Shader:\n%s\n", (char *)vertResc->res);
-        printf("Fragment Shader:\n%s\n", (char *)fragResc->res);
+        /* printf("Prog_id %d\n", prog_id); */
+        /* printf("Vertex Shader:\n%s\n", (char *)vertResc->res); */
+        /* printf("Fragment Shader:\n%s\n", (char *)fragResc->res); */
     }
 
     if (1) {
@@ -206,7 +206,8 @@ int vx_render_program(vx_code_input_stream_t * codes)
 
         GLint len = 0;
         glGetProgramInfoLog(prog_id, 65535, &len, output);
-        printf("Post-link len = %d:\n%s\n", len, output);
+        if (len != 0)
+            printf("Post-link len = %d:\n%s\n", len, output);
     }
 
     uint32_t attribCountOp = codes->read_uint32(codes);
@@ -233,6 +234,7 @@ int vx_render_program(vx_code_input_stream_t * codes)
             glGenBuffers(1, &vbo_id);
             glBindBuffer(GL_ARRAY_BUFFER, vbo_id);
             glBufferData(GL_ARRAY_BUFFER, vr->count*vr->fieldwidth, vr->res, GL_STATIC_DRAW);
+            lihash_put(state.vbo_map, attribId, vbo_id);
         }
 
         // Rebind, then attach
@@ -242,9 +244,10 @@ int vx_render_program(vx_code_input_stream_t * codes)
         glVertexAttribPointer(attr_loc, dim, vr->type, 0, 0, 0); // XXX java link error
         assert(vr->type == GL_FLOAT);
 
-        printf("VBO dim = %d count %d\n", dim, vr->count);
-        for (float *id = vr->res; id < vr->res + vr->count*vr->fieldwidth; id++)
-            printf("%f\n",*id);
+
+        /* printf("VBO dim = %d count %d\n", dim, vr->count); */
+        /* for (float *id = vr->res; id < vr->res + vr->count*vr->fieldwidth; id++) */
+        /*     printf("%f\n",*id); */
     }
 
     uint32_t uniCountOp = codes->read_uint32(codes);
@@ -290,7 +293,8 @@ int vx_render_program(vx_code_input_stream_t * codes)
         glValidateProgram(prog_id);
         GLint len = 0;
         glGetProgramInfoLog(prog_id, 65535, &len, output);
-        printf("Post-uniform len = %d:\n%s\n", len, output);
+        if (len != 0)
+            printf("Post-uniform len = %d:\n%s\n", len, output);
     }
 
     {
@@ -302,7 +306,6 @@ int vx_render_program(vx_code_input_stream_t * codes)
         // This should never fail!
         vx_resc_t * vr  = lphash_get(state.resource_map, elementId);
         assert(vr != NULL);
-        printf("element  len %d id %ld\n", vr->count, elementId);
 
 
         int success = 0;
@@ -313,10 +316,12 @@ int vx_render_program(vx_code_input_stream_t * codes)
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_id);
             glBufferData(GL_ELEMENT_ARRAY_BUFFER, vr->count * vr->fieldwidth, vr->res, GL_STATIC_DRAW);
 
-
-            for (uint32_t *id = vr->res; id < vr->res + vr->count*vr->fieldwidth; id++)
-                printf("%d\n",*id);
+            lihash_put(state.vbo_map, elementId, vbo_id);
         } //XXX minor code duplication, see attributes
+
+        /* printf("element  len %d id %ld\n", vr->count, elementId); */
+        /* for (uint32_t *id = vr->res; id < vr->res + vr->count*vr->fieldwidth; id++) */
+        /*     printf("%d\n",*id); */
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_id);
         glDrawElements(elementType, vr->count, vr->type, NULL);
@@ -330,18 +335,17 @@ int vx_render_program(vx_code_input_stream_t * codes)
 int vx_render(int width, int height)
 {
 
-    /* GLuint p = makeProgram("shaders/attr.vert","shaders/attr.frag"); */
-    //glslDrawTri(p);
-
-
+    glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glViewport(0,0,width,height);
-    // For each buffer, process all the programs
 
+    // For each buffer, process all the programs
     vhash_iterator_t itr;
     vhash_iterator_init(state.buffer_codes_map, &itr);
     char * buffer_name = NULL;
     while ((buffer_name = vhash_iterator_next_key(state.buffer_codes_map, &itr)) != NULL) {
         vx_code_input_stream_t *codes = vhash_get(state.buffer_codes_map, buffer_name);
+        codes->reset(codes);
+
         printf("Rendering buffer: %s codes->len %d codes->pos %d\n", buffer_name, codes->len, codes->pos);
         //XXX need to reset codes to render multiple times
 
@@ -354,6 +358,7 @@ int vx_render(int width, int height)
 
 int vx_read_pixels_bgr(int width, int height, uint8_t * out_buf)
 {
+
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glReadPixels(0, 0, width, height, GL_BGR, GL_UNSIGNED_BYTE, out_buf);
     return 0;
