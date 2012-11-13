@@ -188,6 +188,14 @@ int vx_render_program(vx_code_input_stream_t * codes)
         printf("Fragment Shader:\n%s\n", (char *)fragResc->res);
     }
 
+    if (1) {
+        char output[65535];
+
+        GLint len = 0;
+        glGetProgramInfoLog(prog_id, 65535, &len, output);
+        printf("Post-link len = %d:\n%s\n", len, output);
+    }
+
     uint32_t attribCountOp = codes->read_uint32(codes);
     assert(attribCountOp == OP_VERT_ATTRIB_COUNT);
     uint32_t attribCount = codes->read_uint32(codes);
@@ -260,9 +268,17 @@ int vx_render_program(vx_code_input_stream_t * codes)
         glUniformMatrix4fv(unif_loc, count, transpose, fv);
     }
 
+    if (1) {
+        char output[65535];
+
+        glValidateProgram(prog_id);
+        GLint len = 0;
+        glGetProgramInfoLog(prog_id, 65535, &len, output);
+        printf("Post-uniform len = %d:\n%s\n", len, output);
+    }
 
     {
-        uint32_t elementOp =codes->read_uint32(codes);
+        uint32_t elementOp = codes->read_uint32(codes);
         assert(elementOp == OP_ELEMENT_ARRAY);
         uint64_t elementId = codes->read_uint64(codes);
         uint32_t elementType = codes->read_uint32(codes);
