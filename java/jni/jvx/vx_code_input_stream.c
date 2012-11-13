@@ -63,7 +63,7 @@ vx_code_input_stream_t * vx_code_input_stream_init(uint8_t *data, uint32_t codes
     stream->pos = 0;
 
     stream->data = malloc(sizeof(uint8_t)*stream->len);
-    memcpy(stream->data, data, sizeof(uint8_t)*stream->len);
+    memcpy((uint8_t *)stream->data, data, sizeof(uint8_t)*stream->len);
 
     // Set function pointers
     stream->read_uint32 = vx_read_uint32;
@@ -77,7 +77,7 @@ vx_code_input_stream_t * vx_code_input_stream_init(uint8_t *data, uint32_t codes
 
 void vx_code_input_stream_destroy(vx_code_input_stream_t * stream)
 {
-    free(stream->data);
+    free((uint8_t *)stream->data);
     free(stream);
 }
 
