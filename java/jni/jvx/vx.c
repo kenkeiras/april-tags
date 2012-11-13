@@ -192,8 +192,8 @@ int vx_render_program(vx_code_input_stream_t * codes)
 
             lphash_put(state.program_map, vertId, prog);
             lphash_put(state.program_map, fragId, prog);
-            prog_id = prog->prog_id;
         }
+        prog_id = prog->prog_id;
         glUseProgram(prog_id);
 
         printf("Prog_id %d\n", prog_id);

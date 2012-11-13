@@ -41,11 +41,14 @@ public class VxTest
         byte vertAttr[] = readFileStringZ(args[0]+"/attr.vert");
         byte fragAttr[] = readFileStringZ(args[0]+"/attr.frag");
 
+
+        VxResource vertRx = new VxResource(Vx.GL_BYTE, vertAttr, vertAttr.length, 1, VxUtil.allocateID());
+        VxResource fragRx = new VxResource(Vx.GL_BYTE, fragAttr, fragAttr.length, 1, VxUtil.allocateID());
+
         System.out.printf("Vertex Shader length %d %d fragment shader length %d %d\n",
                           vertAttr.length, strlen(vertAttr), fragAttr.length, strlen(vertAttr));
         {
-            VxProgram vp = new VxProgram(vertAttr, VxUtil.allocateID(),
-                                         fragAttr, VxUtil.allocateID());
+            VxProgram vp = new VxProgram(vertRx,fragRx);
 
             float pts[] = { 1.0f, 1.0f,
                             0.0f, 1.0f,
@@ -78,8 +81,7 @@ public class VxTest
         }
 
         {
-            VxProgram vp = new VxProgram(vertAttr, VxUtil.allocateID(),
-                                         fragAttr, VxUtil.allocateID());
+            VxProgram vp = new VxProgram(vertRx, fragRx);
 
             float pts[] = {0.0f, 0.0f,
                            -1.0f, 0.0f,
