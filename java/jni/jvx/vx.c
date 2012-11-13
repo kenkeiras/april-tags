@@ -27,11 +27,9 @@ struct vx
     glcontext_t *glc;
     gl_fbo_t *fbos[MAX_FBOS];
 
-    lphash_t * resource_map;
+    lphash_t * resource_map; // holds vx_resc_t
 
-    //XXX Really these should be lihash (64-bit key, 32 bit value, GLuint)
-    //XXX Problem with lihash is how to distinguish a failed return
-    lihash_t * program_map;
+    lphash_t * program_map; // holds gl_prog_resc_t
     lihash_t * vbo_map;
 
     vhash_t * buffer_codes_map;
@@ -47,6 +45,19 @@ struct vbo_resc {
     GLuint vbo_id;
 };
 
+// Resource management for gl program and associated shaders:
+// When the associated guid for the vertex shader is dealloacted (vx_resc_t)
+// then we also need to free the associated GL resources listed in this struct
+// (Note that the vx_resc_t corresponding to the fragment shader also needs to be deallocated
+// but that the gl_prog_resc_t is indexed in the hashmap by the
+// vertex_shader guid, so this struct (and associated GL objects) are
+// only freed when the vertex shader is deallocated)
+typedef struct gl_prog_resc gl_prog_resc_t;
+struct gl_prog_resc {
+    GLuint prog_id; // program id
+    GLuint vert_id; // associated vertex_shader
+    GLuint frag_id; // associated fragment shader
+};
 
 
 static vx_t state;
@@ -76,7 +87,7 @@ int vx_init()
 
     state.resource_map = lphash_create();
 
-    state.program_map = lihash_create();
+    state.program_map = lphash_create();
     state.vbo_map = lihash_create();
 
     state.buffer_codes_map = vhash_create(vhash_str_hash, vhash_str_equals);
@@ -154,36 +165,34 @@ int vx_render_program(vx_code_input_stream_t * codes)
         vx_resc_t * vertResc = lphash_get(state.resource_map, vertId);
         vx_resc_t * fragResc = lphash_get(state.resource_map, fragId);
 
-        int success = 0;
         // Programs can be found by the guid of the either shader resource
-        prog_id = lihash_get(state.program_map, vertId, &success);
-        if (!success) {
+
+        gl_prog_resc_t * prog = lphash_get(state.program_map, vertId);
+        if (prog == NULL) {
+            prog = calloc(sizeof(gl_prog_resc_t), 1);
             // Allocate a program if we haven't made it yet
-            GLuint v = glCreateShader(GL_VERTEX_SHADER);
-            GLuint f = glCreateShader(GL_FRAGMENT_SHADER);
+            prog->vert_id = glCreateShader(GL_VERTEX_SHADER);
+            prog->frag_id = glCreateShader(GL_FRAGMENT_SHADER);
 
             const char * vertSource = vertResc->res;
             const char * fragSource = fragResc->res;
 
-            printf("vertSource len %d\n", strlen(vertSource));
-            printf("fragSource len %d\n", strlen(fragSource));
+            glShaderSource(prog->vert_id, 1, &vertSource, NULL);
+            glShaderSource(prog->frag_id, 1, &fragSource, NULL);
 
-            glShaderSource(v, 1, &vertSource, NULL);
-            glShaderSource(f, 1, &fragSource, NULL);
-            //XXX We need a way to remove these old shaders when no longer needed
+            glCompileShader(prog->vert_id);
+            glCompileShader(prog->frag_id);
 
-            glCompileShader(v);
-            glCompileShader(f);
+            prog->prog_id = glCreateProgram();
 
-            prog_id = glCreateProgram();
+            glAttachShader(prog->prog_id, prog->vert_id);
+            glAttachShader(prog->prog_id, prog->frag_id);
 
-            glAttachShader(prog_id,v);
-            glAttachShader(prog_id,f);
+            glLinkProgram(prog->prog_id);
 
-            glLinkProgram(prog_id);
-
-            lihash_put(state.program_map, vertId, prog_id);
-            lihash_put(state.program_map, fragId, prog_id);
+            lphash_put(state.program_map, vertId, prog);
+            lphash_put(state.program_map, fragId, prog);
+            prog_id = prog->prog_id;
         }
         glUseProgram(prog_id);
 
