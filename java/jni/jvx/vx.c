@@ -141,6 +141,20 @@ int vx_update_resources(int nresc, vx_resc_t ** resources)
     return 0;
 }
 
+// Allocates new VBO, and stores in hash table, results in a bound VBO
+static GLuint vx_buffer_allocate(GLenum target, vx_resc_t *vr)
+{
+    GLuint vbo_id;
+    printf("Allocating a VBO for guid %ld\n", vr->id);
+    glGenBuffers(1, &vbo_id);
+    glBindBuffer(target, vbo_id);
+    glBufferData(target, vr->count * vr->fieldwidth, vr->res, GL_STATIC_DRAW);
+
+    lihash_put(state.vbo_map, vr->id, vbo_id);
+
+    return vbo_id;
+}
+
 // This function does the heavy lifting for rendering a data + program pair
 // Which program, and data to use are specified in the codes
 // input_stream
@@ -233,16 +247,12 @@ int vx_render_program(vx_code_input_stream_t * codes)
         GLuint vbo_id = lihash_get(state.vbo_map, attribId, &success);
 
         // lazily create VBOs
-        if (!success) {
-            printf("Allocating a VBO for guid %ld\n", attribId);
-            glGenBuffers(1, &vbo_id);
+        if (success)
             glBindBuffer(GL_ARRAY_BUFFER, vbo_id);
-            glBufferData(GL_ARRAY_BUFFER, vr->count*vr->fieldwidth, vr->res, GL_STATIC_DRAW);
-            lihash_put(state.vbo_map, attribId, vbo_id);
-        }
+        else
+            vbo_id = vx_buffer_allocate(GL_ARRAY_BUFFER, vr);
 
-        // Rebind, then attach
-        glBindBuffer(GL_ARRAY_BUFFER, vbo_id);
+        // Attach to attribute
         GLint attr_loc = glGetAttribLocation(prog_id, name);
         glEnableVertexAttribArray(attr_loc);
         glVertexAttribPointer(attr_loc, dim, vr->type, 0, 0, 0);
@@ -307,16 +317,12 @@ int vx_render_program(vx_code_input_stream_t * codes)
 
         int success = 0;
         GLuint vbo_id = lihash_get(state.vbo_map, elementId, &success);
-        if (!success) {
-            printf("Allocating a VBO for guid %ld\n", elementId);
-            glGenBuffers(1, &vbo_id);
+
+        if (success)
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_id);
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, vr->count * vr->fieldwidth, vr->res, GL_STATIC_DRAW);
+        else
+            vbo_id = vx_buffer_allocate(GL_ELEMENT_ARRAY_BUFFER, vr);
 
-            lihash_put(state.vbo_map, elementId, vbo_id);
-        } //Code is same as for attributes, but we must wait to do ELEMENT_ARRAY until everything else is done.
-
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_id);
         glDrawElements(elementType, vr->count, vr->type, NULL);
     }
 
@@ -327,7 +333,6 @@ int vx_render_program(vx_code_input_stream_t * codes)
 // NOTE: Thread safety must be guaranteed externally
 int vx_render(int width, int height)
 {
-
     glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glViewport(0,0,width,height);
 
