@@ -88,3 +88,15 @@ JNIEXPORT jint JNICALL Java_april_vx_VxLocalServer_fbo_1create
 {
     return fbo_create(width, height);
 }
+
+
+JNIEXPORT jint JNICALL Java_april_vx_VxLocalServer_deallocate_1resources
+(JNIEnv * jenv, jclass jcls, jlongArray jguids, jint nguids)
+{
+
+    jlong* guids = (*jenv)->GetPrimitiveArrayCritical(jenv, jguids, NULL);
+    int ret = vx_deallocate((uint64_t *)guids, nguids);
+    (*jenv)->ReleasePrimitiveArrayCritical(jenv, jguids, guids, 0);
+
+    return ret;
+}

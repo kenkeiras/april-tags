@@ -42,7 +42,7 @@ public class VxProgram implements VxObject
         uniformMatrixfvMap.put(name, vec);
     }
 
-    public void appendTo(ArrayList<VxResource> resources, VxCodeOutputStream codes)
+    public void appendTo(HashSet<VxResource> resources, VxCodeOutputStream codes)
     {
 
         codes.writeInt(Vx.OP_PROGRAM);

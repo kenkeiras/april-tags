@@ -117,6 +117,8 @@ lihash_pair_t lihash_remove(lihash_t *vh, uint64_t key, int *success)
         }
     }
 
+    vh->size -= *success;
+
     *out = NULL;
     return pair;
 }

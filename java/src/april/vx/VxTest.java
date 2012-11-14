@@ -1,5 +1,6 @@
 package april.vx;
 
+import java.util.*;
 import java.io.*;
 import javax.swing.*;
 import april.util.*;
@@ -47,83 +48,108 @@ public class VxTest
 
         System.out.printf("Vertex Shader length %d %d fragment shader length %d %d\n",
                           vertAttr.length, strlen(vertAttr), fragAttr.length, strlen(vertAttr));
+
+        ArrayList<VxVertexAttrib> point_attribs = new ArrayList();
         {
+
+
+            // bottom right
+            point_attribs.add(new VxVertexAttrib(new float[]{1.0f, 1.0f,
+                                                             0.0f, 1.0f,
+                                                             0.0f, 0.0f,
+                                                             1.0f, 0.0f},
+                                                 2));
+
+            // bottom left
+            point_attribs.add(new VxVertexAttrib(new float[]{-1.0f, 0.0f,
+                                                             0.0f, 0.0f,
+                                                             0.0f, 1.0f,
+                                                             -1.0f, 1.0f},
+                                                 2));
+
+
+            // top left
+            point_attribs.add(new VxVertexAttrib(new float[]{0.0f, 0.0f,
+                                                             -1.0f, 0.0f,
+                                                             -1.0f, -1.0f,
+                                                             0.0f, -1.0f},
+                                                 2));
+
+
+
+            // top right
+            point_attribs.add(new VxVertexAttrib(new float[]{ 0.0f, -1.0f,
+                                                              1.0f, -1.0f,
+                                                              1.0f, 0.0f,
+                                                              0.0f, 0.0f},
+                                                 2));
+
+        }
+
+        ArrayList<VxVertexAttrib> color_attribs = new ArrayList();
+        {
+
+            color_attribs.add(new VxVertexAttrib(new float[] { 1.0f, 0.0f, 0.0f,
+                                                               1.0f, 0.0f, 1.0f,
+                                                               0.0f, 1.0f, 0.0f,
+                                                               1.0f, 1.0f, 0.0f},
+                                                 3));
+
+            color_attribs.add(new VxVertexAttrib(new float []{0.0f, .3f, 1.0f,
+                                                              0.5f, 0.3f, 1.0f,
+                                                              0.0f, 1.0f, 1.0f,
+                                                              0.0f, 1.0f, 1.0f},
+                                                 3));
+
+            color_attribs.add(new VxVertexAttrib(new float []{0.0f, 1.0f, 1.0f,
+                                                              0.5f, 0.3f, 1.0f,
+                                                              0.0f, 1.0f, 1.0f,
+                                                              1.0f, 1.0f, 1.0f},
+                                                 3));
+
+
+            color_attribs.add(new VxVertexAttrib(new float []{0.0f, 1.0f, 0.7f,
+                                                              0.0f, 1.0f, 1.0f,
+                                                              1.0f, .1f, .1f,
+                                                              0.5f, 0.3f, 1.0f},
+                                                 3));
+        }
+
+
+        VxIndexData index = new VxIndexData(new int[]{0,1,2,
+                                                      2,3,0});
+        float proj[][] = {{1.0f, 0.0f, 0.0f, 0.0f},
+                          {0.0f, 1.0f, 0.0f, 0.0f},
+                          {0.0f, 0.0f, 1.0f, 0.0f},
+                          {0.0f, 0.0f, 0.0f, 1.0f}};
+
+        ArrayList<VxProgram> progs1 = new ArrayList();
+        for (int i = 0; i < 4; i+=2) {
             VxProgram vp = new VxProgram(vertRx,fragRx);
+            vp.setVertexAttrib("position", point_attribs.get(i));
 
-            float pts[] = { 1.0f, 1.0f,
-                            0.0f, 1.0f,
-                            0.0f, 0.0f,
-                            1.0f, 0.0f};
+            vp.setVertexAttrib("color", color_attribs.get(i));
 
-            VxVertexAttrib points = new VxVertexAttrib(pts, 2);
-            vp.setVertexAttrib("position", points);
+            vp.setUniform("proj", proj);
 
-            float cls[] = { 1.0f, 0.0f, 0.0f,
-                            1.0f, 0.0f, 1.0f,
-                            0.0f, 1.0f, 0.0f,
-                            1.0f, 1.0f, 0.0f};
-            VxVertexAttrib colors = new VxVertexAttrib(cls, 3);
-            vp.setVertexAttrib("color", colors);
-
-            float ident[][] = {{1.0f, 0.0f, 0.0f, 0.0f},
-                               {0.0f, 1.0f, 0.0f, 0.0f},
-                               {0.0f, 0.0f, 1.0f, 0.0f},
-                               {0.0f, 0.0f, 0.0f, 1.0f}};
-
-            vp.setUniform("proj", ident);
-
-            int idxs[] = {0,1,2,
-                          2,3,0};
-            VxIndexData index = new VxIndexData(idxs);
             vp.setElementArray(index, Vx.GL_TRIANGLES);
 
-            vw.getBuffer("first-buffer").stage(vp);
+            progs1.add(vp);
         }
 
-        {
-            VxProgram vp = new VxProgram(vertRx, fragRx);
+        ArrayList<VxProgram> progs2 = new ArrayList();
+        for (int i = 1; i < 4; i+=2) {
+            VxProgram vp = new VxProgram(vertRx,fragRx);
+            vp.setVertexAttrib("position", point_attribs.get(i));
 
-            float pts[] = {0.0f, 0.0f,
-                           -1.0f, 0.0f,
-                           -1.0f, -1.0f,
-                           0.0f, -1.0f};
+            vp.setVertexAttrib("color", color_attribs.get(i));
 
-            VxVertexAttrib points = new VxVertexAttrib(pts, 2);
-            vp.setVertexAttrib("position", points);
+            vp.setUniform("proj", proj);
 
-            float cls[] = { 0.0f, .3f, 1.0f,
-                            0.5f, 0.3f, 1.0f,
-                            0.0f, 1.0f, 1.0f,
-                            0.0f, 1.0f, 1.0f};
-            VxVertexAttrib colors = new VxVertexAttrib(cls, 3);
-            vp.setVertexAttrib("color", colors);
-
-            float ident[][] = {{1.0f, 0.0f, 0.0f, 0.0f},
-                               {0.0f, 1.0f, 0.0f, 0.0f},
-                               {0.0f, 0.0f, 1.0f, 0.0f},
-                               {0.0f, 0.0f, 0.0f, 1.0f}};
-
-            vp.setUniform("proj", ident);
-
-
-            int idxs[] = {0,1,2,
-                          2,3,0};
-            VxIndexData index = new VxIndexData(idxs);
             vp.setElementArray(index, Vx.GL_TRIANGLES);
 
-            vw.getBuffer("first-buffer").stage(vp);
+            progs2.add(vp);
         }
-
-
-        vw.getBuffer("first-buffer").commit();
-
-
-
-
-
-
-
-
 
         JFrame jf = new JFrame();
 
@@ -134,7 +160,22 @@ public class VxTest
         jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
 
-        for (int i = 0; i < 2; i++) {
+        // Render loop
+        for (int i = 0; i < 12; i++) {
+
+            int type = i % 3;
+            switch(type) {
+                case 0:
+                    for (VxProgram vp : progs1)
+                        vw.getBuffer("first-buffer").stage(vp);
+                    break;
+                case 1:
+                    for (VxProgram vp : progs2)
+                        vw.getBuffer("first-buffer").stage(vp);
+                    break;
+            }
+            vw.getBuffer("first-buffer").commit();
+
             vxls.render(width,height);
 
             BufferedImage im = new BufferedImage(width,height, BufferedImage.TYPE_3BYTE_BGR);
@@ -145,6 +186,7 @@ public class VxTest
             System.out.printf("Render %d \n",i);
 
             TimeUtil.sleep(1000);
+
         }
     }
 }

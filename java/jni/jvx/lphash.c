@@ -101,6 +101,8 @@ lphash_pair_t lphash_remove(lphash_t *vh, uint64_t key)
             pair.key = in->key;
             pair.value = in->value;
 
+            vh->size -= 1;
+
             struct lphash_element *tmp = in->next;
             free(in);
             in = tmp;

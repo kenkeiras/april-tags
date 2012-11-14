@@ -30,9 +30,10 @@ public class VxWorld
 
         String name;
 
-        public synchronized void stage(VxObject vxp)
+        public synchronized void stage(VxObject ... vxp)
         {
-            objs.add(vxp);
+            for (VxObject o :  vxp)
+                objs.add(o);
         }
 
         boolean enabled()
@@ -50,7 +51,7 @@ public class VxWorld
             }
 
             // Opcodify all the objects in this list, s
-            ArrayList<VxResource> resources = new ArrayList();
+            HashSet<VxResource> resources = new HashSet();
             VxCodeOutputStream codes = new VxCodeOutputStream();
 
             for (VxObject vxo : cobjs) {

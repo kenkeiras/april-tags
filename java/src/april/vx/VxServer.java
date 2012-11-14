@@ -4,6 +4,6 @@ import java.util.*;
 
 public interface VxServer
 {
-    public void update(String name, ArrayList<VxResource> resources, VxCodeOutputStream codes);
+    public void update(String name, HashSet<VxResource> resources, VxCodeOutputStream codes);
 
 }

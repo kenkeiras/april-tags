@@ -37,14 +37,6 @@ struct vx
 
 };
 
-typedef struct vbo_resc vbo_resc_t;
-struct vbo_resc {
-
-    vx_resc_t * vresc;
-
-    GLuint vbo_id;
-};
-
 // Resource management for gl program and associated shaders:
 // When the associated guid for the vertex shader is dealloacted (vx_resc_t)
 // then we also need to free the associated GL resources listed in this struct
@@ -191,7 +183,7 @@ int vx_render_program(vx_code_input_stream_t * codes)
             glLinkProgram(prog->prog_id);
 
             lphash_put(state.program_map, vertId, prog);
-            lphash_put(state.program_map, fragId, prog);
+            /* lphash_put(state.program_map, fragId, prog); */
         }
         prog_id = prog->prog_id;
         glUseProgram(prog_id);
@@ -338,6 +330,11 @@ int vx_render(int width, int height)
     glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glViewport(0,0,width,height);
 
+    // debug: print stats
+    printf("n resc %d, n vbos %d, n programs %d\n",
+           state.resource_map->size,state.vbo_map->size,
+           state.program_map->size);
+
     // For each buffer, process all the programs
     vhash_iterator_t itr;
     vhash_iterator_init(state.buffer_codes_map, &itr);
@@ -361,5 +358,49 @@ int vx_read_pixels_bgr(int width, int height, uint8_t * out_buf)
 
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glReadPixels(0, 0, width, height, GL_BGR, GL_UNSIGNED_BYTE, out_buf);
+    return 0;
+}
+
+int vx_deallocate(uint64_t * guids, int nguids)
+{
+
+    for (int i =0; i < nguids; i++) {
+        uint64_t guid = guids[i];
+
+        printf("Deallocating guid %ld:\n",guid);
+
+        // There is always a resource for each guid.
+        vx_resc_t * vr = lphash_remove(state.resource_map, guid).value;
+        if (vr != NULL) {
+            free(vr->res);
+            free(vr);
+        } else {
+            printf("  Invalid request. Resource does not exist");
+        }
+
+        // There may also be a program, or a vbo for each
+        int vbo_success = 0;
+        lihash_pair_t vbo_pair = lihash_remove(state.vbo_map, guid, &vbo_success);
+        if (vbo_success) {
+            // Tell open GL to deallocate this VBO
+            glDeleteBuffers(1, &vbo_pair.value);
+            printf(" Delted VBO %d \n", vbo_pair.value);
+        }
+
+        gl_prog_resc_t * prog = lphash_remove(state.program_map, guid).value;
+        if (prog != NULL) {
+
+            glDetachShader(prog->prog_id,prog->vert_id);
+            glDeleteShader(prog->vert_id);
+            glDetachShader(prog->prog_id,prog->frag_id);
+            glDeleteShader(prog->frag_id);
+            glDeleteProgram(prog->prog_id);
+
+            printf("  Freed program %d vert %d and frag %d\n",
+                   prog->prog_id, prog->vert_id, prog->frag_id);
+            free(prog);
+        }
+
+    }
     return 0;
 }

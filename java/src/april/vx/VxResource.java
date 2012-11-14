@@ -20,13 +20,17 @@ public class VxResource
         this.id = id;
     }
 
+    @Override
     public int hashCode()
     {
         return (int)((id >>> 32) ^ id);
     }
 
-    public boolean equals(VxResource other)
+    @Override
+    public boolean equals(Object other)
     {
-        return other.id == this.id;
+        if (other instanceof VxResource)
+            return ((VxResource)other).id == this.id;
+        return false;
     }
 }

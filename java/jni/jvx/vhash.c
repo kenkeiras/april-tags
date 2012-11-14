@@ -104,6 +104,7 @@ vhash_pair_t vhash_remove(vhash_t *vh, void *key)
             pair.key = in->key;
             pair.value = in->value;
 
+            vh->size -= 1;
             struct vhash_element *tmp = in->next;
             free(in);
             in = tmp;
