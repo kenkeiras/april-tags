@@ -148,10 +148,10 @@ int vx_update_resources(int nresc, vx_resc_t ** resources)
 static GLuint vx_buffer_allocate(GLenum target, vx_resc_t *vr)
 {
     GLuint vbo_id;
-    printf("Allocating a VBO for guid %ld\n", vr->id);
     glGenBuffers(1, &vbo_id);
     glBindBuffer(target, vbo_id);
     glBufferData(target, vr->count * vr->fieldwidth, vr->res, GL_STATIC_DRAW);
+    printf("Allocated VBO %d for guid %ld\n", vbo_id, vr->id);
 
     lihash_put(state.vbo_map, vr->id, vbo_id);
 
@@ -335,6 +335,10 @@ int vx_render_program(vx_code_input_stream_t * codes)
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);// XXX Read from codes?
 
             glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, vr->res);
+
+            printf("Allocated TEX %d for guid %ld\n", tex_id, vr->id);
+            lihash_put(state.texture_map, vr->id, tex_id);
+
         }
 
         int attrTexI = glGetUniformLocation(prog_id, name);
@@ -385,9 +389,9 @@ int vx_render(int width, int height)
     glViewport(0,0,width,height);
 
     // debug: print stats
-    printf("n resc %d, n vbos %d, n programs %d\n",
+    printf("n resc %d, n vbos %d, n programs %d n tex %d\n",
            state.resource_map->size,state.vbo_map->size,
-           state.program_map->size);
+           state.program_map->size, state.texture_map->size);
 
     // For each buffer, process all the programs
     vhash_iterator_t itr;
@@ -446,7 +450,7 @@ int vx_deallocate(uint64_t * guids, int nguids)
         if (tex_success) {
             // Tell open GL to deallocate this texture
             glDeleteTextures(1, &tex_pair.value);
-            printf(" Delted Tex %d \n", tex_pair.value);
+            printf(" Deleted TEX %d \n", tex_pair.value);
         }
 
         gl_prog_resc_t * prog = lphash_remove(state.program_map, guid).value;

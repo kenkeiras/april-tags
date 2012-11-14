@@ -106,7 +106,7 @@ public class VxTest
         float proj[][] = VxUtil.copyFloats(proj_d);
 
         ArrayList<VxProgram> progs1 = new ArrayList();
-        for (int i = 0; i < 4; i+=2) {
+        for (int i = 0; i < 1; i+=2) {
 
 
             VxProgram vp = VxProgram.make("colored-tri");//new VxProgram(vertRx,fragRx);
@@ -122,7 +122,7 @@ public class VxTest
         }
 
         ArrayList<VxProgram> progs2 = new ArrayList();
-        for (int i = 1; i < 3; i+=2) { // XXX Only render 1
+        for (int i = 1; i < 4; i+=2) { // XXX Only render 1
             VxProgram vp = VxProgram.make("colored-tri");
             vp.setVertexAttrib("position", point_attribs.get(i));
 
@@ -138,14 +138,20 @@ public class VxTest
         // Now do Texture:
         {
             VxProgram vp = VxProgram.make("tex");
-            vp.setVertexAttrib("position", point_attribs.get(3));
-            vp.setTexture("tex", vtex);
+            vp.setVertexAttrib("position", point_attribs.get(2));
+            vp.setTexture("texure", vtex);
+
+            float texcoords[] = {
+                0.0f, 0.0f,
+                1.0f, 0.0f,
+                1.0f, 1.0f,
+                0.0f, 1.0f};
 
             vp.setUniform("proj", proj);
-
+            vp.setVertexAttrib("texIn", new VxVertexAttrib(texcoords,2));
             vp.setElementArray(index, Vx.GL_TRIANGLES);
 
-            progs2.add(vp);
+            progs1.add(vp);
 
         }
 
