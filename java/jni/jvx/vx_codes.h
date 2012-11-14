@@ -9,6 +9,9 @@
 #define OP_UNIFORM_MATRIX_FV  6
 #define OP_TEXTURE_COUNT      7
 #define OP_TEXTURE            8
+#define OP_MODEL_MATRIX_44    9
+#define OP_PM_MAT_NAME        10
+#define OP_VALIDATE_PROGRAM   11
 
 #define VX_FLOAT_ARRAY  0
 #define VX_BYTE_ARRAY   1

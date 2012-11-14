@@ -54,8 +54,10 @@ public class VxWorld
             HashSet<VxResource> resources = new HashSet();
             VxCodeOutputStream codes = new VxCodeOutputStream();
 
+            MatrixStack ms = new MatrixStack();
+            ms.loadIdentity();
             for (VxObject vxo : cobjs) {
-                vxo.appendTo(resources, codes);
+                vxo.appendTo(resources, codes, ms);
             }
 
             // Notify the Layer we need to be rem

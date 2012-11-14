@@ -4,5 +4,5 @@ import java.util.*;
 
 public interface VxObject
 {
-    public void appendTo(HashSet<VxResource> resources, VxCodeOutputStream vxout);
+    public void appendTo(HashSet<VxResource> resources, VxCodeOutputStream vxout, MatrixStack ms);
 }

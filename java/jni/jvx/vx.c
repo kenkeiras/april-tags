@@ -36,6 +36,7 @@ struct vx
 
     vhash_t * buffer_codes_map;
 
+    float system_pm[16];
 
 };
 
@@ -86,6 +87,11 @@ int vx_init()
     state.texture_map = lihash_create();
 
     state.buffer_codes_map = vhash_create(vhash_str_hash, vhash_str_equals);
+
+    // Initialize to the identity
+    for (int i = 0; i < 4; i++)
+        for (int j = 0; j < 4; j++)
+            state.system_pm[i*4 + j] = (i == j ? 1.0f : 0.0f);
 
     return 0;
 }
@@ -142,6 +148,28 @@ int vx_update_resources(int nresc, vx_resc_t ** resources)
         }
     }
     return 0;
+}
+
+static void print44(float mat[16])
+{
+    int m = 4, n = 4;
+    for (int i = 0; i < m; i++) {
+        for (int j = 0; j < n; j++)
+            printf("% f\t", mat[i*n+j]);
+        printf("\n");
+    }
+}
+
+static void mult44(float * A, float * B, float * C)
+{
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+            float acc = 0.0f;
+            for (int k = 0; k < 4; k++)
+                acc += A[i*4 + k] * B[k*4 + j];
+            C[i*4 +j] = acc;
+        }
+    }
 }
 
 // Allocates new VBO, and stores in hash table, results in a bound VBO
@@ -223,13 +251,39 @@ int vx_render_program(vx_code_input_stream_t * codes)
         glUseProgram(prog_id);
     }
 
-    if (1) { // Check program status
+    uint32_t validateProgramOp = codes->read_uint32(codes);
+    assert(validateProgramOp == OP_VALIDATE_PROGRAM);
+    uint32_t validateProgram = codes->read_uint32(codes);
+
+    if (validateProgram) { // Check program status
         char output[65535];
 
         GLint len = 0;
         glGetProgramInfoLog(prog_id, 65535, &len, output);
         if (len != 0)
             printf("Post-link len = %d:\n%s\n", len, output);
+    }
+
+    // Read the user specified model matrix
+    {
+        uint32_t modelMatrixOp = codes->read_uint32(codes);
+        assert(modelMatrixOp == OP_MODEL_MATRIX_44);
+
+        // XXX ugly way to deal with floats
+        float userM[16];
+        for (int i =0; i < 16; i++)
+            userM[i] = codes->read_float(codes);
+
+        uint32_t pmMatrixNameOp = codes->read_uint32(codes);
+        assert(pmMatrixNameOp == OP_PM_MAT_NAME);
+        char * pmName = codes->read_str(codes);
+
+        float PM[16];
+        mult44(state.system_pm, (float *)userM, PM); //XXX
+
+        GLint unif_loc = glGetUniformLocation(prog_id, pmName);
+        assert(unif_loc >= 0); // Ensure this field exists
+        glUniformMatrix4fv(unif_loc, 1 , 1, (GLfloat *)PM);
     }
 
     uint32_t attribCountOp = codes->read_uint32(codes);
@@ -346,7 +400,7 @@ int vx_render_program(vx_code_input_stream_t * codes)
     }
 
 
-    if (1) {
+    if (validateProgram) {
         char output[65535];
 
         glValidateProgram(prog_id);

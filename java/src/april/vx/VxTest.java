@@ -114,7 +114,7 @@ public class VxTest
 
             vp.setVertexAttrib("color", color_attribs.get(i));
 
-            vp.setUniform("proj", proj);
+            // vp.setUniform("proj", proj);
 
             vp.setElementArray(index, Vx.GL_TRIANGLES);
 
@@ -128,7 +128,7 @@ public class VxTest
 
             vp.setVertexAttrib("color", color_attribs.get(i));
 
-            vp.setUniform("proj", proj);
+            // vp.setUniform("proj", proj);
 
             vp.setElementArray(index, Vx.GL_TRIANGLES);
 
@@ -147,7 +147,7 @@ public class VxTest
                 1.0f, 1.0f,
                 0.0f, 1.0f};
 
-            vp.setUniform("proj", proj);
+            // vp.setUniform("proj", proj);
             vp.setVertexAttrib("texIn", new VxVertexAttrib(texcoords,2));
             vp.setElementArray(index, Vx.GL_TRIANGLES);
 

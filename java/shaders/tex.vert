@@ -1,4 +1,4 @@
-uniform mat4 proj;
+uniform mat4 PM; // Required by our interface
 
 attribute vec4 position;
 
@@ -9,7 +9,7 @@ varying vec2 texOut;
 void main()
 {
     // Transforming The Vertex
-    gl_Position = proj*position;//gl_Vertex;//gl_ModelViewProjectionMatrix * gl_Vertex;
+    gl_Position = PM*position;
 
     texOut = texIn; // will get interpolated
 }

@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <endian.h>
 
+
 static void vx_ensure_space(vx_code_input_stream_t * stream, int size)
 {
     assert(stream->len >= stream->pos + size);
@@ -27,6 +28,16 @@ uint64_t vx_read_uint64(vx_code_input_stream_t * stream)
     stream->pos += 8;
 
     return be64toh(result);
+}
+
+float vx_read_float(vx_code_input_stream_t * stream)
+{
+    // slightly gross way to convert int bits into a float
+    // that doesn't make the compiler complain, but is still not very portable
+    int c = stream->read_uint32(stream);
+    int *p = &c;
+    float v = *((float*)p);
+    return v;
 }
 
 // Returns a string reference which only valid as long as stream->data is valid
@@ -60,6 +71,7 @@ vx_code_input_stream_t * vx_code_input_stream_init(uint8_t *data, uint32_t codes
     // Set function pointers
     stream->read_uint32 = vx_read_uint32;
     stream->read_uint64 = vx_read_uint64;
+    stream->read_float = vx_read_float;
     stream->read_str = vx_read_str;
     stream->reset = vx_code_reset;
     return stream;

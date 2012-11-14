@@ -52,7 +52,7 @@ public class VxProgram implements VxObject
         textureMap.put(name, vxt);
     }
 
-    public void appendTo(HashSet<VxResource> resources, VxCodeOutputStream codes)
+    public void appendTo(HashSet<VxResource> resources, VxCodeOutputStream codes, MatrixStack ms)
     {
 
         codes.writeInt(Vx.OP_PROGRAM);
@@ -61,6 +61,19 @@ public class VxProgram implements VxObject
 
         resources.add(vertResc);
         resources.add(fragResc);
+
+        codes.writeInt(Vx.OP_VALIDATE_PROGRAM);
+        codes.writeInt(1); // 1 to enable debugging, 0 to disable, speedup
+
+        codes.writeInt(Vx.OP_MODEL_MATRIX_44);
+        double M[][] = ms.getMatrix();
+        april.jmat.LinAlg.print(M);
+        for (int i =0; i < 4; i++)
+            for (int j =0; j < 4; j++)
+                codes.writeFloat((float)M[i][j]);
+
+        codes.writeInt(Vx.OP_PM_MAT_NAME);
+        codes.writeStringZ("PM"); // XXX do we ever want to change this?
 
         codes.writeInt(Vx.OP_VERT_ATTRIB_COUNT);
         codes.writeInt(attribMap.size());
