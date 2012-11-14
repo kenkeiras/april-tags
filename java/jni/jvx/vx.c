@@ -523,3 +523,12 @@ int vx_deallocate(uint64_t * guids, int nguids)
     }
     return 0;
 }
+
+int vx_set_system_pm_mat(float * pm)
+{
+    // copy the specified matrix into state
+    for (int i = 0; i < 16; i++) {
+        state.system_pm[i] = pm[i];
+    }
+    return 0;
+}

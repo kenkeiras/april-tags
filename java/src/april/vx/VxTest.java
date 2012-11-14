@@ -29,6 +29,11 @@ public class VxTest
 
         int width = 480, height = 480;
         VxLocalServer vxls = new VxLocalServer(width,height);
+        double proj_d[][] = LinAlg.matrixAB(VxUtil.gluPerspective(60.0f, width*1.0f/height, 0.1f, 5000.0f),
+                                            VxUtil.lookAt(new double[]{0,0,10}, new double[3], new double[]{0,1,0}));
+
+        float proj[][] = VxUtil.copyFloats(proj_d);
+        vxls.set_system_pm_matrix(proj);
         VxWorld vw = new VxWorld(vxls);
 
         ArrayList<VxVertexAttrib> point_attribs = new ArrayList();
@@ -100,10 +105,6 @@ public class VxTest
 
         VxIndexData index = new VxIndexData(new int[]{0,1,2,
                                                       2,3,0});
-        double proj_d[][] = LinAlg.matrixAB(VxUtil.gluPerspective(60.0f, width*1.0f/height, 0.1f, 5000.0f),
-                                            VxUtil.lookAt(new double[]{0,0,10}, new double[3], new double[]{0,1,0}));
-
-        float proj[][] = VxUtil.copyFloats(proj_d);
 
         ArrayList<VxProgram> progs1 = new ArrayList();
         for (int i = 0; i < 1; i+=2) {
@@ -147,7 +148,6 @@ public class VxTest
                 1.0f, 1.0f,
                 0.0f, 1.0f};
 
-            // vp.setUniform("proj", proj);
             vp.setVertexAttrib("texIn", new VxVertexAttrib(texcoords,2));
             vp.setElementArray(index, Vx.GL_TRIANGLES);
 

@@ -100,3 +100,14 @@ JNIEXPORT jint JNICALL Java_april_vx_VxLocalServer_deallocate_1resources
 
     return ret;
 }
+
+JNIEXPORT jint JNICALL Java_april_vx_VxLocalServer_set_1system_1pm_1matrix
+  (JNIEnv * jenv, jclass jcls, jfloatArray jpm_mat)
+{
+
+    jfloat* pm_mat = (*jenv)->GetPrimitiveArrayCritical(jenv, jpm_mat, NULL);
+    int ret = vx_set_system_pm_mat(pm_mat);
+    (*jenv)->ReleasePrimitiveArrayCritical(jenv, jpm_mat, pm_mat, 0);
+
+}
+

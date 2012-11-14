@@ -99,4 +99,16 @@ public class VxLocalServer implements VxServer
     static native int render(int width, int height);
     static native int read_pixels(int width, int height, byte[] img);
     private static native int fbo_create(int width, int height);
+    native static int set_system_pm_matrix(float pm[]);
+
+    // Flattens the matrix to send via jni
+    public static int set_system_pm_matrix(float pm [][])
+    {
+        float pm2[] = new float[16];
+        for (int i = 0; i < 4; i++)
+            for (int j = 0; j < 4; j++)
+                pm2[i*4 + j] = pm[i][j];
+
+        return set_system_pm_matrix(pm2);
+    }
 }
