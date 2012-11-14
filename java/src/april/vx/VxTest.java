@@ -4,6 +4,7 @@ import java.util.*;
 import java.io.*;
 import javax.swing.*;
 import java.awt.image.*;
+import javax.imageio.*;
 
 import april.jmat.*;
 import april.util.*;
@@ -23,6 +24,9 @@ public class VxTest
     // arg[0] is path to april/java/shaders/ directory
     public static void main(String args[]) throws IOException
     {
+        BufferedImage img = ImageUtil.convertImage(ImageIO.read(new File(args[0])), BufferedImage.TYPE_INT_ARGB);
+        VxTexture vtex = new VxTexture(img);
+
         int width = 480, height = 480;
         VxLocalServer vxls = new VxLocalServer(width,height);
         VxWorld vw = new VxWorld(vxls);
@@ -118,7 +122,7 @@ public class VxTest
         }
 
         ArrayList<VxProgram> progs2 = new ArrayList();
-        for (int i = 1; i < 4; i+=2) {
+        for (int i = 1; i < 3; i+=2) { // XXX Only render 1
             VxProgram vp = VxProgram.make("colored-tri");
             vp.setVertexAttrib("position", point_attribs.get(i));
 
@@ -129,6 +133,20 @@ public class VxTest
             vp.setElementArray(index, Vx.GL_TRIANGLES);
 
             progs2.add(vp);
+        }
+
+        // Now do Texture:
+        {
+            VxProgram vp = VxProgram.make("tex");
+            vp.setVertexAttrib("position", point_attribs.get(3));
+            vp.setTexture("tex", vtex);
+
+            vp.setUniform("proj", proj);
+
+            vp.setElementArray(index, Vx.GL_TRIANGLES);
+
+            progs2.add(vp);
+
         }
 
         JFrame jf = new JFrame();
@@ -158,11 +176,11 @@ public class VxTest
 
             vxls.render(width,height);
 
-            BufferedImage im = new BufferedImage(width,height, BufferedImage.TYPE_3BYTE_BGR);
-            byte img[] = ((DataBufferByte) (im.getRaster().getDataBuffer())).getData();
-            vxls.read_pixels(width,height,img);
+            BufferedImage canvas = new BufferedImage(width,height, BufferedImage.TYPE_3BYTE_BGR);
+            byte buf[] = ((DataBufferByte) (canvas.getRaster().getDataBuffer())).getData();
+            vxls.read_pixels(width,height,buf);
 
-            jim.setImage(im);
+            jim.setImage(canvas);
             System.out.printf("Render %d \n",i);
 
             TimeUtil.sleep(1000);

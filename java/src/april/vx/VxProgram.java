@@ -4,6 +4,8 @@ import java.io.*;
 import java.util.*;
 import april.util.*;
 
+// XXX This class is mis-named, since it doesn't just represent an OpenGL shader program --
+// it also encapsulates the specific binding to data that is needed to render
 public class VxProgram implements VxObject
 {
 
@@ -11,6 +13,7 @@ public class VxProgram implements VxObject
 
     final HashMap<String,VxVertexAttrib> attribMap = new HashMap();
     final HashMap<String, float[][]> uniformMatrixfvMap = new HashMap();
+    final HashMap<String, VxTexture> textureMap = new HashMap();
 
     VxIndexData vxid;
     int vxidtype; // VX_POINTS, VX_TRIANGLES, etc
@@ -42,6 +45,11 @@ public class VxProgram implements VxObject
     public void setUniform(String name, float  vec[][])
     {
         uniformMatrixfvMap.put(name, vec);
+    }
+
+    public void setTexture(String name, VxTexture vxt)
+    {
+        textureMap.put(name, vxt);
     }
 
     public void appendTo(HashSet<VxResource> resources, VxCodeOutputStream codes)
@@ -85,6 +93,20 @@ public class VxProgram implements VxObject
                     codes.writeFloat(fv[i][j]);
         }
 
+        // Finally we deal with textures
+        codes.writeInt(Vx.OP_TEXTURE_COUNT);
+        codes.writeInt(textureMap.size());
+        for (String name : textureMap.keySet()) {
+            VxTexture vtex = textureMap.get(name);
+            codes.writeInt(Vx.OP_TEXTURE);
+            codes.writeStringZ(name);
+            codes.writeLong(vtex.id);
+
+            codes.writeInt(vtex.width);
+            codes.writeInt(vtex.height);
+            codes.writeInt(vtex.format);
+        }
+
         codes.writeInt(Vx.OP_ELEMENT_ARRAY);
         codes.writeLong(vxid.id);
         codes.writeInt(vxidtype);
@@ -92,7 +114,7 @@ public class VxProgram implements VxObject
         resources.add(new VxResource(Vx.GL_UNSIGNED_INT, vxid.data, vxid.data.length, 4, vxid.id));
     }
 
-
+    // Library functionality for loading up predefined shaders
     private static final String shadersPath = StringUtil.replaceEnvironmentVariables("$HOME/april/java/shaders/");
 
     private static final HashMap<String, VxResource> rescMap = new HashMap();
