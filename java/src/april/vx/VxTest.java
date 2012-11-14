@@ -27,16 +27,6 @@ public class VxTest
         VxLocalServer vxls = new VxLocalServer(width,height);
         VxWorld vw = new VxWorld(vxls);
 
-        // byte vertAttr[] = VxUtil.readFileStringZ(args[0]+"/attr.vert");
-        // byte fragAttr[] = VxUtil.readFileStringZ(args[0]+"/attr.frag");
-
-
-        // VxResource vertRx = new VxResource(Vx.GL_BYTE, vertAttr, vertAttr.length, 1, VxUtil.allocateID());
-        // VxResource fragRx = new VxResource(Vx.GL_BYTE, fragAttr, fragAttr.length, 1, VxUtil.allocateID());
-
-        // System.out.printf("Vertex Shader length %d %d fragment shader length %d %d\n",
-        //                   vertAttr.length, strlen(vertAttr), fragAttr.length, strlen(vertAttr));
-
         ArrayList<VxVertexAttrib> point_attribs = new ArrayList();
         {
 
@@ -106,12 +96,8 @@ public class VxTest
 
         VxIndexData index = new VxIndexData(new int[]{0,1,2,
                                                       2,3,0});
-        // float proj[][] = {{1.0f, 0.0f, 0.0f, 0.0f},
-        //                   {0.0f, 1.0f, 0.0f, 0.0f},
-        //                   {0.0f, 0.0f, 1.0f, 0.0f},
-        //                   {0.0f, 0.0f, 0.0f, 1.0f}};
-
-        double proj_d[][] = LinAlg.matrixAB(VxUtil.gluPerspective(60.0f, width*1.0f/height, 0.1f, 5000.0f), VxUtil.lookAt(new double[]{0,0,10}, new double[]{0,0,0}, new double[]{0,1,0}));
+        double proj_d[][] = LinAlg.matrixAB(VxUtil.gluPerspective(60.0f, width*1.0f/height, 0.1f, 5000.0f),
+                                            VxUtil.lookAt(new double[]{0,0,10}, new double[3], new double[]{0,1,0}));
 
         float proj[][] = VxUtil.copyFloats(proj_d);
 

@@ -141,6 +141,20 @@ int vx_update_resources(int nresc, vx_resc_t ** resources)
     return 0;
 }
 
+// This function does the heavy lifting for rendering a data + program pair
+// Which program, and data to use are specified in the codes
+// input_stream
+// This breaks down into the following steps:
+// 1) Find the glProgram. If it doesn't exist, create it from the associated
+//    vertex and fragment shader string resources
+// 2) Find all the VBOs that will bound as vertex attributes. If they
+//    don't exist, create them from the specified resources
+// 3) Read all the data to be bound as uniforms from the input stream.
+// 4) Find the VBO with the index data, if it doesn't exist, create it
+//    from the specified resource. This triggers the rendering operation
+//
+// Note: After step 1 and 3, the state of the program is queried,
+//       and debugging information (if an error occurs) is printed to stdout
 int vx_render_program(vx_code_input_stream_t * codes)
 {
     if (codes->len == codes->pos) // exhausted the stream
@@ -154,17 +168,20 @@ int vx_render_program(vx_code_input_stream_t * codes)
         uint64_t vertId = codes->read_uint64(codes);
         uint64_t fragId = codes->read_uint64(codes);
 
-        vx_resc_t * vertResc = lphash_get(state.resource_map, vertId);
-        vx_resc_t * fragResc = lphash_get(state.resource_map, fragId);
-
-        // Programs can be found by the guid of the either shader resource
-
+        // Programs can be found by the guid of the vertex shader
         gl_prog_resc_t * prog = lphash_get(state.program_map, vertId);
         if (prog == NULL) {
             prog = calloc(sizeof(gl_prog_resc_t), 1);
             // Allocate a program if we haven't made it yet
             prog->vert_id = glCreateShader(GL_VERTEX_SHADER);
             prog->frag_id = glCreateShader(GL_FRAGMENT_SHADER);
+
+            vx_resc_t * vertResc = lphash_get(state.resource_map, vertId);
+            vx_resc_t * fragResc = lphash_get(state.resource_map, fragId);
+
+            // shouldn't fail, if resources are uploaded first
+            assert(vertResc != NULL);
+            assert(fragResc != NULL);
 
             const char * vertSource = vertResc->res;
             const char * fragSource = fragResc->res;
@@ -183,17 +200,12 @@ int vx_render_program(vx_code_input_stream_t * codes)
             glLinkProgram(prog->prog_id);
 
             lphash_put(state.program_map, vertId, prog);
-            /* lphash_put(state.program_map, fragId, prog); */
         }
         prog_id = prog->prog_id;
         glUseProgram(prog_id);
-
-        /* printf("Prog_id %d\n", prog_id); */
-        /* printf("Vertex Shader:\n%s\n", (char *)vertResc->res); */
-        /* printf("Fragment Shader:\n%s\n", (char *)fragResc->res); */
     }
 
-    if (1) {
+    if (1) { // Check program status
         char output[65535];
 
         GLint len = 0;
@@ -233,19 +245,13 @@ int vx_render_program(vx_code_input_stream_t * codes)
         glBindBuffer(GL_ARRAY_BUFFER, vbo_id);
         GLint attr_loc = glGetAttribLocation(prog_id, name);
         glEnableVertexAttribArray(attr_loc);
-        glVertexAttribPointer(attr_loc, dim, vr->type, 0, 0, 0); // XXX java link error
+        glVertexAttribPointer(attr_loc, dim, vr->type, 0, 0, 0);
         assert(vr->type == GL_FLOAT);
-
-
-        /* printf("VBO dim = %d count %d\n", dim, vr->count); */
-        /* for (float *id = vr->res; id < vr->res + vr->count*vr->fieldwidth; id++) */
-        /*     printf("%f\n",*id); */
     }
 
     uint32_t uniCountOp = codes->read_uint32(codes);
     assert(uniCountOp == OP_UNIFORM_COUNT);
     uint32_t uniCount = codes->read_uint32(codes);
-
     for (int i = 0; i < uniCount; i++) {
 
         uint32_t uniOp = codes->read_uint32(codes);
@@ -299,7 +305,6 @@ int vx_render_program(vx_code_input_stream_t * codes)
         vx_resc_t * vr  = lphash_get(state.resource_map, elementId);
         assert(vr != NULL);
 
-
         int success = 0;
         GLuint vbo_id = lihash_get(state.vbo_map, elementId, &success);
         if (!success) {
@@ -309,11 +314,7 @@ int vx_render_program(vx_code_input_stream_t * codes)
             glBufferData(GL_ELEMENT_ARRAY_BUFFER, vr->count * vr->fieldwidth, vr->res, GL_STATIC_DRAW);
 
             lihash_put(state.vbo_map, elementId, vbo_id);
-        } //XXX minor code duplication, see attributes
-
-        /* printf("element  len %d id %ld\n", vr->count, elementId); */
-        /* for (uint32_t *id = vr->res; id < vr->res + vr->count*vr->fieldwidth; id++) */
-        /*     printf("%d\n",*id); */
+        } //Code is same as for attributes, but we must wait to do ELEMENT_ARRAY until everything else is done.
 
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_id);
         glDrawElements(elementType, vr->count, vr->type, NULL);
