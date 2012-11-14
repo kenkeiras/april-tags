@@ -3,8 +3,10 @@ package april.vx;
 import java.util.*;
 import java.io.*;
 import javax.swing.*;
-import april.util.*;
 import java.awt.image.*;
+
+import april.jmat.*;
+import april.util.*;
 
 public class VxTest
 {
@@ -118,10 +120,14 @@ public class VxTest
 
         VxIndexData index = new VxIndexData(new int[]{0,1,2,
                                                       2,3,0});
-        float proj[][] = {{1.0f, 0.0f, 0.0f, 0.0f},
-                          {0.0f, 1.0f, 0.0f, 0.0f},
-                          {0.0f, 0.0f, 1.0f, 0.0f},
-                          {0.0f, 0.0f, 0.0f, 1.0f}};
+        // float proj[][] = {{1.0f, 0.0f, 0.0f, 0.0f},
+        //                   {0.0f, 1.0f, 0.0f, 0.0f},
+        //                   {0.0f, 0.0f, 1.0f, 0.0f},
+        //                   {0.0f, 0.0f, 0.0f, 1.0f}};
+
+        double proj_d[][] = LinAlg.matrixAB(VxUtil.gluPerspective(60.0f, width*1.0f/height, 0.1f, 5000.0f), VxUtil.lookAt(new double[]{0,0,10}, new double[]{0,0,0}, new double[]{0,1,0}));
+
+        float proj[][] = VxUtil.copyFloats(proj_d);
 
         ArrayList<VxProgram> progs1 = new ArrayList();
         for (int i = 0; i < 4; i+=2) {
