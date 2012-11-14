@@ -338,7 +338,6 @@ int vx_render_program(vx_code_input_stream_t * codes)
 
             printf("Allocated TEX %d for guid %ld\n", tex_id, vr->id);
             lihash_put(state.texture_map, vr->id, tex_id);
-
         }
 
         int attrTexI = glGetUniformLocation(prog_id, name);
@@ -442,7 +441,7 @@ int vx_deallocate(uint64_t * guids, int nguids)
         if (vbo_success) {
             // Tell open GL to deallocate this VBO
             glDeleteBuffers(1, &vbo_pair.value);
-            printf(" Delted VBO %d \n", vbo_pair.value);
+            printf(" Deleted VBO %d \n", vbo_pair.value);
         }
 
         int tex_success = 0;

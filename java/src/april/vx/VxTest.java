@@ -165,15 +165,22 @@ public class VxTest
 
 
         // Render loop
-        for (int i = 0; i < 12; i++) {
+        for (int i = 0; i < 24; i++) {
 
-            int type = i % 3;
+            int type = i % 6;
             switch(type) {
                 case 0:
                     for (VxProgram vp : progs1)
                         vw.getBuffer("first-buffer").stage(vp);
                     break;
                 case 1:
+                case 3:
+                    for (VxProgram vp : progs2)
+                        vw.getBuffer("first-buffer").stage(vp);
+                    for (VxProgram vp : progs1)
+                        vw.getBuffer("first-buffer").stage(vp);
+                    break;
+                case 2:
                     for (VxProgram vp : progs2)
                         vw.getBuffer("first-buffer").stage(vp);
                     break;
@@ -189,7 +196,7 @@ public class VxTest
             jim.setImage(canvas);
             System.out.printf("Render %d \n",i);
 
-            TimeUtil.sleep(1000);
+            TimeUtil.sleep(500);
 
         }
     }
