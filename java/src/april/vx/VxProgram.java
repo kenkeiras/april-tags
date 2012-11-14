@@ -1,6 +1,8 @@
 package april.vx;
 
+import java.io.*;
 import java.util.*;
+import april.util.*;
 
 public class VxProgram implements VxObject
 {
@@ -88,5 +90,35 @@ public class VxProgram implements VxObject
         codes.writeInt(vxidtype);
 
         resources.add(new VxResource(Vx.GL_UNSIGNED_INT, vxid.data, vxid.data.length, 4, vxid.id));
+    }
+
+
+    private static final String shadersPath = StringUtil.replaceEnvironmentVariables("$HOME/april/java/shaders/");
+
+    private static final HashMap<String, VxResource> rescMap = new HashMap();
+
+    // XXX not thread safe!
+    private static VxResource getShaderSource(String filename)
+    {
+        VxResource vr = rescMap.get(filename);
+        if (vr == null) {
+            try {
+                byte attr[] = VxUtil.readFileStringZ(filename);
+                vr = new VxResource(Vx.GL_BYTE, attr, attr.length, 1, VxUtil.allocateID());
+                rescMap.put(filename, vr);
+            } catch(IOException e) {
+                System.out.println("Failed to load shader from "+filename+": "+e);
+                return null;
+            }
+        }
+        return vr;
+    }
+
+    public static VxProgram make(String name)
+    {
+        VxResource frag = getShaderSource(shadersPath+"/"+name+".frag");
+        VxResource vert = getShaderSource(shadersPath+"/"+name+".vert");
+
+        return new VxProgram(vert,frag);
     }
 }

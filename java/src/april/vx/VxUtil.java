@@ -1,6 +1,7 @@
 package april.vx;
 import java.util.concurrent.atomic.*;
 
+import java.io.*;
 import april.jmat.*;
 
 public class VxUtil
@@ -68,5 +69,18 @@ public class VxUtil
         return out;
     }
 
+    public static byte[] readFileStringZ(String filename) throws IOException
+    {
+        File file = new File(filename);
+        FileInputStream fis = new FileInputStream(file);
 
+        int len = (int)file.length();
+
+        byte fbytes[] = new byte[len+1];
+        int rd = fis.read(fbytes);
+        assert(rd == len);
+        //last index of fbytes is implicitly '\0'
+
+        return fbytes;
+    }
 }

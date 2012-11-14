@@ -11,20 +11,6 @@ import april.util.*;
 public class VxTest
 {
 
-    public static byte[] readFileStringZ(String filename) throws IOException
-    {
-        File file = new File(filename);
-        FileInputStream fis = new FileInputStream(file);
-
-        int len = (int)file.length();
-
-        byte fbytes[] = new byte[len+1];
-        int rd = fis.read(fbytes);
-        assert(rd == len);
-        //last index of fbytes is implicitly '\0'
-
-        return fbytes;
-    }
 
     static int strlen(byte vals[])
     {
@@ -41,15 +27,15 @@ public class VxTest
         VxLocalServer vxls = new VxLocalServer(width,height);
         VxWorld vw = new VxWorld(vxls);
 
-        byte vertAttr[] = readFileStringZ(args[0]+"/attr.vert");
-        byte fragAttr[] = readFileStringZ(args[0]+"/attr.frag");
+        // byte vertAttr[] = VxUtil.readFileStringZ(args[0]+"/attr.vert");
+        // byte fragAttr[] = VxUtil.readFileStringZ(args[0]+"/attr.frag");
 
 
-        VxResource vertRx = new VxResource(Vx.GL_BYTE, vertAttr, vertAttr.length, 1, VxUtil.allocateID());
-        VxResource fragRx = new VxResource(Vx.GL_BYTE, fragAttr, fragAttr.length, 1, VxUtil.allocateID());
+        // VxResource vertRx = new VxResource(Vx.GL_BYTE, vertAttr, vertAttr.length, 1, VxUtil.allocateID());
+        // VxResource fragRx = new VxResource(Vx.GL_BYTE, fragAttr, fragAttr.length, 1, VxUtil.allocateID());
 
-        System.out.printf("Vertex Shader length %d %d fragment shader length %d %d\n",
-                          vertAttr.length, strlen(vertAttr), fragAttr.length, strlen(vertAttr));
+        // System.out.printf("Vertex Shader length %d %d fragment shader length %d %d\n",
+        //                   vertAttr.length, strlen(vertAttr), fragAttr.length, strlen(vertAttr));
 
         ArrayList<VxVertexAttrib> point_attribs = new ArrayList();
         {
@@ -131,7 +117,9 @@ public class VxTest
 
         ArrayList<VxProgram> progs1 = new ArrayList();
         for (int i = 0; i < 4; i+=2) {
-            VxProgram vp = new VxProgram(vertRx,fragRx);
+
+
+            VxProgram vp = VxProgram.make("colored-tri");//new VxProgram(vertRx,fragRx);
             vp.setVertexAttrib("position", point_attribs.get(i));
 
             vp.setVertexAttrib("color", color_attribs.get(i));
@@ -145,7 +133,7 @@ public class VxTest
 
         ArrayList<VxProgram> progs2 = new ArrayList();
         for (int i = 1; i < 4; i+=2) {
-            VxProgram vp = new VxProgram(vertRx,fragRx);
+            VxProgram vp = VxProgram.make("colored-tri");
             vp.setVertexAttrib("position", point_attribs.get(i));
 
             vp.setVertexAttrib("color", color_attribs.get(i));
