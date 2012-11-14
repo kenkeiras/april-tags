@@ -1,6 +1,8 @@
 package april.vx;
 import java.util.concurrent.atomic.*;
 
+import java.awt.*;
+import java.awt.image.*;
 import java.io.*;
 import april.jmat.*;
 
@@ -83,4 +85,21 @@ public class VxUtil
 
         return fbytes;
     }
+
+    public static BufferedImage convertAndCopyImage(BufferedImage in, int type)
+    {
+
+        int w = in.getWidth();
+        int h = in.getHeight();
+
+        BufferedImage out=new BufferedImage(w,h,type);
+        Graphics g = out.getGraphics();
+
+        g.drawImage(in, 0, 0, null);
+
+        g.dispose();
+
+        return out;
+    }
+
 }

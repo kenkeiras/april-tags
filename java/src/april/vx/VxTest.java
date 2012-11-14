@@ -106,7 +106,26 @@ public class VxTest
         VxIndexData index = new VxIndexData(new int[]{0,1,2,
                                                       2,3,0});
 
-        ArrayList<VxProgram> progs1 = new ArrayList();
+        // Now do Texture:
+        ArrayList<VxObject> progs1 = new ArrayList();
+        {
+            VxProgram vp = VxProgram.make("tex");
+            vp.setVertexAttrib("position", point_attribs.get(2));
+            vp.setTexture("texure", vtex);
+
+            float texcoords[] = {
+                0.0f, 0.0f,
+                1.0f, 0.0f,
+                1.0f, 1.0f,
+                0.0f, 1.0f};
+
+            vp.setVertexAttrib("texIn", new VxVertexAttrib(texcoords,2));
+            vp.setElementArray(index, Vx.GL_TRIANGLES);
+
+            progs1.add(new VxChain(LinAlg.translate(-1,-1), vp));
+
+        }
+
         for (int i = 0; i < 1; i+=2) {
 
 
@@ -122,7 +141,7 @@ public class VxTest
             progs1.add(vp);
         }
 
-        ArrayList<VxProgram> progs2 = new ArrayList();
+        ArrayList<VxObject> progs2 = new ArrayList();
         for (int i = 1; i < 4; i+=2) { // XXX Only render 1
             VxProgram vp = VxProgram.make("colored-tri");
             vp.setVertexAttrib("position", point_attribs.get(i));
@@ -136,28 +155,10 @@ public class VxTest
             progs2.add(vp);
         }
 
-        // Now do Texture:
-        {
-            VxProgram vp = VxProgram.make("tex");
-            vp.setVertexAttrib("position", point_attribs.get(2));
-            vp.setTexture("texure", vtex);
-
-            float texcoords[] = {
-                0.0f, 0.0f,
-                1.0f, 0.0f,
-                1.0f, 1.0f,
-                0.0f, 1.0f};
-
-            vp.setVertexAttrib("texIn", new VxVertexAttrib(texcoords,2));
-            vp.setElementArray(index, Vx.GL_TRIANGLES);
-
-            progs1.add(vp);
-
-        }
-
         JFrame jf = new JFrame();
 
         JImage jim = new JImage();
+        jim.setFlipY(true);
         jf.add(jim);
         jf.setSize(width,height+22);
         jf.setVisible(true);
@@ -170,18 +171,18 @@ public class VxTest
             int type = i % 6;
             switch(type) {
                 case 0:
-                    for (VxProgram vp : progs1)
+                    for (VxObject vp : progs1)
                         vw.getBuffer("first-buffer").stage(vp);
                     break;
                 case 1:
                 case 3:
-                    for (VxProgram vp : progs2)
+                    for (VxObject vp : progs2)
                         vw.getBuffer("first-buffer").stage(vp);
-                    for (VxProgram vp : progs1)
+                    for (VxObject vp : progs1)
                         vw.getBuffer("first-buffer").stage(vp);
                     break;
                 case 2:
-                    for (VxProgram vp : progs2)
+                    for (VxObject vp : progs2)
                         vw.getBuffer("first-buffer").stage(vp);
                     break;
             }
@@ -192,6 +193,8 @@ public class VxTest
             BufferedImage canvas = new BufferedImage(width,height, BufferedImage.TYPE_3BYTE_BGR);
             byte buf[] = ((DataBufferByte) (canvas.getRaster().getDataBuffer())).getData();
             vxls.read_pixels(width,height,buf);
+
+
 
             jim.setImage(canvas);
             System.out.printf("Render %d \n",i);
