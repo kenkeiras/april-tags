@@ -32,6 +32,8 @@ struct vx
     lphash_t * program_map; // holds gl_prog_resc_t
     lihash_t * vbo_map;
 
+    lihash_t * texture_map;
+
     vhash_t * buffer_codes_map;
 
 
@@ -81,6 +83,7 @@ int vx_init()
 
     state.program_map = lphash_create();
     state.vbo_map = lihash_create();
+    state.texture_map = lihash_create();
 
     state.buffer_codes_map = vhash_create(vhash_str_hash, vhash_str_equals);
 
@@ -164,10 +167,11 @@ static GLuint vx_buffer_allocate(GLenum target, vx_resc_t *vr)
 // 2) Find all the VBOs that will bound as vertex attributes. If they
 //    don't exist, create them from the specified resources
 // 3) Read all the data to be bound as uniforms from the input stream.
-// 4) Find the VBO with the index data, if it doesn't exist, create it
+// 4) Textures
+// 5) Find the VBO with the index data, if it doesn't exist, create it
 //    from the specified resource. This triggers the rendering operation
 //
-// Note: After step 1 and 3, the state of the program is queried,
+// Note: After step 1 and 4, the state of the program is queried,
 //       and debugging information (if an error occurs) is printed to stdout
 int vx_render_program(vx_code_input_stream_t * codes)
 {
@@ -280,6 +284,7 @@ int vx_render_program(vx_code_input_stream_t * codes)
                 nper = codes->read_uint32(codes);
                 count = codes->read_uint32(codes);
                 transpose = codes->read_uint32(codes);
+                break;
         }
 
         // The uniform data is stored at the end, so it can be copied
@@ -292,8 +297,51 @@ int vx_render_program(vx_code_input_stream_t * codes)
             case OP_UNIFORM_MATRIX_FV:
                 if (nper == 16)
                     glUniformMatrix4fv(unif_loc, count, transpose, (GLfloat *)vals);
+                break;
         }
     }
+
+    // Step 4: Textures
+    uint32_t texCountOp = codes->read_uint32(codes);
+    assert(texCountOp == OP_TEXTURE_COUNT);
+    uint32_t texCount = codes->read_uint32(codes);
+
+    if (texCount > 1)
+        printf("WRN: Multiple textures not tested\n");
+
+    for (int i = 0; i < texCount; i++) {
+        uint32_t texOp = codes->read_uint32(codes);
+        assert(texOp == OP_TEXTURE);
+        char * name = codes->read_str(codes);
+        uint64_t texId = codes->read_uint64(codes);
+        // This should never fail!
+        vx_resc_t * vr  = lphash_get(state.resource_map, texId);
+        assert(vr != NULL);
+
+        uint32_t width = codes->read_uint32(codes);
+        uint32_t height = codes->read_uint32(codes);
+        uint32_t format = codes->read_uint32(codes);
+
+        int success = 0;
+        GLuint tex_id = lihash_get(state.texture_map, texId, &success);
+
+        if (success)
+            glBindTexture(GL_TEXTURE_2D, tex_id);
+        else {
+            glEnable(GL_TEXTURE_2D);
+            glGenTextures(1, &tex_id);
+
+            glBindTexture(GL_TEXTURE_2D, tex_id);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);// XXX Read from codes?
+
+            glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, vr->res);
+        }
+
+        int attrTexI = glGetUniformLocation(prog_id, name);
+        glActiveTexture(GL_TEXTURE0 + i);
+        glUniform1i(attrTexI, i); // Bind the uniform to TEXTUREi
+    }
+
 
     if (1) {
         char output[65535];
@@ -384,13 +432,21 @@ int vx_deallocate(uint64_t * guids, int nguids)
             printf("  Invalid request. Resource does not exist");
         }
 
-        // There may also be a program, or a vbo for each
+        // There may also be a program, or a vbo or texture for each guid
         int vbo_success = 0;
         lihash_pair_t vbo_pair = lihash_remove(state.vbo_map, guid, &vbo_success);
         if (vbo_success) {
             // Tell open GL to deallocate this VBO
             glDeleteBuffers(1, &vbo_pair.value);
             printf(" Delted VBO %d \n", vbo_pair.value);
+        }
+
+        int tex_success = 0;
+        lihash_pair_t tex_pair = lihash_remove(state.texture_map, guid, &tex_success);
+        if (tex_success) {
+            // Tell open GL to deallocate this texture
+            glDeleteTextures(1, &tex_pair.value);
+            printf(" Delted Tex %d \n", tex_pair.value);
         }
 
         gl_prog_resc_t * prog = lphash_remove(state.program_map, guid).value;

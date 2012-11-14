@@ -24,7 +24,7 @@ public class VxTest
     // arg[0] is path to april/java/shaders/ directory
     public static void main(String args[]) throws IOException
     {
-        BufferedImage img = ImageUtil.convertImage(ImageIO.read(new File(args[0])), BufferedImage.TYPE_INT_ARGB);
+        BufferedImage img = ImageUtil.convertImage(ImageIO.read(new File(args[0])), BufferedImage.TYPE_3BYTE_BGR);
         VxTexture vtex = new VxTexture(img);
 
         int width = 480, height = 480;

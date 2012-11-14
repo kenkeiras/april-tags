@@ -105,6 +105,8 @@ public class VxProgram implements VxObject
             codes.writeInt(vtex.width);
             codes.writeInt(vtex.height);
             codes.writeInt(vtex.format);
+
+            resources.add(new VxResource(Vx.GL_UNSIGNED_BYTE, vtex.bbuf, vtex.bbuf.length, 1, vtex.id));
         }
 
         codes.writeInt(Vx.OP_ELEMENT_ARRAY);

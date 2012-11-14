@@ -7,6 +7,8 @@
 #define OP_VERT_ATTRIB_COUNT  4
 #define OP_UNIFORM_COUNT      5
 #define OP_UNIFORM_MATRIX_FV  6
+#define OP_TEXTURE_COUNT      7
+#define OP_TEXTURE            8
 
 #define VX_FLOAT_ARRAY  0
 #define VX_BYTE_ARRAY   1
@@ -16,13 +18,13 @@
 // OpenGL Es 2.0 Types:
 // GL_POINTS, GL_LINE_STRIP, GL_LINE_LOOP, GL_LINES,
 // GL_TRIANGLE_STRIP, GL_TRIANGLE_FAN, and GL_TRIANGLES
-#define GL_POINTS          0x0000
-#define GL_LINES           0x0001
-#define GL_LINE_LOOP       0x0002
-#define GL_LINE_STRIP      0x0003
-#define GL_TRIANGLES       0x0004
-#define GL_TRIANGLE_STRIP  0x0005
-#define GL_TRIANGLE_FAN    0x0006
+//#define GL_POINTS          0x0000
+//#define GL_LINES           0x0001
+//#define GL_LINE_LOOP       0x0002
+//#define GL_LINE_STRIP      0x0003
+//#define GL_TRIANGLES       0x0004
+//#define GL_TRIANGLE_STRIP  0x0005
+//#define GL_TRIANGLE_FAN    0x0006
 
 
 #endif
