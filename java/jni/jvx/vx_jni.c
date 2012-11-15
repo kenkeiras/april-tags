@@ -109,5 +109,6 @@ JNIEXPORT jint JNICALL Java_april_vx_VxLocalServer_set_1system_1pm_1matrix
     int ret = vx_set_system_pm_mat(pm_mat);
     (*jenv)->ReleasePrimitiveArrayCritical(jenv, jpm_mat, pm_mat, 0);
 
+    return ret;
 }
 

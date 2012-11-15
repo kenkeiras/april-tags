@@ -13,6 +13,7 @@
 #define OP_PM_MAT_NAME        10
 #define OP_VALIDATE_PROGRAM   11
 #define OP_DRAW_ARRAY         12
+#define OP_UNIFORM_VECTOR_FV  13
 
 #define VX_FLOAT_ARRAY  0
 #define VX_BYTE_ARRAY   1

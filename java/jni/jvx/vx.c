@@ -321,23 +321,25 @@ int vx_render_program(vx_code_input_stream_t * codes)
     assert(uniCountOp == OP_UNIFORM_COUNT);
     uint32_t uniCount = codes->read_uint32(codes);
     for (int i = 0; i < uniCount; i++) {
-
         uint32_t uniOp = codes->read_uint32(codes);
 
-        char* name = NULL;
+        // Functionality common to all uniforms, regardless of type
+        char * name = codes->read_str(codes);
+        GLint unif_loc = glGetUniformLocation(prog_id, name);
+
+        // Functionality depends on type:
         uint32_t nper = 0; // how many per unit?
         uint32_t count = 0; // how many units?
         uint32_t transpose = 0;
-
-        GLint unif_loc = -1;
         switch(uniOp) {
             case OP_UNIFORM_MATRIX_FV:
-                name = codes->read_str(codes);
-                unif_loc = glGetUniformLocation(prog_id, name);
-
                 nper = codes->read_uint32(codes);
                 count = codes->read_uint32(codes);
                 transpose = codes->read_uint32(codes);
+                break;
+            case OP_UNIFORM_VECTOR_FV:
+                nper = codes->read_uint32(codes);
+                count = codes->read_uint32(codes);
                 break;
         }
 
@@ -347,10 +349,15 @@ int vx_render_program(vx_code_input_stream_t * codes)
         for (int j = 0; j < nper*count; j++)
             vals[i++] = codes->read_uint32(codes);
 
+        // Finally, once the right amount of data is extracted, ship it with the appropriate method:
         switch(uniOp) {
             case OP_UNIFORM_MATRIX_FV:
                 if (nper == 16)
                     glUniformMatrix4fv(unif_loc, count, transpose, (GLfloat *)vals);
+                break;
+            case OP_UNIFORM_VECTOR_FV:
+                if (nper == 4)
+                    glUniform4fv(unif_loc, count, (GLfloat *) vals);
                 break;
         }
     }
