@@ -13,6 +13,7 @@ public class VxProgram implements VxObject
 
     final HashMap<String,VxVertexAttrib> attribMap = new HashMap();
     final HashMap<String, float[][]> uniformMatrixfvMap = new HashMap();
+    final HashMap<String, float[]> uniformVectorfvMap = new HashMap();
     final HashMap<String, VxTexture> textureMap = new HashMap();
 
     VxIndexData vxid = null;
@@ -52,9 +53,14 @@ public class VxProgram implements VxObject
         attribMap.put(name, vva);
     }
 
-    public void setUniform(String name, float  vec[][])
+    public void setUniform(String name, float  mat[][])
     {
-        uniformMatrixfvMap.put(name, vec);
+        uniformMatrixfvMap.put(name, mat);
+    }
+
+    public void setUniform(String name, float  vec[])
+    {
+        uniformVectorfvMap.put(name, vec);
     }
 
     public void setTexture(String name, VxTexture vxt)
@@ -100,7 +106,7 @@ public class VxProgram implements VxObject
 
         // Float matrix uniforms
         codes.writeInt(Vx.OP_UNIFORM_COUNT); // Sum all uniforms here
-        codes.writeInt(uniformMatrixfvMap.size());
+        codes.writeInt(uniformMatrixfvMap.size() + uniformVectorfvMap.size());
 
         for (String name :  uniformMatrixfvMap.keySet()) {
             float fv[][] = uniformMatrixfvMap.get(name);
@@ -114,6 +120,18 @@ public class VxProgram implements VxObject
             for (int i = 0; i < dim; i++)
                 for (int j = 0; j < dim; j++)
                     codes.writeFloat(fv[i][j]);
+        }
+
+        for (String name :  uniformVectorfvMap.keySet()) {
+            float fv[] = uniformVectorfvMap.get(name);
+            codes.writeInt(Vx.OP_UNIFORM_VECTOR_FV);
+            codes.writeStringZ(name);
+            int dim = fv.length;
+            codes.writeInt(dim);
+            codes.writeInt(1); //count, right now only sending one matrix
+
+            for (int i = 0; i < dim; i++)
+                codes.writeFloat(fv[i]);
         }
 
         // Finally we deal with textures

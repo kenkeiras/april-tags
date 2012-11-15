@@ -15,6 +15,11 @@ public class VxVertexAttrib
         this.dim  = dim;
     }
 
+    public int size()
+    {
+        return fdata.length;
+    }
+
 
 
 }
