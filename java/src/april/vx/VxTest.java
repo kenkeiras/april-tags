@@ -111,7 +111,7 @@ public class VxTest
         {
             VxProgram vp = VxProgram.make("texture");
             vp.setVertexAttrib("position", point_attribs.get(2));
-            vp.setTexture("texure", vtex); //XXX Error!
+            vp.setTexture("texture", vtex); //XXX Error!
 
             float texcoords[] = {
                 0.0f, 0.0f,
@@ -156,18 +156,27 @@ public class VxTest
         }
 
 
-        if (false) {
+        // DEbug:
+        // progs2.clear();
+        // progs1.clear();
+
+        if (true) {
             ArrayList<double[]> pts = new ArrayList();
 
             Random r = new Random(99);
             for (int i = 0; i < 100; i++)
-                pts.add(new double[]{10*r.nextDouble(),
-                                     10*r.nextDouble(),
-                                     10*r.nextDouble()});
+                pts.add(new double[]{10 - 20*r.nextDouble(),
+                                     10 - 20*r.nextDouble(),
+                                     10 - 20*r.nextDouble()});
 
             VxVertexAttrib points = new VxVertexAttrib(pts);
-            vw.getBuffer("points").stage(new VxPoints(points, java.awt.Color.red));
-            vw.getBuffer("points").commit();
+            VxPoints vpts = new VxPoints(points, java.awt.Color.red);
+
+            progs2.add(vpts);
+
+            // XXX This breaks totally
+            // vw.getBuffer("points").stage(vtps);
+            // vw.getBuffer("points").commit();
         }
 
         JFrame jf = new JFrame();
@@ -182,6 +191,7 @@ public class VxTest
 
         // Render loop
         for (int i = 0; i < 24; i++) {
+            System.out.printf("Render %d:\n",i);
 
             int type = i % 6;
             switch(type) {
@@ -192,16 +202,17 @@ public class VxTest
                 case 1:
                 case 3:
                     for (VxObject vp : progs2)
-                        vw.getBuffer("first-buffer").stage(vp);
+                        vw.getBuffer("second-buffer").stage(vp);
                     for (VxObject vp : progs1)
                         vw.getBuffer("first-buffer").stage(vp);
                     break;
                 case 2:
                     for (VxObject vp : progs2)
-                        vw.getBuffer("first-buffer").stage(vp);
+                        vw.getBuffer("second-buffer").stage(vp);
                     break;
             }
             vw.getBuffer("first-buffer").commit();
+            vw.getBuffer("second-buffer").commit();
 
             vxls.render(width,height);
 
@@ -212,7 +223,6 @@ public class VxTest
 
 
             jim.setImage(canvas);
-            System.out.printf("Render %d \n",i);
 
             TimeUtil.sleep(500);
 

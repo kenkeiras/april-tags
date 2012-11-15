@@ -83,7 +83,6 @@ public class VxProgram implements VxObject
 
         codes.writeInt(Vx.OP_MODEL_MATRIX_44);
         double M[][] = ms.getMatrix();
-        april.jmat.LinAlg.print(M);
         for (int i =0; i < 4; i++)
             for (int j =0; j < 4; j++)
                 codes.writeFloat((float)M[i][j]);

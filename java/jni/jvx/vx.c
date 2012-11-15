@@ -179,7 +179,7 @@ static GLuint vx_buffer_allocate(GLenum target, vx_resc_t *vr)
     glGenBuffers(1, &vbo_id);
     glBindBuffer(target, vbo_id);
     glBufferData(target, vr->count * vr->fieldwidth, vr->res, GL_STATIC_DRAW);
-    printf("Allocated VBO %d for guid %ld\n", vbo_id, vr->id);
+    printf("      Allocated VBO %d for guid %ld\n", vbo_id, vr->id);
 
     lihash_put(state.vbo_map, vr->id, vbo_id);
 
@@ -205,7 +205,7 @@ int vx_render_program(vx_code_input_stream_t * codes)
 {
     if (codes->len == codes->pos) // exhausted the stream
         return 1;
-    printf("Processing program, codes has %d remaining\n",codes->len-codes->pos);
+    printf("  Processing program, codes has %d remaining\n",codes->len-codes->pos);
 
     GLuint prog_id = -1;
     {
@@ -442,6 +442,7 @@ int vx_render_program(vx_code_input_stream_t * codes)
         uint32_t drawCount = codes->read_uint32(codes);
         uint32_t drawType = codes->read_uint32(codes);
 
+        printf("    glDrawArrays %d %d %d\n", drawType, 0, drawCount);
         glDrawArrays(drawType, 0, drawCount);
     }
 
@@ -456,7 +457,7 @@ int vx_render(int width, int height)
     glViewport(0,0,width,height);
 
     // debug: print stats
-    printf("n resc %d, n vbos %d, n programs %d n tex %d\n",
+    printf(" n resc %d, n vbos %d, n programs %d n tex %d\n",
            state.resource_map->size,state.vbo_map->size,
            state.program_map->size, state.texture_map->size);
 
@@ -468,7 +469,7 @@ int vx_render(int width, int height)
         vx_code_input_stream_t *codes = vhash_get(state.buffer_codes_map, buffer_name);
         codes->reset(codes);
 
-        printf("Rendering buffer: %s codes->len %d codes->pos %d\n", buffer_name, codes->len, codes->pos);
+        printf("  Rendering buffer: %s codes->len %d codes->pos %d\n", buffer_name, codes->len, codes->pos);
 
         while (!vx_render_program(codes));
     }
