@@ -109,9 +109,9 @@ public class VxTest
         // Now do Texture:
         ArrayList<VxObject> progs1 = new ArrayList();
         {
-            VxProgram vp = VxProgram.make("tex");
+            VxProgram vp = VxProgram.make("texture");
             vp.setVertexAttrib("position", point_attribs.get(2));
-            vp.setTexture("texure", vtex);
+            vp.setTexture("texure", vtex); //XXX Error!
 
             float texcoords[] = {
                 0.0f, 0.0f,
@@ -129,7 +129,7 @@ public class VxTest
         for (int i = 0; i < 1; i+=2) {
 
 
-            VxProgram vp = VxProgram.make("colored-tri");//new VxProgram(vertRx,fragRx);
+            VxProgram vp = VxProgram.make("multi-colored");//new VxProgram(vertRx,fragRx);
             vp.setVertexAttrib("position", point_attribs.get(i));
 
             vp.setVertexAttrib("color", color_attribs.get(i));
@@ -143,7 +143,7 @@ public class VxTest
 
         ArrayList<VxObject> progs2 = new ArrayList();
         for (int i = 1; i < 4; i+=2) { // XXX Only render 1
-            VxProgram vp = VxProgram.make("colored-tri");
+            VxProgram vp = VxProgram.make("multi-colored");
             vp.setVertexAttrib("position", point_attribs.get(i));
 
             vp.setVertexAttrib("color", color_attribs.get(i));
@@ -156,7 +156,7 @@ public class VxTest
         }
 
 
-        {
+        if (false) {
             ArrayList<double[]> pts = new ArrayList();
 
             Random r = new Random(99);
