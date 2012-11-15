@@ -155,6 +155,21 @@ public class VxTest
             progs2.add(vp);
         }
 
+
+        {
+            ArrayList<double[]> pts = new ArrayList();
+
+            Random r = new Random(99);
+            for (int i = 0; i < 100; i++)
+                pts.add(new double[]{10*r.nextDouble(),
+                                     10*r.nextDouble(),
+                                     10*r.nextDouble()});
+
+            VxVertexAttrib points = new VxVertexAttrib(pts);
+            vw.getBuffer("points").stage(new VxPoints(points, java.awt.Color.red));
+            vw.getBuffer("points").commit();
+        }
+
         JFrame jf = new JFrame();
 
         JImage jim = new JImage();
