@@ -15,8 +15,9 @@ public class VxProgram implements VxObject
     final HashMap<String, float[][]> uniformMatrixfvMap = new HashMap();
     final HashMap<String, VxTexture> textureMap = new HashMap();
 
-    VxIndexData vxid;
-    int vxidtype; // VX_POINTS, VX_TRIANGLES, etc
+    VxIndexData vxid = null;
+    int vxid_count = -1;
+    int vxid_type; // VX_POINTS, VX_TRIANGLES, etc
 
     public VxProgram(byte vertArr[], long vertId,
                      byte fragArr[], long fragId)
@@ -31,10 +32,19 @@ public class VxProgram implements VxObject
         this.fragResc = fragmentShader;
     }
 
+    // Call only setDrawArray or setElement array, but not both!
+    public void setDrawArray(int count, int type)
+    {
+        assert(vxid == null);
+        this.vxid_count = count;
+        this.vxid_type = type;
+    }
+
     public void setElementArray(VxIndexData vxid, int type)
     {
+        assert(vxid_count == -1);
         this.vxid = vxid;
-        this.vxidtype = type;
+        this.vxid_type = type;
     }
 
     public void setVertexAttrib(String name, VxVertexAttrib vva)
@@ -122,11 +132,16 @@ public class VxProgram implements VxObject
             resources.add(new VxResource(Vx.GL_UNSIGNED_BYTE, vtex.bbuf, vtex.bbuf.length, 1, vtex.id));
         }
 
-        codes.writeInt(Vx.OP_ELEMENT_ARRAY);
-        codes.writeLong(vxid.id);
-        codes.writeInt(vxidtype);
-
-        resources.add(new VxResource(Vx.GL_UNSIGNED_INT, vxid.data, vxid.data.length, 4, vxid.id));
+        if (vxid != null) {
+            codes.writeInt(Vx.OP_ELEMENT_ARRAY);
+            codes.writeLong(vxid.id);
+            codes.writeInt(vxid_type);
+            resources.add(new VxResource(Vx.GL_UNSIGNED_INT, vxid.data, vxid.data.length, 4, vxid.id));
+        } else {
+            codes.writeInt(Vx.OP_DRAW_ARRAY);
+            codes.writeInt(vxid_count);
+            codes.writeInt(vxid_type);
+        }
     }
 
     // Library functionality for loading up predefined shaders

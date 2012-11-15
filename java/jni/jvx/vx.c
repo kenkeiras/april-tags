@@ -410,9 +410,11 @@ int vx_render_program(vx_code_input_stream_t * codes)
             printf("Post-uniform len = %d:\n%s\n", len, output);
     }
 
+    uint32_t arrayOp = codes->read_uint32(codes);
+    assert(arrayOp == OP_ELEMENT_ARRAY ||  arrayOp == OP_DRAW_ARRAY);
+
+    if (arrayOp == OP_ELEMENT_ARRAY)
     {
-        uint32_t elementOp = codes->read_uint32(codes);
-        assert(elementOp == OP_ELEMENT_ARRAY);
         uint64_t elementId = codes->read_uint64(codes);
         uint32_t elementType = codes->read_uint32(codes);
 
@@ -429,6 +431,11 @@ int vx_render_program(vx_code_input_stream_t * codes)
             vbo_id = vx_buffer_allocate(GL_ELEMENT_ARRAY_BUFFER, vr);
 
         glDrawElements(elementType, vr->count, vr->type, NULL);
+    } else if (arrayOp == OP_DRAW_ARRAY) {
+        uint32_t drawCount = codes->read_uint32(codes);
+        uint32_t drawType = codes->read_uint32(codes);
+
+        glDrawArrays(drawType, 0, drawCount);
     }
 
     return 0;
@@ -455,7 +462,6 @@ int vx_render(int width, int height)
         codes->reset(codes);
 
         printf("Rendering buffer: %s codes->len %d codes->pos %d\n", buffer_name, codes->len, codes->pos);
-        //XXX need to reset codes to render multiple times
 
         while (!vx_render_program(codes));
     }

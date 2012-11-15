@@ -12,6 +12,7 @@
 #define OP_MODEL_MATRIX_44    9
 #define OP_PM_MAT_NAME        10
 #define OP_VALIDATE_PROGRAM   11
+#define OP_DRAW_ARRAY         12
 
 #define VX_FLOAT_ARRAY  0
 #define VX_BYTE_ARRAY   1
