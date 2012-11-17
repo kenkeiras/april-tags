@@ -122,7 +122,7 @@ public class VxTest
             vp.setVertexAttrib("texIn", new VxVertexAttrib(texcoords,2));
             vp.setElementArray(index, Vx.GL_TRIANGLES);
 
-            progs1.add(new VxChain(LinAlg.translate(-1,-1), vp));
+            // progs1.add(new VxChain(LinAlg.translate(-1,-1), vp));
 
         }
 
@@ -152,7 +152,7 @@ public class VxTest
 
             vp.setElementArray(index, Vx.GL_TRIANGLES);
 
-            progs2.add(vp);
+            // progs2.add(vp);
         }
 
 
@@ -172,11 +172,11 @@ public class VxTest
             VxVertexAttrib points = new VxVertexAttrib(pts);
             VxPoints vpts = new VxPoints(points, java.awt.Color.red);
 
-            progs2.add(vpts);
+            // progs2.add(vpts);
 
             // XXX This breaks totally
-            // vw.getBuffer("points").stage(vtps);
-            // vw.getBuffer("points").commit();
+            vw.getBuffer("points").stage(vpts);
+            vw.getBuffer("points").commit();
         }
 
         JFrame jf = new JFrame();
