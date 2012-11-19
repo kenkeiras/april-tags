@@ -37,7 +37,22 @@ public class VxDebug
         VxWorld vw = new VxWorld(vxls);
 
         ArrayList<VxObject> progs1 = new ArrayList();
+        ArrayList<VxObject> progs2 = new ArrayList();
         if (true) {
+
+            // VxMesh mesh = new VxMesh(
+            //     new VxVertexAttrib(new float[]{1.0f, 1.0f,
+            //                                    0.0f, 1.0f,
+            //                                    0.0f, 0.0f,
+            //                                    1.0f, 0.0f},
+            //         2),
+            //     new VxIndexData(new int[]{0,1,2,
+            //                               2,3,0}),
+            //     new VxVertexAttrib(new float[] { 1.0f, 0.0f, 0.0f,
+            //                                      1.0f, 0.0f, 1.0f,
+            //                                      0.0f, 1.0f, 0.0f,
+            //                                      1.0f, 1.0f, 0.0f},
+            //         3));
 
             VxMesh mesh = new VxMesh(
                 new VxVertexAttrib(new float[]{1.0f, 1.0f,
@@ -47,23 +62,22 @@ public class VxDebug
                     2),
                 new VxIndexData(new int[]{0,1,2,
                                           2,3,0}),
-                new VxVertexAttrib(new float[] { 1.0f, 0.0f, 0.0f,
-                                                 1.0f, 0.0f, 1.0f,
-                                                 0.0f, 1.0f, 0.0f,
-                                                 1.0f, 1.0f, 0.0f},
-                    3));
+                java.awt.Color.blue);
 
-            progs1.add(mesh);
+            progs2.add(mesh);
         }
 
         if (true) {
             ArrayList<double[]> pts = new ArrayList();
 
             Random r = new Random(99);
-            for (int i = 0; i < 100; i++)
+            for (int i = 0; i < 4; i++)
                 pts.add(new double[]{10 - 20*r.nextDouble(),
                                      10 - 20*r.nextDouble(),
-                                     10 - 20*r.nextDouble()});
+                                     0.0});
+
+            for(double pt[] : pts)
+                LinAlg.printTranspose(pt);
 
 
             ArrayList<float[]> cls = new ArrayList();
@@ -77,11 +91,8 @@ public class VxDebug
             // VxPoints vpts = new VxPoints(points, java.awt.Color.red);
             VxPoints vpts = new VxPoints(points, colors);
 
-            // progs2.add(vpts);
+            progs1.add(vpts);
 
-            // XXX This breaks totally
-            vw.getBuffer("points").stage(vpts);
-            vw.getBuffer("points").commit();
         }
 
         JFrame jf = new JFrame();
@@ -93,6 +104,13 @@ public class VxDebug
         jf.setVisible(true);
         jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
+
+        // We statically load the second array, and dynamically switch the first:
+        {
+            for (VxObject vp : progs2)
+                vw.getBuffer("points").stage(vp);
+            vw.getBuffer("points").commit();
+        }
 
         // Render loop
         for (int i = 0; i < 24; i++) {
