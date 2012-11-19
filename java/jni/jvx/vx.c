@@ -274,6 +274,7 @@ int vx_render_program(vx_code_input_stream_t * codes)
     }
 
     // Read the user specified model matrix
+    GLuint pm_unif_loc = -1; // debug save for later
     {
         uint32_t modelMatrixOp = codes->read_uint32(codes);
         assert(modelMatrixOp == OP_MODEL_MATRIX_44);
@@ -291,8 +292,11 @@ int vx_render_program(vx_code_input_stream_t * codes)
         mult44(state.system_pm, (float *)userM, PM); //XXX
 
         GLint unif_loc = glGetUniformLocation(prog_id, pmName);
+        pm_unif_loc = unif_loc;
         assert(unif_loc >= 0); // Ensure this field exists
         glUniformMatrix4fv(unif_loc, 1 , 1, (GLfloat *)PM);
+
+        print44(PM);
     }
 
     uint32_t attribCountOp = codes->read_uint32(codes);
@@ -331,13 +335,16 @@ int vx_render_program(vx_code_input_stream_t * codes)
     uint32_t uniCountOp = codes->read_uint32(codes);
     assert(uniCountOp == OP_UNIFORM_COUNT);
     uint32_t uniCount = codes->read_uint32(codes);
+
+    int uniformLocs[uniCount + 1];
+    uniformLocs[uniCount] = pm_unif_loc;
     for (int i = 0; i < uniCount; i++) {
         uint32_t uniOp = codes->read_uint32(codes);
 
         // Functionality common to all uniforms, regardless of type
         char * name = codes->read_str(codes);
         GLint unif_loc = glGetUniformLocation(prog_id, name);
-
+        uniformLocs[i] = unif_loc;
         // Functionality depends on type:
         uint32_t nper = 0; // how many per unit?
         uint32_t count = 0; // how many units?
@@ -439,6 +446,50 @@ int vx_render_program(vx_code_input_stream_t * codes)
         if (len != 0)
             printf("Post-uniform len = %d:\n%s\n", len, output);
     }
+
+    // Debug:
+    // Read the value of all active uniforms
+    for (int i = 0; i < uniCount + 1; i++) {
+        printf("Checking value of %dth uniform at %d \n",i, uniformLocs[i]);
+
+        char name[65535];
+
+        GLsizei name_len;
+        GLint sz;
+        GLenum type;
+
+        glGetActiveUniform(prog_id, uniformLocs[i], 65535,
+                           &name_len, &sz, &type, name);
+
+        float dat[16];
+        printf("  type: %d size %d info: %s\n",type, sz, name);
+        switch(type) {
+            case GL_FLOAT_VEC4:
+                printf("  GL_FLOAT_VEC4\n");
+                glGetUniformfv(prog_id, uniformLocs[i], dat);
+                printf("  ");
+                for (int j = 0; j < 4; j++) {
+                    printf("% f\t",dat[j]);
+                }
+                printf("\n");
+                break;
+            case GL_FLOAT_MAT4:
+                printf("  GL_FLOAT_MAT4\n");
+                glGetUniformfv(prog_id, uniformLocs[i], dat);
+                // convert to row major
+                for (int j = 0; j < 4; j++) {
+                    printf("  ");
+                    for (int k = 0; k < 4; k++) {
+                        printf("% f\t",dat[k *4 + j]);
+                    }
+                    printf("\n");
+                }
+
+                break;
+        }
+
+    }
+
 
     uint32_t arrayOp = codes->read_uint32(codes);
     assert(arrayOp == OP_ELEMENT_ARRAY ||  arrayOp == OP_DRAW_ARRAY);

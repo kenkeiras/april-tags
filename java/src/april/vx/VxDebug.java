@@ -115,10 +115,10 @@ public class VxDebug
             switch(type) {
                 case 0:
                 case 1:
+                    break;
+                case 2:
                     for (VxObject vp : progs1)
                         vw.getBuffer("first-buffer").stage(vp);
-                    break;
-                case 3:
                     break;
             }
             vw.getBuffer("first-buffer").commit();
