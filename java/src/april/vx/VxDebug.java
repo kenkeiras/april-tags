@@ -67,13 +67,14 @@ public class VxDebug
                                      10 - 20*r.nextDouble()});
 
 
-            // ArrayList<float[]> cls = new ArrayList();
-            //     cls.add(new float[]{1.0f,0f,0f,1f}); //april.vis.ColorUtil.seededColor(i).getRGBComponents(null));
+            ArrayList<float[]> cls = new ArrayList();
+            for (int i = 0; i < pts.size(); i++)
+                cls.add(new float[]{1.0f,0f,0f,1f}); //april.vis.ColorUtil.seededColor(i).getRGBComponents(null));
 
             VxVertexAttrib points = new VxVertexAttrib(pts);
-            // VxVertexAttrib colors = new VxVertexAttrib(cls);
-            VxPoints vpts = new VxPoints(points, java.awt.Color.red);
-            // VxPoints vpts = new VxPoints(points, colors);
+            VxVertexAttrib colors = new VxVertexAttrib(cls);
+            // VxPoints vpts = new VxPoints(points, java.awt.Color.red);
+            VxPoints vpts = new VxPoints(points, colors);
 
             // progs2.add(vpts);
 
