@@ -360,6 +360,18 @@ int vx_render_program(vx_code_input_stream_t * codes)
         for (int j = 0; j < nper*count; j++)
             vals[i++] = codes->read_uint32(codes);
 
+        // Debug
+        {
+            printf("Binding %s to %d:", name, unif_loc);
+            float * fvals = (float *) vals;
+            for (int j = 0; j < nper*count; j++) {
+                printf("%f,",fvals[j]);
+                if ((j+1) %nper == 0)
+                    printf("\n");
+            }
+
+        }
+
         // Finally, once the right amount of data is extracted, ship it with the appropriate method:
         switch(uniOp) {
             case OP_UNIFORM_MATRIX_FV:

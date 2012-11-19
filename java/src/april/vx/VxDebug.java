@@ -76,13 +76,9 @@ public class VxDebug
                                      10 - 20*r.nextDouble(),
                                      0.0});
 
-            for(double pt[] : pts)
-                LinAlg.printTranspose(pt);
-
-
             ArrayList<float[]> cls = new ArrayList();
             for (int i = 0; i < pts.size(); i++)
-                cls.add(april.vis.ColorUtil.seededColor(i).getRGBComponents(null)); //new float[]{1.0f,0f,0f,1f}); //
+                cls.add(new float[]{0.0f,1.0f,0f,1f}); //april.vis.ColorUtil.seededColor(i).getRGBComponents(null)); //
 
             VxVertexAttrib points = new VxVertexAttrib(pts);
             VxVertexAttrib colors = new VxVertexAttrib(cls);
