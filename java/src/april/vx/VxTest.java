@@ -191,7 +191,6 @@ public class VxTest
 
         // Render loop
         for (int i = 0; i < 24; i++) {
-            System.out.printf("Render %d:\n",i);
 
             int type = i % 6;
             switch(type) {
@@ -214,6 +213,8 @@ public class VxTest
             vw.getBuffer("first-buffer").commit();
             vw.getBuffer("second-buffer").commit();
 
+
+            System.out.printf("Render %d:\n",i);
             vxls.render(width,height);
 
             BufferedImage canvas = new BufferedImage(width,height, BufferedImage.TYPE_3BYTE_BGR);

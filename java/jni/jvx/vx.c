@@ -116,12 +116,14 @@ int fbo_create(int width, int height)
 
 int vx_update_buffer(char * name, vx_code_input_stream_t * codes)
 {
-    printf("Updating buffer: %s codes->len %d codes->pos %d\n", name, codes->len, codes->pos);
+    printf("Updating codes buffer: %s codes->len %d codes->pos %d\n", name, codes->len, codes->pos);
 
     if (vhash_get(state.buffer_codes_map, name) != NULL) {
         vhash_pair_t prev = vhash_remove(state.buffer_codes_map, name);
 
         name = prev.key; // Reuse the old key
+
+        printf("  Destroying old codes: of len %d\n", ((vx_code_input_stream_t *)prev.value)->len);
         vx_code_input_stream_destroy(prev.value);
 
     } else { // First time we've seen this buffer
@@ -134,9 +136,11 @@ int vx_update_buffer(char * name, vx_code_input_stream_t * codes)
 
 int vx_update_resources(int nresc, vx_resc_t ** resources)
 {
+    printf("Updating %d resources:\n", nresc);
+    printf("  ");
     for (int i = 0; i < nresc; i++) {
         vx_resc_t *vr = resources[i];
-
+        printf("%ld,",vr->id);
         vx_resc_t * old_vr = lphash_get(state.resource_map, vr->id);
 
         if (old_vr == NULL) {
@@ -147,6 +151,7 @@ int vx_update_resources(int nresc, vx_resc_t ** resources)
             vx_resc_destroy(vr);
         }
     }
+    printf("\n");
     return 0;
 }
 
@@ -246,9 +251,13 @@ int vx_render_program(vx_code_input_stream_t * codes)
             glLinkProgram(prog->prog_id);
 
             lphash_put(state.program_map, vertId, prog);
+
+            printf("  Created gl program %d from guid %ld and %ld (gl ids %d and %d)\n",
+                   prog->prog_id, vertId, fragId, prog->vert_id, prog->frag_id);
         }
         prog_id = prog->prog_id;
         glUseProgram(prog_id);
+
     }
 
     uint32_t validateProgramOp = codes->read_uint32(codes);
@@ -496,7 +505,9 @@ int vx_deallocate(uint64_t * guids, int nguids)
 
         // There is always a resource for each guid.
         vx_resc_t * vr = lphash_remove(state.resource_map, guid).value;
+        assert(guid == vr->id);
         if (vr != NULL) {
+            printf("Deallocating resource GUID=%ld\n", vr->id);
             free(vr->res);
             free(vr);
         } else {
@@ -523,10 +534,15 @@ int vx_deallocate(uint64_t * guids, int nguids)
         gl_prog_resc_t * prog = lphash_remove(state.program_map, guid).value;
         if (prog != NULL) {
 
+            printf("glDetachShader %d %d\n", prog->prog_id, prog->vert_id);
             glDetachShader(prog->prog_id,prog->vert_id);
+            printf("glDeleteShader %d\n", prog->vert_id);
             glDeleteShader(prog->vert_id);
+            printf("glDetachShader %d %d\n", prog->prog_id, prog->frag_id);
             glDetachShader(prog->prog_id,prog->frag_id);
+            printf("glDeleteShader %d\n", prog->frag_id);
             glDeleteShader(prog->frag_id);
+            printf("glDeleteProgram %d\n", prog->prog_id);
             glDeleteProgram(prog->prog_id);
 
             printf("  Freed program %d vert %d and frag %d\n",

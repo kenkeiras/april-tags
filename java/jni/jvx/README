@@ -1,0 +1,3 @@
+In addition to the standards, you will also need the following packages:
+
+sudo apt-get install libglew1.6-dev

@@ -78,6 +78,7 @@ public class VxLocalServer implements VxServer
             deallocate_guids[j] = deallocate.get(j).id;
 
         System.out.printf("Freeing %d resources\n", deallocate_guids.length);
+        // XXX deallocate_resources(deallocate_guids, deallocate_guids.length);
         deallocate_resources(deallocate_guids, deallocate_guids.length);
     }
 
