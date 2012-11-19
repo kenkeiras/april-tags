@@ -587,32 +587,8 @@ int vx_deallocate(uint64_t * guids, int nguids)
         lihash_pair_t vbo_pair = lihash_remove(state.vbo_map, guid, &vbo_success);
         if (vbo_success) {
             // Tell open GL to deallocate this VBO
-
-            glBindBuffer(GL_ARRAY_BUFFER, vbo_pair.value); // XXX
-
-            if (1) {
-                float test_data[vr->count];
-
-                glGetBufferSubData(GL_ARRAY_BUFFER, 0, vr->count * vr->fieldwidth, test_data);
-
-                for (int j = 0; j < vr->count; j++)
-                    printf(" %d: % f\n", j, test_data[j]);
-            }
-
             glDeleteBuffers(1, &vbo_pair.value);
             printf(" Deleted VBO %d \n", vbo_pair.value);
-
-
-                    // XXX debug, ensure we can read back the vbo.
-            if (1) {
-                float test_data[vr->count];
-
-                glGetBufferSubData(GL_ARRAY_BUFFER, 0, vr->count * vr->fieldwidth, test_data);
-
-                for (int j = 0; j < vr->count; j++)
-                    printf(" %d: % f\n", j, test_data[j]);
-            }
-
         }
 
         // There is always a resource for each guid.
