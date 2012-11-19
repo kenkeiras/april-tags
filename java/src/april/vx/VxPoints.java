@@ -17,15 +17,28 @@ public class VxPoints implements VxObject
 
         vp.setVertexAttrib("position", points);
         vp.setUniform("color", c.getRGBComponents(null));
-        vp.setDrawArray(points.size(), Vx.GL_POINTS);
+
+
+        // XXX REmove debugging code eventually
+        if (true) {
+            int idxs[] = new int[points.size()];
+            for (int i =0; i < idxs.length; i++)
+                idxs[i] = i;
+
+            vp.setElementArray(new VxIndexData(idxs), Vx.GL_POINTS);
+        } else {
+            vp.setDrawArray(points.size(), Vx.GL_POINTS);
+        }
     }
 
     public VxPoints(VxVertexAttrib points, VxVertexAttrib colors)
     {
-        vp = VxProgram.make("single-color");
+        assert(false); // untested
+        vp = VxProgram.make("multi-colored");
 
         vp.setVertexAttrib("position", points);
         vp.setVertexAttrib("color", colors);
+
         vp.setDrawArray(points.size(), Vx.GL_POINTS);
     }
 

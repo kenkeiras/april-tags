@@ -319,6 +319,8 @@ int vx_render_program(vx_code_input_stream_t * codes)
         else
             vbo_id = vx_buffer_allocate(GL_ARRAY_BUFFER, vr);
 
+        printf("    Vbo_id %d isBuffer %d\n", vbo_id, glIsBuffer(vbo_id));
+
         // Attach to attribute
         GLint attr_loc = glGetAttribLocation(prog_id, name);
         glEnableVertexAttribArray(attr_loc);
@@ -446,12 +448,14 @@ int vx_render_program(vx_code_input_stream_t * codes)
         else
             vbo_id = vx_buffer_allocate(GL_ELEMENT_ARRAY_BUFFER, vr);
 
+        printf("    element_array vbo_id %d isBuffer %d\n", vbo_id, glIsBuffer(vbo_id));
+
         glDrawElements(elementType, vr->count, vr->type, NULL);
     } else if (arrayOp == OP_DRAW_ARRAY) {
         uint32_t drawCount = codes->read_uint32(codes);
         uint32_t drawType = codes->read_uint32(codes);
 
-        printf("    glDrawArrays %d %d %d\n", drawType, 0, drawCount);
+        printf("    glDrawArrays(%d %d %d) prog_id %d\n", drawType, 0, drawCount, prog_id);
         glDrawArrays(drawType, 0, drawCount);
     }
 
@@ -533,16 +537,10 @@ int vx_deallocate(uint64_t * guids, int nguids)
 
         gl_prog_resc_t * prog = lphash_remove(state.program_map, guid).value;
         if (prog != NULL) {
-
-            printf("glDetachShader %d %d\n", prog->prog_id, prog->vert_id);
             glDetachShader(prog->prog_id,prog->vert_id);
-            printf("glDeleteShader %d\n", prog->vert_id);
             glDeleteShader(prog->vert_id);
-            printf("glDetachShader %d %d\n", prog->prog_id, prog->frag_id);
             glDetachShader(prog->prog_id,prog->frag_id);
-            printf("glDeleteShader %d\n", prog->frag_id);
             glDeleteShader(prog->frag_id);
-            printf("glDeleteProgram %d\n", prog->prog_id);
             glDeleteProgram(prog->prog_id);
 
             printf("  Freed program %d vert %d and frag %d\n",

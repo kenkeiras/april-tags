@@ -89,13 +89,13 @@ public class VxDebug
         // Render loop
         for (int i = 0; i < 24; i++) {
 
-            int type = i % 2;
+            int type = i % 3;
             switch(type) {
                 case 0:
+                case 1:
                     for (VxObject vp : progs1)
                         vw.getBuffer("first-buffer").stage(vp);
                     break;
-                case 1:
                 case 3:
                     break;
             }
