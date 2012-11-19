@@ -104,24 +104,23 @@ public class VxDebug
         // We statically load the second array, and dynamically switch the first:
         {
             for (VxObject vp : progs2)
-                vw.getBuffer("points").stage(vp);
-            vw.getBuffer("points").commit();
+                vw.getBuffer("static-buffer").stage(vp);
+            vw.getBuffer("static-buffer").commit();
         }
 
         // Render loop
         for (int i = 0; i < 24; i++) {
 
-            int type = i % 3;
+            int type = i % 2;
             switch(type) {
                 case 0:
-                case 1:
                     break;
-                case 2:
+                case 1:
                     for (VxObject vp : progs1)
-                        vw.getBuffer("first-buffer").stage(vp);
+                        vw.getBuffer("dynamic-buffer").stage(vp);
                     break;
             }
-            vw.getBuffer("first-buffer").commit();
+            vw.getBuffer("dynamic-buffer").commit();
 
 
             System.out.printf("Render %d:\n",i);

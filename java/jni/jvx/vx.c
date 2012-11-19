@@ -263,7 +263,6 @@ int vx_render_program(vx_code_input_stream_t * codes)
     uint32_t validateProgramOp = codes->read_uint32(codes);
     assert(validateProgramOp == OP_VALIDATE_PROGRAM);
     uint32_t validateProgram = codes->read_uint32(codes);
-    printf("  Validate? %d\n", validateProgram);
     if (validateProgram) { // Check program status
         char output[65535];
 
@@ -295,8 +294,6 @@ int vx_render_program(vx_code_input_stream_t * codes)
         pm_unif_loc = unif_loc;
         assert(unif_loc >= 0); // Ensure this field exists
         glUniformMatrix4fv(unif_loc, 1 , 1, (GLfloat *)PM);
-
-        print44(PM);
     }
 
     uint32_t attribCountOp = codes->read_uint32(codes);
@@ -331,8 +328,9 @@ int vx_render_program(vx_code_input_stream_t * codes)
             float test_data[vr->count];
             glGetBufferSubData(GL_ARRAY_BUFFER, 0, vr->count * vr->fieldwidth, test_data);
 
+            printf("    name: %s\n", name);
             for (int j = 0; j < vr->count; j++)
-                printf(" %d: % f\n", j, test_data[j]);
+                printf("     %d: % f\n", j, test_data[j]);
         }
 
         printf("    Vbo_id %d isBuffer %d\n", vbo_id, glIsBuffer(vbo_id));
