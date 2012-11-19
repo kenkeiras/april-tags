@@ -38,23 +38,22 @@ public class VxDebug
 
         ArrayList<VxObject> progs1 = new ArrayList();
         if (true) {
-            VxProgram vp = VxProgram.make("multi-colored");//new VxProgram(vertRx,fragRx);
-            vp.setVertexAttrib("position", new VxVertexAttrib(new float[]{1.0f, 1.0f,
-                                                                          0.0f, 1.0f,
-                                                                          0.0f, 0.0f,
-                                                                          1.0f, 0.0f},
-                    2));
 
-            vp.setVertexAttrib("color", new VxVertexAttrib(new float[] { 1.0f, 0.0f, 0.0f,
-                                                                         1.0f, 0.0f, 1.0f,
-                                                                         0.0f, 1.0f, 0.0f,
-                                                                         1.0f, 1.0f, 0.0f},
+            VxMesh mesh = new VxMesh(
+                new VxVertexAttrib(new float[]{1.0f, 1.0f,
+                                               0.0f, 1.0f,
+                                               0.0f, 0.0f,
+                                               1.0f, 0.0f},
+                    2),
+                new VxIndexData(new int[]{0,1,2,
+                                          2,3,0}),
+                new VxVertexAttrib(new float[] { 1.0f, 0.0f, 0.0f,
+                                                 1.0f, 0.0f, 1.0f,
+                                                 0.0f, 1.0f, 0.0f,
+                                                 1.0f, 1.0f, 0.0f},
                     3));
 
-            vp.setElementArray(new VxIndexData(new int[]{0,1,2,
-                                                         2,3,0}), Vx.GL_TRIANGLES);
-
-            progs1.add(vp);
+            progs1.add(mesh);
         }
 
         if (true) {
@@ -69,10 +68,12 @@ public class VxDebug
 
             ArrayList<float[]> cls = new ArrayList();
             for (int i = 0; i < pts.size(); i++)
-                cls.add(new float[]{1.0f,0f,0f,1f}); //april.vis.ColorUtil.seededColor(i).getRGBComponents(null));
+                cls.add(april.vis.ColorUtil.seededColor(i).getRGBComponents(null)); //new float[]{1.0f,0f,0f,1f}); //
 
             VxVertexAttrib points = new VxVertexAttrib(pts);
             VxVertexAttrib colors = new VxVertexAttrib(cls);
+
+
             // VxPoints vpts = new VxPoints(points, java.awt.Color.red);
             VxPoints vpts = new VxPoints(points, colors);
 

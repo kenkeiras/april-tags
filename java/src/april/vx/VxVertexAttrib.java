@@ -18,7 +18,7 @@ public class VxVertexAttrib
     }
 
     // Only accepts ArrayList<double[]> or ArrayList<float[]>
-    public VxVertexAttrib(ArrayList points)
+    public VxVertexAttrib(List points)
     {
         this.dim  = java.lang.reflect.Array.getLength(points.get(0));
 

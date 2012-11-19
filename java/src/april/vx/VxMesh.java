@@ -3,7 +3,7 @@ package april.vx;
 import java.awt.Color;
 import java.util.*;
 
-public class VxPoints implements VxObject
+public class VxMesh implements VxObject
 {
 
 
@@ -11,7 +11,8 @@ public class VxPoints implements VxObject
     //                     2) for per-vertex-color
     VxProgram vp;
 
-    public VxPoints(VxVertexAttrib points, Color c)
+    // XXX Normals, lighting
+    public VxMesh(VxVertexAttrib points, VxIndexData indices, Color c)
     {
         vp = VxProgram.make("single-color");
 
@@ -19,17 +20,17 @@ public class VxPoints implements VxObject
         vp.setUniform("color", c.getRGBComponents(null));
 
 
-        vp.setDrawArray(points.size(), Vx.GL_POINTS);
+        vp.setElementArray(indices, Vx.GL_TRIANGLES);
     }
 
-    public VxPoints(VxVertexAttrib points, VxVertexAttrib colors)
+    public VxMesh(VxVertexAttrib points, VxIndexData indices, VxVertexAttrib colors)
     {
         vp = VxProgram.make("multi-colored");
 
         vp.setVertexAttrib("position", points);
         vp.setVertexAttrib("color", colors);
 
-        vp.setDrawArray(points.size(), Vx.GL_POINTS);
+        vp.setElementArray(indices, Vx.GL_TRIANGLES);
     }
 
     public void appendTo(HashSet<VxResource> resources, VxCodeOutputStream codes, MatrixStack ms)
