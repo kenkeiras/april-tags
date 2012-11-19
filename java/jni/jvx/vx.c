@@ -263,7 +263,7 @@ int vx_render_program(vx_code_input_stream_t * codes)
     uint32_t validateProgramOp = codes->read_uint32(codes);
     assert(validateProgramOp == OP_VALIDATE_PROGRAM);
     uint32_t validateProgram = codes->read_uint32(codes);
-
+    printf("  Validate? %d\n", validateProgram);
     if (validateProgram) { // Check program status
         char output[65535];
 

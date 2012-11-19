@@ -33,7 +33,6 @@ public class VxPoints implements VxObject
 
     public VxPoints(VxVertexAttrib points, VxVertexAttrib colors)
     {
-        assert(false); // untested
         vp = VxProgram.make("multi-colored");
 
         vp.setVertexAttrib("position", points);
