@@ -318,10 +318,22 @@ int vx_render_program(vx_code_input_stream_t * codes)
         GLuint vbo_id = lihash_get(state.vbo_map, attribId, &success);
 
         // lazily create VBOs
-        if (success)
+        if (success) {
             glBindBuffer(GL_ARRAY_BUFFER, vbo_id);
-        else
+
+
+
+        }else
             vbo_id = vx_buffer_allocate(GL_ARRAY_BUFFER, vr);
+
+        // XXX debug, ensure we can read back the vbo.
+        if (1) {
+            float test_data[vr->count];
+            glGetBufferSubData(GL_ARRAY_BUFFER, 0, vr->count * vr->fieldwidth, test_data);
+
+            for (int j = 0; j < vr->count; j++)
+                printf(" %d: % f\n", j, test_data[j]);
+        }
 
         printf("    Vbo_id %d isBuffer %d\n", vbo_id, glIsBuffer(vbo_id));
 
@@ -567,11 +579,44 @@ int vx_deallocate(uint64_t * guids, int nguids)
 
     for (int i =0; i < nguids; i++) {
         uint64_t guid = guids[i];
+        vx_resc_t * vr = lphash_remove(state.resource_map, guid).value;
 
-        printf("Deallocating guid %ld:\n",guid);
+
+        // There may also be a program, or a vbo or texture for each guid
+        int vbo_success = 0;
+        lihash_pair_t vbo_pair = lihash_remove(state.vbo_map, guid, &vbo_success);
+        if (vbo_success) {
+            // Tell open GL to deallocate this VBO
+
+            glBindBuffer(GL_ARRAY_BUFFER, vbo_pair.value); // XXX
+
+            if (1) {
+                float test_data[vr->count];
+
+                glGetBufferSubData(GL_ARRAY_BUFFER, 0, vr->count * vr->fieldwidth, test_data);
+
+                for (int j = 0; j < vr->count; j++)
+                    printf(" %d: % f\n", j, test_data[j]);
+            }
+
+            glDeleteBuffers(1, &vbo_pair.value);
+            printf(" Deleted VBO %d \n", vbo_pair.value);
+
+
+                    // XXX debug, ensure we can read back the vbo.
+            if (1) {
+                float test_data[vr->count];
+
+                glGetBufferSubData(GL_ARRAY_BUFFER, 0, vr->count * vr->fieldwidth, test_data);
+
+                for (int j = 0; j < vr->count; j++)
+                    printf(" %d: % f\n", j, test_data[j]);
+            }
+
+        }
 
         // There is always a resource for each guid.
-        vx_resc_t * vr = lphash_remove(state.resource_map, guid).value;
+        printf("Deallocating guid %ld:\n",guid);
         assert(guid == vr->id);
         if (vr != NULL) {
             printf("Deallocating resource GUID=%ld\n", vr->id);
@@ -581,14 +626,6 @@ int vx_deallocate(uint64_t * guids, int nguids)
             printf("  Invalid request. Resource does not exist");
         }
 
-        // There may also be a program, or a vbo or texture for each guid
-        int vbo_success = 0;
-        lihash_pair_t vbo_pair = lihash_remove(state.vbo_map, guid, &vbo_success);
-        if (vbo_success) {
-            // Tell open GL to deallocate this VBO
-            glDeleteBuffers(1, &vbo_pair.value);
-            printf(" Deleted VBO %d \n", vbo_pair.value);
-        }
 
         int tex_success = 0;
         lihash_pair_t tex_pair = lihash_remove(state.texture_map, guid, &tex_success);
