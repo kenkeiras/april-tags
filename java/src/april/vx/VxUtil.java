@@ -71,6 +71,16 @@ public class VxUtil
         return out;
     }
 
+    public static byte[] copyStringZ(String str)
+    {
+        byte buf_short[] = str.getBytes();
+        byte buf_full[] = new byte[buf_short.length +1];
+        System.arraycopy(buf_short,0,buf_full,0, buf_short.length);
+        //last index is implicitly '\0'
+
+        return buf_full;
+    }
+
     public static byte[] readFileStringZ(String filename) throws IOException
     {
         File file = new File(filename);
