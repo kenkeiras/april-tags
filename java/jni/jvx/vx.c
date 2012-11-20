@@ -213,8 +213,7 @@ static GLuint vx_validate_program(GLint prog_id, char * stage_description)
 //    don't exist, create them from the specified resources
 // 3) Read all the data to be bound as uniforms from the input stream.
 // 4) Textures
-// 5) Find the VBO with the index data, if it doesn't exist, create it
-//    from the specified resource. This triggers the rendering operation
+// 5) Render using either glDrawArrays or glElementArray
 //
 // Note: After step 1 and 4, the state of the program is queried,
 //       and debugging information (if an error occurs) is printed to stdout
@@ -224,6 +223,7 @@ int vx_render_program(vx_code_input_stream_t * codes)
         return 1;
     if (verbose) printf("  Processing program, codes has %d remaining\n",codes->len-codes->pos);
 
+    // STEP 1: find/allocate the glProgram (using vertex shader and fragment shader)
     GLuint prog_id = -1;
     {
         uint32_t programOp = codes->read_uint32(codes);
@@ -277,8 +277,9 @@ int vx_render_program(vx_code_input_stream_t * codes)
     if (validateProgram)
         vx_validate_program(prog_id, "Post-link");
 
-    // Read the user specified model matrix
-    GLuint pm_unif_loc = -1; // debug save for later
+    // STEP 1.5: Read the user-specified model matrix, and multiply
+    // with the system defined projection-model matrix. Then bind to
+    // the user-specified uniform name
     {
         uint32_t modelMatrixOp = codes->read_uint32(codes);
         assert(modelMatrixOp == OP_MODEL_MATRIX_44);
@@ -296,15 +297,15 @@ int vx_render_program(vx_code_input_stream_t * codes)
         mult44(state.system_pm, (float *)userM, PM); //XXX
 
         GLint unif_loc = glGetUniformLocation(prog_id, pmName);
-        pm_unif_loc = unif_loc;
         assert(unif_loc >= 0); // Ensure this field exists
         glUniformMatrix4fv(unif_loc, 1 , 1, (GLfloat *)PM);
     }
 
+    // STEP 2: Bind all vertex attributes, backed by VBOs. Carefully
+    // record which vertex attributes we enable so we can disable them later
     uint32_t attribCountOp = codes->read_uint32(codes);
     assert(attribCountOp == OP_VERT_ATTRIB_COUNT);
     uint32_t attribCount = codes->read_uint32(codes);
-
     GLint attribLocs[attribCount];
     for (int i = 0; i < attribCount; i++) {
         uint32_t attribOp = codes->read_uint32(codes);
@@ -335,10 +336,11 @@ int vx_render_program(vx_code_input_stream_t * codes)
         assert(vr->type == GL_FLOAT);
     }
 
+    // STEP 3: Send over all data relating to uniforms.
+    // There are many data formats, we currently only support a subset
     uint32_t uniCountOp = codes->read_uint32(codes);
     assert(uniCountOp == OP_UNIFORM_COUNT);
     uint32_t uniCount = codes->read_uint32(codes);
-
     for (int i = 0; i < uniCount; i++) {
         uint32_t uniOp = codes->read_uint32(codes);
 
@@ -380,7 +382,8 @@ int vx_render_program(vx_code_input_stream_t * codes)
         }
     }
 
-    // Step 4: Textures
+    // Step 4: Bind and upload all textures. We also bind the texture
+    // id to the appropriate uniform
     uint32_t texCountOp = codes->read_uint32(codes);
     assert(texCountOp == OP_TEXTURE_COUNT);
     uint32_t texCount = codes->read_uint32(codes);
@@ -427,10 +430,9 @@ int vx_render_program(vx_code_input_stream_t * codes)
     if (validateProgram)
         vx_validate_program(prog_id, "Post-binding");
 
-
+    // Step 5: Rendering
     uint32_t arrayOp = codes->read_uint32(codes);
     assert(arrayOp == OP_ELEMENT_ARRAY ||  arrayOp == OP_DRAW_ARRAY);
-
     if (arrayOp == OP_ELEMENT_ARRAY)
     {
         uint64_t elementId = codes->read_uint64(codes);
@@ -501,7 +503,7 @@ int vx_read_pixels_bgr(int width, int height, uint8_t * out_buf)
     return 0;
 }
 
-int vx_deallocate(uint64_t * guids, int nguids)
+int vx_deallocate_resources(uint64_t * guids, int nguids)
 {
 
     for (int i =0; i < nguids; i++) {

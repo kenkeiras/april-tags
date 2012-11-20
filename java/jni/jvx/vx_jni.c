@@ -95,7 +95,7 @@ JNIEXPORT jint JNICALL Java_april_vx_VxLocalServer_deallocate_1resources
 {
 
     jlong* guids = (*jenv)->GetPrimitiveArrayCritical(jenv, jguids, NULL);
-    int ret = vx_deallocate((uint64_t *)guids, nguids);
+    int ret = vx_deallocate_resources((uint64_t *)guids, nguids);
     (*jenv)->ReleasePrimitiveArrayCritical(jenv, jguids, guids, 0);
 
     return ret;
