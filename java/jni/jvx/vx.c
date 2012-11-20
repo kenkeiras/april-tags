@@ -56,20 +56,21 @@ struct gl_prog_resc {
 
 
 static vx_t state;
+static int verbose = 0;
 
 
 static void checkVersions()
 {
-	if (glewIsSupported("GL_VERSION_2_0"))
-		printf("Ready for OpenGL 2.0\n");
-	else {
-		printf("OpenGL 2.0 not supported\n");
+	if (glewIsSupported("GL_VERSION_2_0")) {
+		if (verbose) printf("Ready for OpenGL 2.0\n");
+	}else {
+		if (verbose) printf("OpenGL 2.0 not supported\n");
 		exit(1);
 	}
 
     const GLubyte *glslVersion =
         glGetString( GL_SHADING_LANGUAGE_VERSION );
-    printf("GLSL version %s\n",glslVersion);
+    if (verbose) printf("GLSL version %s\n",glslVersion);
 }
 
 int vx_init()
@@ -116,14 +117,14 @@ int fbo_create(int width, int height)
 
 int vx_update_buffer(char * name, vx_code_input_stream_t * codes)
 {
-    printf("Updating codes buffer: %s codes->len %d codes->pos %d\n", name, codes->len, codes->pos);
+    if (verbose) printf("Updating codes buffer: %s codes->len %d codes->pos %d\n", name, codes->len, codes->pos);
 
     if (vhash_get(state.buffer_codes_map, name) != NULL) {
         vhash_pair_t prev = vhash_remove(state.buffer_codes_map, name);
 
         name = prev.key; // Reuse the old key
 
-        printf("  Destroying old codes: of len %d\n", ((vx_code_input_stream_t *)prev.value)->len);
+        if (verbose) printf("  Destroying old codes: of len %d\n", ((vx_code_input_stream_t *)prev.value)->len);
         vx_code_input_stream_destroy(prev.value);
 
     } else { // First time we've seen this buffer
@@ -136,11 +137,11 @@ int vx_update_buffer(char * name, vx_code_input_stream_t * codes)
 
 int vx_update_resources(int nresc, vx_resc_t ** resources)
 {
-    printf("Updating %d resources:\n", nresc);
-    printf("  ");
+    if (verbose) printf("Updating %d resources:\n", nresc);
+    if (verbose) printf("  ");
     for (int i = 0; i < nresc; i++) {
         vx_resc_t *vr = resources[i];
-        printf("%ld,",vr->id);
+        if (verbose) printf("%ld,",vr->id);
         vx_resc_t * old_vr = lphash_get(state.resource_map, vr->id);
 
         if (old_vr == NULL) {
@@ -151,7 +152,7 @@ int vx_update_resources(int nresc, vx_resc_t ** resources)
             vx_resc_destroy(vr);
         }
     }
-    printf("\n");
+    if (verbose) printf("\n");
     return 0;
 }
 
@@ -184,11 +185,22 @@ static GLuint vx_buffer_allocate(GLenum target, vx_resc_t *vr)
     glGenBuffers(1, &vbo_id);
     glBindBuffer(target, vbo_id);
     glBufferData(target, vr->count * vr->fieldwidth, vr->res, GL_STATIC_DRAW);
-    printf("      Allocated VBO %d for guid %ld\n", vbo_id, vr->id);
+    if (verbose) printf("      Allocated VBO %d for guid %ld\n", vbo_id, vr->id);
 
     lihash_put(state.vbo_map, vr->id, vbo_id);
 
     return vbo_id;
+}
+
+static GLuint vx_validate_program(GLint prog_id, char * stage_description)
+{
+    char output[65535];
+
+    GLint len = 0;
+    glGetProgramInfoLog(prog_id, 65535, &len, output);
+    if (len != 0)
+        printf("%s len = %d:\n%s\n", stage_description, len, output);
+
 }
 
 // This function does the heavy lifting for rendering a data + program pair
@@ -210,7 +222,7 @@ int vx_render_program(vx_code_input_stream_t * codes)
 {
     if (codes->len == codes->pos) // exhausted the stream
         return 1;
-    printf("  Processing program, codes has %d remaining\n",codes->len-codes->pos);
+    if (verbose) printf("  Processing program, codes has %d remaining\n",codes->len-codes->pos);
 
     GLuint prog_id = -1;
     {
@@ -252,25 +264,18 @@ int vx_render_program(vx_code_input_stream_t * codes)
 
             lphash_put(state.program_map, vertId, prog);
 
-            printf("  Created gl program %d from guid %ld and %ld (gl ids %d and %d)\n",
+            if (verbose) printf("  Created gl program %d from guid %ld and %ld (gl ids %d and %d)\n",
                    prog->prog_id, vertId, fragId, prog->vert_id, prog->frag_id);
         }
         prog_id = prog->prog_id;
         glUseProgram(prog_id);
-
     }
 
     uint32_t validateProgramOp = codes->read_uint32(codes);
     assert(validateProgramOp == OP_VALIDATE_PROGRAM);
     uint32_t validateProgram = codes->read_uint32(codes);
-    if (validateProgram) { // Check program status
-        char output[65535];
-
-        GLint len = 0;
-        glGetProgramInfoLog(prog_id, 65535, &len, output);
-        if (len != 0)
-            printf("Post-link len = %d:\n%s\n", len, output);
-    }
+    if (validateProgram)
+        vx_validate_program(prog_id, "Post-link");
 
     // Read the user specified model matrix
     GLuint pm_unif_loc = -1; // debug save for later
@@ -316,49 +321,30 @@ int vx_render_program(vx_code_input_stream_t * codes)
         GLuint vbo_id = lihash_get(state.vbo_map, attribId, &success);
 
         // lazily create VBOs
-        if (success) {
+        if (success)
             glBindBuffer(GL_ARRAY_BUFFER, vbo_id);
-
-
-
-        }else
+        else
             vbo_id = vx_buffer_allocate(GL_ARRAY_BUFFER, vr);
-
-        // XXX debug, ensure we can read back the vbo.
-        if (1) {
-            float test_data[vr->count];
-            glGetBufferSubData(GL_ARRAY_BUFFER, 0, vr->count * vr->fieldwidth, test_data);
-
-            printf("    name: %s\n", name);
-            for (int j = 0; j < vr->count; j++)
-                printf("     %d: % f\n", j, test_data[j]);
-        }
-
-        printf("    Vbo_id %d isBuffer %d\n", vbo_id, glIsBuffer(vbo_id));
 
         // Attach to attribute
         GLint attr_loc = glGetAttribLocation(prog_id, name);
         attribLocs[i] = attr_loc;
-        printf("glEnableVertexAttribArray(%d)\n", attr_loc);
+
         glEnableVertexAttribArray(attr_loc);
         glVertexAttribPointer(attr_loc, dim, vr->type, 0, 0, 0);
         assert(vr->type == GL_FLOAT);
-        /* glBindBuffer(GL_ARRAY_BUFFER, 0); */
     }
 
     uint32_t uniCountOp = codes->read_uint32(codes);
     assert(uniCountOp == OP_UNIFORM_COUNT);
     uint32_t uniCount = codes->read_uint32(codes);
 
-    int uniformLocs[uniCount + 1];
-    uniformLocs[uniCount] = pm_unif_loc;
     for (int i = 0; i < uniCount; i++) {
         uint32_t uniOp = codes->read_uint32(codes);
 
         // Functionality common to all uniforms, regardless of type
         char * name = codes->read_str(codes);
         GLint unif_loc = glGetUniformLocation(prog_id, name);
-        uniformLocs[i] = unif_loc;
         // Functionality depends on type:
         uint32_t nper = 0; // how many per unit?
         uint32_t count = 0; // how many units?
@@ -380,18 +366,6 @@ int vx_render_program(vx_code_input_stream_t * codes)
         int vals[count*nper];
         for (int j = 0; j < nper*count; j++)
             vals[i++] = codes->read_uint32(codes);
-
-        // Debug
-        {
-            printf("Binding %s to %d:", name, unif_loc);
-            float * fvals = (float *) vals;
-            for (int j = 0; j < nper*count; j++) {
-                printf("%f,",fvals[j]);
-                if ((j+1) %nper == 0)
-                    printf("\n");
-            }
-
-        }
 
         // Finally, once the right amount of data is extracted, ship it with the appropriate method:
         switch(uniOp) {
@@ -441,7 +415,7 @@ int vx_render_program(vx_code_input_stream_t * codes)
 
             glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, vr->res);
 
-            printf("Allocated TEX %d for guid %ld\n", tex_id, vr->id);
+            if (verbose) printf("Allocated TEX %d for guid %ld\n", tex_id, vr->id);
             lihash_put(state.texture_map, vr->id, tex_id);
         }
 
@@ -450,58 +424,8 @@ int vx_render_program(vx_code_input_stream_t * codes)
         glUniform1i(attrTexI, i); // Bind the uniform to TEXTUREi
     }
 
-
-    if (validateProgram) {
-        char output[65535];
-
-        glValidateProgram(prog_id);
-        GLint len = 0;
-        glGetProgramInfoLog(prog_id, 65535, &len, output);
-        if (len != 0)
-            printf("Post-uniform len = %d:\n%s\n", len, output);
-    }
-
-    // Debug:
-    // Read the value of all active uniforms
-    for (int i = 0; i < uniCount + 1; i++) {
-        printf("Checking value of %dth uniform at %d \n",i, uniformLocs[i]);
-
-        char name[65535];
-
-        GLsizei name_len;
-        GLint sz;
-        GLenum type;
-
-        glGetActiveUniform(prog_id, uniformLocs[i], 65535,
-                           &name_len, &sz, &type, name);
-
-        float dat[16];
-        printf("  type: %d size %d info: %s\n",type, sz, name);
-        switch(type) {
-            case GL_FLOAT_VEC4:
-                printf("  GL_FLOAT_VEC4\n");
-                glGetUniformfv(prog_id, uniformLocs[i], dat);
-                printf("  ");
-                for (int j = 0; j < 4; j++) {
-                    printf("% f\t",dat[j]);
-                }
-                printf("\n");
-                break;
-            case GL_FLOAT_MAT4:
-                printf("  GL_FLOAT_MAT4\n");
-                glGetUniformfv(prog_id, uniformLocs[i], dat);
-                // convert to row major
-                for (int j = 0; j < 4; j++) {
-                    printf("  ");
-                    for (int k = 0; k < 4; k++) {
-                        printf("% f\t",dat[k *4 + j]);
-                    }
-                    printf("\n");
-                }
-
-                break;
-        }
-    }
+    if (validateProgram)
+        vx_validate_program(prog_id, "Post-binding");
 
 
     uint32_t arrayOp = codes->read_uint32(codes);
@@ -524,26 +448,18 @@ int vx_render_program(vx_code_input_stream_t * codes)
         else
             vbo_id = vx_buffer_allocate(GL_ELEMENT_ARRAY_BUFFER, vr);
 
-        printf("    glDrawElements vbo_id %d isBuffer %d\n", vbo_id, glIsBuffer(vbo_id));
-
         glDrawElements(elementType, vr->count, vr->type, NULL);
-
-        /* glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0); */
     } else if (arrayOp == OP_DRAW_ARRAY) {
         uint32_t drawCount = codes->read_uint32(codes);
         uint32_t drawType = codes->read_uint32(codes);
 
-        printf("    glDrawArrays(%d %d %d) prog_id %d\n", drawType, 0, drawCount, prog_id);
         glDrawArrays(drawType, 0, drawCount);
     }
 
-
-    for (int i = 0; i < attribCount; i++) {
-        printf("glDisableVertexAttribArray(%d)\n", attribLocs[i]);
+    // Important: Disable all vertex attribute arrays, or we can contaminate the state
+    // for future programs. Might be resolved by switching to VBAs
+    for (int i = 0; i < attribCount; i++)
         glDisableVertexAttribArray(attribLocs[i]);
-    }
-
-    /* glUseProgram(0); */
 
     return 0;
 }
@@ -556,7 +472,7 @@ int vx_render(int width, int height)
     glViewport(0,0,width,height);
 
     // debug: print stats
-    printf(" n resc %d, n vbos %d, n programs %d n tex %d\n",
+    if (verbose) printf(" n resc %d, n vbos %d, n programs %d n tex %d\n",
            state.resource_map->size,state.vbo_map->size,
            state.program_map->size, state.texture_map->size);
 
@@ -568,7 +484,7 @@ int vx_render(int width, int height)
         vx_code_input_stream_t *codes = vhash_get(state.buffer_codes_map, buffer_name);
         codes->reset(codes);
 
-        printf("  Rendering buffer: %s codes->len %d codes->pos %d\n", buffer_name, codes->len, codes->pos);
+        if (verbose) printf("  Rendering buffer: %s codes->len %d codes->pos %d\n", buffer_name, codes->len, codes->pos);
 
         while (!vx_render_program(codes));
     }
@@ -599,18 +515,18 @@ int vx_deallocate(uint64_t * guids, int nguids)
         if (vbo_success) {
             // Tell open GL to deallocate this VBO
             glDeleteBuffers(1, &vbo_pair.value);
-            printf(" Deleted VBO %d \n", vbo_pair.value);
+            if (verbose) printf(" Deleted VBO %d \n", vbo_pair.value);
         }
 
         // There is always a resource for each guid.
-        printf("Deallocating guid %ld:\n",guid);
+        if (verbose) printf("Deallocating guid %ld:\n",guid);
         assert(guid == vr->id);
         if (vr != NULL) {
-            printf("Deallocating resource GUID=%ld\n", vr->id);
+            if (verbose) printf("Deallocating resource GUID=%ld\n", vr->id);
             free(vr->res);
             free(vr);
         } else {
-            printf("  Invalid request. Resource does not exist");
+            printf("WRN!: Invalid request. Resource %ld does not exist", guid);
         }
 
 
@@ -619,7 +535,7 @@ int vx_deallocate(uint64_t * guids, int nguids)
         if (tex_success) {
             // Tell open GL to deallocate this texture
             glDeleteTextures(1, &tex_pair.value);
-            printf(" Deleted TEX %d \n", tex_pair.value);
+            if (verbose) printf(" Deleted TEX %d \n", tex_pair.value);
         }
 
         gl_prog_resc_t * prog = lphash_remove(state.program_map, guid).value;
@@ -630,8 +546,8 @@ int vx_deallocate(uint64_t * guids, int nguids)
             glDeleteShader(prog->frag_id);
             glDeleteProgram(prog->prog_id);
 
-            printf("  Freed program %d vert %d and frag %d\n",
-                   prog->prog_id, prog->vert_id, prog->frag_id);
+            if (verbose) printf("  Freed program %d vert %d and frag %d\n",
+                                prog->prog_id, prog->vert_id, prog->frag_id);
             free(prog);
         }
 
