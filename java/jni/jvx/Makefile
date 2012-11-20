@@ -13,9 +13,9 @@ JNI_INCLUDES = -I/usr/lib/jvm/java-6-sun/include/ -I/usr/lib/jvm/java-6-sun/incl
 
 LD = ld
 LDFLAGS = -shared -lX11 -lGL -lGLEW
-SHARED_EXT = so
-
-LIBJGL_OBJS = glcontext-x11.o
+SHARED_JNI_EXT = so
+STATIC_EXT = a
+LIBVX_OBJS = glcontext-x11.o
 
 endif
 
@@ -29,27 +29,41 @@ JNI_INCLUDES = -I/System/Library/Frameworks/JavaVM.framework/Headers/ -I/usr/X11
 
 LD = gcc
 LDFLAGS = -dynamiclib -framework OpenGL -framework JavaVM -L/usr/X11/lib -lX11 -lGL -lGLEW
-SHARED_EXT = jnilib
-
-LIBJGL_OBJS = glcontext-x11.o
+SHARED_JNI_EXT = jnilib
+STATIC_EXT = a #JS not sure
+LIBVX_OBJS = glcontext-x11.o
 
 endif
 
 #############################################################
 # Core rules
 
-LIB=libjvx.$(SHARED_EXT)
+LIB_JNI=libjvx.$(SHARED_JNI_EXT)
+DESTLIB_JNI=../../../lib/$(LIB_JNI)
+
+LIB=libvx.$(STATIC_EXT)
 DESTLIB=../../../lib/$(LIB)
 
-all:  $(DESTLIB)
+all:  $(DESTLIB_JNI) $(DESTLIB)
 
 
 $(DESTLIB) : $(LIB)
 	cp $(LIB) $(DESTLIB)
 
-LIBJGL_OBJS += vx_jni.o vx.o glcontext.o  lphash.o vx_code_input_stream.o vx_resc.o vhash.o lihash.o #parray.o
-$(LIB): april_vx_VxLocalServer.h $(LIBJGL_OBJS)
-	$(LD) $(LDFLAGS) $(LDFLAGS_COMMON) $(LIBJGL_OBJS) -o $@
+$(DESTLIB_JNI) : $(LIB_JNI)
+	cp $(LIB_JNI) $(DESTLIB_JNI)
+
+LIBVX_OBJS += vx.o glcontext.o  lphash.o vx_code_input_stream.o vx_resc.o vhash.o lihash.o
+
+LIB_JNI_OBJS += vx_jni.o
+
+
+
+$(LIB_JNI) : april_vx_VxLocalServer.h $(LIB_JNI_OBJS) $(LIB)
+	$(LD) $(LDFLAGS) $(LDFLAGS_COMMON) $(LIB) $(LIB_JNI_OBJS) -o $@
+
+$(LIB):  $(LIBVX_OBJS)
+	$(LD) $(LDFLAGS) $(LDFLAGS_COMMON) $(LIBVX_OBJS) -o $@
 
 #############################################################
 %.o: %.c
@@ -60,4 +74,4 @@ april_vx_VxLocalServer.h: ../../src/april/vx/VxLocalServer.java
 	javah -classpath ../../april.jar  april.vx.VxLocalServer
 
 clean:
-	rm -rf $(LIBJGL_OBJS) *~ april_vx_VxLocalServer.h $(LIB) $(DESTLIB)
+	rm -rf $(LIB_JNI_OBJS) $(LIBVX_OBJS) *~ april_vx_VxLocalServer.h $(LIB) $(DESTLIB) $(LIB_JNI) $(DESTLIB_JNI)
