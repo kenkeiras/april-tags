@@ -7,16 +7,11 @@ public class Tokenizer
 {
     static GenericTokenizer gtok;
 
-    enum TYPE { WHITE, NUMBER, STRING, SYMBOL, OP, KEYWORD };
+    enum TYPE { NUMBER, STRING, SYMBOL, OP, KEYWORD, ERROR };
 
     static {
-        gtok = new GenericTokenizer();
-
-        // Don't enable this: if whitespace is enabled, then it will
-        // greedily consume all white space, breaking the unary minus
-        // below.
-        //
-        // gtok.add(TYPE.WHITE, "\\s+");
+        gtok = new GenericTokenizer(TYPE.ERROR);
+        gtok.showDeadEnds = true;
 
         // declare keywords first so they override symbols.
         gtok.addEscape(TYPE.KEYWORD, "for while if else function do return "+
@@ -44,6 +39,10 @@ public class Tokenizer
                        "<<= >>= <<< >>> .* ./ .^ + - / * \\ ' [ ] ( ) " +
                        "{ } ; < > , ^ !");
 
+        gtok.addIgnore("\\$");
+        gtok.addIgnore("\\s+");
+
+        gtok.add(TYPE.ERROR, ".");
     }
 
     ArrayList<GenericTokenizer.Token<TYPE>> tokens;
@@ -55,9 +54,10 @@ public class Tokenizer
         for (int i = 0; i < tokens.size(); i++) {
             GenericTokenizer.Token<TYPE> token = tokens.get(i);
 
-            if (token.type==TYPE.WHITE || token.type==null) {
-                tokens.remove(i);
-                i--;
+            System.out.println(token);
+
+            if (token.type == TYPE.ERROR) {
+                System.out.println("Syntax Error: "+token);
             }
 
             // remove stray whitespace.

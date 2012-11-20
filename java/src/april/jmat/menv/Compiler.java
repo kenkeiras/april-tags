@@ -1,6 +1,18 @@
 package april.jmat.menv;
 
 /*
+BUG?
+   a = 2
+   4a
+
+   The input "4a" parses as a block containing the evaluation of the
+   number "4" followed by the evaluation of the variable "a". The
+   value of a block is the value of the last statement in the block,
+   i.e., "a". Someone might expect 4a to either be a syntax error or
+   to mean 4*a!
+
+====
+
   dim:
   expr COLON expr
 
@@ -480,6 +492,8 @@ public class Compiler
             }
 
             Node stmt = parseBlock(t);
+            System.out.println("here: "+stmt);
+
             if (stmt != null) {
 
                 // if we didn't parse anything but there's still input, then there's

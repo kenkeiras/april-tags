@@ -125,7 +125,6 @@ public class EasyCal2
         this.initializer = initializer;
 
         // silence!
-        ImageConvert.verbose = false;
         CameraCalibrator.verbose = false;
         IntrinsicsEstimator.verbose = false;
         april.camera.models.SimpleKannalaBrandtInitializer.verbose = false;

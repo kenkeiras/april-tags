@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <pthread.h>
+#include <signal.h>
 
 #include "common/getopt.h"
 #include "common/timestamp.h"
@@ -302,7 +303,7 @@ int main(int argc, char *argv[])
     getopt_add_string(gopt, 'c', "channel", "SPACENAV",      "LCM channel name");
     getopt_add_string(gopt, 'd', "device",  "/dev/spacenav", "Path to device");
 
-    if (!getopt_parse(gopt, argc, argv, 1) || getopt_get_bool(gopt,"help") || gopt->extraargs->len!=0) {
+    if (!getopt_parse(gopt, argc, argv, 1) || getopt_get_bool(gopt,"help") || varray_size(gopt->extraargs) !=0 ) {
         printf("Usage: %s [options]\n\n", argv[0]);
         getopt_do_usage(gopt);
         return 0;

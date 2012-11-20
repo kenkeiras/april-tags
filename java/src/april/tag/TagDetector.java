@@ -16,7 +16,33 @@ import april.jcam.*;
 import april.image.*;
 import april.util.*;
 
-public class TagDetector
+/** Coordinate system conventions:
+
+Here's a tag, as you might view the png's...
+
+
+    ^
+    |  Y axis
+    |
+            Top right corner is (1,1) in tag coordinates
+     -----
+    |     |
+    |     |
+    |     |
+     -----   ---> X axis
+
+   Bottom left corner is (-1,-1) in tag coordinates
+
+   Bits will be read off in row-major order from top left to lower
+   right, with the top left bit being the MSB and the bottom right bit
+   being the LSB.
+
+   Note that these conventions are usually "natural", but can be a bit
+   confusing with regard to *image* coordinates (of the individual
+   tags or camera images), where the top left corner is (0,0).
+ **/
+
+public class TagDetector implements AbstractTagDetector
 {
     TagFamily tagFamily;
 
@@ -320,6 +346,7 @@ public class TagDetector
 
                     int edgeCost;
 
+                    // 8 connectivity
                     edgeCost = edgeCost(theta0, mag0, fimTheta.get(x+1, y), fimMag.get(x+1,y));
                     if (edgeCost >= 0)
                         edges[nedges++] = (((long) y*width+x)<<IDA_SHIFT) + (((long) y*width+x+1)<<IDB_SHIFT) + edgeCost;
@@ -335,10 +362,6 @@ public class TagDetector
                     edgeCost = (x == 0) ? -1 : edgeCost(theta0, mag0, fimTheta.get(x-1, y+1), fimMag.get(x-1,y+1));
                     if (edgeCost >= 0)
                         edges[nedges++] = (((long) y*width+x)<<IDA_SHIFT) + (((long) (y+1)*width+x-1)<<IDB_SHIFT) + edgeCost;
-
-                    // XXX Would 8 connectivity help for rotated tags?
-                    // (Probably not much, so long as input filtering
-                    // hasn't been disabled.)
                 }
             }
 
@@ -521,6 +544,7 @@ public class TagDetector
                                                    new VzPoints(new VisVertexData(new double[] { seg.x0, seg.y0 }),
                                                                 new VzPoints.Style(Color.red, 4))
                                           ));
+
             }
         }
 
@@ -547,7 +571,7 @@ public class TagDetector
             GLine2D parentLine = new GLine2D(new double[] { parent.x0, parent.y0 },
                                              new double[] { parent.x1, parent.y1 });
 
-            for (Segment child : gridder.find(parent.x1, parent.y1, 0.5*parent.length)) {
+            for (Segment child : gridder.find(parent.x1, parent.y1, 3+0.5*parent.length)) {
 //            for (Segment child : gridder.find(parent.x1, parent.y1, 5+parent.length)) {
                 // require child to have the right handedness...
                 if (MathUtil.mod2pi(child.theta - parent.theta) > 0)
@@ -589,7 +613,7 @@ public class TagDetector
         if (debug && debugQuads != null) {
             for (Quad q : quads) {
                 debugQuads.addBack(new VisChain(LinAlg.translate(0, height, 0),
-                                                    LinAlg.scale(1, -1, 1),
+                                                LinAlg.scale(1, -1, 1),
                                                 new VzLines(new VisVertexData(q.p[0], q.p[1], q.p[2], q.p[3], q.p[0]),
                                                             VzLines.LINE_STRIP,
                                                             new VzLines.Style(Color.orange, 2))));
@@ -659,6 +683,8 @@ public class TagDetector
 
             // Try reading off the bits.
             // XXX: todo: multiple samples within each cell and vote?
+
+            // reminder: the MSB is at tag coordinates (-1,1) (the top left).
             for (int iy = tagFamily.d-1; iy >= 0; iy--) {
                 for (int ix = 0; ix < tagFamily.d; ix++) {
                     double y = (tagFamily.blackBorder + iy + .5) / dd;
@@ -681,10 +707,12 @@ public class TagDetector
                     float v = fim.get(irx, iry);
 
                     tagCode = tagCode << 1;
-                    if (v > threshold)
+                    if (v > threshold) {
                         tagCode |= 1;
+                    }
                 }
             }
+
 
             if (debug && debugSamples != null) {
                 debugSamples.addBack(new VisChain(LinAlg.translate(0, height, 0),
@@ -713,7 +741,7 @@ public class TagDetector
 
                 // compute the homography (and rotate it appropriately)
                 d.homography = quad.homography.getH();
-                d.hxy = quad.homography.getCXY();
+                d.hxy = new double[2]; //quad.homography.getCXY();
 
                 if (true) {
                     double c = Math.cos(d.rotation*Math.PI/2.0);
@@ -723,6 +751,14 @@ public class TagDetector
                                                    { 0,  0, 1} };
                     d.homography = LinAlg.matrixAB(d.homography, R);
                 }
+
+                if (false) {
+                    d.homography[1][1] *= -1;
+                    d.homography[0][1] *= -1;
+                    d.homography[0][2] *= -1;
+                    d.homography[2][2] *= -1;
+                    d.homography[2][1] *= -1;
+              }
 
                 if (d.good) {
                     detections.add(d);
@@ -847,7 +883,7 @@ public class TagDetector
         // point within that quad. Note that for most of the Quad's
         // existence, we will not know the correct orientation of the
         // tag.
-        Homography33 homography;
+        Homography33b homography;
 
         /** (x,y) are the optical center of the camera, which is
          * needed to correctly compute the homography.
@@ -856,11 +892,16 @@ public class TagDetector
         {
             this.p = p;
 
-            homography = new Homography33(opticalCenter[0], opticalCenter[1]);
+            homography = new Homography33b(); //(opticalCenter[0], opticalCenter[1]);
+//            homography = new Homography33(opticalCenter[0], opticalCenter[1]);
             homography.addCorrespondence(-1, -1, p[0][0], p[0][1]);
             homography.addCorrespondence( 1, -1, p[1][0], p[1][1]);
             homography.addCorrespondence( 1,  1, p[2][0], p[2][1]);
             homography.addCorrespondence(-1,  1, p[3][0], p[3][1]);
+
+            //       for (double wi[] : homography.correspondences) {
+//                System.out.printf("%15f %15f %15f %15f\n", wi[0], wi[1], wi[2], wi[3]);
+//            }
         }
 
         // Same as interpolate, except that the coordinates are
