@@ -1853,8 +1853,6 @@ static int trigger_software_is_available(image_source_t *isrc, struct feature *f
     if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr, &d, 1) != 1)
         return 0;
 
-    printf("trigger_software_is_available: %08X\n", d);
-
     // feature not present
     if ((d & (1<<31)) == 0)
         return 0;
@@ -2012,6 +2010,132 @@ void add_trigger_feature(image_source_t *isrc, const char *name, uint32_t addr, 
     }
 
     printf("FEATURE %-15s: %08x\n", name, d);
+
+    return;
+}
+
+/////////////////////////////////////////////////////////
+// frame info
+//
+// BEWARE: IIDC 1.31 documentation has bit positions in wrong place
+// register 0x12F8
+// 31: presence
+// 30-10:
+//  9: ROI position
+//  8: gpio pin state
+//  7: strobe pattern
+//  6: frame counter
+//  5: white balance
+//  4: exposure
+//  3: brightness
+//  2: shutter
+//  1: gain
+//  0: timestamp
+
+static int bit_field_is_available(image_source_t *isrc, struct feature *f)
+{
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    uint32_t d;
+    if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr, &d, 1) != 1)
+        return 0;
+
+    // feature not present
+    if ((d & (1<<31)) == 0)
+        return 0;
+
+    return 1;
+}
+
+static char *bit_field_get_type(image_source_t *isrc, struct feature *f)
+{
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    uint32_t d;
+    if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr, &d, 1) != 1)
+        return NULL;
+
+    // feature not present.
+    if ((d & (1<<31)) == 0)
+        return NULL;
+
+    char buf[1024];
+    sprintf(buf, "b");
+
+    return strdup(buf);
+}
+
+static double bit_field_get_value(image_source_t *isrc, struct feature *f)
+{
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    uint32_t d;
+    if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr, &d, 1) != 1)
+        return 0;
+
+    if ((d & (1<<31)) == 0)
+        return 0;
+
+    uint32_t position = f->value_lsb;
+    if ((d & (1<<position)) != 0)
+        return 1;
+
+    return 0;
+}
+
+static int bit_field_set_value(image_source_t *isrc, struct feature *f, double _v)
+{
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    int v = (int) _v;
+
+    if (v != 0 && v != 1)
+        return -1;
+
+    uint32_t d;
+    if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr, &d, 1) != 1)
+        return 0;
+
+    uint32_t position = f->value_lsb;
+
+    if (v == 0)
+        d &= ~(1<<position);
+    else
+        d |=  (1<<position);
+
+    if (do_write(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr, &d, 1) != 1)
+        return 0;
+
+    return 0;
+}
+
+// addr should be 0x12F8
+void add_bit_field_feature(image_source_t *isrc, const char *name, uint32_t addr, uint32_t position)
+{
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    uint32_t d;
+    if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + addr, &d, 1) != 1)
+        return;
+
+    // feature not present.
+    if ((d & (1<<31)) == 0)
+        return;
+
+    // create a feature to control all embedded frame info
+    if (1) {
+        struct feature f;
+        char buf[128];
+        sprintf(buf, "%s", name);
+        f.name = strdup(buf);
+        f.user_addr = addr;
+        f.is_available = bit_field_is_available;
+        f.get_type = bit_field_get_type;
+        f.get_value = bit_field_get_value;
+        f.set_value = bit_field_set_value;
+        f.value_lsb = position;
+        f.value_size = 1;
+        append_feature(impl, f);
+    }
+
+    printf("FEATURE %-15s: %08x: %s\n",
+           name, d,
+           (d & (1<<position)) ? "enabled" : "disabled");
 
     return;
 }
@@ -2293,6 +2417,17 @@ image_source_t *image_source_pgusb_open(url_parser_t *urlp)
     add_simple_feature(isrc, "capture-quality", 0x5c4);
 
     add_trigger_feature(isrc, "trigger",        0x530, 0x62C); // XXX
+
+    add_bit_field_feature(isrc, "embed-timestamp",      0x12F8, 0);
+    add_bit_field_feature(isrc, "embed-gain",           0x12F8, 1);
+    add_bit_field_feature(isrc, "embed-shutter",        0x12F8, 2);
+    add_bit_field_feature(isrc, "embed-brightness",     0x12F8, 3);
+    add_bit_field_feature(isrc, "embed-exposure",       0x12F8, 4);
+    add_bit_field_feature(isrc, "embed-white-balance",  0x12F8, 5);
+    add_bit_field_feature(isrc, "embed-frame-counter",  0x12F8, 6);
+    add_bit_field_feature(isrc, "embed-strobe-pattern", 0x12F8, 7);
+    add_bit_field_feature(isrc, "embed-gpio-pin-state", 0x12F8, 8);
+    add_bit_field_feature(isrc, "embed-roi-position",   0x12F8, 9);
 
 
     isrc->num_formats = num_formats;
