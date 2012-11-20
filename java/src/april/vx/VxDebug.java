@@ -28,13 +28,13 @@ public class VxDebug
         // VxTexture vtex = new VxTexture(img);
 
         int width = 480, height = 480;
-        VxLocalServer vxls = new VxLocalServer(width,height);
+        VxLocalRenderer vxlr = new VxLocalRenderer("java://");//width,height);
         double proj_d[][] = LinAlg.matrixAB(VxUtil.gluPerspective(60.0f, width*1.0f/height, 0.1f, 5000.0f),
                                             VxUtil.lookAt(new double[]{0,0,10}, new double[3], new double[]{0,1,0}));
 
         float proj[][] = VxUtil.copyFloats(proj_d);
-        vxls.set_system_pm_matrix(proj);
-        VxWorld vw = new VxWorld(vxls);
+        vxlr.set_system_pm_matrix(proj);
+        VxWorld vw = new VxWorld(new VxResourceManager(vxlr));
 
         ArrayList<VxObject> progs1 = new ArrayList();
         ArrayList<VxObject> progs2 = new ArrayList();
@@ -124,11 +124,11 @@ public class VxDebug
 
 
             System.out.printf("Render %d:\n",i);
-            vxls.render(width,height);
+            vxlr.render(width,height);
 
             BufferedImage canvas = new BufferedImage(width,height, BufferedImage.TYPE_3BYTE_BGR);
             byte buf[] = ((DataBufferByte) (canvas.getRaster().getDataBuffer())).getData();
-            vxls.read_pixels(width,height,buf);
+            vxlr.read_pixels(width,height,buf);
 
 
 

@@ -4,12 +4,12 @@ import java.util.*;
 public class VxWorld
 {
 
-    VxServer vxs;
+    VxResourceManager vxm;
     HashMap<String, Buffer> bufferMap = new HashMap();
 
-    public VxWorld(VxServer serv)
+    public VxWorld(VxResourceManager vxm)
     {
-        this.vxs = serv;
+        this.vxm = vxm;
     }
 
     public Buffer getBuffer(String name)
@@ -61,7 +61,7 @@ public class VxWorld
             }
 
             // Notify the Layer we need to be rem
-            vxs.update(name, resources, codes);
+            vxm.swap_buffer(name, resources, codes);
         }
     }
 
