@@ -300,6 +300,7 @@ int vx_render_program(vx_code_input_stream_t * codes)
     assert(attribCountOp == OP_VERT_ATTRIB_COUNT);
     uint32_t attribCount = codes->read_uint32(codes);
 
+    GLint attribLocs[attribCount];
     for (int i = 0; i < attribCount; i++) {
         uint32_t attribOp = codes->read_uint32(codes);
         assert(attribOp == OP_VERT_ATTRIB);
@@ -337,9 +338,12 @@ int vx_render_program(vx_code_input_stream_t * codes)
 
         // Attach to attribute
         GLint attr_loc = glGetAttribLocation(prog_id, name);
+        attribLocs[i] = attr_loc;
+        printf("glEnableVertexAttribArray(%d)\n", attr_loc);
         glEnableVertexAttribArray(attr_loc);
         glVertexAttribPointer(attr_loc, dim, vr->type, 0, 0, 0);
         assert(vr->type == GL_FLOAT);
+        /* glBindBuffer(GL_ARRAY_BUFFER, 0); */
     }
 
     uint32_t uniCountOp = codes->read_uint32(codes);
@@ -497,7 +501,6 @@ int vx_render_program(vx_code_input_stream_t * codes)
 
                 break;
         }
-
     }
 
 
@@ -521,9 +524,11 @@ int vx_render_program(vx_code_input_stream_t * codes)
         else
             vbo_id = vx_buffer_allocate(GL_ELEMENT_ARRAY_BUFFER, vr);
 
-        printf("    element_array vbo_id %d isBuffer %d\n", vbo_id, glIsBuffer(vbo_id));
+        printf("    glDrawElements vbo_id %d isBuffer %d\n", vbo_id, glIsBuffer(vbo_id));
 
         glDrawElements(elementType, vr->count, vr->type, NULL);
+
+        /* glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0); */
     } else if (arrayOp == OP_DRAW_ARRAY) {
         uint32_t drawCount = codes->read_uint32(codes);
         uint32_t drawType = codes->read_uint32(codes);
@@ -531,6 +536,14 @@ int vx_render_program(vx_code_input_stream_t * codes)
         printf("    glDrawArrays(%d %d %d) prog_id %d\n", drawType, 0, drawCount, prog_id);
         glDrawArrays(drawType, 0, drawCount);
     }
+
+
+    for (int i = 0; i < attribCount; i++) {
+        printf("glDisableVertexAttribArray(%d)\n", attribLocs[i]);
+        glDisableVertexAttribArray(attribLocs[i]);
+    }
+
+    /* glUseProgram(0); */
 
     return 0;
 }
