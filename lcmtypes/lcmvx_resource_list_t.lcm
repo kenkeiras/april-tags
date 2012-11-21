@@ -1,0 +1,7 @@
+struct lcmvx_resource_list_t
+{
+    int64_t utime;
+
+    int32_t nresources;
+    lcmvx_resource_t resources[nresources];
+}

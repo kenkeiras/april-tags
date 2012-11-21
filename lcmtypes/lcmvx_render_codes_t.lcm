@@ -1,0 +1,9 @@
+struct lcmvx_render_codes_t
+{
+    int64_t utime;
+
+    string buffer_name;
+
+    int32_t buflen;
+    int8_t buf[buflen];
+}

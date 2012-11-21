@@ -1,0 +1,10 @@
+struct lcmvx_resource_list_t
+{
+    int64_t id;
+
+    int32_t type;
+    int32_t count;
+    int32_t fieldwidth;
+    int32_t len; // count *fieldwidth
+    int8_t res[len];
+}
