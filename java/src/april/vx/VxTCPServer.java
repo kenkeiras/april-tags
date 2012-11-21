@@ -19,34 +19,70 @@ public class VxTCPServer extends Thread
     final int port;
 
     VxRenderer rend;
+
+    // Synchronize on VxTCPServer.this
+    ArrayList queue = new ArrayList();
+
     VxTCPServer(VxRenderer rend, int port)
     {
         this.port = port;
         this.rend = rend;
+
+        new ServerThread().start();
     }
 
-    public void run()
+    class ServerThread extends Thread
     {
-        try {
-            ServerSocket serverSock = new ServerSocket(port);
+        public void run()
+        {
+            try {
+                ServerSocket serverSock = new ServerSocket(port);
 
-            while (true) {
-                Socket sock = serverSock.accept();
-                new ClientThread(sock).start();
-            }
-        } catch (IOException ex) {
+                while (true) {
+                    Socket sock = serverSock.accept();
+                    new ClientThread(sock).start();
+                }
+            } catch (IOException ex) {
                 System.out.println("ex: "+ex);
                 System.exit(1);
+            }
         }
     }
 
-    // Ensure synchronous access to VxLocalRenderer
-    private synchronized void process_codes(lcmvx_render_codes_t lcm_codes)
+
+    // This must be the render thread
+    public void run()
+    {
+        while(true) {
+            synchronized(this) {
+                try{
+                    wait();
+                } catch (InterruptedException e){}
+            }
+
+            while(true) {
+                Object obj = null;
+                synchronized(this) {
+                    obj = queue.remove(0);
+                }
+
+                if (obj instanceof lcmvx_render_codes_t)
+                    process_codes((lcmvx_render_codes_t)obj);
+                if (obj instanceof lcmvx_resource_list_t)
+                    process_resources((lcmvx_resource_list_t)obj);
+            }
+
+
+        }
+    }
+
+    // Ensure access to these methods is from render thread
+    private void process_codes(lcmvx_render_codes_t lcm_codes)
     {
         // Convert and send off
     }
 
-    private synchronized void process_resources(lcmvx_resource_list_t lcm_resources)
+    private void process_resources(lcmvx_resource_list_t lcm_resources)
     {
 
     }
@@ -67,9 +103,9 @@ public class VxTCPServer extends Thread
                 DataInputStream ins = new DataInputStream(new BufferedInputStream(sock.getInputStream()));
                 DataOutputStream outs = new DataOutputStream(new BufferedOutputStream(sock.getOutputStream()));
 
-
+                // Read data from the TCP connection, and guarantee that it is processed FIFO by the rendering thread
+                //
                 while (true) {
-
                     int code = ins.readInt();
                     int len = ins.readInt();
                     byte buf[] = new byte[len];
@@ -77,10 +113,16 @@ public class VxTCPServer extends Thread
 
                     switch(code) {
                         case VX_TCP_RESOURCES:
-                            process_resources(new lcmvx_resource_list_t(new LCMDataInputStream(buf)));
+                            synchronized(VxTCPServer.this) {
+                                queue.add(new lcmvx_resource_list_t(new LCMDataInputStream(buf)));
+                                VxTCPServer.this.notifyAll();
+                            }
                             break;
                         case VX_TCP_CODES:
-                            process_codes(new lcmvx_render_codes_t(new LCMDataInputStream(buf)));
+                            synchronized(VxTCPServer.this) {
+                                queue.add(new lcmvx_render_codes_t(new LCMDataInputStream(buf)));
+                                VxTCPServer.this.notifyAll();
+                            }
                             break;
                     }
                 }
@@ -98,6 +140,7 @@ public class VxTCPServer extends Thread
             }
         }
     }
+
     public static void main(String args[])
     {
         GetOpt opts  = new GetOpt();
@@ -112,7 +155,7 @@ public class VxTCPServer extends Thread
 
         // XXX Replace this with a Canvas and give  place to display
         new VxTCPServer(new VxLocalRenderer("java://"),
-                        opts.getInt("port"));
+                        opts.getInt("port")).run();
 
     }
 

@@ -12,6 +12,9 @@ import april.jmat.*;
 public class VxLocalRenderer extends VxRenderer
 {
 
+    // Every instance must synchronize on this before calling any gl calls
+    private static Object globalGLLock = new Object();
+
     // There can be many local
     private static long instanceCounter = 0;
 
