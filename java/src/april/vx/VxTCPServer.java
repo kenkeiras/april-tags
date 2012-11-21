@@ -14,7 +14,7 @@ public class VxTCPServer extends Thread
 
     // The server listens for codes on the input stream -- it expects either
     // a set of resources, or a set of codes. Marshalling is handled by LCM data types
-    public static final int VX_TCP_RESOURCES = 0x1,VX_TCP_CODES = 0x2;
+    public static final int VX_TCP_ADD_RESOURCES = 0x1,VX_TCP_CODES = 0x2, VX_TCP_DEALLOC_RESOURCES = 0x3;
 
     final int port;
 
@@ -80,13 +80,33 @@ public class VxTCPServer extends Thread
     private void process_codes(lcmvx_render_codes_t lcm_codes)
     {
         // Convert and send off
+        VxCodeOutputStream vout = new VxCodeOutputStream(lcm_codes.buf);
+        rend.update_codes(lcm_codes.buffer_name, vout);
+    }
+
+    // Ensure access to these methods is from render thread
+    private void process_dealloc(lcmvx_dealloc_t lcm_dealloc)
+    {
+        // Convert and send off
+        HashSet<VxResource> dealloc = new HashSet();
+        for (int i = 0; i < lcm_dealloc.nguids; i++)
+            dealloc.add(new VxResource(0, null, 0, 0, lcm_dealloc.guids[i]));
+
+        rend.remove_resources(dealloc);
     }
 
     private void process_resources(lcmvx_resource_list_t lcm_resources)
     {
 
-    }
+        HashSet<VxResource> resources = new HashSet();
+        for (int i = 0; i < lcm_resources.nresources; i++) {
+            lcmvx_resource_t lvr = lcm_resources.resources[i];
 
+            VxResource vr = new VxResource(lvr.type, lvr.res, lvr.count, lvr.fieldwidth, lvr.id);
+            resources.add(vr);
+        }
+        rend.add_resources(resources);
+    }
 
     class ClientThread extends Thread
     {
@@ -112,9 +132,15 @@ public class VxTCPServer extends Thread
                     ins.read(buf);
 
                     switch(code) {
-                        case VX_TCP_RESOURCES:
+                        case VX_TCP_ADD_RESOURCES:
                             synchronized(VxTCPServer.this) {
                                 queue.add(new lcmvx_resource_list_t(new LCMDataInputStream(buf)));
+                                VxTCPServer.this.notifyAll();
+                            }
+                            break;
+                        case VX_TCP_DEALLOC_RESOURCES:
+                            synchronized(VxTCPServer.this) {
+                                queue.add(new lcmvx_dealloc_t(new LCMDataInputStream(buf)));
                                 VxTCPServer.this.notifyAll();
                             }
                             break;

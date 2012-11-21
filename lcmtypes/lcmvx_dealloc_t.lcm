@@ -1,0 +1,8 @@
+struct lcmvx_dealloc_t
+{
+    int64_t utime;
+
+    // List of guids to deallocate
+    int32_t nguids;
+    int64_t guids[nguids];
+}

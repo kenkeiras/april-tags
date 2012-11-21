@@ -1,4 +1,4 @@
-struct lcmvx_resource_list_t
+struct lcmvx_resource_t
 {
     int64_t id;
 

@@ -14,6 +14,13 @@ public final class VxCodeOutputStream
         this(512);
     }
 
+    // initialize the output stream with pre-existing data
+    public VxCodeOutputStream(byte buf[])
+    {
+        this.buf = buf;
+        pos = buf.length;
+    }
+
     public VxCodeOutputStream(int initial_size)
     {
         buf = new byte[initial_size];
