@@ -1,7 +1,7 @@
 package april.vx;
 
 import java.util.*;
-
+import java.util.concurrent.*;
 
 import april.jmat.*;
 
@@ -11,38 +11,33 @@ import april.jmat.*;
 // XXX Probably makes the most sense to handle that synchronization here.
 public class VxLocalRenderer extends VxRenderer
 {
-
-    // Every instance must synchronize on this before calling any gl calls
-    private static Object globalGLLock = new Object();
-
     // There can be many local
-    private static long instanceCounter = 0;
-
-    private final long instanceID = instanceCounter++;
+    private final long instanceID;
 
     // Will trigger as soon as this class is loaded, for any reason,
     // even if no rendering going to be performed
     static {
         System.loadLibrary("jvx");
-        init();
     }
+
+    // XXX This thread can be removed once synchronous  GL access has been
+    // implemented on the C Side
+    static GLThread gl_thread = new GLThread();
 
     public VxLocalRenderer(String url)
     {
         if (!url.startsWith("java://"))
             throw new IllegalArgumentException("VxLocalRenderer only accepts java:// urls");
 
-        create(instanceID);
-
-        // int id = fbo_create(width, height);
-
-        // XXX need a way to cleanup the resources on the C-side when this object is deallocated by the GC
+        CreateTask ct = new CreateTask();
+        gl_thread.add_task(ct);
+        instanceID = ct.getValue(); // blocks until the task runs
     }
 
     @Override
     public void finalize()
     {
-        destroy(instanceID);
+        gl_thread.add_task(new DestroyTask(instanceID));
     }
 
     //*** Methods for all VxRenderers ***//
@@ -134,9 +129,94 @@ public class VxLocalRenderer extends VxRenderer
     }
 
 
+
+
+    // GL Thread management
+
+
+    // A single instance of this thread is created to
+    // manage any GL calls
+
+
+    public static class GLThread extends Thread
+    {
+        ArrayBlockingQueue<Runnable> tasks = new ArrayBlockingQueue<Runnable>(10);
+
+        public void add_task(Runnable t)
+        {
+            tasks.offer(t); // XXX Not doing any duplicate checking. Why does GLManager need to do it?
+        }
+        public void run()
+        {
+            init(); // XXX This needs to be called from the GL thread
+            while(true) {
+
+                Runnable r;
+
+                try {
+                    r = tasks.take();
+                } catch (InterruptedException ex) {
+                    System.out.println("VxLocalRenderer interrupted "+ex);
+                    break;
+                }
+
+                try {
+                    r.run();
+                } catch (Exception ex) {
+                    System.out.println("VXLocalRenderer task "+r+" had exception "+ex);
+                    ex.printStackTrace();
+                    System.exit(-1);
+                }
+
+
+            }
+        }
+    }
+
+
+
+    public static class DestroyTask implements Runnable
+    {
+        long id = 0;
+        public DestroyTask(long id)
+        {
+            this.id = id;
+        }
+        public void run()
+        {
+            destroy(id);
+        }
+    }
+
+    public static class CreateTask implements Runnable
+    {
+        long id = 0;
+        public void run()
+        {
+            id = create();
+
+            synchronized(CreateTask.this)
+            {
+                CreateTask.this.notifyAll();
+            }
+        }
+
+        public long getValue()
+        {
+            synchronized(CreateTask.this)
+            {
+                try {
+                    CreateTask.this.wait();
+                } catch(InterruptedException e){}
+            }
+            return id;
+        }
+    }
+
+
     // Native methods
     private static native int init();
-    private static native int create(long instanceID);
+    private static native long create();
     private static native int destroy(long instanceID);
 
     private static native int add_resources(long instanceID, int nresc,
