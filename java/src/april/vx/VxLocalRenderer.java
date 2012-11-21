@@ -36,6 +36,12 @@ public class VxLocalRenderer extends VxRenderer
         // XXX need a way to cleanup the resources on the C-side when this object is deallocated by the GC
     }
 
+    @Override
+    public void finalize()
+    {
+        destroy(instanceID);
+    }
+
     //*** Methods for all VxRenderers ***//
     public void add_resources(HashSet<VxResource> resources)
     {
@@ -138,11 +144,4 @@ public class VxLocalRenderer extends VxRenderer
     private static native int read_pixels(long instanceID, int width, int height, byte[] img);
     private static native int get_canvas_size(long instanceID, int dim[]);
     native static int set_system_pm_matrix(long instanceID, float pm[]);
-
-    // XXX need to handle initialization, probably on the C side
-    // public static void initialize()
-    // {
-
-    //     gl_initialize();
-    // }
 }
