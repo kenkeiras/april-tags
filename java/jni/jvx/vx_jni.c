@@ -1,31 +1,42 @@
-#include "april_vx_VxLocalServer.h"
+#include "april_vx_VxLocalRenderer.h"
 #include <malloc.h>
 
 #include "vx.h"
 #include "vx_code_input_stream.h"
 #include "string.h"
 
-JNIEXPORT jint JNICALL Java_april_vx_VxLocalServer_gl_1initialize
-  (JNIEnv *jenv, jclass jcls)
+
+
+JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_init
+(JNIEnv * jenv, jclass jcls)
 {
-    return vx_init();
+    return vx_initialize();
 }
 
-JNIEXPORT jint JNICALL Java_april_vx_VxLocalServer_update_1buffer
- (JNIEnv * jenv, jclass jcls, jbyteArray jbuf_name, jint codes_len, jbyteArray jcodes,
-   jint nresc, jintArray jtypes, jobjectArray jrescs, jintArray jcounts, jintArray jfieldwidths, jlongArray jids)
+JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_create
+(JNIEnv * jenv, jclass jcls, jlong instanceID)
+{
+    //XXX instance IDs
+    return vx_create();
+}
+
+/*
+ * Class:     april_vx_VxLocalRenderer
+ * Method:    destroy
+ * Signature: (J)I
+ */
+JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_destroy
+(JNIEnv * jenv, jclass jcls, jlong instanceID)
+{
+    return 0;
+}
+
+JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_add_1resources
+(JNIEnv * jenv, jclass jcls, jlong instanceID,
+ jint nresc, jintArray jtypes, jobjectArray jrescs, jintArray jcounts, jintArray jfieldwidths, jlongArray jids)
 {
 
-    // Grab buffer name
-    jbyte *buf_name_env = (*jenv)->GetPrimitiveArrayCritical(jenv, jbuf_name, NULL);
-    char * buf_name = strdup((char*)buf_name_env);
-    (*jenv)->ReleasePrimitiveArrayCritical(jenv, jbuf_name, buf_name, 0);
-
-    // Copy over the Opcodes and integer parameters
-    jbyte * codes_env = (*jenv)->GetPrimitiveArrayCritical(jenv, jcodes, NULL);
-    vx_code_input_stream_t * codes = vx_code_input_stream_init((uint8_t *)codes_env, (uint32_t)codes_len);
-    (*jenv)->ReleasePrimitiveArrayCritical(jenv, jcodes, codes_env, 0);
-
+    // XXX Ignoring instanceID right now
 
     vx_resc_t ** resources = malloc(sizeof(vx_resc_t*)*nresc);
 
@@ -59,39 +70,33 @@ JNIEXPORT jint JNICALL Java_april_vx_VxLocalServer_update_1buffer
     (*jenv)->ReleasePrimitiveArrayCritical(jenv, jids, ids_env, 0);
 
     vx_update_resources(nresc, resources);
+
+    return 0;
+}
+
+
+JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_update_1codes
+(JNIEnv * jenv, jclass jcls, jlong instanceID, jbyteArray jbuf_name, jint codes_len, jbyteArray jcodes)
+{
+
+    // Grab buffer name
+    jbyte *buf_name_env = (*jenv)->GetPrimitiveArrayCritical(jenv, jbuf_name, NULL);
+    char * buf_name = strdup((char*)buf_name_env);
+    (*jenv)->ReleasePrimitiveArrayCritical(jenv, jbuf_name, buf_name, 0);
+
+    // Copy over the Opcodes and integer parameters
+    jbyte * codes_env = (*jenv)->GetPrimitiveArrayCritical(jenv, jcodes, NULL);
+    vx_code_input_stream_t * codes = vx_code_input_stream_init((uint8_t *)codes_env, (uint32_t)codes_len);
+    (*jenv)->ReleasePrimitiveArrayCritical(jenv, jcodes, codes_env, 0);
+
+
     vx_update_buffer(buf_name, codes);
 
     return 0;
 }
 
-JNIEXPORT jint JNICALL Java_april_vx_VxLocalServer_render
-(JNIEnv * jenv, jclass jcls, jint width, jint height)
-{
-    vx_render(width, height);
-    return 0;
-}
-
-JNIEXPORT jint JNICALL Java_april_vx_VxLocalServer_read_1pixels
-  (JNIEnv * jenv, jclass jcls, jint width, jint height, jbyteArray jimg)
-{
-
-    jbyte* img_env = (*jenv)->GetPrimitiveArrayCritical(jenv, jimg, NULL);
-    int res = vx_read_pixels_bgr(width,height, (uint8_t *) img_env);
-    (*jenv)->ReleasePrimitiveArrayCritical(jenv, jimg, img_env, 0);
-
-    return res;
-}
-
-
-JNIEXPORT jint JNICALL Java_april_vx_VxLocalServer_fbo_1create
-  (JNIEnv * jenv, jclass jcls, jint width, jint height)
-{
-    return fbo_create(width, height);
-}
-
-
-JNIEXPORT jint JNICALL Java_april_vx_VxLocalServer_deallocate_1resources
-(JNIEnv * jenv, jclass jcls, jlongArray jguids, jint nguids)
+JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_deallocate_1resources
+(JNIEnv * jenv, jclass jcls, jlong instanceID, jlongArray jguids, jint nguids)
 {
 
     jlong* guids = (*jenv)->GetPrimitiveArrayCritical(jenv, jguids, NULL);
@@ -101,8 +106,35 @@ JNIEXPORT jint JNICALL Java_april_vx_VxLocalServer_deallocate_1resources
     return ret;
 }
 
-JNIEXPORT jint JNICALL Java_april_vx_VxLocalServer_set_1system_1pm_1matrix
-  (JNIEnv * jenv, jclass jcls, jfloatArray jpm_mat)
+
+JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_render
+(JNIEnv * jenv, jclass jcls, jlong instanceID, jint width, jint height)
+{
+    vx_render(width, height);
+    return 0;
+}
+
+//XXX
+/* JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_fbo_1create */
+/*   (JNIEnv * jenv, jclass jcls, jint width, jint height) */
+/* { */
+/*     return fbo_create(width, height); */
+/* } */
+
+
+JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_read_1pixels
+  (JNIEnv * jenv, jclass jcls, jlong instanceID,  jint width, jint height, jbyteArray jimg)
+{
+
+    jbyte* img_env = (*jenv)->GetPrimitiveArrayCritical(jenv, jimg, NULL);
+    int res = vx_read_pixels_bgr(width,height, (uint8_t *) img_env);
+    (*jenv)->ReleasePrimitiveArrayCritical(jenv, jimg, img_env, 0);
+
+    return res;
+}
+
+JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_set_1system_1pm_1matrix
+(JNIEnv * jenv, jclass jcls, jlong instanceID, jfloatArray jpm_mat)
 {
 
     jfloat* pm_mat = (*jenv)->GetPrimitiveArrayCritical(jenv, jpm_mat, NULL);

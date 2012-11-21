@@ -17,15 +17,16 @@
 #include "lihash.h"
 
 #include "vx_resc.h"
-#define MAX_FBOS 128
 
+static glcontext_t *glc;
 
 typedef struct vx vx_t;
 
+
 struct vx
 {
-    glcontext_t *glc;
-    gl_fbo_t *fbos[MAX_FBOS];
+    gl_fbo_t *fbo;
+    int fbo_width, fbo_height;
 
     lphash_t * resource_map; // holds vx_resc_t
 
@@ -73,13 +74,18 @@ static void checkVersions()
     if (verbose) printf("GLSL version %s\n",glslVersion);
 }
 
-int vx_init()
+int vx_initialize()
 {
-    state.glc = glcontext_X11_create();
-
+    printf("Creating GL context\n");
+    glc = glcontext_X11_create();
     glewInit(); // Call this after GL context created XXX How sure are we that we need this?
     checkVersions();
+    return 0;
+}
 
+int vx_create()
+{
+    state.fbo = NULL; // uninitialized
 
     state.resource_map = lphash_create();
 
@@ -97,23 +103,6 @@ int vx_init()
     return 0;
 }
 
-int fbo_create(int width, int height)
-{
-    gl_fbo_t *fbo = gl_fbo_create(state.glc, width, height);
-
-    if (fbo == NULL)
-        return -1;
-
-    // skip id 0...
-    for (int i = 1; i < MAX_FBOS; i++) {
-        if (state.fbos[i] == NULL) {
-            state.fbos[i] = fbo;
-            return i;
-        }
-    }
-
-    return -2;
-}
 
 int vx_update_buffer(char * name, vx_code_input_stream_t * codes)
 {
@@ -192,7 +181,7 @@ static GLuint vx_buffer_allocate(GLenum target, vx_resc_t *vr)
     return vbo_id;
 }
 
-static GLuint vx_validate_program(GLint prog_id, char * stage_description)
+static void vx_validate_program(GLint prog_id, char * stage_description)
 {
     char output[65535];
 
@@ -470,6 +459,17 @@ int vx_render_program(vx_code_input_stream_t * codes)
 // NOTE: Thread safety must be guaranteed externally
 int vx_render(int width, int height)
 {
+    // Check whether we have a FBO of the correct size
+    if (state.fbo == NULL || state.fbo_width != width || state.fbo_height != height) {
+        if(state.fbo != NULL)
+            gl_fbo_destroy(state.fbo);
+
+        state.fbo = gl_fbo_create(glc, width, height);
+        state.fbo_width = width;
+        state.fbo_height = height;
+        printf("Allocated FBO of dimension %d %d\n",state.fbo_width, state.fbo_height);
+    }
+
     glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glViewport(0,0,width,height);
 

@@ -21,6 +21,7 @@ public class VxLocalRenderer extends VxRenderer
     // even if no rendering going to be performed
     static {
         System.loadLibrary("jvx");
+        init();
     }
 
     public VxLocalRenderer(String url)
@@ -28,7 +29,7 @@ public class VxLocalRenderer extends VxRenderer
         if (!url.startsWith("java://"))
             throw new IllegalArgumentException("VxLocalRenderer only accepts java:// urls");
 
-        // initialize();
+        create(instanceID);
 
         // int id = fbo_create(width, height);
 
@@ -125,6 +126,10 @@ public class VxLocalRenderer extends VxRenderer
 
 
     // Native methods
+    private static native int init();
+    private static native int create(long instanceID);
+    private static native int destroy(long instanceID);
+
     private static native int add_resources(long instanceID, int nresc,
                                             int types[], Object[] rescs, int counts[], int fieldwidths[], long ids[]);
     private static native int update_codes(long instanceID, byte[] buf_name, int code_len, byte[] codes);

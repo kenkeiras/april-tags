@@ -59,7 +59,7 @@ LIB_JNI_OBJS += vx_jni.o
 
 
 
-$(LIB_JNI) : april_vx_VxLocalServer.h $(LIB_JNI_OBJS) $(LIB)
+$(LIB_JNI) : april_vx_VxLocalRenderer.h $(LIB_JNI_OBJS) $(LIB)
 	$(LD) $(LDFLAGS) $(LDFLAGS_COMMON) $(LIB) $(LIB_JNI_OBJS) -o $@
 
 $(LIB):  $(LIBVX_OBJS)
@@ -69,9 +69,9 @@ $(LIB):  $(LIBVX_OBJS)
 %.o: %.c
 	$(CC) $(CCFLAGS) -c $(JNI_INCLUDES) $(COMMON_INCLUDES) $<
 
-april_vx_VxLocalServer.h: ../../src/april/vx/VxLocalServer.java
+april_vx_VxLocalRenderer.h: ../../src/april/vx/VxLocalRenderer.java
 	@echo "NOTICE: Rebuilding JNI headers. Ensure java file has been recently built."
-	javah -classpath ../../april.jar  april.vx.VxLocalServer
+	javah -classpath ../../april.jar  april.vx.VxLocalRenderer
 
 clean:
 	rm -rf $(LIB_JNI_OBJS) $(LIBVX_OBJS) *~ april_vx_VxLocalServer.h $(LIB) $(DESTLIB) $(LIB_JNI) $(DESTLIB_JNI)

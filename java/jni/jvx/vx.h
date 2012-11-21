@@ -5,9 +5,8 @@
 
 #include "vx_resc.h"
 #include "vx_code_input_stream.h"
-int vx_init();
-
-int fbo_create(int width, int height);
+int vx_initialize();
+int vx_create();
 
 int vx_update_buffer(char * name, vx_code_input_stream_t * codes);
 int vx_update_resources(int nresc, vx_resc_t ** resources);

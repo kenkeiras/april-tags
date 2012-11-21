@@ -1,4 +1,4 @@
-april_vx_VxLocalServer.h
+april_vx_VxLocalRenderer.h
 *.o
 *.so
 libvx.a
