@@ -29,22 +29,49 @@ public class VxLocalRenderer extends VxRenderer
         if (!url.startsWith("java://"))
             throw new IllegalArgumentException("VxLocalRenderer only accepts java:// urls");
 
-        CreateTask ct = new CreateTask();
-        gl_thread.add_task(ct);
-        instanceID = ct.getValue(); // blocks until the task runs
+        synchronized(gl_thread)
+        {
+            instanceID = create();
+        }
     }
 
     @Override
     public void finalize()
     {
-        gl_thread.add_task(new DestroyTask(instanceID));
+        synchronized(gl_thread)
+        {
+            destroy(id);
+        }
     }
 
     //*** Methods for all VxRenderers ***//
     public void add_resources(HashSet<VxResource> resources)
     {
-        gl_thread.add_task(new AddResourceTask(resources));
+        synchronized(gl_thread)
+        {
+            // Process all the resources, and compact them into primitive arrays
+            // where possible, theoretically makes jni faster than doing cumbersome
+            // object access
+            int nresc = resources.size();
+            int types[] = new int[nresc];
+            Object rescs[] = new Object[nresc];
+            int counts[] = new int[nresc];
+            int fieldwidths[] = new int[nresc];
+            long ids [] = new long[nresc];
 
+            int i = 0;
+            for (VxResource r : resources) {
+                types[i] = r.type;
+                rescs[i] = r.res;
+                counts[i] = r.count;
+                fieldwidths[i] = r.fieldwidth;
+                ids[i] = r.id;
+
+                i++;
+            }
+
+            add_resources(instanceID, nresc, types, rescs, counts, fieldwidths, ids);
+        }
     }
 
 
@@ -148,80 +175,7 @@ public class VxLocalRenderer extends VxRenderer
 
 
 
-    public static class DestroyTask implements Runnable
-    {
-        long id = 0;
-        public DestroyTask(long id)
-        {
-            this.id = id;
-        }
-        public void run()
-        {
-            destroy(id);
-        }
-    }
 
-    public static class CreateTask implements Runnable
-    {
-        long id = 0;
-        public void run()
-        {
-            id = create();
-
-            synchronized(CreateTask.this)
-            {
-                CreateTask.this.notifyAll();
-            }
-        }
-
-        public long getValue()
-        {
-            synchronized(CreateTask.this)
-            {
-                try {
-                    CreateTask.this.wait();
-                } catch(InterruptedException e){}
-            }
-            return id;
-        }
-    }
-
-
-    public class AddResourceTask implements Runnable
-    {
-        HashSet<VxResource> resources;
-        public AddResourceTask(HashSet<VxResource> resources)
-        {
-            this.resources = resources;
-        }
-
-        public void run()
-        {
-            // Process all the resources, and compact them into primitive arrays
-            // where possible, theoretically makes jni faster than doing cumbersome
-            // object access
-            int nresc = resources.size();
-            int types[] = new int[nresc];
-            Object rescs[] = new Object[nresc];
-            int counts[] = new int[nresc];
-            int fieldwidths[] = new int[nresc];
-            long ids [] = new long[nresc];
-
-            int i = 0;
-            for (VxResource r : resources) {
-                types[i] = r.type;
-                rescs[i] = r.res;
-                counts[i] = r.count;
-                fieldwidths[i] = r.fieldwidth;
-                ids[i] = r.id;
-
-                i++;
-            }
-
-            add_resources(instanceID, nresc, types, rescs, counts, fieldwidths, ids);
-        }
-
-    }
 
     // Native methods
     private static native int init();
