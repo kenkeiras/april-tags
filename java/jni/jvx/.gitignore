@@ -2,3 +2,4 @@ april_vx_VxLocalRenderer.h
 *.o
 *.so
 libvx.a
+april_vx_VxLocalRenderer_GLThread.h

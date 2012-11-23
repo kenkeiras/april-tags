@@ -42,11 +42,10 @@ public class VxCanvas extends JComponent
                     int width = VxCanvas.this.getWidth();
                     int height = VxCanvas.this.getHeight();
 
-                    rend.render(width,height);
-
                     BufferedImage canvas = new BufferedImage(width,height, BufferedImage.TYPE_3BYTE_BGR);
+
                     byte buf[] = ((DataBufferByte) (canvas.getRaster().getDataBuffer())).getData();
-                    rend.read_pixels(width,height,buf);
+                    rend.render(width,height,buf);
 
                     im = canvas;
                 }

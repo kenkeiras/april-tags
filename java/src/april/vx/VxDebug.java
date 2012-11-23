@@ -124,11 +124,9 @@ public class VxDebug
 
 
             System.out.printf("Render %d:\n",i);
-            vxlr.render(width,height);
-
             BufferedImage canvas = new BufferedImage(width,height, BufferedImage.TYPE_3BYTE_BGR);
             byte buf[] = ((DataBufferByte) (canvas.getRaster().getDataBuffer())).getData();
-            vxlr.read_pixels(width,height,buf);
+            vxlr.render(width,height,buf);
 
 
 

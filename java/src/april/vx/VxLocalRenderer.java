@@ -40,7 +40,7 @@ public class VxLocalRenderer extends VxRenderer
     {
         synchronized(gl_thread)
         {
-            destroy(id);
+            destroy(instanceID);
         }
     }
 
@@ -77,38 +77,64 @@ public class VxLocalRenderer extends VxRenderer
 
     public void update_codes(String buffer_name, VxCodeOutputStream codes)
     {
-        byte codeData[] = codes.getBuffer();
-        int codeLen = codes.size();
+        synchronized(gl_thread)
+        {
+            byte codeData[] = codes.getBuffer();
+            int codeLen = codes.size();
 
-        update_codes(instanceID, VxUtil.copyStringZ(buffer_name), codeLen, codeData);
+            update_codes(instanceID, VxUtil.copyStringZ(buffer_name), codeLen, codeData);
+        }
     }
 
 
     public void remove_resources(HashSet<VxResource> resources)
     {
-        long deallocate_guids[] = new long[resources.size()];
+        synchronized(gl_thread)
+        {
+            long deallocate_guids[] = new long[resources.size()];
 
-        int j = 0;
-        for (VxResource vr : resources)
-            deallocate_guids[j++] = vr.id;
+            int j = 0;
+            for (VxResource vr : resources)
+                deallocate_guids[j++] = vr.id;
 
-        System.out.printf("Freeing %d resources\n", deallocate_guids.length);
+            System.out.printf("Freeing %d resources\n", deallocate_guids.length);
 
-        deallocate_resources(instanceID, deallocate_guids, deallocate_guids.length);
+            deallocate_resources(instanceID, deallocate_guids, deallocate_guids.length);
+        }
     }
 
     // Fast for a local implementation
     public int[] get_canvas_size()
     {
         int dim[] = {0,0};
-
-        get_canvas_size(instanceID, dim);
+        synchronized(gl_thread)
+        {
+            get_canvas_size(instanceID, dim);
+        }
         return dim;
     }
 
-    public void render(int width, int height, byte[] img)
+    public void render(final int width, final int height, final byte[] img)
     {
-        render(instanceID, width, height, img);
+
+        Runnable r = new Runnable()
+            {
+                public void run()
+                {
+                    render(instanceID, width, height, img);
+                    synchronized(this) {
+                        notifyAll();
+                    }
+                }
+            };
+        gl_thread.add_task(r);
+
+
+        synchronized(r) {
+            try {
+                r.wait();
+            } catch(InterruptedException e){}
+        }
     }
 
     // Takes as input a row-major projection-model matrix which is
