@@ -15,6 +15,7 @@
 #include "lphash.h"
 #include "vhash.h"
 #include "lihash.h"
+#include "larray.h"
 
 #include "vx_resc.h"
 
@@ -37,9 +38,12 @@ struct vx
 
     vhash_t * buffer_codes_map;
 
+    larray_t * dealloc_ids;
+
     float system_pm[16];
 
 };
+
 
 // Resource management for gl program and associated shaders:
 // When the associated guid for the vertex shader is dealloacted (vx_resc_t)
@@ -83,7 +87,7 @@ int vx_initialize()
     return 0;
 }
 
-int vx_create()
+void vx_create()
 {
     state.fbo = NULL; // uninitialized
 
@@ -95,14 +99,67 @@ int vx_create()
 
     state.buffer_codes_map = vhash_create(vhash_str_hash, vhash_str_equals);
 
+
+    state.dealloc_ids = larray_create();
+
     // Initialize to the identity
     for (int i = 0; i < 4; i++)
         for (int j = 0; j < 4; j++)
             state.system_pm[i*4 + j] = (i == j ? 1.0f : 0.0f);
 
-    return 0;
 }
 
+void vx_process_deallocations()
+{
+    for (int i =0; i < state.dealloc_ids->size; i++) {
+        uint64_t guid = state.dealloc_ids->get(state.dealloc_ids, i);
+        vx_resc_t * vr = lphash_remove(state.resource_map, guid).value;
+
+
+       // There may also be a program, or a vbo or texture for each guid
+        int vbo_success = 0;
+        lihash_pair_t vbo_pair = lihash_remove(state.vbo_map, guid, &vbo_success);
+        if (vbo_success) {
+            // Tell open GL to deallocate this VBO
+            glDeleteBuffers(1, &vbo_pair.value);
+            if (verbose) printf(" Deleted VBO %d \n", vbo_pair.value);
+        }
+
+        // There is always a resource for each guid.
+        if (verbose) printf("Deallocating guid %ld:\n",guid);
+        assert(guid == vr->id);
+        if (vr != NULL) {
+            if (verbose) printf("Deallocating resource GUID=%ld\n", vr->id);
+            free(vr->res);
+            free(vr);
+        } else {
+            printf("WRN!: Invalid request. Resource %ld does not exist", guid);
+        }
+
+
+        int tex_success = 0;
+        lihash_pair_t tex_pair = lihash_remove(state.texture_map, guid, &tex_success);
+        if (tex_success) {
+            // Tell open GL to deallocate this texture
+            glDeleteTextures(1, &tex_pair.value);
+            if (verbose) printf(" Deleted TEX %d \n", tex_pair.value);
+        }
+
+        gl_prog_resc_t * prog = lphash_remove(state.program_map, guid).value;
+        if (prog != NULL) {
+            glDetachShader(prog->prog_id,prog->vert_id);
+            glDeleteShader(prog->vert_id);
+            glDetachShader(prog->prog_id,prog->frag_id);
+            glDeleteShader(prog->frag_id);
+            glDeleteProgram(prog->prog_id);
+
+            if (verbose) printf("  Freed program %d vert %d and frag %d\n",
+                                prog->prog_id, prog->vert_id, prog->frag_id);
+            free(prog);
+        }
+
+    }
+}
 
 int vx_update_buffer(char * name, vx_code_input_stream_t * codes)
 {
@@ -457,7 +514,7 @@ int vx_render_program(vx_code_input_stream_t * codes)
 
 
 // NOTE: Thread safety must be guaranteed externally
-int vx_render(int width, int height)
+int vx_render_read(int width, int height, uint8_t *out_buf)
 {
     // Check whether we have a FBO of the correct size
     if (state.fbo == NULL || state.fbo_width != width || state.fbo_height != height) {
@@ -469,6 +526,9 @@ int vx_render(int width, int height)
         state.fbo_height = height;
         printf("Allocated FBO of dimension %d %d\n",state.fbo_width, state.fbo_height);
     }
+
+    // Deallocate any resources flagged for deletion
+    vx_process_deallocations();
 
     glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glViewport(0,0,width,height);
@@ -491,71 +551,20 @@ int vx_render(int width, int height)
         while (!vx_render_program(codes));
     }
 
-    return 0;
-}
-
-
-int vx_read_pixels_bgr(int width, int height, uint8_t * out_buf)
-{
-
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glReadPixels(0, 0, width, height, GL_BGR, GL_UNSIGNED_BYTE, out_buf);
     return 0;
 }
 
-int vx_deallocate_resources(uint64_t * guids, int nguids)
+void vx_deallocate_resources(uint64_t * guids, int nguids)
 {
-
-    for (int i =0; i < nguids; i++) {
-        uint64_t guid = guids[i];
-        vx_resc_t * vr = lphash_remove(state.resource_map, guid).value;
-
-
-        // There may also be a program, or a vbo or texture for each guid
-        int vbo_success = 0;
-        lihash_pair_t vbo_pair = lihash_remove(state.vbo_map, guid, &vbo_success);
-        if (vbo_success) {
-            // Tell open GL to deallocate this VBO
-            glDeleteBuffers(1, &vbo_pair.value);
-            if (verbose) printf(" Deleted VBO %d \n", vbo_pair.value);
-        }
-
-        // There is always a resource for each guid.
-        if (verbose) printf("Deallocating guid %ld:\n",guid);
-        assert(guid == vr->id);
-        if (vr != NULL) {
-            if (verbose) printf("Deallocating resource GUID=%ld\n", vr->id);
-            free(vr->res);
-            free(vr);
-        } else {
-            printf("WRN!: Invalid request. Resource %ld does not exist", guid);
-        }
-
-
-        int tex_success = 0;
-        lihash_pair_t tex_pair = lihash_remove(state.texture_map, guid, &tex_success);
-        if (tex_success) {
-            // Tell open GL to deallocate this texture
-            glDeleteTextures(1, &tex_pair.value);
-            if (verbose) printf(" Deleted TEX %d \n", tex_pair.value);
-        }
-
-        gl_prog_resc_t * prog = lphash_remove(state.program_map, guid).value;
-        if (prog != NULL) {
-            glDetachShader(prog->prog_id,prog->vert_id);
-            glDeleteShader(prog->vert_id);
-            glDetachShader(prog->prog_id,prog->frag_id);
-            glDeleteShader(prog->frag_id);
-            glDeleteProgram(prog->prog_id);
-
-            if (verbose) printf("  Freed program %d vert %d and frag %d\n",
-                                prog->prog_id, prog->vert_id, prog->frag_id);
-            free(prog);
-        }
-
-    }
-    return 0;
+    // Add the resources, flag them for deletion later
+    for (int i =0; i < nguids; i++)
+        state.dealloc_ids->add(state.dealloc_ids, guids[i]);
 }
+
+
+
 
 int vx_set_system_pm_mat(float * pm)
 {

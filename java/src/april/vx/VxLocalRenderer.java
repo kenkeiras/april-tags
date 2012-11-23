@@ -79,17 +79,10 @@ public class VxLocalRenderer extends VxRenderer
         return dim;
     }
 
-
-    public void read_pixels(int width, int height, byte[] img)
+    public void render(int width, int height, byte[] img)
     {
-        read_pixels( instanceID, width, height, img);
+        render(instanceID, width, height, img);
     }
-
-    public void render(int width, int height)
-    {
-        render(instanceID, width, height);
-    }
-
 
     // Takes as input a row-major projection-model matrix which is
     // generally prepended to a user specified model matrix before
@@ -238,9 +231,8 @@ public class VxLocalRenderer extends VxRenderer
     private static native int add_resources(long instanceID, int nresc,
                                             int types[], Object[] rescs, int counts[], int fieldwidths[], long ids[]);
     private static native int update_codes(long instanceID, byte[] buf_name, int code_len, byte[] codes);
-    private static native int deallocate_resources(long instanceID, long[] guids, int nguids);
-    private static native int render(long instanceID, int width, int height);
-    private static native int read_pixels(long instanceID, int width, int height, byte[] img);
+    private static native void deallocate_resources(long instanceID, long[] guids, int nguids);
+    private static native int render(long instanceID, int width, int height, byte[] img);
     private static native int get_canvas_size(long instanceID, int dim[]);
     native static int set_system_pm_matrix(long instanceID, float pm[]);
 }

@@ -13,11 +13,12 @@ JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_init
     return vx_initialize();
 }
 
-JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_create
-(JNIEnv * jenv, jclass jcls, jlong instanceID)
+JNIEXPORT jlong JNICALL Java_april_vx_VxLocalRenderer_create
+(JNIEnv * jenv, jclass jcls)
 {
     //XXX instance IDs
-    return vx_create();
+    vx_create();
+    return 1;
 }
 
 /*
@@ -95,39 +96,20 @@ JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_update_1codes
     return 0;
 }
 
-JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_deallocate_1resources
+JNIEXPORT void JNICALL Java_april_vx_VxLocalRenderer_deallocate_1resources
 (JNIEnv * jenv, jclass jcls, jlong instanceID, jlongArray jguids, jint nguids)
 {
 
     jlong* guids = (*jenv)->GetPrimitiveArrayCritical(jenv, jguids, NULL);
-    int ret = vx_deallocate_resources((uint64_t *)guids, nguids);
+    vx_deallocate_resources((uint64_t *)guids, nguids);
     (*jenv)->ReleasePrimitiveArrayCritical(jenv, jguids, guids, 0);
-
-    return ret;
 }
-
 
 JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_render
-(JNIEnv * jenv, jclass jcls, jlong instanceID, jint width, jint height)
-{
-    vx_render(width, height);
-    return 0;
-}
-
-//XXX
-/* JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_fbo_1create */
-/*   (JNIEnv * jenv, jclass jcls, jint width, jint height) */
-/* { */
-/*     return fbo_create(width, height); */
-/* } */
-
-
-JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_read_1pixels
   (JNIEnv * jenv, jclass jcls, jlong instanceID,  jint width, jint height, jbyteArray jimg)
 {
-
     jbyte* img_env = (*jenv)->GetPrimitiveArrayCritical(jenv, jimg, NULL);
-    int res = vx_read_pixels_bgr(width,height, (uint8_t *) img_env);
+    int res = vx_render_read(width, height, (uint8_t *) img_env);
     (*jenv)->ReleasePrimitiveArrayCritical(jenv, jimg, img_env, 0);
 
     return res;
