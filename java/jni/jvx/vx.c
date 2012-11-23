@@ -61,7 +61,7 @@ struct gl_prog_resc {
 
 
 static vx_t state;
-static int verbose = 0;
+static int verbose = 1;
 
 
 static void checkVersions()
@@ -157,8 +157,9 @@ void vx_process_deallocations()
                                 prog->prog_id, prog->vert_id, prog->frag_id);
             free(prog);
         }
-
     }
+
+    state.dealloc_ids->clear(state.dealloc_ids);
 }
 
 int vx_update_buffer(char * name, vx_code_input_stream_t * codes)

@@ -164,9 +164,14 @@ public class VxLocalRenderer extends VxRenderer
     // manage any GL calls
 
 
-    public static class GLThread extends Thread
+    private static class GLThread extends Thread
     {
         ArrayBlockingQueue<Runnable> tasks = new ArrayBlockingQueue<Runnable>(10);
+
+        GLThread()
+        {
+            start();
+        }
 
         public void add_task(Runnable t)
         {

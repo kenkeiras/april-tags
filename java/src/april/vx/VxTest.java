@@ -122,11 +122,11 @@ public class VxTest
             vp.setVertexAttrib("texIn", new VxVertexAttrib(texcoords,2));
             vp.setElementArray(index, Vx.GL_TRIANGLES);
 
-            // progs1.add(new VxChain(LinAlg.translate(-1,-1), vp));
+            progs1.add(new VxChain(LinAlg.translate(-1,-1), vp));
 
         }
 
-        for (int i = 0; i < 1; i+=2) {
+        for (int i = 0; i < 4; i+=2) {
 
 
             VxProgram vp = VxProgram.make("multi-colored");//new VxProgram(vertRx,fragRx);
@@ -152,7 +152,7 @@ public class VxTest
 
             vp.setElementArray(index, Vx.GL_TRIANGLES);
 
-            // progs2.add(vp);
+            progs2.add(vp);
         }
 
 
@@ -219,8 +219,6 @@ public class VxTest
             BufferedImage canvas = new BufferedImage(width,height, BufferedImage.TYPE_3BYTE_BGR);
             byte buf[] = ((DataBufferByte) (canvas.getRaster().getDataBuffer())).getData();
             vxlr.render(width,height,buf);
-
-
 
             jim.setImage(canvas);
 
