@@ -97,7 +97,6 @@ public class VxLocalRenderer extends VxRenderer
             for (VxResource vr : resources)
                 deallocate_guids[j++] = vr.id;
 
-            System.out.printf("Freeing %d resources\n", deallocate_guids.length);
 
             deallocate_resources(instanceID, deallocate_guids, deallocate_guids.length);
         }

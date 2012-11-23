@@ -181,16 +181,16 @@ public class VxTest
 
         JFrame jf = new JFrame();
 
-        JImage jim = new JImage();
-        jim.setFlipY(true);
-        jf.add(jim);
+
+        VxCanvas vc = new VxCanvas(vxlr);
+        jf.add(vc);
         jf.setSize(width,height+22);
         jf.setVisible(true);
         jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
 
         // Render loop
-        for (int i = 0; i < 24; i++) {
+        for (int i = 0; ; i++) {
 
             int type = i % 6;
             switch(type) {
@@ -213,17 +213,7 @@ public class VxTest
             vw.getBuffer("first-buffer").commit();
             vw.getBuffer("second-buffer").commit();
 
-
-            System.out.printf("Render %d:\n",i);
-
-            BufferedImage canvas = new BufferedImage(width,height, BufferedImage.TYPE_3BYTE_BGR);
-            byte buf[] = ((DataBufferByte) (canvas.getRaster().getDataBuffer())).getData();
-            vxlr.render(width,height,buf);
-
-            jim.setImage(canvas);
-
             TimeUtil.sleep(500);
-
         }
     }
 }

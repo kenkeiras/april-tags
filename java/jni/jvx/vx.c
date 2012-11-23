@@ -61,7 +61,7 @@ struct gl_prog_resc {
 
 
 static vx_t state;
-static int verbose = 1;
+static int verbose = 0;
 
 
 static void checkVersions()
@@ -111,11 +111,13 @@ void vx_create()
 
 void vx_process_deallocations()
 {
+    if (verbose) printf("Dealloc %d ids:\n   ", state.dealloc_ids->size);
+
     for (int i =0; i < state.dealloc_ids->size; i++) {
         uint64_t guid = state.dealloc_ids->get(state.dealloc_ids, i);
         vx_resc_t * vr = lphash_remove(state.resource_map, guid).value;
 
-
+        if (verbose) printf("%ld,",guid);
        // There may also be a program, or a vbo or texture for each guid
         int vbo_success = 0;
         lihash_pair_t vbo_pair = lihash_remove(state.vbo_map, guid, &vbo_success);
@@ -160,6 +162,7 @@ void vx_process_deallocations()
     }
 
     state.dealloc_ids->clear(state.dealloc_ids);
+    if (verbose) printf("\n");
 }
 
 int vx_update_buffer(char * name, vx_code_input_stream_t * codes)
@@ -191,11 +194,29 @@ int vx_update_resources(int nresc, vx_resc_t ** resources)
         if (verbose) printf("%ld,",vr->id);
         vx_resc_t * old_vr = lphash_get(state.resource_map, vr->id);
 
+
         if (old_vr == NULL) {
             lphash_put(state.resource_map, vr->id, vr);
 
         } else {
-            printf("WRN: ID collision, 0x%lx resource already exists\n", vr->id);
+            // Check to see if this was previously flagged for deletion.
+            // If so, unmark for deletion
+
+            int found_idx = -1;
+            int found = 0;
+            for (int i = 0; i < state.dealloc_ids->size; i++) {
+                uint64_t del_guid = state.dealloc_ids->get(state.dealloc_ids, i);
+                if (del_guid == vr->id) {
+                    found_idx = i;
+                    found++;
+                }
+            }
+
+            state.dealloc_ids->remove(state.dealloc_ids, found_idx);
+            assert(found <= 1);
+
+            if (found == 0)
+                printf("WRN: ID collision, 0x%lx resource already exists\n", vr->id);
             vx_resc_destroy(vr);
         }
     }
@@ -560,8 +581,15 @@ int vx_render_read(int width, int height, uint8_t *out_buf)
 void vx_deallocate_resources(uint64_t * guids, int nguids)
 {
     // Add the resources, flag them for deletion later
-    for (int i =0; i < nguids; i++)
+    // XXX We don't currently handle duplicates already in the list.
+
+    if (verbose) printf("Marking for deletion %d ids:\n   ", nguids);
+    for (int i =0; i < nguids; i++) {
         state.dealloc_ids->add(state.dealloc_ids, guids[i]);
+
+        if (verbose) printf("%ld,", guids[i]);
+    }
+    if (verbose) printf("\n");
 }
 
 

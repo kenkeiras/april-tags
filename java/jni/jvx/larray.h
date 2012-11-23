@@ -9,6 +9,7 @@ struct larray {
     uint32_t size, alloc;
 
     uint64_t (* get)(larray_t * array, uint32_t idx);
+    uint64_t (* remove)(larray_t * array, uint32_t idx);
     void (* add)(larray_t * array, uint64_t value);
     void (* clear)(larray_t * array);
 

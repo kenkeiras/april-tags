@@ -19,6 +19,7 @@ public class VxCanvas extends JComponent
     public VxCanvas(VxLocalRenderer rend)
     {
         this.rend = rend;
+        new RepaintThread().start();
     }
 
     class RepaintThread extends Thread
@@ -45,9 +46,11 @@ public class VxCanvas extends JComponent
                     BufferedImage canvas = new BufferedImage(width,height, BufferedImage.TYPE_3BYTE_BGR);
 
                     byte buf[] = ((DataBufferByte) (canvas.getRaster().getDataBuffer())).getData();
+
                     rend.render(width,height,buf);
 
                     im = canvas;
+                    repaint();
                 }
             }
         }

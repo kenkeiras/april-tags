@@ -49,34 +49,6 @@ public class VxTCPServer extends Thread
         }
     }
 
-
-    // This must be the render thread
-    public void run()
-    {
-        while(true) {
-            synchronized(this) {
-                try{
-                    wait();
-                } catch (InterruptedException e){}
-            }
-
-            while(true) {
-                Object obj = null;
-                synchronized(this) {
-                    obj = queue.remove(0);
-                }
-
-                if (obj instanceof lcmvx_render_codes_t)
-                    process_codes((lcmvx_render_codes_t)obj);
-                if (obj instanceof lcmvx_resource_list_t)
-                    process_resources((lcmvx_resource_list_t)obj);
-            }
-
-
-        }
-    }
-
-    // Ensure access to these methods is from render thread
     private void process_codes(lcmvx_render_codes_t lcm_codes)
     {
         // Convert and send off
@@ -84,7 +56,6 @@ public class VxTCPServer extends Thread
         rend.update_codes(lcm_codes.buffer_name, vout);
     }
 
-    // Ensure access to these methods is from render thread
     private void process_dealloc(lcmvx_dealloc_t lcm_dealloc)
     {
         // Convert and send off
@@ -97,7 +68,6 @@ public class VxTCPServer extends Thread
 
     private void process_resources(lcmvx_resource_list_t lcm_resources)
     {
-
         HashSet<VxResource> resources = new HashSet();
         for (int i = 0; i < lcm_resources.nresources; i++) {
             lcmvx_resource_t lvr = lcm_resources.resources[i];
@@ -133,22 +103,13 @@ public class VxTCPServer extends Thread
 
                     switch(code) {
                         case VX_TCP_ADD_RESOURCES:
-                            synchronized(VxTCPServer.this) {
-                                queue.add(new lcmvx_resource_list_t(new LCMDataInputStream(buf)));
-                                VxTCPServer.this.notifyAll();
-                            }
+                            process_resources(new lcmvx_resource_list_t(new LCMDataInputStream(buf)));
                             break;
                         case VX_TCP_DEALLOC_RESOURCES:
-                            synchronized(VxTCPServer.this) {
-                                queue.add(new lcmvx_dealloc_t(new LCMDataInputStream(buf)));
-                                VxTCPServer.this.notifyAll();
-                            }
+                            process_dealloc(new lcmvx_dealloc_t(new LCMDataInputStream(buf)));
                             break;
                         case VX_TCP_CODES:
-                            synchronized(VxTCPServer.this) {
-                                queue.add(new lcmvx_render_codes_t(new LCMDataInputStream(buf)));
-                                VxTCPServer.this.notifyAll();
-                            }
+                            process_codes(new lcmvx_render_codes_t(new LCMDataInputStream(buf)));
                             break;
                     }
                 }
@@ -181,8 +142,12 @@ public class VxTCPServer extends Thread
 
         // XXX Replace this with a Canvas and give  place to display
         new VxTCPServer(new VxLocalRenderer("java://"),
-                        opts.getInt("port")).run();
+                        opts.getInt("port"));
 
+
+        while(true) {
+            TimeUtil.sleep(1000);
+        }
     }
 
 }

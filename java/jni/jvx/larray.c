@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <malloc.h>
+#include <string.h>
 #include "larray.h"
 
 void larray_ensure_size(larray_t * array, int newsize)
@@ -14,6 +15,18 @@ uint64_t larray_get(larray_t * array, uint32_t idx)
 {
     assert(idx < array->size);
     return array->buf[idx];
+}
+
+uint64_t larray_remove(larray_t * array, uint32_t idx)
+{
+    assert(idx < array->size);
+
+    uint64_t value = array->buf[idx];
+
+    array->size--;
+
+    memcpy(array->buf + idx, array->buf+ idx +1, (array->size - idx) * sizeof(uint64_t));
+    return value;
 }
 
 void larray_add(larray_t * array, uint64_t value)
@@ -36,6 +49,7 @@ larray_t * larray_create()
     array->get = larray_get;
     array->add = larray_add;
     array->clear = larray_clear;
+    array->remove = larray_remove;
 
     larray_ensure_size(array, 10);
 
