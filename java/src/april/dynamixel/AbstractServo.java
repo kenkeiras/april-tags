@@ -2,6 +2,8 @@ package april.dynamixel;
 
 import java.io.*;
 
+import april.jmat.MathUtil;
+
 // Some of the methods below (e.g. setBaud) should really be split
 // into servo-specific implementations from a "style" perspective, but
 // the servos implement compatible commands. We'll split them when we
@@ -11,6 +13,7 @@ public abstract class AbstractServo
 {
     protected AbstractBus      bus;
     protected int              id;
+    private boolean continuousMode = false;
 
     public static final int ERROR_INSTRUCTION = (1 << 6);
     public static final int ERROR_OVERLOAD    = (1 << 5);
@@ -154,11 +157,37 @@ public abstract class AbstractServo
      * @param radians
      *            [-pi, pi]
      * @param speedfrac
-     *            [0, 1]
+     *            [0, 1]  in joint mode
+     *            [-1, 1] in wheel mode (must call setContinuousMode(true) first)
      * @param torquefrac
      *            [0, 1]
      **/
-    public abstract void setGoal(double radians, double speedfrac, double torquefrac);
+    public void setGoal(double radians, double speedfrac, double torquefrac)
+    {
+        if (!continuousMode && speedfrac < 0) {
+            System.out.println("WRN: Ignoring speed direction for non-continuous servo "+id);
+            speedfrac *= -1;
+        }
+        // ensure proper ranges
+        radians = MathUtil.mod2pi(radians);
+        speedfrac = Math.max(-1, Math.min(1, speedfrac));
+        torquefrac = Math.max(0, Math.min(1, torquefrac));
+
+        setGoal(radians, speedfrac, torquefrac, continuousMode);
+    }
+
+    /**
+     * @param radians
+     *            [-pi, pi]
+     * @param speedfrac
+     *            [0, 1]
+     * @param torquefrac
+     *            [0, 1]
+     * @param continuous
+     *            true only in continuous mode
+     **/
+    protected abstract void setGoal(double radians, double speedfrac,
+                                    double torquefrac, boolean continuous);
 
     public void idle()
     {
@@ -252,4 +281,21 @@ public abstract class AbstractServo
      * returns true if address is EEPROM address
      **/
     protected abstract boolean isAddressEEPROM(int address);
+
+    /** Set Rotation Mode
+     * true = continuous/wheel
+     * false = joint
+     **/
+    protected abstract void setRotationMode(boolean mode);
+
+    public void setContinuousMode(boolean mode)
+    {
+        setRotationMode(mode);
+        continuousMode = mode;
+    }
+
+    public boolean isContinuousMode()
+    {
+        return continuousMode;
+    }
 }

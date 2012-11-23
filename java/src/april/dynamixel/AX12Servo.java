@@ -16,9 +16,6 @@ public class AX12Servo extends AbstractServo
         // Return delay time
         byte delay = 0x02;  // each unit = 2 usec
         ensureEEPROM(new byte[] { 0x5, delay });
-
-        // // Set angle limits  (EEPROM)
-        ensureEEPROM(new byte[] { 6, 0, 0, (byte)0xFF, 3 } );
     }
 
     public boolean isAddressEEPROM(int address)
@@ -36,19 +33,16 @@ public class AX12Servo extends AbstractServo
         return Math.toRadians(150);
     }
 
-    public void setGoal(double radians, double speedfrac, double torquefrac)
+    protected void setGoal(double radians, double speedfrac,
+                           double torquefrac, boolean continuous)
     {
-        radians = MathUtil.mod2pi(radians);
         final double limit = Math.toRadians(150);
-        int posv;
-        if (radians >= limit)
-            posv = 0x3ff;
-        else if (radians <= -limit)
-            posv = 0;
-        else
-            posv = ((int) ((radians+limit)/(2*limit)*1024)) & 0x3ff;
+        radians = Math.max(-limit, Math.min(limit, radians));
 
-        int speedv = (int) (0x3ff * speedfrac);
+        int posv = ((int) ((radians+limit)/(2*limit)*0x3ff)) & 0x3ff;
+        int speedv = (int)Math.abs(speedfrac * 0x3ff);
+        if (continuous && speedfrac < 0)
+            speedv |= 0x400;  // CW direction
         int torquev = (int) (0x3ff * torquefrac);
 
         writeToRAM(new byte[] { 0x1e,
@@ -89,5 +83,12 @@ public class AX12Servo extends AbstractServo
         st.errorFlags = resp[0];
 
         return st;
+    }
+
+    protected void setRotationMode(boolean mode)
+    {
+        ensureEEPROM(mode ?
+                     new byte[] { 0x06, 0, 0, 0, 0 } :
+                     new byte[] { 0x06, 0, 0, (byte)0xFF, (byte)0x0F } );
     }
 }

@@ -18,12 +18,6 @@ public class MXSeriesServo extends AbstractServo
 
         // Set Alarm Shutdown (EEPROM)
         ensureEEPROM(new byte[] { 18, 36 } );
-
-        // PID (RAM)
-        // byte p = 16;
-        // byte i = 10;
-        // byte d = 0;
-        // writeToRAM(new byte[] { 26, p, i, d }, true );
     }
 
     public boolean isAddressEEPROM(int address)
@@ -49,11 +43,13 @@ public class MXSeriesServo extends AbstractServo
         writeToRAM(new byte[] { 26, d, i, p}, true);
     }
 
-    public void setGoal(double radians, double speedfrac, double torquefrac)
+    protected void setGoal(double radians, double speedfrac,
+                           double torquefrac, boolean continuous)
     {
-        radians = MathUtil.mod2pi(radians);
-        int posv = ((int) ((radians + Math.PI) / (2 * Math.PI) * 4096)) & 0xfff;
-        int speedv = (int) (0x3ff * speedfrac);
+        int posv = ((int) ((radians + Math.PI) / (2 * Math.PI) * 0xfff)) & 0xfff;
+        int speedv = (int)Math.abs(speedfrac * 0x3ff);
+        if (continuous && speedfrac < 0)
+            speedv |= 0x400;  // CW direction
         int torquev = (int) (0x3ff * torquefrac);
 
         writeToRAM(new byte[] { 0x1e,
@@ -95,6 +91,13 @@ public class MXSeriesServo extends AbstractServo
         st.errorFlags = resp[0];
 
         return st;
-     }
+    }
+
+    protected void setRotationMode(boolean mode)
+    {
+        ensureEEPROM(mode ?
+                     new byte[] { 0x06, 0, 0, 0, 0 } :
+                     new byte[] { 0x06, 0, 0, (byte)0xFF, (byte)0x0F } );
+    }
 }
 
