@@ -9,6 +9,8 @@ import april.lcmtypes.*;
 
 import lcm.lcm.LCMDataInputStream;
 
+import javax.swing.*;
+
 public class VxTCPServer extends Thread
 {
 
@@ -140,10 +142,19 @@ public class VxTCPServer extends Thread
             return;
         }
 
+        VxLocalRenderer vxlr = new VxLocalRenderer("java://");
         // XXX Replace this with a Canvas and give  place to display
-        new VxTCPServer(new VxLocalRenderer("java://"),
+        new VxTCPServer(vxlr,
                         opts.getInt("port"));
 
+
+
+        JFrame jf = new JFrame();
+        VxCanvas vc = new VxCanvas(vxlr);
+        jf.add(vc);
+        jf.setSize(720,480);
+        jf.setVisible(true);
+        jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         while(true) {
             TimeUtil.sleep(1000);

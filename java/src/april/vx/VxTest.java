@@ -24,17 +24,26 @@ public class VxTest
     // arg[0] is path to april/java/shaders/ directory
     public static void main(String args[]) throws IOException
     {
-        BufferedImage img = ImageUtil.convertImage(ImageIO.read(new File(args[0])), BufferedImage.TYPE_3BYTE_BGR);
-        VxTexture vtex = new VxTexture(img);
+        GetOpt opts  = new GetOpt();
 
-        int width = 480, height = 480;
-        VxLocalRenderer vxlr = new VxLocalRenderer("java://");//width,height);
-        double proj_d[][] = LinAlg.matrixAB(VxUtil.gluPerspective(60.0f, width*1.0f/height, 0.1f, 5000.0f),
-                                            VxUtil.lookAt(new double[]{0,0,10}, new double[3], new double[]{0,1,0}));
+        opts.addBoolean('h',"help",false,"See this help screen");
+        opts.addString('u',"url","java://","Which VxRenderer to use");
+        opts.addString('i',"img-path","/home/jhstrom/Desktop/BlockM.png","Which image to display as a texture?");
 
-        float proj[][] = VxUtil.copyFloats(proj_d);
-        vxlr.set_system_pm_matrix(proj);
-        VxWorld vw = new VxWorld(new VxResourceManager(vxlr));
+        if (!opts.parse(args) || opts.getBoolean("help") || opts.getExtraArgs().size() > 0) {
+            opts.doHelp();
+            return;
+        }
+
+
+        VxRenderer vxr = VxRenderer.make(opts.getString("url"));//width,height);
+
+        int canvas_size[] = vxr.get_canvas_size();
+        int width = canvas_size[0], height = canvas_size[1];
+
+
+
+        VxWorld vw = new VxWorld(new VxResourceManager(vxr));
 
         ArrayList<VxVertexAttrib> point_attribs = new ArrayList();
         {
@@ -109,6 +118,9 @@ public class VxTest
         // Now do Texture:
         ArrayList<VxObject> progs1 = new ArrayList();
         {
+            BufferedImage img = ImageUtil.convertImage(ImageIO.read(new File(opts.getString("img-path"))), BufferedImage.TYPE_3BYTE_BGR);
+            VxTexture vtex = new VxTexture(img);
+
             VxProgram vp = VxProgram.make("texture");
             vp.setVertexAttrib("position", point_attribs.get(2));
             vp.setTexture("texture", vtex); //XXX Error!
@@ -179,15 +191,25 @@ public class VxTest
             vw.getBuffer("points").commit();
         }
 
-        JFrame jf = new JFrame();
 
 
-        VxCanvas vc = new VxCanvas(vxlr);
-        jf.add(vc);
-        jf.setSize(width,height+22);
-        jf.setVisible(true);
-        jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
+        if (vxr instanceof VxLocalRenderer) {
+            double proj_d[][] = LinAlg.matrixAB(VxUtil.gluPerspective(60.0f, width*1.0f/height, 0.1f, 5000.0f),
+                                                VxUtil.lookAt(new double[]{0,0,10}, new double[3], new double[]{0,1,0}));
+
+            float proj[][] = VxUtil.copyFloats(proj_d);
+            ((VxLocalRenderer)vxr).set_system_pm_matrix(proj);
+
+            JFrame jf = new JFrame();
+
+
+            VxCanvas vc = new VxCanvas(((VxLocalRenderer)vxr));
+            jf.add(vc);
+            jf.setSize(width,height+22);
+            jf.setVisible(true);
+            jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        }
 
         // Render loop
         for (int i = 0; ; i++) {

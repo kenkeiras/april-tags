@@ -24,10 +24,27 @@ public class VxLocalRenderer extends VxRenderer
     // implemented on the C Side
     static GLThread gl_thread = new GLThread();
 
+    int width, height;
+
     public VxLocalRenderer(String url)
     {
         if (!url.startsWith("java://"))
             throw new IllegalArgumentException("VxLocalRenderer only accepts java:// urls");
+
+        int argidx = url.indexOf("?");
+        if (argidx >= 0) {
+            String arg = url.substring(argidx+1);
+            url = url.substring(0, argidx);
+
+            String params[] = arg.split("&");
+            for (String param : params) {
+                String keyval[] = param.split("=");
+                if (keyval[0].equals("width"))
+                    width = Integer.parseInt(keyval[1]);
+                else if (keyval[0].equals("height"))
+                    height = Integer.parseInt(keyval[1]);
+            }
+        }
 
         synchronized(gl_thread)
         {
@@ -105,7 +122,7 @@ public class VxLocalRenderer extends VxRenderer
     // Fast for a local implementation
     public int[] get_canvas_size()
     {
-        int dim[] = {0,0};
+        int dim[] = {width,height};
         synchronized(gl_thread)
         {
             get_canvas_size(instanceID, dim);
@@ -115,6 +132,9 @@ public class VxLocalRenderer extends VxRenderer
 
     public void render(final int width, final int height, final byte[] img)
     {
+        // Update dimensions
+        this.width = width;
+        this.height = height;
 
         Runnable r = new Runnable()
             {
