@@ -64,6 +64,11 @@ public final class VxCodeOutputStream
         buf[pos++] = (byte) (v>>>0);
     }
 
+    public void writeDouble(double v)
+    {
+        writeLong(Double.doubleToLongBits(v));
+    }
+
     public void writeLong(long v)
     {
         ensureSpace(8);

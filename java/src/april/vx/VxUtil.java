@@ -112,4 +112,28 @@ public class VxUtil
         return out;
     }
 
+    // Converts primitive arrays to byte arrays
+    public static byte[] copyByteArray(Object obj)
+    {
+
+        VxCodeOutputStream vout = new VxCodeOutputStream();
+        if(double[].class == obj.getClass()) {
+            double[] array = (double[]) obj;
+            for (double v : array)
+                vout.writeDouble(v);
+        } else if(float[].class == obj.getClass()) {
+            for (float v : array)
+                vout.writeFloat(v);
+        } else if(int[].class == obj.getClass()) {
+            for (int v : array)
+                vout.writeInt(v);
+        } else if(byte[].class == obj.getClass()) {
+            return (byte[]) obj;
+        } else {
+            assert(false);
+        }
+
+        return vout.toByteArray();
+    }
+
 }
