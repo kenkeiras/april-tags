@@ -48,7 +48,7 @@ public class DynamixelGUI
 
         jf.add(new JScrollPane(servoPane), BorderLayout.CENTER);
 //        jf.add(servoPane, BorderLayout.CENTER);
-        jf.setSize(600,600);
+        jf.setSize(800,800);
         jf.setVisible(true);
 
         new EnumerateThread().start();
@@ -184,8 +184,32 @@ public class DynamixelGUI
                     });
                 }
 
+                JMenu modeMenu = new JMenu("Set Mode");
+                final String MODE_JOINT = "joint (with default angle limits)";
+                final String MODE_WHEEL = "wheel (continuous rotation)";
+                String modes[] = new String[] { MODE_JOINT, MODE_WHEEL };
+                for (int i = 0; i < modes.length; i++) {
+                    JMenuItem item = new JMenuItem(""+modes[i]);
+                    modeMenu.add(item);
+                    item.addActionListener(new ActionListener() {
+                        public void actionPerformed(ActionEvent e) {
+                            boolean mode = !((String)e.getActionCommand()).equals(MODE_JOINT);
+
+                            synchronized(DynamixelGUI.this) {
+                                if (servo != null) {
+                                    servo.setContinuousMode(mode);
+                                    servo.setContinuousGoal(speedSlider.getGoalValue(),
+                                                            torqueSlider.getGoalValue());
+                                    servo = null;
+                                }
+                            }
+                        }
+                    });
+                }
+
                 popupMenu.add(idMenu);
                 popupMenu.add(baudMenu);
+                popupMenu.add(modeMenu);
             }
 
             idLabel.addMouseListener(new MouseAdapter() {
@@ -198,6 +222,10 @@ public class DynamixelGUI
 
         void sendCommand()
         {
+            System.out.printf("%3.3f\t%3.3f\t%3.3f\n",
+                              positionSlider.getGoalValue(),
+                              speedSlider.getGoalValue(),
+                              torqueSlider.getGoalValue());
             synchronized(DynamixelGUI.this) {
                 if (servo != null)
                     servo.setGoal(positionSlider.getGoalValue(), speedSlider.getGoalValue(), torqueSlider.getGoalValue());

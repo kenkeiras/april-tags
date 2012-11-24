@@ -80,6 +80,7 @@ public class AX12Servo extends AbstractServo
 
         st.voltage = (resp[7] & 0xff) / 10.0; // scale to voltage
         st.temperature = (resp[8] & 0xff); // deg celsius
+        st.continuous = getRotationMode();
         st.errorFlags = resp[0];
 
         return st;
@@ -89,6 +90,6 @@ public class AX12Servo extends AbstractServo
     {
         ensureEEPROM(mode ?
                      new byte[] { 0x06, 0, 0, 0, 0 } :
-                     new byte[] { 0x06, 0, 0, (byte)0xFF, (byte)0x0F } );
+                     new byte[] { 0x06, 0, 0, (byte)0xFF, (byte)0x03 } );
     }
 }

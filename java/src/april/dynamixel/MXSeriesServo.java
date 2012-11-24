@@ -88,6 +88,7 @@ public class MXSeriesServo extends AbstractServo
 
         st.voltage = (resp[7] & 0xff) / 10.0; // scale to voltage
         st.temperature = (resp[8] & 0xff); // deg celsius
+        st.continuous = getRotationMode();
         st.errorFlags = resp[0];
 
         return st;

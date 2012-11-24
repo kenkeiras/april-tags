@@ -13,7 +13,7 @@ public abstract class AbstractServo
 {
     protected AbstractBus      bus;
     protected int              id;
-    private boolean continuousMode = false;
+    private Boolean rotationMode = false;
 
     public static final int ERROR_INSTRUCTION = (1 << 6);
     public static final int ERROR_OVERLOAD    = (1 << 5);
@@ -44,13 +44,19 @@ public abstract class AbstractServo
         /** Temperature (Deg celsius) **/
         public double temperature;
 
+        /** Continuous rotation mode (true = wheel; false = joint) **/
+        public boolean continuous;
+
         /** Error flags--- see ERROR constants. **/
         public int    errorFlags;
 
         public String toString()
         {
-            return String.format("pos=%6.3f, speed=%6.3f, load=%6.3f, voltage=%4.1f, temp=%4.1f, err=%s",
-                                 positionRadians, speed, load, voltage, temperature, getErrorString(errorFlags, "OK"));
+            return String.format("pos=%6.3f, speed=%6.3f, load=%6.3f, volts=%4.1f, "+
+                                 "temp=%4.1f, mode=%s, err=%s",
+                                 positionRadians, speed, load, voltage, temperature,
+                                 continuous ? "wheel" : "joint",
+                                 getErrorString(errorFlags, "OK"));
         }
 
         public static String getErrorString(int error, String defaultString)
@@ -78,6 +84,8 @@ public abstract class AbstractServo
         this.id = id;
 
         assert(id >= 0 && id < 254); // note 254 = broadcast address.
+
+        rotationMode = readRotationMode();
     }
 
 
@@ -164,7 +172,7 @@ public abstract class AbstractServo
      **/
     public void setGoal(double radians, double speedfrac, double torquefrac)
     {
-        if (!continuousMode && speedfrac < 0) {
+        if (!rotationMode && speedfrac < 0) {
             System.out.println("WRN: Ignoring speed direction for non-continuous servo "+id);
             speedfrac *= -1;
         }
@@ -173,7 +181,7 @@ public abstract class AbstractServo
         speedfrac = Math.max(-1, Math.min(1, speedfrac));
         torquefrac = Math.max(0, Math.min(1, torquefrac));
 
-        setGoal(radians, speedfrac, torquefrac, continuousMode);
+        setGoal(radians, speedfrac, torquefrac, rotationMode);
     }
 
     /**
@@ -188,6 +196,17 @@ public abstract class AbstractServo
      **/
     protected abstract void setGoal(double radians, double speedfrac,
                                     double torquefrac, boolean continuous);
+
+
+    public void setContinuousGoal(double speedfrac, double torquefrac)
+    {
+        int speedv = (int)(Math.abs(speedfrac * 0x3ff)) | 0x400;
+        int torquev = (int) (0x3ff * torquefrac);
+
+        writeToRAM(new byte[] { 0x20,
+                                (byte) (speedv & 0xff), (byte) (speedv >> 8),
+                                (byte) (torquev & 0xff), (byte) (torquev >> 8) }, true);
+    }
 
     public void idle()
     {
@@ -282,20 +301,47 @@ public abstract class AbstractServo
      **/
     protected abstract boolean isAddressEEPROM(int address);
 
+    /** returns true if servo in continuous mode (no angle limits) **/
+    public boolean getRotationMode()
+    {
+        return rotationMode;
+    }
+
+    /** read rotation mode from servo **/
+    public boolean readRotationMode()
+    {
+        boolean mode = true;
+        synchronized(rotationMode) {
+            byte limits[] = read(new byte[]{0x06, 4}, true);
+
+            if (limits == null || limits.length != 6) {
+                System.out.println("WRN: Invalid read of continous state: " +
+                                   ((limits == null) ? "null" : "len=" + limits.length));
+                return rotationMode;   // best guess
+            }
+            for (int i = 1; i < 5; i++)
+                if (limits[i] != 0)
+                    mode = false;
+            rotationMode = mode;
+        }
+        return mode;
+    }
+
     /** Set Rotation Mode
-     * true = continuous/wheel
+     * true = wheel (continuous)
      * false = joint
      **/
     protected abstract void setRotationMode(boolean mode);
 
     public void setContinuousMode(boolean mode)
     {
-        setRotationMode(mode);
-        continuousMode = mode;
+        System.out.printf("NFO: Setting rotation mode for servo %d to %b (%s)\n", id, mode,
+                          (mode ? "wheel" : "joint"));
+
+        synchronized(rotationMode) {
+            setRotationMode(mode);
+            rotationMode = mode;
+        }
     }
 
-    public boolean isContinuousMode()
-    {
-        return continuousMode;
-    }
 }
