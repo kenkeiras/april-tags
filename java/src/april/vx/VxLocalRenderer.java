@@ -123,10 +123,10 @@ public class VxLocalRenderer extends VxRenderer
     public int[] get_canvas_size()
     {
         int dim[] = {width,height};
-        synchronized(gl_thread)
-        {
-            get_canvas_size(instanceID, dim);
-        }
+        // synchronized(gl_thread)
+        // {
+        //     get_canvas_size(instanceID, dim);
+        // }
         return dim;
     }
 
