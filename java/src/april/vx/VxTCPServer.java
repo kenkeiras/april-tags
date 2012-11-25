@@ -93,16 +93,28 @@ public class VxTCPServer extends Thread
         public void run()
         {
             try {
-                DataInputStream ins = new DataInputStream(new BufferedInputStream(sock.getInputStream()));
-                DataOutputStream outs = new DataOutputStream(new BufferedOutputStream(sock.getOutputStream()));
+                DataInputStream ins = new DataInputStream(sock.getInputStream());
+                DataOutputStream outs = new DataOutputStream(sock.getOutputStream());
 
                 // Read data from the TCP connection, and guarantee that it is processed FIFO by the rendering thread
                 //
                 while (true) {
                     int code = ins.readInt();
+                    // System.out.printf("Read code: %d %x\n",code, code);
+
+                    if (code == VX_TCP_REQUEST_SIZE) {
+                        int dim[] = rend.get_canvas_size();
+                        outs.writeInt(VX_TCP_CANVAS_SIZE);
+                        outs.writeInt(dim[0]);
+                        outs.writeInt(dim[1]);
+                        continue;
+                    }
+
                     int len = ins.readInt();
                     byte buf[] = new byte[len];
                     ins.read(buf);
+                    // printHex(buf);
+                    // System.out.printf("Read len %d\n",len);
 
                     switch(code) {
                         case VX_TCP_ADD_RESOURCES:
@@ -114,20 +126,13 @@ public class VxTCPServer extends Thread
                         case VX_TCP_CODES:
                             process_codes(new lcmvx_render_codes_t(new LCMDataInputStream(buf)));
                             break;
-                        case VX_TCP_REQUEST_SIZE:
-
-                            int dim[] = rend.get_canvas_size();
-                            outs.writeInt(VX_TCP_CANVAS_SIZE);
-                            outs.writeInt(dim[0]);
-                            outs.writeInt(dim[1]);
-                            break;
                     }
                 }
 
             } catch (EOFException ex) {
                 System.out.println("Client disconnected");
             } catch (IOException ex) {
-                System.out.println("ex: "+ex);
+                System.out.println("ex: "+ex); ex.printStackTrace();
             }
 
             try {
@@ -171,4 +176,17 @@ public class VxTCPServer extends Thread
         }
     }
 
+    // Debug
+    // Convert a byte array to a hex string
+    public static void printHex(byte a[])
+    {
+        for (int i = 0; i < a.length; i++) {
+            System.out.printf("%02X ", a[i]);
+            if ((i + 1) % 16 == 0)
+                System.out.printf("\n");
+            else if ((i +1) % 8 == 0)
+                System.out.printf(" ");
+        }
+        System.out.println();
+    }
 }

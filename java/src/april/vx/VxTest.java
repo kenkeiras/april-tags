@@ -38,10 +38,6 @@ public class VxTest
 
         VxRenderer vxr = VxRenderer.make(opts.getString("url"));//width,height);
 
-        int canvas_size[] = vxr.get_canvas_size();
-        int width = canvas_size[0], height = canvas_size[1];
-
-
 
         VxWorld vw = new VxWorld(new VxResourceManager(vxr));
 
@@ -193,8 +189,13 @@ public class VxTest
 
 
 
+        int canvas_size[] = vxr.get_canvas_size();
+        int width = canvas_size[0], height = canvas_size[1];
 
         if (vxr instanceof VxLocalRenderer) {
+
+
+
             double proj_d[][] = LinAlg.matrixAB(VxUtil.gluPerspective(60.0f, width*1.0f/height, 0.1f, 5000.0f),
                                                 VxUtil.lookAt(new double[]{0,0,10}, new double[3], new double[]{0,1,0}));
 
