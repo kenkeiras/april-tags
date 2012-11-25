@@ -13,7 +13,7 @@ public abstract class AbstractServo
 {
     protected AbstractBus      bus;
     protected int              id;
-    private Boolean rotationMode = false;
+    protected Boolean rotationMode = false;
 
     public static final int ERROR_INSTRUCTION = (1 << 6);
     public static final int ERROR_OVERLOAD    = (1 << 5);
@@ -86,6 +86,8 @@ public abstract class AbstractServo
         assert(id >= 0 && id < 254); // note 254 = broadcast address.
 
         rotationMode = readRotationMode();
+        if (rotationMode)   // notify user of continuous servos (e.g. cable management)
+            System.out.printf("NFO: Servo #%d initialized as continuous\n", id);
     }
 
 
@@ -172,35 +174,41 @@ public abstract class AbstractServo
      **/
     public void setGoal(double radians, double speedfrac, double torquefrac)
     {
-        if (!rotationMode && speedfrac < 0) {
-            System.out.println("WRN: Ignoring speed direction for non-continuous servo "+id);
-            speedfrac *= -1;
+        if (rotationMode) {
+            setContinuousGoal(speedfrac, torquefrac);
+        } else {
+            setJointGoal(radians, speedfrac, torquefrac);
         }
-        // ensure proper ranges
-        radians = MathUtil.mod2pi(radians);
-        speedfrac = Math.max(-1, Math.min(1, speedfrac));
-        torquefrac = Math.max(0, Math.min(1, torquefrac));
-
-        setGoal(radians, speedfrac, torquefrac, rotationMode);
     }
 
-    /**
+    /** Set goal in joint mode
+     *
      * @param radians
      *            [-pi, pi]
      * @param speedfrac
      *            [0, 1]
      * @param torquefrac
      *            [0, 1]
-     * @param continuous
-     *            true only in continuous mode
      **/
-    protected abstract void setGoal(double radians, double speedfrac,
-                                    double torquefrac, boolean continuous);
+    protected abstract void setJointGoal(double radians, double speedfrac, double torquefrac);
 
-
-    public void setContinuousGoal(double speedfrac, double torquefrac)
+    /**
+     * @param speedfrac
+     *            [-1, 1] pos for CCW, neg for CW
+     * @param torquefrac
+     *            [0, 1]
+     **/
+    protected void setContinuousGoal(double speedfrac, double torquefrac)
     {
-        int speedv = (int)(Math.abs(speedfrac * 0x3ff)) | 0x400;
+        assert(rotationMode);
+
+        // ensure proper ranges
+        speedfrac = Math.max(-1, Math.min(1, speedfrac));
+        torquefrac = Math.max(0, Math.min(1, torquefrac));
+
+        int speedv = (int)Math.abs(speedfrac * 0x3ff);
+        if (speedfrac < 0)
+            speedv |= 0x400;  // CW direction
         int torquev = (int) (0x3ff * torquefrac);
 
         writeToRAM(new byte[] { 0x20,
@@ -344,4 +352,13 @@ public abstract class AbstractServo
         }
     }
 
+    /** Ensure that v is [-PI, PI] **/
+    double mod2pi(double radians)
+    {
+        while(radians < -Math.PI)
+            radians += 2*Math.PI;
+        while(radians > Math.PI)
+            radians -= 2*Math.PI;
+        return radians;
+    }
 }

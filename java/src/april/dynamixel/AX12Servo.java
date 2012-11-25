@@ -33,17 +33,22 @@ public class AX12Servo extends AbstractServo
         return Math.toRadians(150);
     }
 
-    protected void setGoal(double radians, double speedfrac,
-                           double torquefrac, boolean continuous)
+    protected void setJointGoal(double radians, double speedfrac, double torquefrac)
     {
-        final double limit = Math.toRadians(150);
-        radians = Math.max(-limit, Math.min(limit, radians));
+        assert(!rotationMode);
 
-        int posv = ((int) ((radians+limit)/(2*limit)*0x3ff)) & 0x3ff;
-        int speedv = (int)Math.abs(speedfrac * 0x3ff);
-        if (continuous && speedfrac < 0)
-            speedv |= 0x400;  // CW direction
-        int torquev = (int) (0x3ff * torquefrac);
+        // ensure proper ranges
+        radians = mod2pi(radians);  // do not use MathUtil.mod2pi
+        speedfrac = Math.max(0, Math.min(1, Math.abs(speedfrac)));
+        torquefrac = Math.max(0, Math.min(1, torquefrac));
+
+        double min = getMinimumPositionRadians();
+        double max = getMaximumPositionRadians();
+        radians = Math.max(min, Math.min(max, radians));
+
+        int posv = ((int) Math.round((radians - min) / (max - min) * 0x3ff)) & 0x3ff;
+        int speedv = (int)(speedfrac * 0x3ff);
+        int torquev = (int) (torquefrac * 0x3ff);
 
         writeToRAM(new byte[] { 0x1e,
                                 (byte) (posv & 0xff), (byte) (posv >> 8),
