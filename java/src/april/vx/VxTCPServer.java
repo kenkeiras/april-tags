@@ -16,7 +16,8 @@ public class VxTCPServer extends Thread
 
     // The server listens for codes on the input stream -- it expects either
     // a set of resources, or a set of codes. Marshalling is handled by LCM data types
-    public static final int VX_TCP_ADD_RESOURCES = 0x1,VX_TCP_CODES = 0x2, VX_TCP_DEALLOC_RESOURCES = 0x3;
+    public static final int VX_TCP_ADD_RESOURCES = 0x1,VX_TCP_CODES = 0x2, VX_TCP_DEALLOC_RESOURCES = 0x3,
+        VX_TCP_REQUEST_SIZE = 0x4, VX_TCP_CANVAS_SIZE = 0x5;
 
     final int port;
 
@@ -113,6 +114,13 @@ public class VxTCPServer extends Thread
                         case VX_TCP_CODES:
                             process_codes(new lcmvx_render_codes_t(new LCMDataInputStream(buf)));
                             break;
+                        case VX_TCP_REQUEST_SIZE:
+
+                            int dim[] = rend.get_canvas_size();
+                            outs.writeInt(VX_TCP_CANVAS_SIZE);
+                            outs.writeInt(dim[0]);
+                            outs.writeInt(dim[1]);
+                            break;
                     }
                 }
 
@@ -136,23 +144,25 @@ public class VxTCPServer extends Thread
 
         opts.addBoolean('h',"help",false,"See this help screen");
         opts.addInt('p',"port",15151,"Which port to listen on");
+        opts.addString('u',"url","java://?width=480&height=480","Which VxRenderer to use");
 
         if (!opts.parse(args) || opts.getBoolean("help") || opts.getExtraArgs().size() > 0) {
             opts.doHelp();
             return;
         }
 
-        VxLocalRenderer vxlr = new VxLocalRenderer("java://");
+        VxLocalRenderer vxlr = new VxLocalRenderer(opts.getString("url"));
         // XXX Replace this with a Canvas and give  place to display
         new VxTCPServer(vxlr,
                         opts.getInt("port"));
 
+        int canvas_size[] = vxlr.get_canvas_size();
 
 
         JFrame jf = new JFrame();
         VxCanvas vc = new VxCanvas(vxlr);
         jf.add(vc);
-        jf.setSize(720,480);
+        jf.setSize(canvas_size[0], canvas_size[1]);
         jf.setVisible(true);
         jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 

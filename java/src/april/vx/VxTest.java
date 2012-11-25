@@ -27,7 +27,7 @@ public class VxTest
         GetOpt opts  = new GetOpt();
 
         opts.addBoolean('h',"help",false,"See this help screen");
-        opts.addString('u',"url","java://","Which VxRenderer to use");
+        opts.addString('u',"url","java://?width=480&height=480","Which VxRenderer to use");
         opts.addString('i',"img-path","/home/jhstrom/Desktop/BlockM.png","Which image to display as a texture?");
 
         if (!opts.parse(args) || opts.getBoolean("help") || opts.getExtraArgs().size() > 0) {

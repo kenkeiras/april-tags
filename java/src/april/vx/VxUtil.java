@@ -122,9 +122,11 @@ public class VxUtil
             for (double v : array)
                 vout.writeDouble(v);
         } else if(float[].class == obj.getClass()) {
+            float[] array = (float[]) obj;
             for (float v : array)
                 vout.writeFloat(v);
         } else if(int[].class == obj.getClass()) {
+            int[] array = (int[]) obj;
             for (int v : array)
                 vout.writeInt(v);
         } else if(byte[].class == obj.getClass()) {
