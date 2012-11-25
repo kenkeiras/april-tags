@@ -192,21 +192,17 @@ public class DynamixelGUI
                     JMenuItem item = new JMenuItem(""+modes[i]);
                     modeMenu.add(item);
                     item.addActionListener(new ActionListener() {
-                        public void actionPerformed(ActionEvent e) {
-                            boolean mode = !((String)e.getActionCommand()).equals(MODE_JOINT);
-
-                            synchronized(DynamixelGUI.this) {
-                                if (servo != null) {
-                                    servo.setContinuousMode(mode);
-                                    servo.setContinuousGoal(speedSlider.getGoalValue(),
-                                                            torqueSlider.getGoalValue());
-                                    servo = null;
+                            public void actionPerformed(ActionEvent e) {
+                                boolean mode = !((String)e.getActionCommand()).equals(MODE_JOINT);
+                                synchronized(DynamixelGUI.this) {
+                                    if (servo != null)
+                                        servo.setContinuousMode(mode);
                                 }
+                                rotationModeChanged(mode);
+                                sendCommand();
                             }
-                        }
-                    });
+                        });
                 }
-
                 popupMenu.add(idMenu);
                 popupMenu.add(baudMenu);
                 popupMenu.add(modeMenu);
@@ -220,12 +216,19 @@ public class DynamixelGUI
             });
         }
 
+        void rotationModeChanged(boolean mode)
+        {
+            positionSlider.showgoal = !mode;
+            positionSlider.repaint();
+
+            if (!mode)
+                speedSlider.setGoalValue(Math.abs(speedSlider.getGoalValue()));
+            speedSlider.setMinimum(mode ? -1 : 0);
+            speedSlider.repaint();
+        }
+
         void sendCommand()
         {
-            System.out.printf("%3.3f\t%3.3f\t%3.3f\n",
-                              positionSlider.getGoalValue(),
-                              speedSlider.getGoalValue(),
-                              torqueSlider.getGoalValue());
             synchronized(DynamixelGUI.this) {
                 if (servo != null)
                     servo.setGoal(positionSlider.getGoalValue(), speedSlider.getGoalValue(), torqueSlider.getGoalValue());
@@ -253,9 +256,9 @@ public class DynamixelGUI
                     return;
 
                 positionSlider.setActualValue(status.positionRadians);
-                speedSlider.setActualValue(Math.abs(status.speed));
+                double speed = status.speed;
+                speedSlider.setActualValue(servo.getRotationMode() ? speed : Math.abs(speed));
                 torqueSlider.setActualValue(Math.abs(status.load));
-
                 statusLabel.setText(status.toString());
             }
         }
@@ -276,6 +279,8 @@ public class DynamixelGUI
 
                     positionSlider.setMinimum(servo.getMinimumPositionRadians());
                     positionSlider.setMaximum(servo.getMaximumPositionRadians());
+
+                    rotationModeChanged(servo.getRotationMode());
 
                     updateState();
 
@@ -308,7 +313,6 @@ public class DynamixelGUI
                     nextPollID = 0;
 
                 for (int id = 0; id < servoPanels.length; id++) {
-
                     servoPanels[id].updateState();
                 }
             }
