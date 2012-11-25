@@ -43,27 +43,9 @@ public class MXSeriesServo extends AbstractServo
         writeToRAM(new byte[] { 26, d, i, p}, true);
     }
 
-    protected void setJointGoal(double radians, double speedfrac, double torquefrac)
+    public void setJointGoal(double radians, double speedfrac, double torquefrac)
     {
-        assert(!rotationMode);
-
-        // ensure proper ranges
-        radians = mod2pi(radians);  // do not use MathUtil.mod2pi
-        speedfrac = Math.max(0, Math.min(1, Math.abs(speedfrac)));
-        torquefrac = Math.max(0, Math.min(1, torquefrac));
-
-        double min = getMinimumPositionRadians();
-        double max = getMaximumPositionRadians();
-        radians = Math.max(min, Math.min(max, radians));
-
-        int posv = ((int) Math.round((radians - min) / (max - min) * 0xfff)) & 0xfff;
-        int speedv = (int)(speedfrac * 0x3ff);
-        int torquev = (int) (torquefrac * 0x3ff);
-
-        writeToRAM(new byte[] { 0x1e,
-                                (byte) (posv & 0xff), (byte) (posv >> 8),
-                                (byte) (speedv & 0xff), (byte) (speedv >> 8),
-                                (byte) (torquev & 0xff), (byte) (torquev >> 8) }, true);
+        setJointGoal(0xfff, radians, speedfrac, torquefrac);
     }
 
     /** Get servo status **/
@@ -79,7 +61,7 @@ public class MXSeriesServo extends AbstractServo
             return null;
 
         Status st = new Status();
-        st.positionRadians = ((resp[1] & 0xff) + ((resp[2] & 0x3f) << 8)) * 2 * Math.PI / 0xfff - Math.PI;
+        st.positionRadians = ((resp[1] & 0xff) + ((resp[2] & 0xf) << 8)) * 2 * Math.PI / 0xfff - Math.PI;
 
         int tmp = ((resp[3] & 0xff) + ((resp[4] & 0x3f) << 8));
         if (tmp < 1024)
