@@ -32,7 +32,8 @@ public class FeedbackSlider extends JComponent
 
     boolean copyactual=false;
 
-    boolean showactual=true;
+    public boolean showactual = true;
+    public boolean showgoal = true;
 
     // format positions:
     // -1: disabled
@@ -156,8 +157,8 @@ public class FeedbackSlider extends JComponent
         g.setColor(Color.black);
         g.draw(barr);
 
-        ////// goal knob
-        if (true) {
+        if (showgoal) {
+            ////// goal knob
             double x = width * (goalvalue - minvalue) / (maxvalue - minvalue);
             Ellipse2D.Double goalknob = new Ellipse2D.Double(x - goalknobsize / 2.0,
                                                              cy - goalknobsize / 2.0,
@@ -197,13 +198,13 @@ public class FeedbackSlider extends JComponent
                              (int) (cy + 16));
             }
 
-            if (actualFormatPosition >= 0) {
+            if (showactual && actualFormatPosition >= 0) {
                 String s = String.format(actualFormatString, actualvalue);
                 g.drawString(s, (int) ((width * actualFormatPosition) - (s.length()*fontWidth*actualFormatPosition)),
                              (int) (cy + 16));
             }
 
-            if (goalFormatPosition >= 0) {
+            if (showgoal && goalFormatPosition >= 0) {
                 String s = String.format(goalFormatString, goalvalue);
                 g.drawString(s, (int) ((width * goalFormatPosition) - (s.length()*fontWidth*goalFormatPosition)),
                              (int) (cy + 16));
