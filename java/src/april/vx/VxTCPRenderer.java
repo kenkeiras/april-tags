@@ -37,8 +37,10 @@ public class VxTCPRenderer extends VxRenderer
         int port = Integer.parseInt(url_parts[1]);
         try {
             Socket sock = new Socket(host, port);
-            ins = new DataInputStream(sock.getInputStream());
-            outs = new DataOutputStream(sock.getOutputStream());
+            ins = new DataInputStream(new BufferedInputStream(sock.getInputStream()));
+            outs = new DataOutputStream(new BufferedOutputStream(sock.getOutputStream()));
+            // ins = new DataInputStream(sock.getInputStream());
+            // outs = new DataOutputStream(sock.getOutputStream());
         } catch (IOException e) {
             System.out.println("ERR: Ex: "+e);
             System.exit(1);
@@ -111,6 +113,7 @@ public class VxTCPRenderer extends VxRenderer
                 outs.writeInt(code);
                 outs.writeInt(lcm_out.size());
                 outs.write(lcm_out.getBuffer(), 0, lcm_out.size());
+                outs.flush();
             }
         } catch(IOException e){
             System.out.println("Ex: "+e); e.printStackTrace();
@@ -126,6 +129,7 @@ public class VxTCPRenderer extends VxRenderer
         try {
             synchronized(outs) {
                 outs.writeInt(VxTCPServer.VX_TCP_REQUEST_SIZE);
+                outs.flush();
             }
 
             synchronized(ins) {

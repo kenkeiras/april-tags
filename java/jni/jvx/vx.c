@@ -61,7 +61,7 @@ struct gl_prog_resc {
 
 
 static vx_t state;
-static int verbose = 0;
+static int verbose = 1;
 
 
 static void checkVersions()

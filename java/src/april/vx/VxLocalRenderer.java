@@ -136,24 +136,30 @@ public class VxLocalRenderer extends VxRenderer
         this.width = width;
         this.height = height;
 
+        System.out.println("Starting render");
+
+        final Object lock = new Object();
         Runnable r = new Runnable()
             {
                 public void run()
                 {
-                    render(instanceID, width, height, img);
-                    synchronized(this) {
-                        notifyAll();
+                    synchronized(gl_thread) {
+                        render(instanceID, width, height, img);
+                    }
+                    synchronized(lock) {
+                        lock.notifyAll();
                     }
                 }
             };
         gl_thread.add_task(r);
 
 
-        synchronized(r) {
+        synchronized(lock) {
             try {
-                r.wait();
+                lock.wait();
             } catch(InterruptedException e){}
         }
+        System.out.println("render ended");
     }
 
     // Takes as input a row-major projection-model matrix which is

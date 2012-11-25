@@ -93,8 +93,8 @@ public class VxTCPServer extends Thread
         public void run()
         {
             try {
-                DataInputStream ins = new DataInputStream(sock.getInputStream());
-                DataOutputStream outs = new DataOutputStream(sock.getOutputStream());
+                DataInputStream ins = new DataInputStream(new BufferedInputStream(sock.getInputStream()));
+                DataOutputStream outs = new DataOutputStream(new BufferedOutputStream(sock.getOutputStream()));
 
                 // Read data from the TCP connection, and guarantee that it is processed FIFO by the rendering thread
                 //
@@ -107,6 +107,7 @@ public class VxTCPServer extends Thread
                         outs.writeInt(VX_TCP_CANVAS_SIZE);
                         outs.writeInt(dim[0]);
                         outs.writeInt(dim[1]);
+                        outs.flush();
                         continue;
                     }
 
