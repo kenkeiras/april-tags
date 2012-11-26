@@ -1,13 +1,41 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "vhash.h"
 
-#define INITIAL_SIZE 16
+#define INITIAL_NBUCKETS 16
+#define INITIAL_BUCKET_CAPACITY 4
 
 // when the ratio of allocations to actual size drops below this
 // ratio, we rehash. (Reciprocal of more typical load factor.)
 #define REHASH_RATIO 2
+
+struct bucket_entry
+{
+    void *key;
+    void *value;
+};
+
+struct bucket
+{
+    uint32_t size; // # entries in this bucket
+    uint32_t alloc; // # entries allocated
+    struct bucket_entry *entries;
+};
+
+struct vhash
+{
+    uint32_t(*hash)(const void *a);
+
+    // returns 1 if equal
+    int(*equals)(const void *a, const void *b);
+
+    int size; // # of items in hash table
+
+    struct bucket *buckets;
+    int nbuckets;
+};
 
 vhash_t *vhash_create(uint32_t(*hash)(const void *a), int(*equals)(const void *a, const void*b))
 {
@@ -15,163 +43,200 @@ vhash_t *vhash_create(uint32_t(*hash)(const void *a), int(*equals)(const void *a
     vh->hash = hash;
     vh->equals = equals;
 
-    vh->alloc = INITIAL_SIZE;
-    vh->elements = (struct vhash_element**) calloc(vh->alloc, sizeof(struct vhash_element*));
+    vh->nbuckets = INITIAL_NBUCKETS;
+    vh->buckets = (struct bucket*) calloc(vh->nbuckets, sizeof(struct bucket));
     return vh;
-}
-
-// free all vhash_element structs. (does not free keys or values).
-static void free_elements(struct vhash_element **elements, int alloc)
-{
-    for (int i = 0; i < alloc; i++) {
-        struct vhash_element *el = elements[i];
-        while (el != NULL) {
-            struct vhash_element *nextel = el->next;
-            free(el);
-            el = nextel;
-        }
-    }
 }
 
 void vhash_destroy(vhash_t *vh)
 {
-    free_elements(vh->elements, vh->alloc);
-    free(vh->elements);
+    for (int i = 0; i < vh->nbuckets; i++)
+        free(vh->buckets[i].entries);
+    free(vh->buckets);
     free(vh);
+}
+
+int vhash_size(vhash_t *vh)
+{
+    return vh->size;
+}
+
+int vhash_contains(vhash_t *vh, const void *key)
+{
+    uint32_t hash = vh->hash(key);
+    int idx = hash % vh->nbuckets;
+
+    struct bucket *bucket = &vh->buckets[idx];
+    for (int i = 0; i < bucket->size; i++) {
+        if (vh->equals(key, bucket->entries[i].key))
+            return 1;
+    }
+
+    return 0;
 }
 
 void *vhash_get(vhash_t *vh, const void *key)
 {
     uint32_t hash = vh->hash(key);
-    int idx = hash % vh->alloc;
+    int idx = hash % vh->nbuckets;
 
-    struct vhash_element *el = vh->elements[idx];
-    while (el != NULL) {
-        if (vh->equals(el->key, key)) {
-            return el->value;
-        }
-        el = el->next;
+    struct bucket *bucket = &vh->buckets[idx];
+    for (int i = 0; i < bucket->size; i++) {
+        if (vh->equals(key, bucket->entries[i].key))
+            return bucket->entries[i].value;
     }
 
     return NULL;
 }
 
-// returns one if a new element was added, 0 else. This is abstracted
-// so that we can use it when put-ing and resizing.
-static inline int vhash_put_real(vhash_t *vh, struct vhash_element **elements, int alloc, void *key, void *value)
+// returns 1 if there was an oldkey/oldvalue.
+static inline int vhash_put_real(vhash_t *vh, struct bucket *buckets, int nbuckets, void *key, void *value, void *oldkey, void *oldvalue)
 {
     uint32_t hash = vh->hash(key);
 
-    int idx = hash % alloc;
+    int idx = hash % nbuckets;
+    struct bucket *bucket = &buckets[idx];
 
     // replace an existing key if it exists.
-    struct vhash_element *el = elements[idx];
-    while (el != NULL) {
-        if (vh->equals(el->key, key)) {
-            el->value = value;
-            return 0;
+    for (int i = 0; i < bucket->size; i++) {
+        if (vh->equals(key, bucket->entries[i].key)) {
+            if (oldkey)
+                *((void**) oldkey) = bucket->entries[i].key;
+            if (oldvalue)
+                *((void**) oldvalue) = bucket->entries[i].value;
+
+            bucket->entries[i].key = key;
+            bucket->entries[i].value = value;
+            return 1;
         }
-        el = el->next;
     }
 
-    // create a new key and prepend it to our linked list.
-    el = (struct vhash_element*) calloc(1, sizeof(struct vhash_element));
-    el->key = key;
-    el->value = value;
-    el->next = elements[idx];
+    // enlarge bucket?
+    if (bucket->size == bucket->alloc) {
+        if (bucket->alloc == 0)
+            bucket->alloc = INITIAL_BUCKET_CAPACITY;
+        else
+            bucket->alloc *= 2;
 
-    elements[idx] = el;
-    return 1;
+        bucket->entries = realloc(bucket->entries, bucket->alloc * sizeof(struct bucket_entry));
+    }
+
+    // add!
+    bucket->entries[bucket->size].key = key;
+    bucket->entries[bucket->size].value = value;
+    bucket->size++;
+
+    if (oldkey)
+        *((void**) oldkey) = NULL;
+    if (oldvalue)
+        *((void**) oldvalue) = NULL;
+
+    return 0;
 }
 
-// returns number of elements removed
-vhash_pair_t vhash_remove(vhash_t *vh, void *key)
+int vhash_remove(vhash_t *vh, void *key, void *oldkey, void *oldvalue)
 {
     uint32_t hash = vh->hash(key);
 
-    int idx = hash % vh->alloc;
+    int idx = hash % vh->nbuckets;
+    struct bucket *bucket = &vh->buckets[idx];
 
-    struct vhash_element **out = &vh->elements[idx];
-    struct vhash_element *in = vh->elements[idx];
+    // replace an existing key if it exists.
+    for (int i = 0; i < bucket->size; i++) {
+        if (vh->equals(key, bucket->entries[i].key)) {
+            if (oldkey)
+                *((void**) oldkey) = bucket->entries[i].key;
+            if (oldvalue)
+                *((void**) oldvalue) = bucket->entries[i].value;
 
-    vhash_pair_t pair;
-    pair.key = NULL;
-    pair.value = NULL;
+            // shuffle remove.
+            bucket->entries[i] = bucket->entries[bucket->size-1];
+            bucket->size--;
+            vh->size--;
 
-    while (in != NULL) {
-        if (vh->equals(in->key, key)) {
-            // remove this element.
-            pair.key = in->key;
-            pair.value = in->value;
-
-            vh->size -= 1;
-            struct vhash_element *tmp = in->next;
-            free(in);
-            in = tmp;
-        } else {
-            // keep this element (copy it back out)
-            *out = in;
-            out = &in->next;
-            in = in->next;
+            return 1;
         }
     }
 
-    *out = NULL;
-    return pair;
+    if (oldkey)
+        *((void**) oldkey) = NULL;
+    if (oldvalue)
+        *((void**) oldvalue) = NULL;
+
+    return 0;
 }
 
-void vhash_put(vhash_t *vh, void *key, void *value)
+int vhash_put(vhash_t *vh, void *key, void *value, void *oldkey, void *oldvalue)
 {
-    int added = vhash_put_real(vh, vh->elements, vh->alloc, key, value);
-    vh->size += added;
+    if (vh->nbuckets * REHASH_RATIO < vh->size) {
 
-    int ratio = vh->alloc / vh->size;
-
-    if (ratio < REHASH_RATIO) {
         // resize
-        int newalloc = vh->alloc*2;
-        struct vhash_element **newelements = (struct vhash_element**) calloc(newalloc, sizeof(struct vhash_element*));
+        int new_nbuckets = vh->nbuckets*2;
+        struct bucket *new_buckets = calloc(new_nbuckets, sizeof(struct bucket));
 
         // put all our existing elements into the new hash table
-        for (int i = 0; i < vh->alloc; i++) {
-            struct vhash_element *el = vh->elements[i];
-            while (el != NULL) {
-                vhash_put_real(vh, newelements, newalloc, el->key, el->value);
-                el = el->next;
-            }
+        vhash_iterator_t vit;
+        vhash_iterator_init(vh, &vit);
+        void *key, *value;
+        while (vhash_iterator_next(&vit, &key, &value)) {
+            vhash_put_real(vh, new_buckets, new_nbuckets, key, value, NULL, NULL);
         }
 
         // free the old elements
-        free_elements(vh->elements, vh->alloc);
+        for (int i = 0; i < vh->nbuckets; i++)
+            free(vh->buckets[i].entries);
+        free(vh->buckets);
 
         // switch to the new elements
-        vh->alloc = newalloc;
-        vh->elements = newelements;
+        vh->nbuckets = new_nbuckets;
+        vh->buckets = new_buckets;
     }
+
+    int has_oldkey = vhash_put_real(vh, vh->buckets, vh->nbuckets, key, value, oldkey, oldvalue);
+    if (!has_oldkey)
+        vh->size++;
+
+    return has_oldkey;
 }
 
 void vhash_iterator_init(vhash_t *vh, vhash_iterator_t *vit)
 {
-    vit->bucket = -1;
-    vit->el = NULL;
+    vit->vh = vh;
+    vit->bucket = 0;
+    vit->idx = 0;
 }
 
-void *vhash_iterator_next_key(vhash_t *vh, vhash_iterator_t *vit)
+// Supply a pointer to a pointer
+// e.g. char* key; varray_t *value; int res = vhash_iterator_next(&vit, &key, &value);
+int vhash_iterator_next(vhash_iterator_t *vit, void *key, void *value)
 {
-    // any more left in this bucket?
-    if (vit->el != NULL)
-        vit->el = vit->el->next;
+    vhash_t *vh = vit->vh;
 
-    // search for the next non-empty bucket.
-    while (vit->el == NULL) {
-        if (vit->bucket + 1 == vh->alloc)
-            return NULL; // the end.
+    while (vit->bucket < vh->nbuckets) {
+
+        if (vit->idx < vh->buckets[vit->bucket].size) {
+            *((void**) key) = vh->buckets[vit->bucket].entries[vit->idx].key;
+            *((void**) value) = vh->buckets[vit->bucket].entries[vit->idx].value;
+            vit->idx++;
+
+            return 1;
+        }
 
         vit->bucket++;
-        vit->el = vh->elements[vit->bucket];
+        vit->idx = 0;
     }
 
-    return vit->el->key;
+    return 0;
+}
+
+void vhash_iterator_remove(vhash_iterator_t *vit)
+{
+    vhash_t *vh = vit->vh;
+
+    void *key = vh->buckets[vit->bucket].entries[vit->idx-1].key;
+
+    vhash_remove(vh, key, NULL, NULL);
+    vit->idx--;
 }
 
 uint32_t vhash_str_hash(const void *_a)
@@ -188,6 +253,12 @@ uint32_t vhash_str_hash(const void *_a)
     return hash;
 }
 
+union uintpointer
+{
+    const void *p;
+    uint32_t i;
+};
+
 int vhash_str_equals(const void *_a, const void *_b)
 {
     char *a = (char*) _a;
@@ -196,13 +267,42 @@ int vhash_str_equals(const void *_a, const void *_b)
     return !strcmp(a, b);
 }
 
+uint32_t vhash_ptr_hash(const void *_a)
+{
+    union uintpointer ip;
+
+    ip.i = 0; // make sure any extra bits in i are cleared.
+    ip.p = _a;
+
+    uint32_t hash = ip.i;
+    hash ^= (hash >> 7);
+
+    return hash;
+}
+
+int vhash_ptr_equals(const void *_a, const void *_b)
+{
+    return _a == _b;
+}
+
 uint32_t vhash_uint32_hash(const void *_a)
 {
-    return (uint32_t) _a;
+    union uintpointer ip;
+
+    ip.i = 0; // make sure any extra bits in i are cleared.
+    ip.p = _a;
+
+    return ip.i;
 }
 
 int vhash_uint32_equals(const void *_a, const void *_b)
 {
-    return ((uint32_t) _a) == ((uint32_t) _b);
-}
+    union uintpointer ipa, ipb;
 
+    ipa.i = 0;
+    ipa.p = _a;
+    ipb.i = 0;
+    ipb.p = _b;
+
+    return (ipa.i == ipb.i);
+}

@@ -169,19 +169,17 @@ int vx_update_buffer(char * name, vx_code_input_stream_t * codes)
 {
     if (verbose) printf("Updating codes buffer: %s codes->len %d codes->pos %d\n", name, codes->len, codes->pos);
 
-    if (vhash_get(state.buffer_codes_map, name) != NULL) {
-        vhash_pair_t prev = vhash_remove(state.buffer_codes_map, name);
+    name = strdup(name); // copy the name
+    char * prev_key = NULL;
+    vx_code_input_stream_t * prev_value = NULL;
+    vhash_put(state.buffer_codes_map, name, codes, &prev_key, &prev_value);
 
-        name = prev.key; // Reuse the old key
 
-        if (verbose) printf("  Destroying old codes: of len %d\n", ((vx_code_input_stream_t *)prev.value)->len);
-        vx_code_input_stream_destroy(prev.value);
-
-    } else { // First time we've seen this buffer
-        name = strdup(name);
+    if (prev_key != NULL) {
+        free(prev_key);
+        vx_code_input_stream_destroy(prev_value);
     }
 
-    vhash_put(state.buffer_codes_map, name, codes);
     return 0;
 }
 
@@ -564,8 +562,8 @@ int vx_render_read(int width, int height, uint8_t *out_buf)
     vhash_iterator_t itr;
     vhash_iterator_init(state.buffer_codes_map, &itr);
     char * buffer_name = NULL;
-    while ((buffer_name = vhash_iterator_next_key(state.buffer_codes_map, &itr)) != NULL) {
-        vx_code_input_stream_t *codes = vhash_get(state.buffer_codes_map, buffer_name);
+    vx_code_input_stream_t *codes = NULL;
+    while (vhash_iterator_next(&itr, &buffer_name, &codes)) {
         codes->reset(codes);
 
         if (verbose) printf("  Rendering buffer: %s codes->len %d codes->pos %d\n", buffer_name, codes->len, codes->pos);
