@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#include "varray.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -44,6 +46,10 @@ void vhash_destroy(vhash_t *vh);
 
 // vhash_contains can tell the difference between a key being unmapped or mapped to NULL.
 int vhash_contains(vhash_t *vh, const void *key);
+
+// returns a new array containing all the keys in this hashtable
+// user is responsible for eventually calling 'varray_destroy(key_set);'
+varray_t * vhash_key_set(vhash_t *vh);
 
 // returns NULL if the key is unmapped
 void *vhash_get(vhash_t *vh, const void *key);

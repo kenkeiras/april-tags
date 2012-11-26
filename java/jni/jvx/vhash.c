@@ -239,6 +239,17 @@ void vhash_iterator_remove(vhash_iterator_t *vit)
     vit->idx--;
 }
 
+varray_t * vhash_key_set(vhash_t * vh)
+{
+    varray_t * key_set = varray_create();
+
+    for (int i = 0; i < vh->nbuckets; i++) {
+        for (int j = 0; j < vh->buckets[i].size; j++)
+            varray_add(key_set, vh->buckets[i].entries[j].key);
+    }
+    return key_set;
+}
+
 uint32_t vhash_str_hash(const void *_a)
 {
     char *a = (char*) _a;
