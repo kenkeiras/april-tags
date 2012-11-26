@@ -4,6 +4,7 @@ import java.util.concurrent.atomic.*;
 import java.awt.*;
 import java.awt.image.*;
 import java.io.*;
+import java.nio.*;
 import april.jmat.*;
 
 public class VxUtil
@@ -112,10 +113,9 @@ public class VxUtil
         return out;
     }
 
-    // Converts primitive arrays to byte arrays
+    // Converts primitive arrays to a byte array, big endian
     public static byte[] copyByteArray(Object obj)
     {
-
         VxCodeOutputStream vout = new VxCodeOutputStream();
         if(double[].class == obj.getClass()) {
             double[] array = (double[]) obj;
@@ -136,6 +136,42 @@ public class VxUtil
         }
 
         return vout.toByteArray();
+    }
+
+    // The following methods take big endian byte buffers,
+    // and parses them to primitive arrays of the appropriate type
+    public static Object copyToType(byte[] buf, int type)
+    {
+        switch(type) {
+            case Vx.GL_FLOAT:
+                return copyFloatArray(buf);
+            case Vx.GL_INT:
+            case Vx.GL_UNSIGNED_INT:
+                return copyIntArray(buf);
+            case Vx.GL_BYTE:
+            case Vx.GL_UNSIGNED_BYTE:
+                return buf;
+        }
+
+        System.out.println("ERR: unsupported array type "+type);
+        System.exit(1);
+        return null;
+    }
+
+    public static float[] copyFloatArray(byte array[])
+    {
+        FloatBuffer fb =  ByteBuffer.wrap(array).asFloatBuffer();
+        float out[] = new float[fb.remaining()];
+        fb.get(out);
+        return out;
+    }
+
+    public static int[] copyIntArray(byte array[])
+    {
+        IntBuffer ib =  ByteBuffer.wrap(array).asIntBuffer();
+        int out[] = new int[ib.remaining()];
+        ib.get(out);
+        return out;
     }
 
 }

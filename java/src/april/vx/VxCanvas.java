@@ -5,6 +5,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.image.*;
 
+import april.jmat.*;
+
 // Class which maintains a VxLocalRenderer instance (preferably through some synchronous wrapper)
 // Also can be painted as a component
 public class VxCanvas extends JComponent
@@ -19,6 +21,17 @@ public class VxCanvas extends JComponent
     public VxCanvas(VxLocalRenderer rend)
     {
         this.rend = rend;
+
+        int canvas_size[] = rend.get_canvas_size();
+        int width = canvas_size[0], height = canvas_size[1];
+
+        // XXX camera management hack
+        double proj_d[][] = LinAlg.matrixAB(VxUtil.gluPerspective(60.0f, width*1.0f/height, 0.1f, 5000.0f),
+                                            VxUtil.lookAt(new double[]{0,0,10}, new double[3], new double[]{0,1,0}));
+
+        float proj[][] = VxUtil.copyFloats(proj_d);
+        ((VxLocalRenderer)rend).set_system_pm_matrix(proj);
+
         new RepaintThread().start();
     }
 

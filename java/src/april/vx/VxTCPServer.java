@@ -75,7 +75,9 @@ public class VxTCPServer extends Thread
         for (int i = 0; i < lcm_resources.nresources; i++) {
             lcmvx_resource_t lvr = lcm_resources.resources[i];
 
-            VxResource vr = new VxResource(lvr.type, lvr.res, lvr.count, lvr.fieldwidth, lvr.id);
+            // Returns a correctly parsed array. Transport is big-endian
+            Object res = VxUtil.copyToType(lvr.res, lvr.type);
+            VxResource vr = new VxResource(lvr.type, res, lvr.count, lvr.fieldwidth, lvr.id);
             resources.add(vr);
         }
         rend.add_resources(resources);

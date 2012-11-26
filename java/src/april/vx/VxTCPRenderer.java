@@ -67,7 +67,7 @@ public class VxTCPRenderer extends VxRenderer
             lvr.count = vr.count;
             lvr.fieldwidth = vr.fieldwidth;
             lvr.len = lvr.count * lvr.fieldwidth;
-            lvr.res = VxUtil.copyByteArray(vr.res);
+            lvr.res = VxUtil.copyByteArray(vr.res); // Big endian
 
             lcm_resources.resources[idx++] = lvr;
         }

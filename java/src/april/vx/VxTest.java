@@ -113,7 +113,7 @@ public class VxTest
 
         // Now do Texture:
         ArrayList<VxObject> progs1 = new ArrayList();
-        {
+        if (true) {
             BufferedImage img = ImageUtil.convertImage(ImageIO.read(new File(opts.getString("img-path"))), BufferedImage.TYPE_3BYTE_BGR);
             VxTexture vtex = new VxTexture(img);
 
@@ -142,8 +142,6 @@ public class VxTest
 
             vp.setVertexAttrib("color", color_attribs.get(i));
 
-            // vp.setUniform("proj", proj);
-
             vp.setElementArray(index, Vx.GL_TRIANGLES);
 
             progs1.add(vp);
@@ -155,8 +153,6 @@ public class VxTest
             vp.setVertexAttrib("position", point_attribs.get(i));
 
             vp.setVertexAttrib("color", color_attribs.get(i));
-
-            // vp.setUniform("proj", proj);
 
             vp.setElementArray(index, Vx.GL_TRIANGLES);
 
@@ -189,21 +185,13 @@ public class VxTest
 
 
 
-        int canvas_size[] = vxr.get_canvas_size();
-        int width = canvas_size[0], height = canvas_size[1];
 
         if (vxr instanceof VxLocalRenderer) {
-
-
-
-            double proj_d[][] = LinAlg.matrixAB(VxUtil.gluPerspective(60.0f, width*1.0f/height, 0.1f, 5000.0f),
-                                                VxUtil.lookAt(new double[]{0,0,10}, new double[3], new double[]{0,1,0}));
-
-            float proj[][] = VxUtil.copyFloats(proj_d);
-            ((VxLocalRenderer)vxr).set_system_pm_matrix(proj);
-
             JFrame jf = new JFrame();
 
+
+            int canvas_size[] = vxr.get_canvas_size();
+            int width = canvas_size[0], height = canvas_size[1];
 
             VxCanvas vc = new VxCanvas(((VxLocalRenderer)vxr));
             jf.add(vc);
