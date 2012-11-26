@@ -27,27 +27,27 @@ public class VxResourceManager
 
     // Should result in an atomic update to the program database
     // XXX Need to add layer support here?
-    public synchronized void swap_buffer(String name, HashSet<VxResource> resources, VxCodeOutputStream codes)
+    public synchronized void swap_buffer(String name, int drawOrder, HashSet<VxResource> resources, VxCodeOutputStream codes)
     {
 
         // Indicates need for external introspection on C Side...
         // Or the vx_renderer could provide specify the update function when asked
         if (rend instanceof VxLocalRenderer || rend instanceof VxTCPRenderer) {
-            update_active_deallocation(name, resources, codes);
+            update_active_deallocation(name, drawOrder, resources, codes);
         } else if (rend instanceof VxLCMRenderer) {
-            update_always_send(name,resources,codes);
+            update_always_send(name, drawOrder, resources, codes);
         }
 
     }
 
-    private void update_always_send(String name, HashSet<VxResource> resources, VxCodeOutputStream codes)
+    private void update_always_send(String name, int drawOrder, HashSet<VxResource> resources, VxCodeOutputStream codes)
     {
         // rend.remove_resources(null);
         rend.add_resources(resources);
-        rend.update_codes(name, codes);
+        rend.update_codes(name, drawOrder, codes);
     }
 
-    private void update_active_deallocation(String name, HashSet<VxResource> resources, VxCodeOutputStream codes)
+    private void update_active_deallocation(String name, int drawOrder, HashSet<VxResource> resources, VxCodeOutputStream codes)
     {
         // Step 1: Determine which resources are new, and need to be sent:
 
@@ -74,6 +74,6 @@ public class VxResourceManager
         // Push out the changes
         rend.remove_resources(deallocate);
         rend.add_resources(send);
-        rend.update_codes(name, codes);
+        rend.update_codes(name, drawOrder, codes);
     }
 }

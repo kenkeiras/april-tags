@@ -56,7 +56,7 @@ public class VxTCPServer extends Thread
     {
         // Convert and send off
         VxCodeOutputStream vout = new VxCodeOutputStream(lcm_codes.buf);
-        rend.update_codes(lcm_codes.buffer_name, vout);
+        rend.update_codes(lcm_codes.buffer_name, lcm_codes.draw_order, vout);
     }
 
     private void process_dealloc(lcmvx_dealloc_t lcm_dealloc)

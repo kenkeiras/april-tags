@@ -29,7 +29,7 @@ public class VxLCMRenderer extends VxRenderer
     {
     }
 
-    public void update_codes(String buffer_name, VxCodeOutputStream codes)
+    public void update_codes(String buffer_name, int drawOrder, VxCodeOutputStream codes)
     {
     }
 

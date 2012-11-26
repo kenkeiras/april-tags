@@ -44,13 +44,13 @@ JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_create
  * Signature: (J)I
  */
 JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_destroy
-(JNIEnv * jenv, jclass jcls, jlong instanceID)
+(JNIEnv * jenv, jclass jcls, jint instanceID)
 {
     return 0;
 }
 
 JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_add_1resources
-(JNIEnv * jenv, jclass jcls, jlong instanceID,
+(JNIEnv * jenv, jclass jcls, jint instanceID,
  jint nresc, jintArray jtypes, jobjectArray jrescs, jintArray jcounts, jintArray jfieldwidths, jlongArray jids)
 {
 
@@ -94,7 +94,7 @@ JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_add_1resources
 
 
 JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_update_1codes
-(JNIEnv * jenv, jclass jcls, jlong instanceID, jbyteArray jbuf_name, jint codes_len, jbyteArray jcodes)
+(JNIEnv * jenv, jclass jcls, jint instanceID, jbyteArray jbuf_name, jint draw_order, jint codes_len, jbyteArray jcodes)
 {
 
     // Grab buffer name
@@ -108,13 +108,13 @@ JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_update_1codes
     (*jenv)->ReleasePrimitiveArrayCritical(jenv, jcodes, codes_env, 0);
 
 
-    vx_update_buffer(buf_name, codes);
+    vx_update_codes(buf_name, draw_order, codes);
 
     return 0;
 }
 
 JNIEXPORT void JNICALL Java_april_vx_VxLocalRenderer_deallocate_1resources
-(JNIEnv * jenv, jclass jcls, jlong instanceID, jlongArray jguids, jint nguids)
+(JNIEnv * jenv, jclass jcls, jint instanceID, jlongArray jguids, jint nguids)
 {
 
     jlong* guids = (*jenv)->GetPrimitiveArrayCritical(jenv, jguids, NULL);
@@ -123,7 +123,7 @@ JNIEXPORT void JNICALL Java_april_vx_VxLocalRenderer_deallocate_1resources
 }
 
 JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_render
-  (JNIEnv * jenv, jclass jcls, jlong instanceID,  jint width, jint height, jbyteArray jimg)
+  (JNIEnv * jenv, jclass jcls, jint instanceID,  jint width, jint height, jbyteArray jimg)
 {
     jbyte* img_env = (*jenv)->GetPrimitiveArrayCritical(jenv, jimg, NULL);
     int res = vx_render_read(width, height, (uint8_t *) img_env);
@@ -133,7 +133,7 @@ JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_render
 }
 
 JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_set_1system_1pm_1matrix
-(JNIEnv * jenv, jclass jcls, jlong instanceID, jfloatArray jpm_mat)
+(JNIEnv * jenv, jclass jcls, jint instanceID, jfloatArray jpm_mat)
 {
 
     jfloat* pm_mat = (*jenv)->GetPrimitiveArrayCritical(jenv, jpm_mat, NULL);

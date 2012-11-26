@@ -74,10 +74,11 @@ public class VxTCPRenderer extends VxRenderer
         writeLCM(VxTCPServer.VX_TCP_ADD_RESOURCES, lcm_resources);
     }
 
-    public  void update_codes(String buffer_name, VxCodeOutputStream codes)
+    public  void update_codes(String buffer_name, int drawOrder, VxCodeOutputStream codes)
     {
         System.out.println("update_codes");
         lcmvx_render_codes_t lcodes = new lcmvx_render_codes_t();
+        lcodes.draw_order = drawOrder;
         lcodes.buffer_name = buffer_name;
         lcodes.buf = codes.getBuffer();
         lcodes.buflen = codes.size();

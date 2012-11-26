@@ -29,6 +29,7 @@ public class VxWorld
         ArrayList<VxObject> objs = new ArrayList();
 
         String name;
+        int drawOrder = 0;
 
         public synchronized void stage(VxObject ... vxp)
         {
@@ -39,6 +40,11 @@ public class VxWorld
         boolean enabled()
         {
             return true;
+        }
+
+        public void setDrawOrder(int drawOrder)
+        {
+            this.drawOrder = drawOrder;
         }
 
         public void commit()
@@ -61,7 +67,7 @@ public class VxWorld
             }
 
             // Notify the Layer we need to be rem
-            vxm.swap_buffer(name, resources, codes);
+            vxm.swap_buffer(name, drawOrder, resources, codes);
         }
     }
 

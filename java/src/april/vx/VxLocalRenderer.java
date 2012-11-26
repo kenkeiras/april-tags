@@ -92,14 +92,14 @@ public class VxLocalRenderer extends VxRenderer
     }
 
 
-    public void update_codes(String buffer_name, VxCodeOutputStream codes)
+    public void update_codes(String buffer_name, int drawOrder, VxCodeOutputStream codes)
     {
         synchronized(gl_thread)
         {
             byte codeData[] = codes.getBuffer();
             int codeLen = codes.size();
 
-            update_codes(instanceID, VxUtil.copyStringZ(buffer_name), codeLen, codeData);
+            update_codes(instanceID, VxUtil.copyStringZ(buffer_name), drawOrder, codeLen, codeData);
         }
     }
 
@@ -236,13 +236,13 @@ public class VxLocalRenderer extends VxRenderer
     // Native methods
     private static native int init();
     private static native int create();
-    private static native int destroy(long instanceID);
+    private static native int destroy(int instanceID);
 
-    private static native int add_resources(long instanceID, int nresc,
+    private static native int add_resources(int instanceID, int nresc,
                                             int types[], Object[] rescs, int counts[], int fieldwidths[], long ids[]);
-    private static native int update_codes(long instanceID, byte[] buf_name, int code_len, byte[] codes);
-    private static native void deallocate_resources(long instanceID, long[] guids, int nguids);
-    private static native int render(long instanceID, int width, int height, byte[] img);
-    private static native int get_canvas_size(long instanceID, int dim[]);
-    native static int set_system_pm_matrix(long instanceID, float pm[]);
+    private static native int update_codes(int instanceID, byte[] buf_name, int draw_order, int code_len, byte[] codes);
+    private static native void deallocate_resources(int instanceID, long[] guids, int nguids);
+    private static native int render(int instanceID, int width, int height, byte[] img);
+    private static native int get_canvas_size(int instanceID, int dim[]);
+    native static int set_system_pm_matrix(int instanceID, float pm[]);
 }

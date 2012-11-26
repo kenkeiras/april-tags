@@ -36,7 +36,7 @@ struct vx
 
     lihash_t * texture_map;
 
-    vhash_t * buffer_codes_map;
+    vhash_t * buffer_map; // holds vx_buffer_t
 
     larray_t * dealloc_ids;
 
@@ -63,6 +63,13 @@ struct gl_prog_resc {
 static vx_t state;
 static int verbose = 1;
 
+
+typedef struct vx_buffer vx_buffer_t;
+struct vx_buffer {
+    char * name; // used as key in the hash map
+    int drawOrder;
+    vx_code_input_stream_t * codes;
+};
 
 static void checkVersions()
 {
@@ -97,7 +104,7 @@ void vx_create()
     state.vbo_map = lihash_create();
     state.texture_map = lihash_create();
 
-    state.buffer_codes_map = vhash_create(vhash_str_hash, vhash_str_equals);
+    state.buffer_map = vhash_create(vhash_str_hash, vhash_str_equals);
 
 
     state.dealloc_ids = larray_create();
@@ -165,19 +172,25 @@ void vx_process_deallocations()
     if (verbose) printf("\n");
 }
 
-int vx_update_buffer(char * name, vx_code_input_stream_t * codes)
+int vx_update_codes(char * name, int drawOrder, vx_code_input_stream_t * codes)
 {
-    if (verbose) printf("Updating codes buffer: %s codes->len %d codes->pos %d\n", name, codes->len, codes->pos);
-
-    name = strdup(name); // copy the name
-    char * prev_key = NULL;
-    vx_code_input_stream_t * prev_value = NULL;
-    vhash_put(state.buffer_codes_map, name, codes, &prev_key, &prev_value);
 
 
-    if (prev_key != NULL) {
-        free(prev_key);
-        vx_code_input_stream_destroy(prev_value);
+    vx_buffer_t * buf = malloc(sizeof(vx_buffer_t));
+    buf->name = strdup(name);
+    buf->drawOrder = drawOrder;
+    buf->codes = codes;
+
+    if (verbose) printf("Updating codes buffer: %s codes->len %d codes->pos %d\n", buf->name, buf->codes->len, buf->codes->pos);
+
+    char * prev_key = NULL; // ignore this, since the key is stored in the struct
+    vx_buffer_t * prev_value = NULL;
+    vhash_put(state.buffer_map, buf->name, buf, &prev_key, &prev_value);
+
+    if (prev_value != NULL) {
+        vx_code_input_stream_destroy(prev_value->codes);
+        free(prev_value->name);
+        free(prev_value);
     }
 
     return 0;
@@ -560,15 +573,16 @@ int vx_render_read(int width, int height, uint8_t *out_buf)
 
     // For each buffer, process all the programs
     vhash_iterator_t itr;
-    vhash_iterator_init(state.buffer_codes_map, &itr);
+    vhash_iterator_init(state.buffer_map, &itr);
     char * buffer_name = NULL;
-    vx_code_input_stream_t *codes = NULL;
-    while (vhash_iterator_next(&itr, &buffer_name, &codes)) {
-        codes->reset(codes);
+    vx_buffer_t * buffer = NULL;
+    while (vhash_iterator_next(&itr, &buffer_name, &buffer)) {
+        buffer->codes->reset(buffer->codes);
 
-        if (verbose) printf("  Rendering buffer: %s codes->len %d codes->pos %d\n", buffer_name, codes->len, codes->pos);
+        if (verbose) printf("  Rendering buffer: %s codes->len %d codes->pos %d\n",
+                            buffer_name, buffer->codes->len, buffer->codes->pos);
 
-        while (!vx_render_program(codes));
+        while (!vx_render_program(buffer->codes));
     }
 
     glPixelStorei(GL_PACK_ALIGNMENT, 1);

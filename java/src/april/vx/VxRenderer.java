@@ -7,7 +7,7 @@ public abstract class VxRenderer
     // Methods which all renderers must support
     // Direct mirror of C-side implementation
     public abstract void add_resources(HashSet<VxResource> resources);
-    public abstract void update_codes(String buffer_name, VxCodeOutputStream codes);
+    public abstract void update_codes(String buffer_name, int drawOrder, VxCodeOutputStream codes);
     public abstract void remove_resources(HashSet<VxResource> resources);
 
     // Warning -- this could be very slow, requiring a round-trip to the server
