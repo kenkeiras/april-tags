@@ -44,6 +44,17 @@ void varray_add(varray_t *va, void *p)
     va->size++;
 }
 
+void varray_insert(varray_t *va, void *p, int idx, void *last_value)
+{
+    assert(idx < va-> size);
+
+    void * prev = va->data[idx];
+    // retain the previous value
+    va->data[idx] = p;
+    * ((void**)last_value) = prev;
+}
+
+
 void *varray_get(varray_t *va, int idx)
 {
     assert(idx < va->size);

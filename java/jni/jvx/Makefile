@@ -75,3 +75,8 @@ april_vx_VxLocalRenderer.h: ../../src/april/vx/VxLocalRenderer.java
 
 clean:
 	rm -rf $(LIB_JNI_OBJS) $(LIBVX_OBJS) *~ april_vx_VxLocalServer.h $(LIB) $(DESTLIB) $(LIB_JNI) $(DESTLIB_JNI)
+
+
+SORT_OBJS=sort_test.o sort_util.o varray.o
+sort_test: $(SORT_OBJS)
+	$(CC) -o $@ $(SORT_OBJS)
