@@ -11,8 +11,8 @@ import april.jmat.*;
 // XXX Probably makes the most sense to handle that synchronization here.
 public class VxLocalRenderer extends VxRenderer
 {
-    // There can be many local
-    private final long instanceID;
+    // There can be many local instances, (only up to 4 billion)
+    private final int instanceID;
 
     // Will trigger as soon as this class is loaded, for any reason,
     // even if no rendering going to be performed
@@ -235,7 +235,7 @@ public class VxLocalRenderer extends VxRenderer
 
     // Native methods
     private static native int init();
-    private static native long create();
+    private static native int create();
     private static native int destroy(long instanceID);
 
     private static native int add_resources(long instanceID, int nresc,

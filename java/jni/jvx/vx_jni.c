@@ -3,22 +3,39 @@
 
 #include "vx.h"
 #include "vx_code_input_stream.h"
-#include "string.h"
+#include <string.h>
+
+#include "vhash.h"
 
 
+
+static uint32_t instanceIDcounter;
+static vhash_t * vx_instance_map;
+
+static void init_vx_jni()
+{
+    instanceIDcounter = 1;
+    vx_instance_map = vhash_create(vhash_uint32_hash, vhash_uint32_equals);
+}
 
 JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_init
 (JNIEnv * jenv, jclass jcls)
 {
+    init_vx_jni();
+
     return vx_initialize();
 }
 
-JNIEXPORT jlong JNICALL Java_april_vx_VxLocalRenderer_create
+JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_create
 (JNIEnv * jenv, jclass jcls)
 {
+    uint32_t instanceID = instanceIDcounter++;
+
+
+
     //XXX instance IDs
     vx_create();
-    return 1;
+    return instanceID;
 }
 
 /*
