@@ -180,6 +180,7 @@ public class VxTest
 
             // XXX This breaks totally
             vw.getBuffer("points").stage(vpts);
+            vw.getBuffer("points").setDrawOrder(10);
             vw.getBuffer("points").commit();
         }
 
@@ -199,6 +200,9 @@ public class VxTest
             jf.setVisible(true);
             jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         }
+
+        vw.getBuffer("first-buffer").setDrawOrder(-4);
+        vw.getBuffer("second-buffer").setDrawOrder(-9);
 
         // Render loop
         for (int i = 0; ; i++) {

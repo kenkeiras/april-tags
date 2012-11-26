@@ -78,15 +78,6 @@ static void varray_quicksort_rec(varray_t * array, int(*compare)(const void *a, 
 
 void varray_sort(varray_t * array, int(*compare)(const void *a, const void * b))
 {
-    // placeholder
-
     varray_quicksort_rec(array, compare, 0, varray_size(array) -1);
-
-    for (int i = 0; i < varray_size(array)-1; i++) {
-        const void * a = varray_get(array, i);
-        const void * b = varray_get(array, i+1);
-
-        printf("Compare idx %d, %d = %d\n", i, i+1, compare(a,b));
-    }
 }
 

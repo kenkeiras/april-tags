@@ -53,7 +53,7 @@ $(DESTLIB) : $(LIB)
 $(DESTLIB_JNI) : $(LIB_JNI)
 	cp $(LIB_JNI) $(DESTLIB_JNI)
 
-LIBVX_OBJS += vx.o glcontext.o  lphash.o vx_code_input_stream.o vx_resc.o vhash.o lihash.o larray.o
+LIBVX_OBJS += vx.o glcontext.o  lphash.o vx_code_input_stream.o vx_resc.o vhash.o lihash.o larray.o varray.o sort_util.o
 
 LIB_JNI_OBJS += vx_jni.o
 

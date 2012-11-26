@@ -49,7 +49,8 @@ int vhash_contains(vhash_t *vh, const void *key);
 
 // returns a new array containing all the keys in this hashtable
 // user is responsible for eventually calling 'varray_destroy(key_set);'
-varray_t * vhash_key_set(vhash_t *vh);
+varray_t * vhash_keys(vhash_t *vh);
+varray_t * vhash_values(vhash_t *vh);
 
 // returns NULL if the key is unmapped
 void *vhash_get(vhash_t *vh, const void *key);

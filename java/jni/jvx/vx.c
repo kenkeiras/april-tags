@@ -16,6 +16,7 @@
 #include "vhash.h"
 #include "lihash.h"
 #include "larray.h"
+#include "sort_util.h"
 
 #include "vx_resc.h"
 
@@ -67,9 +68,14 @@ static int verbose = 1;
 typedef struct vx_buffer vx_buffer_t;
 struct vx_buffer {
     char * name; // used as key in the hash map
-    int drawOrder;
+    int draw_order;
     vx_code_input_stream_t * codes;
 };
+
+static int buffer_compare(const void * a, const void * b)
+{
+    return ((vx_buffer_t *) a)->draw_order - ((vx_buffer_t *)b)->draw_order;
+}
 
 static void checkVersions()
 {
@@ -172,13 +178,13 @@ void vx_process_deallocations()
     if (verbose) printf("\n");
 }
 
-int vx_update_codes(char * name, int drawOrder, vx_code_input_stream_t * codes)
+int vx_update_codes(char * name, int draw_order, vx_code_input_stream_t * codes)
 {
 
 
     vx_buffer_t * buf = malloc(sizeof(vx_buffer_t));
     buf->name = strdup(name);
-    buf->drawOrder = drawOrder;
+    buf->draw_order = draw_order;
     buf->codes = codes;
 
     if (verbose) printf("Updating codes buffer: %s codes->len %d codes->pos %d\n", buf->name, buf->codes->len, buf->codes->pos);
@@ -572,15 +578,17 @@ int vx_render_read(int width, int height, uint8_t *out_buf)
            state.program_map->size, state.texture_map->size);
 
     // For each buffer, process all the programs
-    vhash_iterator_t itr;
-    vhash_iterator_init(state.buffer_map, &itr);
-    char * buffer_name = NULL;
-    vx_buffer_t * buffer = NULL;
-    while (vhash_iterator_next(&itr, &buffer_name, &buffer)) {
+
+    varray_t * buffers = vhash_values(state.buffer_map);
+    varray_sort(buffers, buffer_compare);
+
+    for (int i = 0; i < varray_size(buffers); i++) {
+        vx_buffer_t * buffer = varray_get(buffers, i);
+
         buffer->codes->reset(buffer->codes);
 
-        if (verbose) printf("  Rendering buffer: %s codes->len %d codes->pos %d\n",
-                            buffer_name, buffer->codes->len, buffer->codes->pos);
+        if (verbose) printf("  Rendering buffer: %s with order %d codes->len %d codes->pos %d\n",
+                            buffer->name, buffer->draw_order, buffer->codes->len, buffer->codes->pos);
 
         while (!vx_render_program(buffer->codes));
     }
