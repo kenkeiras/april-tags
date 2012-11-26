@@ -47,23 +47,21 @@ static int varray_pivot(varray_t * array, int(*compare)(const void *a, const voi
 }
 
 static void varray_quicksort_rec(varray_t * array, int(*compare)(const void *a, const void * b),
-                          int first, int last)
+                                 int first, int last)
 {
     // base case, list we need to sort is empty
     if (last <= first)
         return;
 
-    // Step 1: find the pivot
-    int pivot = varray_pivot(array, compare, first, last);
 
-    // Step 1.5: move pivot to the end of the list
+    // Step 1: find the pivot and move it to end of array
+    int pivot = varray_pivot(array, compare, first, last);
+    const void * pivot_v = varray_get(array, pivot);
     varray_swap(array, pivot, last);
 
     // Step 2: scan the array, from 'beg' to 'end' and move elements below the pivot to the beginning,
-    const void * pivot_v = varray_get(array, last);
-
     int nextLower = first; // where will we keep the next value which is smaller than the pivot?
-    for (int i = first; i < last -1; i++) {
+    for (int i = first; i <= last -1; i++) {
         if (compare(varray_get(array, i), pivot_v) < 0) { // item belongs in the lower half, no op
             varray_swap(array, nextLower, i);
             nextLower++;

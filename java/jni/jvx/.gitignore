@@ -3,3 +3,4 @@ april_vx_VxLocalRenderer.h
 *.so
 libvx.a
 april_vx_VxLocalRenderer_GLThread.h
+sort_test
