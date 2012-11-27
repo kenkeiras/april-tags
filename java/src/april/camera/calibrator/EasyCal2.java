@@ -675,10 +675,26 @@ public class EasyCal2
             double maxDist = 0.0;
             for (TagDetection td1 : detections) {
                 for (TagDetection td2 : detections) {
-                    maxDist = Math.max(LinAlg.distance(td1.cxy, td2.cxy), maxDist);
+                    if(td1.id == td2.id)
+                        continue;
+
+                    // How many squares away are we?
+                    double gridDist =  LinAlg.distance(tm.getPositionPixels(td2.id),
+                                                    tm.getPositionPixels(td1.id));
+
+                    // how far apart on the screen are they?
+                    double pixDist = LinAlg.distance(td1.cxy, td2.cxy);
+
+
+                    double distRatio = pixDist/gridDist; // pixels/square
+
+                    if (distRatio > maxDist)
+                        maxDist = distRatio;
                 }
             }
-            double meandistthreshold = maxDist / 30.0; //im.getWidth()/20.0;
+
+            // in units of "squares" how close do we need to get on average?
+            double meandistthreshold = maxDist;
 
 
             // Draw selected pose in color
@@ -780,6 +796,19 @@ public class EasyCal2
 
                     if (!captureNext)
                         draw(bestSI.im, bestSI.detections);
+
+                    // Compute the frame score for this image
+                    {
+                        FrameScorer fs = null;
+                        if (calibrator.getNumImages() < 3)
+                            fs = new InitializationVarianceScorer(calibrator, imwidth, imheight);
+                        else
+                            fs = new PixErrScorer(calibrator, imwidth, imheight);
+                        double selectedScore = fs.scoreFrame(detections);
+                        System.out.printf("Chose image with score %f compared to best %f \n",
+                                          selectedScore,
+                                          bestSuggestions.get(0).score);
+                    }
 
                     addImage(bestSI.im, bestSI.detections);
 
@@ -1243,6 +1272,7 @@ public class EasyCal2
 
         System.out.printf("Picked %d of %d as best suggestions\n", bestSuggestions.size(), suggestDictionary.size());
     }
+
 
     private class FlashThread extends Thread
     {
