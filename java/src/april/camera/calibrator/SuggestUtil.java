@@ -43,8 +43,7 @@ public class SuggestUtil
                 if (det.cxy == null)
                     continue;
 
-                // XXX This check now redundant? XXX This "contains detection" check is not sufficient, since the distortion function
-                // could be malformed
+                // Still need to check for in bounds of the image
                 if (det.cxy[0] < 0 || det.cxy[0] >= width ||
                     det.cxy[1] < 0 || det.cxy[1] >= height)
                     continue;
@@ -60,12 +59,15 @@ public class SuggestUtil
                                             {world[0] + cOff, world[1] - cOff},
                                             {world[0] - cOff, world[1] - cOff}};
 
-
                 det.p = new double[4][];
                 for (int i = 0; i < 4; i++) {
                     det.p[i] = CameraMath.project(cal, verifier, LinAlg.xyzrpyToMatrix(mExtrinsics), world_corners[i]);
                     if (det.p[i] == null)
                         continue outer;
+                    if (det.p[i][0] < 0 || det.p[i][0] >= width ||
+                        det.p[i][1] < 0 || det.p[i][1] >= height)
+                        continue outer;
+
                 }
                 detections.add(det);
             }
