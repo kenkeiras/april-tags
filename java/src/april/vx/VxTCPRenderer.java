@@ -19,7 +19,6 @@ public class VxTCPRenderer extends VxRenderer
             throw new IllegalArgumentException("VxLocalRenderer only accepts tcp:// urls");
 
         url = url.substring("tcp://".length());
-        System.out.println("TCP URL >"+url+"<");
         int argidx = url.indexOf("?");
         if (argidx >= 0) {
             String arg = url.substring(argidx+1);
@@ -54,7 +53,6 @@ public class VxTCPRenderer extends VxRenderer
     //*** Methods for all VxRenderers ***//
     public void add_resources(HashSet<VxResource> resources)
     {
-        System.out.println("add_resources");
         lcmvx_resource_list_t lcm_resources = new lcmvx_resource_list_t();
         lcm_resources.nresources = resources.size();
         lcm_resources.resources = new lcmvx_resource_t[lcm_resources.nresources];
@@ -76,7 +74,6 @@ public class VxTCPRenderer extends VxRenderer
 
     public  void update_codes(String buffer_name, int drawOrder, VxCodeOutputStream codes)
     {
-        System.out.println("update_codes");
         lcmvx_render_codes_t lcodes = new lcmvx_render_codes_t();
         lcodes.draw_order = drawOrder;
         lcodes.buffer_name = buffer_name;
@@ -88,7 +85,6 @@ public class VxTCPRenderer extends VxRenderer
 
     public void remove_resources(HashSet<VxResource> resources)
     {
-        System.out.println("remove_resources");
         lcmvx_dealloc_t dealloc = new lcmvx_dealloc_t();
         dealloc.nguids = resources.size();
         dealloc.guids = new long[dealloc.nguids];
@@ -124,7 +120,6 @@ public class VxTCPRenderer extends VxRenderer
     // Fast for a local implementation
     public int[] get_canvas_size()
     {
-        System.out.println("get_canvas_size");
         int dim[] = {0,0};
 
         try {

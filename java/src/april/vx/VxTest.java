@@ -113,7 +113,7 @@ public class VxTest
 
         // Now do Texture:
         ArrayList<VxObject> progs1 = new ArrayList();
-        if (true) {
+        try {
             BufferedImage img = ImageUtil.convertImage(ImageIO.read(new File(opts.getString("img-path"))), BufferedImage.TYPE_3BYTE_BGR);
             VxTexture vtex = new VxTexture(img);
 
@@ -132,6 +132,8 @@ public class VxTest
 
             progs1.add(new VxChain(LinAlg.translate(-1,-1), vp));
 
+        } catch(IOException e) {
+            System.out.println("Texture Ex: "+e);
         }
 
         for (int i = 0; i < 4; i+=2) {

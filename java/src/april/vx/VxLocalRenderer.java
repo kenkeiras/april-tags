@@ -136,8 +136,6 @@ public class VxLocalRenderer extends VxRenderer
         this.width = width;
         this.height = height;
 
-        System.out.println("Starting render");
-
         final Object lock = new Object();
         Runnable r = new Runnable()
             {
@@ -159,7 +157,6 @@ public class VxLocalRenderer extends VxRenderer
                 lock.wait();
             } catch(InterruptedException e){}
         }
-        System.out.println("render ended");
     }
 
     // Takes as input a row-major projection-model matrix which is

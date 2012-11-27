@@ -62,7 +62,7 @@ struct gl_prog_resc {
 
 
 static vx_t state;
-static int verbose = 1;
+static int verbose = 0;
 
 
 typedef struct vx_buffer vx_buffer_t;
@@ -93,7 +93,7 @@ static void checkVersions()
 
 int vx_initialize()
 {
-    printf("Creating GL context\n");
+    if (verbose) printf("Creating GL context\n");
     glc = glcontext_X11_create();
     glewInit(); // Call this after GL context created XXX How sure are we that we need this?
     checkVersions();
@@ -563,7 +563,7 @@ int vx_render_read(int width, int height, uint8_t *out_buf)
         state.fbo = gl_fbo_create(glc, width, height);
         state.fbo_width = width;
         state.fbo_height = height;
-        printf("Allocated FBO of dimension %d %d\n",state.fbo_width, state.fbo_height);
+        if (verbose) printf("Allocated FBO of dimension %d %d\n",state.fbo_width, state.fbo_height);
     }
 
     // Deallocate any resources flagged for deletion
