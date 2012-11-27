@@ -669,7 +669,16 @@ public class EasyCal2
                 }
             }
             double meandist = bestMeanDist;
-            double meandistthreshold = im.getWidth()/20.0;
+
+            // Compute the acceptance threshold based on the size of the target:
+            // Compute maximum target dimension
+            double maxDist = 0.0;
+            for (TagDetection td1 : detections) {
+                for (TagDetection td2 : detections) {
+                    maxDist = Math.max(LinAlg.distance(td1.cxy, td2.cxy), maxDist);
+                }
+            }
+            double meandistthreshold = maxDist / 30.0; //im.getWidth()/20.0;
 
 
             // Draw selected pose in color
