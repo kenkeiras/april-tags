@@ -61,6 +61,11 @@ public class EasyCal2
     List<SuggestedImage> bestSuggestions = new ArrayList();
     int suggestionNumber = 0;
 
+    // Score FrameScorer
+    double minFSScore = Double.MAX_VALUE;
+    int debugCT = 0;
+
+    // Score Pix
     List<ScoredImage> candidateImages;
     boolean waitingForBest = false;
     long startedWaiting = 0;
@@ -189,7 +194,7 @@ public class EasyCal2
             JFrame jf2 = new JFrame("Debug");
             jf2.setLayout(new BorderLayout());
             jf2.add(vc2, BorderLayout.CENTER);
-            jf2.setSize(752, 480);
+            jf2.setSize(720, 480);
             jf2.setLocation(1200,0);
             jf2.setVisible(true);
             jf2.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -380,7 +385,8 @@ public class EasyCal2
             updateInitialization(im, detections);
             updateMosaic(detections);
             draw(im, detections);
-            score(im, detections);
+            scorePix(im, detections);
+            //scoreFS(im, detections);
         }
 
         void rectificationUpdate(BufferedImage im)
@@ -596,7 +602,95 @@ public class EasyCal2
             vb.swap();
         }
 
-        void score(BufferedImage im, List<TagDetection> detections)
+        /*
+        void scoreFS(BufferedImage im, List<TagDetection> detections)
+        {
+            if (bestSuggestions.size() == 0)
+                return;
+
+            FrameScorer fs = null;
+            if (calibrator.getNumImages() < 3)
+                fs = new InitializationVarianceScorer(calibrator, imwidth, imheight);
+            else
+                fs = new PixErrScorer(calibrator, imwidth, imheight);
+
+            double fsScore  = fs.scoreFrame(detections);
+            double fsThresh = bestSuggestions.get(bestSuggestions.size()-1).score;
+
+            if (fsScore <= .5)
+                return;
+
+
+            if (fsScore < minFSScore) {
+
+                minFSScore = fsScore;
+
+                // System.out.printf("Got new min, with %d dections, value %f\n",detections.size(),fsScore);
+                // try {
+                //     String filename = String.format("/tmp/DEBUG%02d.png", debugCT++);
+                //     javax.imageio.ImageIO.write(im, "png", new File(filename));
+                //     System.out.printf("Saved debug to %s\n",filename);
+                // } catch(IOException e) {
+                // }
+
+
+            }
+
+            ////////////////////////////////////////
+            // meter
+            {
+                VisWorld.Buffer vb = vw.getBuffer("fs-error-score");
+                vb.setDrawOrder(1000);
+
+                String format = minFSScore < fsThresh ? "<<green>>" : "<<white>>";
+                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.TOP_RIGHT,
+                                            new VzText(VzText.ANCHOR.TOP_RIGHT,
+                                                       String.format("%s FrameScore %12.5f\nThresh %12.5f\nMin %12.5f\n",format,fsScore,fsThresh, minFSScore))));
+                vb.swap();
+            }
+
+
+            ////////////////////////////////////////
+            // meter
+            {
+                VisWorld.Buffer vb = vw.getBuffer("fs-error-meter");
+                vb.setDrawOrder(1000);
+                double maxRectHeight = vc.getHeight()*0.3;
+                double rectHeight = Math.min(maxRectHeight, 3 * maxRectHeight * fsScore / fsThresh);
+                double perc = rectHeight/maxRectHeight;
+                double rectWidth = 25;
+                Color barcolor = Color.gray;
+
+                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_RIGHT,
+                                            LinAlg.translate(-rectWidth/2, vc.getHeight()/2-maxRectHeight/2, 0),
+                                            new VisChain(LinAlg.translate(0, maxRectHeight/2, 0),
+                                                         new VzRectangle(rectWidth, maxRectHeight, new VzMesh.Style(Color.black))),
+                                            new VisChain(LinAlg.translate(0, rectHeight/2, 0),
+                                                         new VzRectangle(rectWidth, rectHeight, new VzMesh.Style(barcolor))),
+                                            new VisChain(LinAlg.translate(0, maxRectHeight/2, 0),
+                                                         new VzRectangle(rectWidth, maxRectHeight, new VzLines.Style(new Color(150, 150, 150), 2))),
+
+                                            LinAlg.translate(rectWidth/2, 0, 0),
+                                            new VisDepthTest(false, new VzText(VzText.ANCHOR.RIGHT,
+                                                                               "<<dropshadow=#FF000000,"+
+                                                                               "monospaced-12-bold,white>>"+
+                                                                               "Perfect")),
+                                            LinAlg.translate(0, maxRectHeight*1/3, 0),
+                                            new VisDepthTest(false, new VzText(VzText.ANCHOR.RIGHT,
+                                                                               "<<dropshadow=#FF000000,"+
+                                                                               "monospaced-12-bold,white>>"+
+                                                                               "Good")),
+                                            LinAlg.translate(0, maxRectHeight*2/3, 0),
+                                            new VisDepthTest(false, new VzText(VzText.ANCHOR.RIGHT,
+                                                                               "<<dropshadow=#FF000000,"+
+                                                                               "monospaced-12-bold,white>>"+
+                                                                               "Bad"))));
+                vb.swap();
+            }
+        }
+        */
+
+        void scorePix(BufferedImage im, List<TagDetection> detections)
         {
             VisWorld.Buffer vb;
 
@@ -819,6 +913,10 @@ public class EasyCal2
                     updateRectifiedBorder();
 
                     captureNext = false;
+
+                    // XXX
+                    minFSScore = Double.MAX_VALUE;
+
                 }
             }
             else {
