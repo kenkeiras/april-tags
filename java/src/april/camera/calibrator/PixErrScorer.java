@@ -15,7 +15,7 @@ public class PixErrScorer implements FrameScorer
 
     // Do not change seed during a run!
     public static int seed = 14;
-    public static int nsamples = 50;
+    public static int nsamples = 500;
 
     final CameraCalibrator currentCal;
 

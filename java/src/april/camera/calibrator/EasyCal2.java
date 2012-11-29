@@ -386,7 +386,7 @@ public class EasyCal2
             updateMosaic(detections);
             draw(im, detections);
             scorePix(im, detections);
-            //scoreFS(im, detections);
+            scoreFS(im, detections);
         }
 
         void rectificationUpdate(BufferedImage im)
@@ -602,7 +602,6 @@ public class EasyCal2
             vb.swap();
         }
 
-        /*
         void scoreFS(BufferedImage im, List<TagDetection> detections)
         {
             if (bestSuggestions.size() == 0)
@@ -642,10 +641,14 @@ public class EasyCal2
                 VisWorld.Buffer vb = vw.getBuffer("fs-error-score");
                 vb.setDrawOrder(1000);
 
-                String format = minFSScore < fsThresh ? "<<green>>" : "<<white>>";
+                String name_toks[] = fs.getClass().getName().split("\\.");
+                String format0 = "<<white>>";
+                String format1 = fsScore < fsThresh ? "<<green>>" : "<<white>>";
+                String format2 = minFSScore < fsThresh ? "<<green>>" : "<<white>>";
                 vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.TOP_RIGHT,
                                             new VzText(VzText.ANCHOR.TOP_RIGHT,
-                                                       String.format("%s FrameScore %12.5f\nThresh %12.5f\nMin %12.5f\n",format,fsScore,fsThresh, minFSScore))));
+                                                       String.format("%s FrameScore %12.5f\n%sThresh %12.5f\n%sMin %12.5f\n%s%s\n",
+                                                                     format1,fsScore, format0, fsThresh, format2,minFSScore, format0, name_toks[name_toks.length -1]))));
                 vb.swap();
             }
 
@@ -688,7 +691,6 @@ public class EasyCal2
                 vb.swap();
             }
         }
-        */
 
         void scorePix(BufferedImage im, List<TagDetection> detections)
         {
@@ -904,7 +906,10 @@ public class EasyCal2
                                           bestSuggestions.get(0).score);
                     }
 
-                    addImage(bestSI.im, bestSI.detections);
+                    if (captureNext)
+                        addImage(im, detections);
+                    else
+                        addImage(bestSI.im, bestSI.detections);
 
                     // make a new suggestion
                     suggestionNumber++;
@@ -1345,8 +1350,9 @@ public class EasyCal2
         else
             fs = new PixErrScorer(calibrator, imwidth, imheight);
 
+        Tic t = new Tic();
         ArrayList<SuggestedImage> ranked = scoreSuggestions(suggestDictionary, fs);
-
+        System.out.printf("  Scored %d suggestions in %.3f seconds\n", suggestDictionary.size(), t.toctic());
         // Pick the single best suggestion
         if (true) {
             if (ranked.size() > 0)
@@ -1369,6 +1375,13 @@ public class EasyCal2
         }
 
         System.out.printf("Picked %d of %d as best suggestions\n", bestSuggestions.size(), suggestDictionary.size());
+
+        // Debug
+        System.out.println("Top ten suggestions:");
+        for (int i = 0; i < Math.min(10, ranked.size()); i++) {
+            System.out.printf(" %d score %f\n", i, ranked.get(i).score);
+        }
+
     }
 
 
