@@ -10,7 +10,6 @@ import java.util.*;
 import java.awt.event.*;
 
 import javax.swing.*;
-
 import april.camera.*;
 import april.camera.tools.*;
 import april.camera.models.*;
@@ -38,6 +37,9 @@ public class EasyCal2
     // debug gui
     VisLayer vl2 = null;
 
+
+    // Debug state
+    ArrayList<SuggestedImage> ranked;
 
     // camera
     String          url;
@@ -102,7 +104,7 @@ public class EasyCal2
         double score;
     }
 
-    private class ScoredImage implements Comparable<ScoredImage>
+    class ScoredImage implements Comparable<ScoredImage>
     {
         public BufferedImage        im;
         public List<TagDetection>   detections;
@@ -198,6 +200,8 @@ public class EasyCal2
             jf2.setLocation(1200,0);
             jf2.setVisible(true);
             jf2.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+            new DebugEasyCal(this);
         }
 
         calibrator = new CameraCalibrator(Arrays.asList(initializer), tf, tagSpacingMeters, vl2, vl2 != null);
@@ -1351,7 +1355,8 @@ public class EasyCal2
             fs = new PixErrScorer(calibrator, imwidth, imheight);
 
         Tic t = new Tic();
-        ArrayList<SuggestedImage> ranked = scoreSuggestions(suggestDictionary, fs);
+        //ArrayList<SuggestedImage>
+        ranked = scoreSuggestions(suggestDictionary, fs);
         System.out.printf("  Scored %d suggestions in %.3f seconds\n", suggestDictionary.size(), t.toctic());
         // Pick the single best suggestion
         if (true) {
