@@ -10,7 +10,6 @@ import java.util.*;
 import java.awt.event.*;
 
 import javax.swing.*;
-
 import april.camera.*;
 import april.camera.tools.*;
 import april.camera.models.*;
@@ -39,6 +38,9 @@ public class EasyCal2
     VisLayer vl2 = null;
 
 
+    // Debug state
+    ArrayList<SuggestedImage> ranked;
+
     // camera
     String          url;
     ImageSource     isrc;
@@ -61,6 +63,11 @@ public class EasyCal2
     List<SuggestedImage> bestSuggestions = new ArrayList();
     int suggestionNumber = 0;
 
+    // Score FrameScorer
+    double minFSScore = Double.MAX_VALUE;
+    int debugCT = 0;
+
+    // Score Pix
     List<ScoredImage> candidateImages;
     boolean waitingForBest = false;
     long startedWaiting = 0;
@@ -97,7 +104,7 @@ public class EasyCal2
         double score;
     }
 
-    private class ScoredImage implements Comparable<ScoredImage>
+    class ScoredImage implements Comparable<ScoredImage>
     {
         public BufferedImage        im;
         public List<TagDetection>   detections;
@@ -188,10 +195,12 @@ public class EasyCal2
             JFrame jf2 = new JFrame("Debug");
             jf2.setLayout(new BorderLayout());
             jf2.add(vc2, BorderLayout.CENTER);
-            jf2.setSize(752, 480);
+            jf2.setSize(720, 480);
             jf2.setLocation(1200,0);
             jf2.setVisible(true);
             jf2.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+            new DebugEasyCal(this);
         }
 
         calibrator = new CameraCalibrator(Arrays.asList(initializer), tf, tagSpacingMeters, vl2, vl2 != null);
@@ -379,7 +388,8 @@ public class EasyCal2
             updateInitialization(im, detections);
             updateMosaic(detections);
             draw(im, detections);
-            score(im, detections);
+            scorePix(im, detections);
+            scoreFS(im, detections);
         }
 
         void rectificationUpdate(BufferedImage im)
@@ -595,7 +605,97 @@ public class EasyCal2
             vb.swap();
         }
 
-        void score(BufferedImage im, List<TagDetection> detections)
+        void scoreFS(BufferedImage im, List<TagDetection> detections)
+        {
+            if (bestSuggestions.size() == 0)
+                return;
+
+            FrameScorer fs = null;
+            if (calibrator.getNumImages() < 3)
+                fs = new InitializationVarianceScorer(calibrator, imwidth, imheight);
+            else
+                fs = new PixErrScorer(calibrator, imwidth, imheight);
+
+            double fsScore  = fs.scoreFrame(detections);
+            double fsThresh = bestSuggestions.get(bestSuggestions.size()-1).score;
+
+            if (fsScore <= .5)
+                return;
+
+
+            if (fsScore < minFSScore) {
+
+                minFSScore = fsScore;
+
+                // System.out.printf("Got new min, with %d dections, value %f\n",detections.size(),fsScore);
+                // try {
+                //     String filename = String.format("/tmp/DEBUG%02d.png", debugCT++);
+                //     javax.imageio.ImageIO.write(im, "png", new File(filename));
+                //     System.out.printf("Saved debug to %s\n",filename);
+                // } catch(IOException e) {
+                // }
+
+
+            }
+
+            ////////////////////////////////////////
+            // meter
+            {
+                VisWorld.Buffer vb = vw.getBuffer("fs-error-score");
+                vb.setDrawOrder(1000);
+
+                String name_toks[] = fs.getClass().getName().split("\\.");
+                String format0 = "<<white>>";
+                String format1 = fsScore < fsThresh ? "<<green>>" : "<<white>>";
+                String format2 = minFSScore < fsThresh ? "<<green>>" : "<<white>>";
+                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.TOP_RIGHT,
+                                            new VzText(VzText.ANCHOR.TOP_RIGHT,
+                                                       String.format("%s FrameScore %12.5f\n%sThresh %12.5f\n%sMin %12.5f\n%s%s\n",
+                                                                     format1,fsScore, format0, fsThresh, format2,minFSScore, format0, name_toks[name_toks.length -1]))));
+                vb.swap();
+            }
+
+
+            ////////////////////////////////////////
+            // meter
+            {
+                VisWorld.Buffer vb = vw.getBuffer("fs-error-meter");
+                vb.setDrawOrder(1000);
+                double maxRectHeight = vc.getHeight()*0.3;
+                double rectHeight = Math.min(maxRectHeight, 3 * maxRectHeight * fsScore / fsThresh);
+                double perc = rectHeight/maxRectHeight;
+                double rectWidth = 25;
+                Color barcolor = Color.gray;
+
+                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_RIGHT,
+                                            LinAlg.translate(-rectWidth/2, vc.getHeight()/2-maxRectHeight/2, 0),
+                                            new VisChain(LinAlg.translate(0, maxRectHeight/2, 0),
+                                                         new VzRectangle(rectWidth, maxRectHeight, new VzMesh.Style(Color.black))),
+                                            new VisChain(LinAlg.translate(0, rectHeight/2, 0),
+                                                         new VzRectangle(rectWidth, rectHeight, new VzMesh.Style(barcolor))),
+                                            new VisChain(LinAlg.translate(0, maxRectHeight/2, 0),
+                                                         new VzRectangle(rectWidth, maxRectHeight, new VzLines.Style(new Color(150, 150, 150), 2))),
+
+                                            LinAlg.translate(rectWidth/2, 0, 0),
+                                            new VisDepthTest(false, new VzText(VzText.ANCHOR.RIGHT,
+                                                                               "<<dropshadow=#FF000000,"+
+                                                                               "monospaced-12-bold,white>>"+
+                                                                               "Perfect")),
+                                            LinAlg.translate(0, maxRectHeight*1/3, 0),
+                                            new VisDepthTest(false, new VzText(VzText.ANCHOR.RIGHT,
+                                                                               "<<dropshadow=#FF000000,"+
+                                                                               "monospaced-12-bold,white>>"+
+                                                                               "Good")),
+                                            LinAlg.translate(0, maxRectHeight*2/3, 0),
+                                            new VisDepthTest(false, new VzText(VzText.ANCHOR.RIGHT,
+                                                                               "<<dropshadow=#FF000000,"+
+                                                                               "monospaced-12-bold,white>>"+
+                                                                               "Bad"))));
+                vb.swap();
+            }
+        }
+
+        void scorePix(BufferedImage im, List<TagDetection> detections)
         {
             VisWorld.Buffer vb;
 
@@ -668,7 +768,32 @@ public class EasyCal2
                 }
             }
             double meandist = bestMeanDist;
-            double meandistthreshold = im.getWidth()/20.0;
+
+            // Compute the acceptance threshold based on the size of the target:
+            // Compute maximum target dimension
+            double maxDist = 0.0;
+            for (TagDetection td1 : detections) {
+                for (TagDetection td2 : detections) {
+                    if(td1.id == td2.id)
+                        continue;
+
+                    // How many squares away are we?
+                    double gridDist =  LinAlg.distance(tm.getPositionPixels(td2.id),
+                                                    tm.getPositionPixels(td1.id));
+
+                    // how far apart on the screen are they?
+                    double pixDist = LinAlg.distance(td1.cxy, td2.cxy);
+
+
+                    double distRatio = pixDist/gridDist; // pixels/square
+
+                    if (distRatio > maxDist)
+                        maxDist = distRatio;
+                }
+            }
+
+            // in units of "squares" how close do we need to get on average?
+            double meandistthreshold = maxDist;
 
 
             // Draw selected pose in color
@@ -771,7 +896,23 @@ public class EasyCal2
                     if (!captureNext)
                         draw(bestSI.im, bestSI.detections);
 
-                    addImage(bestSI.im, bestSI.detections);
+                    // Compute the frame score for this image
+                    {
+                        FrameScorer fs = null;
+                        if (calibrator.getNumImages() < 3)
+                            fs = new InitializationVarianceScorer(calibrator, imwidth, imheight);
+                        else
+                            fs = new PixErrScorer(calibrator, imwidth, imheight);
+                        double selectedScore = fs.scoreFrame(detections);
+                        System.out.printf("Chose image with score %f compared to best %f \n",
+                                          selectedScore,
+                                          bestSuggestions.get(0).score);
+                    }
+
+                    if (captureNext)
+                        addImage(im, detections);
+                    else
+                        addImage(bestSI.im, bestSI.detections);
 
                     // make a new suggestion
                     suggestionNumber++;
@@ -780,6 +921,10 @@ public class EasyCal2
                     updateRectifiedBorder();
 
                     captureNext = false;
+
+                    // XXX
+                    minFSScore = Double.MAX_VALUE;
+
                 }
             }
             else {
@@ -1208,8 +1353,10 @@ public class EasyCal2
         else
             fs = new PixErrScorer(calibrator, imwidth, imheight);
 
-        ArrayList<SuggestedImage> ranked = scoreSuggestions(suggestDictionary, fs);
-
+        Tic t = new Tic();
+        //ArrayList<SuggestedImage>
+        ranked = scoreSuggestions(suggestDictionary, fs);
+        System.out.printf("  Scored %d suggestions in %.3f seconds\n", suggestDictionary.size(), t.toctic());
         // Pick the single best suggestion
         if (true) {
             if (ranked.size() > 0)
@@ -1232,7 +1379,15 @@ public class EasyCal2
         }
 
         System.out.printf("Picked %d of %d as best suggestions\n", bestSuggestions.size(), suggestDictionary.size());
+
+        // Debug
+        System.out.println("Top ten suggestions:");
+        for (int i = 0; i < Math.min(10, ranked.size()); i++) {
+            System.out.printf(" %d score %f\n", i, ranked.get(i).score);
+        }
+
     }
+
 
     private class FlashThread extends Thread
     {
