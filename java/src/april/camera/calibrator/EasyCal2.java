@@ -1044,10 +1044,10 @@ public class EasyCal2
         return (perimeter1 - perimeter2) / 4.0 / n;
     }
 
-    private double[] getObsMosaicCenter()
+    double[] getObsMosaicCenter()
     {
-        return LinAlg.scale(LinAlg.add(tm.getPositionMeters(minRow,minCol),
-                                       tm.getPositionMeters(maxRow,maxCol)),
+        return LinAlg.scale(LinAlg.add(tm.getPositionMeters(minCol, minRow),
+                                       tm.getPositionMeters(maxCol, maxRow)),
                             0.5);
     }
 
