@@ -123,7 +123,8 @@ public class EasyCal2
         }
     }
 
-    public EasyCal2(CalibrationInitializer initializer, String url, double tagSpacingMeters, boolean debugGUI)
+    public EasyCal2(CalibrationInitializer initializer, String url, double tagSpacingMeters, boolean debugGUI,
+                    ArrayList<BufferedImage> debugSeedImages)
     {
         this.tf = new Tag36h11();
         this.tm = new TagMosaic(tf, tagSpacingMeters);
@@ -204,6 +205,12 @@ public class EasyCal2
         }
 
         calibrator = new CameraCalibrator(Arrays.asList(initializer), tf, tagSpacingMeters, vl2, vl2 != null);
+
+        if (debugSeedImages != null && debugSeedImages.size() > 0 ) {
+            for (BufferedImage im : debugSeedImages)
+                addImage(im, td.process(im, new double[] {im.getWidth()/2.0, im.getHeight()/2.0}));
+            System.out.printf("Loaded %d images from seed \n", debugSeedImages.size());
+        }
 
         ////////////////////////////////////////
         new AcquisitionThread().start();
@@ -1425,6 +1432,7 @@ public class EasyCal2
         opts.addString('u',"url","","Camera URL");
         opts.addString('c',"class","april.camera.models.SimpleKannalaBrandtInitializer","Calibration model initializer class name");
         opts.addDouble('m',"spacing",0.0381,"Spacing between tags (meters)");
+        opts.addString('\0',"debug-seed-images","","Optional parameter listing starting images for debugging");
         opts.addBoolean('\0',"debug-gui",false,"Display additional debugging information");
 
         if (!opts.parse(args)) {
@@ -1446,7 +1454,19 @@ public class EasyCal2
         assert(obj instanceof CalibrationInitializer);
         CalibrationInitializer initializer = (CalibrationInitializer) obj;
 
-        new EasyCal2(initializer, url, spacing, opts.getBoolean("debug-gui"));
+        ArrayList<BufferedImage> debugSeedImages = new ArrayList();
+        try {
+            // Load images alphabetically from the directory
+            ImageSource isrc = new ImageSourceFile("dir://"+opts.getString("debug-seed-images")+"?loop=0");
+            FrameData fdat = null;
+            while( (fdat = isrc.getFrame()) != null)
+                debugSeedImages.add(ImageConvert.convertToImage(fdat));
+        } catch(IOException e){
+            if (!opts.getString("debug-seed-images").isEmpty())
+                System.out.println("Failed to load seed images: "+e);
+        }
+
+        new EasyCal2(initializer, url, spacing, opts.getBoolean("debug-gui"), debugSeedImages);
     }
 }
 
