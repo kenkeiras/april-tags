@@ -1046,8 +1046,8 @@ public class EasyCal2
 
     private double[] getObsMosaicCenter()
     {
-        return LinAlg.scale(LinAlg.add(tm.getPositionMeters(minRow,minCol),
-                                       tm.getPositionMeters(maxRow,maxCol)),
+        return LinAlg.scale(LinAlg.add(tm.getPositionMeters(minCol,minRow),
+                                       tm.getPositionMeters(maxCol,maxRow)),
                             0.5);
     }
 
@@ -1080,10 +1080,12 @@ public class EasyCal2
         int scaleX = width / gridY;
 
         for (double desiredDepth : desiredDepths) {
-            for (int gy = 1; gy < gridY; gy++)
+            for (int gy = 1; gy < gridY; gy++) {
                 for (int gx = 1; gx < gridX; gx++) {
-                    double x = gx*scaleX + r.nextGaussian()*2.0;
-                    double y = gy*scaleY + r.nextGaussian()*2.0;
+                    //double x = gx*scaleX + r.nextGaussian()*2.0;
+                    //double y = gy*scaleY + r.nextGaussian()*2.0;
+                    double x = gx*scaleX;
+                    double y = gy*scaleY;
                     double xy_dp[] = new double[] { x, y };
 
                     if (!verifier.validPixelCoord(xy_dp))
@@ -1091,11 +1093,12 @@ public class EasyCal2
 
                     double norm[] = cal.pixelsToNorm(xy_dp);
                     double xyz[] = {norm[0], norm[1], 1};
-                    LinAlg.scaleEquals(xyz, desiredDepth + r.nextGaussian() * 0.01 );
+                    //LinAlg.scaleEquals(xyz, desiredDepth + r.nextGaussian() * 0.01 );
+                    LinAlg.scaleEquals(xyz, desiredDepth );
 
                     // Choose which direction to rotate based on which image quadrant this is
-                    int signRoll = MathUtil.sign(gx - gridX/2);
-                    int signPitch = MathUtil.sign(gy - gridY/2);
+                    int signRoll  = (gx*scaleX > width /2) ? 1 : -1;
+                    int signPitch = (gy*scaleY > height/2) ? 1 : -1;
 
                     double rpys[][] = {{ 0            + r.nextGaussian()*0.1, 0             + r.nextGaussian()*0.1, Math.PI/2 },
                                        { 0            + r.nextGaussian()*0.1, 0.8*signPitch + r.nextGaussian()*0.1, Math.PI/2 },
@@ -1108,6 +1111,7 @@ public class EasyCal2
                         candidates.add(si);
                     }
                 }
+            }
         }
 
         ArrayList<SuggestedImage> passed = new ArrayList();
