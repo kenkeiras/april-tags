@@ -13,7 +13,7 @@ import april.util.*;
 import april.tag.*;
 import java.awt.image.*;
 
-public class DebugEasyCal extends Thread
+public class DebugEasyCal extends Thread implements VisConsole.Listener
 {
     VisWorld vw = new VisWorld();
     VisLayer vl = new VisLayer(vw);
@@ -22,6 +22,8 @@ public class DebugEasyCal extends Thread
     JFrame jf = new JFrame("Debug Frame Scorers");
 
     EasyCal2 ec;
+
+    HashSet<String> bufferNames = new HashSet();
 
     public DebugEasyCal(EasyCal2 ec)
     {
@@ -34,8 +36,33 @@ public class DebugEasyCal extends Thread
         jf.setVisible(true);
         jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
+
+        new VisConsole(vw,vl,vc).addListener(this);
         start();
     }
+
+    public boolean consoleCommand(VisConsole vc, PrintStream out, String command)
+    {
+        String toks[] = command.split("\\s+");
+
+        if (toks.length == 2 && toks[0].equals("enable")) {
+            boolean enable = toks[0].equals("all");
+            for (String bufferName : bufferNames)
+                vl.setBufferEnabled(bufferName, enable);
+
+            out.printf((enable? "Enabled " : "Disabled ")+" %d buffers\n", bufferNames.size());
+        }
+        return false;
+    }
+
+    /** Return commands that start with prefix. (You can return
+     * non-matching completions; VisConsole will filter them
+     * out.) You may return null. **/
+    public ArrayList<String> consoleCompletions(VisConsole vc, String prefix)
+    {
+        return new ArrayList(Arrays.asList("enable all","enable none"));
+    }
+
 
     public void run()
     {
@@ -62,6 +89,7 @@ public class DebugEasyCal extends Thread
         double PixelsToVis[][] = getPlottingTransformation(sampleIm, true);
 
         for (int i = 0; i < ranked.size(); i++) {
+            bufferNames.add("ranked-"+i);
             VisWorld.Buffer vb = vw.getBuffer("ranked-"+i);
             vb.setDrawOrder(i);
 
