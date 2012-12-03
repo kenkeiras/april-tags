@@ -13,7 +13,7 @@ public class BlockNode implements Node
     {
         String s = "";
         for (Node n : statements)
-            s = s+n+"\n";
+            s = s+"  "+n+"\n";
         return s;
     }
 

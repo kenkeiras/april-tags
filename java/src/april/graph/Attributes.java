@@ -90,7 +90,12 @@ public class Attributes
         return out;
     }
 
-    public void setAttribute(String key, Object o)
+    public Attributes copy()
+    {
+        return copy(this);
+    }
+
+    void setAttribute(String key, Object o)
     {
         StructureCoder coder = null;
         if (o instanceof Integer)

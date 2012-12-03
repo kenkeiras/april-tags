@@ -157,6 +157,14 @@ public class VisLayer implements Comparable<VisLayer>, VisSerializable
                                                                                              cameraPosition.eye[0], cameraPosition.eye[1], cameraPosition.eye[2],
                                                                                              cameraPosition.lookat[0], cameraPosition.lookat[1], cameraPosition.lookat[2],
                                                                                              cameraPosition.up[0], cameraPosition.up[1], cameraPosition.up[2]))));
+
+            System.out.printf("vl.cameraManager.uiLookAt(new double[] { %15.5f, %15.5f, %15.5f },\n"+
+                              "                          new double[] { %15.5f, %15.5f, %15.5f },\n"+
+                              "                          new double[] { %15.5f, %15.5f, %15.5f }, true);\n\n",
+                              cameraPosition.eye[0], cameraPosition.eye[1], cameraPosition.eye[2],
+                              cameraPosition.lookat[0], cameraPosition.lookat[1], cameraPosition.lookat[2],
+                              cameraPosition.up[0], cameraPosition.up[1], cameraPosition.up[2]);
+
             vo.render(vc, this, rinfo, gl);
         }
 

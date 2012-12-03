@@ -36,6 +36,16 @@ public class GraphTest implements ParameterListener
 
         try {
             Graph g = new Graph(args[0]);
+
+            ArrayList<Graph> components = g.getConnectedComponents();
+            if (components.size() > 0) {
+                System.out.println("WARNING: Graph is disconnected. Picking the largest connected component.");
+
+                g = components.get(0);
+                for (Graph tg : components)
+                    if (tg.nodes.size() > g.nodes.size())
+                        g = tg;
+            }
             new GraphTest(g);
         } catch (IOException ex) {
             System.out.println("Ex: " + ex);
@@ -61,7 +71,7 @@ public class GraphTest implements ParameterListener
         jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         jf.setVisible(true);
 
-        ArrayList<double[]> bounds = g.getBounds();
+        ArrayList<double[]> bounds = SpatialUtil.getBounds(g);
         double xyz0[] = bounds.get(0);
         double xyz1[] = bounds.get(1);
         double cxyz[] = new double[] { (xyz0[0] + xyz1[0]) / 2, (xyz0[1] + xyz1[1]) / 2, (xyz0[2] + xyz1[2]) / 2 };
@@ -154,7 +164,7 @@ public class GraphTest implements ParameterListener
 
                 for (int i = 0; i < ge.nodes.length; i++) {
                     GNode gn = g.nodes.get(ge.nodes[i]);
-                    vd.add(gn.toXyzRpy(gn.state));
+                    vd.add(((SpatialNode) gn).toXyzRpy());
                 }
             }
 
@@ -168,11 +178,11 @@ public class GraphTest implements ParameterListener
             VisObject vo = new VzRobot();
             if (gn instanceof GXYNode)
                 vo = new VzStar();
-            vb.addBack(new VisChain(LinAlg.xyzrpyToMatrix(gn.toXyzRpy(gn.state)), vo));
+            vb.addBack(new VisChain(LinAlg.xyzrpyToMatrix(((SpatialNode) gn).toXyzRpy()), vo));
             ArrayList<double[]> points = (ArrayList<double[]>) gn.getAttribute("points");
 
             if (points != null)
-                vb.addBack(new VisChain(LinAlg.xyzrpyToMatrix(gn.toXyzRpy(gn.state)),
+                vb.addBack(new VisChain(LinAlg.xyzrpyToMatrix(((SpatialNode) gn).toXyzRpy()),
                                         new VzPoints(new VisVertexData(points),
                                                      new VzPoints.Style(Color.gray, 1))));
         }

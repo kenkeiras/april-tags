@@ -48,8 +48,16 @@ struct image_source
 
     int (*num_features)(image_source_t *isrc);
     const char* (*get_feature_name)(image_source_t *isrc, int idx);
-    double (*get_feature_min)(image_source_t *isrc, int idx);
-    double (*get_feature_max)(image_source_t *isrc, int idx);
+    int (*is_feature_available)(image_source_t *isrc, int idx);
+
+    // string is allocated by driver, to be freed by user.
+    // "b"  boolean
+    // "i"  integer
+    // "i,min,max"
+    // "i,min,max,increment"
+    // "c,0=apple,3=banana,5=orange,"    <-- note: should be robust to extra commas
+    char* (*get_feature_type)(image_source_t *isrc, int idx);
+
     double (*get_feature_value)(image_source_t *isrc, int idx);
     // returns non-zero on error
     int (*set_feature_value)(image_source_t *isrc, int idx, double v);
@@ -63,6 +71,7 @@ image_source_t *image_source_open(const char *url);
 image_source_t *image_source_v4l2_open(const char *path);
 image_source_t *image_source_dc1394_open(url_parser_t *urlp);
 image_source_t *image_source_islog_open(url_parser_t *urlp);
+image_source_t *image_source_pgusb_open(url_parser_t *urlp);
 
 char** image_source_enumerate();
 void image_source_enumerate_free(char **b);
@@ -70,6 +79,7 @@ void image_source_enumerate_free(char **b);
 /** Adds URLs to 'urls' **/
 char** image_source_enumerate_v4l2(char **urls);
 char** image_source_enumerate_dc1394(char **urls);
+char** image_source_enumerate_pgusb(char **urls);
 
 #endif
 

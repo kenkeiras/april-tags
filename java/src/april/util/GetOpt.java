@@ -161,12 +161,23 @@ public class GetOpt
             if (s==null)
                 return "Option "+lname+" requires an integer argument.";
 
+            int radix = 10;
+            String ss = s;
+            if (s.charAt(0) == '0') {
+                if (s.startsWith("0x") || s.startsWith("0X")) {
+                    radix = 16;
+                    ss = s.substring(2);
+                } else
+                    radix = 8; // also zero
+            } else if (s.charAt(0) == 'b') {
+                radix = 2;
+                ss = s.substring(1);
+            }
             try {
-                value=Integer.parseInt(s);
+                value=Integer.parseInt(ss, radix);
             } catch (NumberFormatException ex) {
                 return "Invalid integer format '"+s+"'";
             }
-
             return null;
         }
 

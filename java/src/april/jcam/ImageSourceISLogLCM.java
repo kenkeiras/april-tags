@@ -59,6 +59,16 @@ public class ImageSourceISLogLCM extends ImageSource implements LCMSubscriber
         lcm.subscribe(channel, this);
     }
 
+    public boolean isFeatureAvailable(int idx)
+    {
+        return false;
+    }
+
+    public String getFeatureType(int idx)
+    {
+        return "";
+    }
+
     public synchronized void messageReceived(LCM lcm, String channel, LCMDataInputStream ins)
     {
         try {

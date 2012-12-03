@@ -1000,6 +1000,45 @@ public final class GridMap
         return lut;
     }
 
+    /**
+       255 - scale * d^2 / (stddev^2).
+
+       Note that a scale of 0.5 would make the LUT correspond to a
+       Gaussian's quadratic losses.
+
+       Suppose you want us to decay to zero at 3 std devs. Then use
+       scale = 255/9. (9=3^2).
+
+       Now, suppose you want to convert back into a
+       log-likelihood. Let q be the value of the LUT.
+
+       log-likelihood = 0.5*(q - 255)/scale.
+     **/
+    public LUT makeQuadraticLUT(double scale, double stddev)
+    {
+        LUT lut = new LUT();
+        lut.metersPerPixel = metersPerPixel;
+
+        // at what point will the LUT saturate at 255?
+        double maxDistance = Math.sqrt(255 * stddev * stddev / scale);
+
+        int length = (int) (maxDistance / lut.metersPerPixel + 1);
+        lut.lut = new int[length];
+
+        for (int i = 0; i < length; i++) {
+            double d = i * lut.metersPerPixel;
+            // the .5 below is for proper rounding.
+            int v = 255 - (int) (.5 + scale * d * d / (stddev * stddev));
+            v = Math.max(0, v);
+            lut.lut[i] = v;
+
+            double ll = 0.5*(lut.lut[i]-255)/scale;
+            System.out.printf("%15f %5d %15f\n", d, lut.lut[i], ll);
+        }
+
+        return lut;
+    }
+
     /** Make a lut that starts at 255 and linearly declines to 0. Used for computing distance transforms. **/
     public LUT makeLinearReverseLUT()
     {
