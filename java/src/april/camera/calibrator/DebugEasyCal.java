@@ -46,7 +46,7 @@ public class DebugEasyCal extends Thread implements VisConsole.Listener
         String toks[] = command.split("\\s+");
 
         if (toks.length == 2 && toks[0].equals("enable")) {
-            boolean enable = toks[0].equals("all");
+            boolean enable = toks[1].equals("all");
             for (String bufferName : bufferNames)
                 vl.setBufferEnabled(bufferName, enable);
 

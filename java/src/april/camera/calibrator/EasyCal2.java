@@ -1093,7 +1093,7 @@ public class EasyCal2
         double rNextGaus = 0.0; // Find replace with r.nextGaussian() to restore
         double rpyNoise = 0.1;
         for (double desiredDepth : desiredDepths) {
-            for (int gy = 0; gy < divisionsY; gy++)
+            for (int gy = 0; gy < divisionsY; gy++) {
                 for (int gx = 0; gx < divisionsX; gx++) {
 
                     double x = startX + width*(1-inset*2) * gx / (divisionsX -1) + r.nextGaussian()*2.0;
@@ -1105,8 +1105,8 @@ public class EasyCal2
 
                     double norm[] = cal.pixelsToNorm(xy_dp);
                     double xyz[] = {norm[0], norm[1], 1};
-                    LinAlg.scaleEquals(xyz, desiredDepth + r.nextGaussian() * 0.01 );
-
+                    //LinAlg.scaleEquals(xyz, desiredDepth + r.nextGaussian() * 0.01 );
+                    LinAlg.scaleEquals(xyz, desiredDepth );
 
                     // In case the target is in the center of the image, rotate both ways
                     ArrayList<double[]> rpy_adjusted = new ArrayList();
@@ -1139,6 +1139,7 @@ public class EasyCal2
                         candidates.add(si);
                     }
                 }
+            }
         }
 
         ArrayList<SuggestedImage> passed = new ArrayList();
@@ -1462,8 +1463,8 @@ public class EasyCal2
 
         opts.addBoolean('h',"help",false,"See this help screen");
         opts.addString('u',"url","","Camera URL");
-        opts.addString('c',"class","april.camera.models.Radial6thOrderCaltechInitializer","Calibration model initializer class name");
-        opts.addDouble('m',"spacing",0.0254,"Spacing between tags (meters)");
+        opts.addString('c',"class","april.camera.models.SimpleKannalaBrandtInitializer","Calibration model initializer class name");
+        opts.addDouble('m',"spacing",0.0381,"Spacing between tags (meters)");
         opts.addString('\0',"debug-seed-images","","Optional parameter listing starting images for debugging");
         opts.addBoolean('\0',"debug-gui",false,"Display additional debugging information");
 

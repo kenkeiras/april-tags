@@ -1073,8 +1073,8 @@ public class EasyCal implements ParameterListener
 
         opts.addBoolean('h',"help",false,"See this help screen");
         opts.addString('u',"url","","Camera URL");
-        opts.addString('c',"class","april.camera.models.CaltechInitializer","Calibration model initializer class name");
-        opts.addDouble('m',"spacing",0.0254,"Spacing between tags (meters)");
+        opts.addString('c',"class","april.camera.models.SimpleKannalaBrandtInitializer","Calibration model initializer class name");
+        opts.addDouble('m',"spacing",0.0381,"Spacing between tags (meters)");
 
         if (!opts.parse(args)) {
             System.out.println("Option error: "+opts.getReason());
