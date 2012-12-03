@@ -69,7 +69,8 @@ public class EasyCal2
     int debugCT = 0;
 
     // Score Pix
-    List<ScoredImage> candidateImages;
+    List<ScoredImage> pixScoreImages = new ArrayList();
+    List<ScoredImage> fsScoreImages = new ArrayList();
     boolean waitingForBest = false;
     long startedWaiting = 0;
     double waitTime = 3.5; // seconds
@@ -632,9 +633,14 @@ public class EasyCal2
             double fsScore  = fs.scoreFrame(detections);
             double fsThresh = bestSuggestions.get(bestSuggestions.size()-1).score;
 
-            if (fsScore <= .5)
+            if (fsScore <= .2)
                 return;
 
+            ScoredImage si = new ScoredImage(im, detections, fsScore);
+            fsScoreImages.add(si);
+            Collections.sort(fsScoreImages);
+            if (fsScoreImages.size() > 10)
+                fsScoreImages.remove(fsScoreImages.size()-1);
 
             if (fsScore < minFSScore) {
 
@@ -883,12 +889,12 @@ public class EasyCal2
             }
 
             // keep N best candidate images
-            candidateImages.add(si);
-            Collections.sort(candidateImages);
+            pixScoreImages.add(si);
+            Collections.sort(pixScoreImages);
             List<ScoredImage> newCandidates = new ArrayList<ScoredImage>();
-            for (int i=0; i < Math.min(10, candidateImages.size()); i++)
-                newCandidates.add(candidateImages.get(i));
-            candidateImages = newCandidates;
+            for (int i=0; i < Math.min(10, pixScoreImages.size()); i++)
+                newCandidates.add(pixScoreImages.get(i));
+            pixScoreImages = newCandidates;
 
             if (captureNext || waitingForBest) {
                 double waited = (TimeUtil.utime() - startedWaiting)*1.0e-6;
@@ -903,8 +909,10 @@ public class EasyCal2
                     ////////////////////////////////////////
                     // use acquired image and suggest a new one
                     waitingForBest = false;
-                    ScoredImage bestSI = candidateImages.get(0);
-                    candidateImages.clear();
+                    ScoredImage bestSI = fsScoreImages.get(0);//pixScoreImages.get(0);
+
+                    pixScoreImages.clear();
+                    fsScoreImages.clear();
 
                     if (!captureNext)
                         draw(bestSI.im, bestSI.detections);
@@ -1368,7 +1376,8 @@ public class EasyCal2
         }
 
         //simgen = new SyntheticTagMosaicImageGenerator(tf, imwidth, imheight, tagSpacingMeters, tagsToDisplay);
-        candidateImages = new ArrayList<ScoredImage>();
+        pixScoreImages.clear();
+        fsScoreImages.clear();
 
         generateNextSuggestion();
     }
