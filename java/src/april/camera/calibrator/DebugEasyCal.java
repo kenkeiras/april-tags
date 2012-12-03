@@ -63,7 +63,6 @@ public class DebugEasyCal extends Thread implements VisConsole.Listener
         return new ArrayList(Arrays.asList("enable all","enable none"));
     }
 
-
     public void run()
     {
 
@@ -104,6 +103,32 @@ public class DebugEasyCal extends Thread implements VisConsole.Listener
             }
             vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
                                         new VisChain(PixelsToVis, chain)));
+            vb.swap();
+        }
+
+        {
+            ParameterizableCalibration cal = null;
+            double params[] = null;
+            if (ec.calibrator != null)
+                params = ec.calibrator.getCalibrationParameters(0);
+            if (params != null)
+                cal = ec.initializer.initializeWithParameters(ec.imwidth, ec.imheight, params);
+
+            if (cal == null)
+                return;
+
+            // Plot the center of each extrinsics in the dictionary;
+
+            VisWorld.Buffer vb = vw.getBuffer("centers-ext");
+            vb.setDrawOrder(1000);
+            for (int i = 0; i < ranked.size(); i++) {
+                double ext[][] = LinAlg.xyzrpyToMatrix(ranked.get(i).xyzrpy_cen);
+                assert(ext != null);
+                double cxy[] = CameraMath.project(cal, ext, new double[3]);
+                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
+                                            PixelsToVis,new VzPoints(new VisVertexData(cxy), new VzPoints.Style(Color.cyan, 4))));
+
+            }
             vb.swap();
         }
 

@@ -1060,11 +1060,12 @@ public class EasyCal2
         double K[][] = cal.copyIntrinsics();
         //double desiredDepths[] = { (K[0][0] / (width*1.0)) * (7*tagSpacingMeters),
         //                           (K[0][0] / (width*0.6)) * (7*tagSpacingMeters) };
-        double desiredDepths[] = { (K[1][1] / (height*1.0)) * (5*tagSpacingMeters),
-                                   (K[1][1] / (height*0.6)) * (5*tagSpacingMeters) };
+        double desiredDepths[] = { (K[1][1] / (height*0.6)) * (5*tagSpacingMeters), //};//,
+                                   (K[1][1] / (height*1.2)) * (5*tagSpacingMeters) };
 
         // Place the center of the target:
         double centerXy[] = getObsMosaicCenter();
+        LinAlg.printTranspose(centerXy);
 
         DistortionFunctionVerifier verifier = new DistortionFunctionVerifier(cal);
 
@@ -1074,32 +1075,42 @@ public class EasyCal2
         // ArrayList<double[]> centeredExt = new ArrayList();
         ArrayList<SuggestedImage> candidates = new ArrayList();
 
-        int gridY = 4;
-        int gridX = 4;
-        int scaleY = height / gridY;
-        int scaleX = width / gridY;
+
+        // inset x percent of the image, then divide the remaining by
+        // by the grid spacing
+        double inset = .15;
+        int divisionsX = 4;
+        int divisionsY =  2;
+
+        int startX = (int)(inset*width);
+        int startY = (int)(inset*height);
+
+        // Debug:
+        double rNextGaus = 0.0; // Find replace with r.nextGaussian() to restore
 
         for (double desiredDepth : desiredDepths) {
-            for (int gy = 1; gy < gridY; gy++)
-                for (int gx = 1; gx < gridX; gx++) {
-                    double x = gx*scaleX + r.nextGaussian()*2.0;
-                    double y = gy*scaleY + r.nextGaussian()*2.0;
+            for (int gy = 0; gy < divisionsY; gy++)
+                for (int gx = 0; gx < divisionsX; gx++) {
+
+                    double x = startX + width*(1-inset*2) * gx / (divisionsX -1) + rNextGaus*2.0;
+                    double y = startY + height*(1-inset*2) * gy / (divisionsY -1) + rNextGaus*2.0;
                     double xy_dp[] = new double[] { x, y };
 
-                    if (!verifier.validPixelCoord(xy_dp))
-                        continue;
+                    // if (!verifier.validPixelCoord(xy_dp))
+                    //     continue;
 
                     double norm[] = cal.pixelsToNorm(xy_dp);
                     double xyz[] = {norm[0], norm[1], 1};
-                    LinAlg.scaleEquals(xyz, desiredDepth + r.nextGaussian() * 0.01 );
+                    LinAlg.scaleEquals(xyz, desiredDepth + rNextGaus * 0.01 );
 
                     // Choose which direction to rotate based on which image quadrant this is
-                    int signRoll = MathUtil.sign(gx - gridX/2);
-                    int signPitch = MathUtil.sign(gy - gridY/2);
+                    int signRoll = MathUtil.sign(x - width/2);
+                    int signPitch = MathUtil.sign(y - height/2);
 
-                    double rpys[][] = {{ 0            + r.nextGaussian()*0.1, 0             + r.nextGaussian()*0.1, Math.PI/2 },
-                                       { 0            + r.nextGaussian()*0.1, 0.8*signPitch + r.nextGaussian()*0.1, Math.PI/2 },
-                                       { 0.8*signRoll + r.nextGaussian()*0.1, 0             + r.nextGaussian()*0.1, Math.PI/2 }};
+                    double rpys[][] = {{ 0,0,Math.PI/2},
+                                       { 0            + rNextGaus*0.1, 0             + rNextGaus*0.1, Math.PI/2 },
+                                       { 0            + rNextGaus*0.1, 0.8*signPitch + rNextGaus*0.1, Math.PI/2 },
+                                       { 0.8*signRoll + rNextGaus*0.1, 0             + rNextGaus*0.1, Math.PI/2 }};
 
                     for (double rpy[] : rpys) {
                         SuggestedImage si = new SuggestedImage();
