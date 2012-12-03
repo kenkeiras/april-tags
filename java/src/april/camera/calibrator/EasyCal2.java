@@ -1096,8 +1096,8 @@ public class EasyCal2
             for (int gy = 0; gy < divisionsY; gy++)
                 for (int gx = 0; gx < divisionsX; gx++) {
 
-                    double x = startX + width*(1-inset*2) * gx / (divisionsX -1) + rNextGaus*2.0;
-                    double y = startY + height*(1-inset*2) * gy / (divisionsY -1) + rNextGaus*2.0;
+                    double x = startX + width*(1-inset*2) * gx / (divisionsX -1) + r.nextGaussian()*2.0;
+                    double y = startY + height*(1-inset*2) * gy / (divisionsY -1) + r.nextGaussian()*2.0;
                     double xy_dp[] = new double[] { x, y };
 
                     // if (!verifier.validPixelCoord(xy_dp))
@@ -1105,7 +1105,7 @@ public class EasyCal2
 
                     double norm[] = cal.pixelsToNorm(xy_dp);
                     double xyz[] = {norm[0], norm[1], 1};
-                    LinAlg.scaleEquals(xyz, desiredDepth + rNextGaus * 0.01 );
+                    LinAlg.scaleEquals(xyz, desiredDepth + r.nextGaussian() * 0.01 );
 
 
                     // In case the target is in the center of the image, rotate both ways
@@ -1131,7 +1131,7 @@ public class EasyCal2
                     }
 
                     for (double rpy[] : rpy_adjusted) {
-                        rpy = LinAlg.add(rpy, new double[]{rNextGaus*0.1, rNextGaus*0.1, 0});
+                        rpy = LinAlg.add(rpy, new double[]{r.nextGaussian()*rpyNoise, r.nextGaussian()*rpyNoise, 0});
 
                         SuggestedImage si = new SuggestedImage();
                         si.xyzrpy_cen = concat(xyz,rpy);
