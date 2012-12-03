@@ -1063,6 +1063,10 @@ public class EasyCal2
         double desiredDepths[] = { (K[1][1] / (height*0.6)) * (5*tagSpacingMeters), //};//,
                                    (K[1][1] / (height*1.2)) * (5*tagSpacingMeters) };
 
+        double rpys[][] = {{ 0.0, 0.0, Math.PI/2 },
+                           { 0.0, 0.8, Math.PI/2 },
+                           { 0.8, 0.0, Math.PI/2 }};
+
         // Place the center of the target:
         double centerXy[] = getObsMosaicCenter();
         LinAlg.printTranspose(centerXy);
@@ -1079,15 +1083,15 @@ public class EasyCal2
         // inset x percent of the image, then divide the remaining by
         // by the grid spacing
         double inset = .15;
-        int divisionsX = 4;
-        int divisionsY =  2;
+        int divisionsX = 3;
+        int divisionsY =  3;
 
         int startX = (int)(inset*width);
         int startY = (int)(inset*height);
 
         // Debug:
         double rNextGaus = 0.0; // Find replace with r.nextGaussian() to restore
-
+        double rpyNoise = 0.1;
         for (double desiredDepth : desiredDepths) {
             for (int gy = 0; gy < divisionsY; gy++)
                 for (int gx = 0; gx < divisionsX; gx++) {
@@ -1103,16 +1107,32 @@ public class EasyCal2
                     double xyz[] = {norm[0], norm[1], 1};
                     LinAlg.scaleEquals(xyz, desiredDepth + rNextGaus * 0.01 );
 
-                    // Choose which direction to rotate based on which image quadrant this is
-                    int signRoll = MathUtil.sign(x - width/2);
-                    int signPitch = MathUtil.sign(y - height/2);
 
-                    double rpys[][] = {{ 0,0,Math.PI/2},
-                                       { 0            + rNextGaus*0.1, 0             + rNextGaus*0.1, Math.PI/2 },
-                                       { 0            + rNextGaus*0.1, 0.8*signPitch + rNextGaus*0.1, Math.PI/2 },
-                                       { 0.8*signRoll + rNextGaus*0.1, 0             + rNextGaus*0.1, Math.PI/2 }};
-
+                    // In case the target is in the center of the image, rotate both ways
+                    ArrayList<double[]> rpy_adjusted = new ArrayList();
                     for (double rpy[] : rpys) {
+                        // Choose which direction to rotate based on which image quadrant this is
+                        double signs_rpy[] = {MathUtil.sign(x - width/2),
+                                              MathUtil.sign(y - height/2), 1};
+
+                        if (rpy[0] != 0.0 && Math.abs(x - width/2) < .05*width) {
+                            rpy_adjusted.add(LinAlg.scale(rpy, signs_rpy));
+                            // flip roll:
+                            signs_rpy[0] *= -1;
+                            rpy_adjusted.add(LinAlg.scale(rpy, signs_rpy));
+                        } else if (rpy[1] != 0.0 && Math.abs(y - height/2) < .05*height) {
+                            rpy_adjusted.add(LinAlg.scale(rpy, signs_rpy));
+                            // flip pitch:
+                            signs_rpy[1] *= -1;
+                            rpy_adjusted.add(LinAlg.scale(rpy, signs_rpy));
+                        } else {
+                            rpy_adjusted.add(LinAlg.scale(rpy, signs_rpy));
+                        }
+                    }
+
+                    for (double rpy[] : rpy_adjusted) {
+                        rpy = LinAlg.add(rpy, new double[]{rNextGaus*0.1, rNextGaus*0.1, 0});
+
                         SuggestedImage si = new SuggestedImage();
                         si.xyzrpy_cen = concat(xyz,rpy);
                         si.xyzrpy = LinAlg.xyzrpyMultiply(si.xyzrpy_cen, LinAlg.xyzrpyInverse(LinAlg.resize(centerXy,6)));

@@ -106,16 +106,17 @@ public class DebugEasyCal extends Thread implements VisConsole.Listener
             vb.swap();
         }
 
-        {
-            ParameterizableCalibration cal = null;
-            double params[] = null;
-            if (ec.calibrator != null)
-                params = ec.calibrator.getCalibrationParameters(0);
-            if (params != null)
-                cal = ec.initializer.initializeWithParameters(ec.imwidth, ec.imheight, params);
+        ParameterizableCalibration cal = null;
+        double params[] = null;
+        if (ec.calibrator != null)
+            params = ec.calibrator.getCalibrationParameters(0);
+        if (params != null)
+            cal = ec.initializer.initializeWithParameters(ec.imwidth, ec.imheight, params);
 
-            if (cal == null)
-                return;
+        if (cal == null)
+            return;
+
+        {
 
             // Plot the center of each extrinsics in the dictionary;
 
@@ -130,6 +131,18 @@ public class DebugEasyCal extends Thread implements VisConsole.Listener
 
             }
             vb.swap();
+        }
+
+
+        { // Draw the focal center
+            double [][] intrin = cal.copyIntrinsics();
+            double cc[] = {intrin[0][2], intrin[1][2], 0};
+            LinAlg.printTranspose(cc);
+            vw.getBuffer("cc").addBack(new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
+                                                        PixelsToVis,
+                                                        new VzPoints(new VisVertexData(cc),
+                                                                     new VzPoints.Style(Color.yellow, 6))));
+            vw.getBuffer("cc").swap();
         }
 
     }
