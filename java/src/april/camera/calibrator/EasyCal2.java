@@ -673,10 +673,26 @@ public class EasyCal2
             }
 
             ////////////////////////////////////////
-            // meter
+            // frame score heuristic
             {
                 VisWorld.Buffer vb = vw.getBuffer("fs-error-score");
                 vb.setDrawOrder(1000);
+
+                // Estimate frames remaining
+                double remaining = 0.0;
+                {
+                    ArrayList<double[]> nv = new ArrayList();
+                    for (int j = Math.max(0,selectedScores.size() - 5); j < selectedScores.size(); j++)
+                        nv.add(selectedScores.get(j));
+                    nv = stripNAs(nv);
+                    if (nv.size() >= 2) {
+                        double params[] = LinAlg.fitLine(nv);
+                        double pred = intercept(params, 1.0);
+
+                        remaining = pred - calibrator.getNumImages();
+                    }
+                }
+
 
                 String name_toks[] = fs.getClass().getName().split("\\.");
                 String format0 = "<<white>>";
@@ -684,8 +700,8 @@ public class EasyCal2
                 String format2 = minFSScore < fsThresh ? "<<green>>" : "<<white>>";
                 vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.TOP_RIGHT,
                                             new VzText(VzText.ANCHOR.TOP_RIGHT,
-                                                       String.format("%s FrameScore %12.5f\n%sThresh %12.5f\n%sMin %12.5f\n%s%s\n",
-                                                                     format1,fsScore, format0, fsThresh, format2,minFSScore, format0, name_toks[name_toks.length -1]))));
+                                                       String.format("%s FrameScore %12.5f\n%sThresh %12.5f\n%sMin %12.5f\n%s%s\nRemaining frames %.1f\n",
+                                                                     format1,fsScore, format0, fsThresh, format2,minFSScore, format0, name_toks[name_toks.length -1], remaining))));
                 vb.swap();
             }
 
@@ -1360,6 +1376,26 @@ public class EasyCal2
 
         return T;
     }
+
+    public static ArrayList<double[]> stripNAs(ArrayList<double[]> input)
+    {
+        ArrayList<double[]> screened = new ArrayList();
+      outer:
+        for (double [] pt : input) {
+            for (double p : pt)
+                if (Double.isNaN(p))
+                    continue outer;
+            screened.add(pt);
+        }
+        return screened;
+    }
+
+    public static double intercept(double line_params[], double intercept)
+    {
+        return (intercept - line_params[1])/line_params[0];
+    }
+
+
 
     private void updateMosaic(List<TagDetection> detections)
     {
