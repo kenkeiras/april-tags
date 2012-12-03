@@ -65,8 +65,11 @@ public class EasyCal2
 
     // Score FrameScorer
     double minFSScore = Double.MAX_VALUE;
-    boolean clearMinFS = false;
+    boolean clearScoreState = false;
     int debugCT = 0;
+
+    // tracks frame count, frame score
+    ArrayList<double[]> selectedScores = new ArrayList();
 
     // Score Pix
     List<ScoredImage> pixScoreImages = new ArrayList();
@@ -84,6 +87,8 @@ public class EasyCal2
     CalibrationInitializer initializer;
     List<List<BufferedImage>> imagesSet = new ArrayList<List<BufferedImage>>();
     List<List<List<TagDetection>>> detsSet = new ArrayList<List<List<TagDetection>>>();
+
+    final double stoppingAccuracy;
 
     double bestScore = Double.POSITIVE_INFINITY;
     double currentScore = Double.POSITIVE_INFINITY;
@@ -125,14 +130,16 @@ public class EasyCal2
         }
     }
 
-    public EasyCal2(CalibrationInitializer initializer, String url, double tagSpacingMeters, boolean debugGUI,
-                    ArrayList<BufferedImage> debugSeedImages)
+    public EasyCal2(CalibrationInitializer initializer, String url, double tagSpacingMeters, double stoppingAccuracy,
+                    boolean debugGUI, ArrayList<BufferedImage> debugSeedImages)
     {
         this.tf = new Tag36h11();
         this.tm = new TagMosaic(tf, tagSpacingMeters);
         this.td = new TagDetector(tf);
         this.tagSpacingMeters = tagSpacingMeters;
         this.initializer = initializer;
+
+        this.stoppingAccuracy = stoppingAccuracy;
 
         // silence!
         CameraCalibrator.verbose = false;
@@ -400,9 +407,11 @@ public class EasyCal2
             scorePix(im, detections);
             scoreFS(im, detections);
 
-            if (clearMinFS) {
+            if (clearScoreState) {
+                fsScoreImages.clear();
+                pixScoreImages.clear();
                 minFSScore = Double.MAX_VALUE;
-                clearMinFS = false;
+                clearScoreState = false;
             }
         }
 
@@ -411,6 +420,7 @@ public class EasyCal2
             if (applicationMode != MODE_RECTIFY) {
                 vw.getBuffer("Rectified").swap();
                 vw.getBuffer("Distorted outline").swap();
+                vw.getBuffer("Finished").swap();
                 rasterizer = null;
                 return;
             }
@@ -617,6 +627,11 @@ public class EasyCal2
                                                                     new VzMesh.Style(color)))));
             }
             vb.swap();
+        }
+
+        boolean isFinished()
+        {
+            return selectedScores.size() > 0 && selectedScores.get(selectedScores.size()-1)[1] < stoppingAccuracy;
         }
 
         void scoreFS(BufferedImage im, List<TagDetection> detections)
@@ -911,22 +926,38 @@ public class EasyCal2
                     waitingForBest = false;
                     ScoredImage bestSI = fsScoreImages.get(0);//pixScoreImages.get(0);
 
-                    pixScoreImages.clear();
-                    fsScoreImages.clear();
-
                     if (!captureNext)
                         draw(bestSI.im, bestSI.detections);
 
                     // Compute the frame score for this image
-                    {
-                        FrameScorer fs = null;
-                        if (calibrator.getNumImages() < 3)
-                            fs = new InitializationVarianceScorer(calibrator, imwidth, imheight);
-                        else
-                            fs = new PixErrScorer(calibrator, imwidth, imheight);
-                        double selectedScore = fs.scoreFrame(detections);
-                        System.out.printf("Chose image with score %f compared to best %f \n",
-                                          selectedScore,
+                    if (calibrator.getNumImages() >= 3) {
+                        FrameScorer fs = new PixErrScorer(calibrator, imwidth, imheight);
+                        double score = fs.scoreFrame(detections);
+
+                        // Only fire the first time we are "finished"
+                        if (!isFinished() && score < stoppingAccuracy) {
+                            // Swap mode
+                            applicationMode = MODE_RECTIFY;
+
+                            vb = vw.getBuffer("Finished");
+                            vb.addBack(new VisDepthTest(false,
+                                                        new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
+                                                                         new VzText(VzText.ANCHOR.CENTER,
+                                                                                    "<<dropshadow=#AA000000>>"+
+                                                                                    "<<monospaced-28-bold,green>>"+
+                                                                                    "Calibration Complete."+
+                                                                                    "\n<<monospaced-14-bold>>"+
+                                                                                    "type \"save-calibration\" to export data"
+                                                                             ))));
+                            vb.setDrawOrder(1001);
+                            vb.swap();
+                        }
+
+                        selectedScores.add(new double[]{calibrator.getNumImages()+1,score}); // Keep the history
+
+
+                        System.out.printf("Chose image with score %f compared to best in dictionary %f \n",
+                                          score,
                                           bestSuggestions.get(0).score);
                     }
 
@@ -944,7 +975,8 @@ public class EasyCal2
                     captureNext = false;
 
                     // XXX
-                    clearMinFS = true;
+                    clearScoreState = true;
+
                 }
             }
             else {
@@ -1492,6 +1524,7 @@ public class EasyCal2
         opts.addString('u',"url","","Camera URL");
         opts.addString('c',"class","april.camera.models.SimpleKannalaBrandtInitializer","Calibration model initializer class name");
         opts.addDouble('m',"spacing",0.0381,"Spacing between tags (meters)");
+        opts.addDouble('\0',"stopping-accuracy",1.0,"Termination accuracy (px) which flags \"finished\"");
         opts.addString('\0',"debug-seed-images","","Optional parameter listing starting images for debugging");
         opts.addBoolean('\0',"debug-gui",false,"Display additional debugging information");
 
@@ -1526,7 +1559,8 @@ public class EasyCal2
                 System.out.println("Failed to load seed images: "+e);
         }
 
-        new EasyCal2(initializer, url, spacing, opts.getBoolean("debug-gui"), debugSeedImages);
+        new EasyCal2(initializer, url, spacing,  opts.getDouble("stopping-accuracy"),
+                     opts.getBoolean("debug-gui"), debugSeedImages);
     }
 }
 
