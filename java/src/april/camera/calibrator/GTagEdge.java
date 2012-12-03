@@ -163,7 +163,8 @@ public class GTagEdge extends GEdge
                 lin.J.add(new double[this.getDOF()][g.nodes.get(nodes[CE]).getDOF()]);
             lin.J.add(new double[this.getDOF()][g.nodes.get(nodes[ME]).getDOF()]);
 
-            lin.W = LinAlg.identity(this.getDOF()); // XXX use something more principled?
+            // Use .25 pixels, since this is the MRE of calibrating with 63 images on tamron2.8
+            lin.W = LinAlg.scale(LinAlg.identity(this.getDOF()), 1/.25);
         }
 
         //long time_residual0 = System.nanoTime();
