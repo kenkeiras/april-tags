@@ -137,7 +137,6 @@ public class DebugEasyCal extends Thread implements VisConsole.Listener
         { // Draw the focal center
             double [][] intrin = cal.copyIntrinsics();
             double cc[] = {intrin[0][2], intrin[1][2], 0};
-            LinAlg.printTranspose(cc);
             vw.getBuffer("cc").addBack(new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
                                                         PixelsToVis,
                                                         new VzPoints(new VisVertexData(cc),

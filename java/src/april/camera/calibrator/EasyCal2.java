@@ -65,6 +65,7 @@ public class EasyCal2
 
     // Score FrameScorer
     double minFSScore = Double.MAX_VALUE;
+    boolean clearMinFS = false;
     int debugCT = 0;
 
     // Score Pix
@@ -398,6 +399,11 @@ public class EasyCal2
             draw(im, detections);
             scorePix(im, detections);
             scoreFS(im, detections);
+
+            if (clearMinFS) {
+                minFSScore = Double.MAX_VALUE;
+                clearMinFS = false;
+            }
         }
 
         void rectificationUpdate(BufferedImage im)
@@ -931,8 +937,7 @@ public class EasyCal2
                     captureNext = false;
 
                     // XXX
-                    minFSScore = Double.MAX_VALUE;
-
+                    clearMinFS = true;
                 }
             }
             else {
@@ -1069,7 +1074,6 @@ public class EasyCal2
 
         // Place the center of the target:
         double centerXy[] = getObsMosaicCenter();
-        LinAlg.printTranspose(centerXy);
 
         DistortionFunctionVerifier verifier = new DistortionFunctionVerifier(cal);
 
@@ -1420,11 +1424,19 @@ public class EasyCal2
 
         System.out.printf("Picked %d of %d as best suggestions\n", bestSuggestions.size(), suggestDictionary.size());
 
+        // Grab the current value of 'cal'
+        {
+            double curCalScore = PixErrScorer.scoreCal(calibrator, imwidth, imheight);
+
+            System.out.printf("cur score %f\n", curCalScore);
+        }
         // Debug
         System.out.println("Top ten suggestions:");
         for (int i = 0; i < Math.min(10, ranked.size()); i++) {
-            System.out.printf(" %d score %f\n", i, ranked.get(i).score);
+            System.out.printf(" %02d score %f\n", i, ranked.get(i).score);
         }
+        int lastIdx = ranked.size()-1;
+        if (lastIdx >= 0) System.out.printf(" %d score %f\n", lastIdx, ranked.get(lastIdx).score);
 
     }
 

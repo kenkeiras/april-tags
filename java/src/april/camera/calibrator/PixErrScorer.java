@@ -15,7 +15,7 @@ public class PixErrScorer implements FrameScorer
 
     // Do not change seed during a run!
     public static int seed = 14;
-    public static int nsamples = 500;
+    public static int nsamples = 50;
 
     final CameraCalibrator currentCal;
 
@@ -44,6 +44,11 @@ public class PixErrScorer implements FrameScorer
             return Double.NaN;
         }
 
+        return scoreCal(cal, width, height);
+    }
+
+    public static double scoreCal(CameraCalibrator cal, int width, int height)
+    {
         // Compute mean, covariance from which we will sample
         MultiGaussian mg = null;
         try {
