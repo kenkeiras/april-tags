@@ -21,6 +21,9 @@ public class GTagEdge extends GEdge
     ArrayList<double[]> pixel_observations = new ArrayList<double[]>();
     ArrayList<double[]> mosaic_coordinates = new ArrayList<double[]>();
 
+    // Set so that normalized cxhi^2 = 1 on 2012-12-02-tamron28-1px
+    double pixelVariance = .057;
+
     boolean hasCameraExtrinsics = true;
 
     // indices in this.nodes[] for GNode objects
@@ -163,8 +166,7 @@ public class GTagEdge extends GEdge
                 lin.J.add(new double[this.getDOF()][g.nodes.get(nodes[CE]).getDOF()]);
             lin.J.add(new double[this.getDOF()][g.nodes.get(nodes[ME]).getDOF()]);
 
-            // Use .25 pixels, since this is the MRE of calibrating with 63 images on tamron2.8
-            lin.W = LinAlg.scale(LinAlg.identity(this.getDOF()), 1/.25);
+            lin.W = LinAlg.scale(LinAlg.identity(this.getDOF()), 1/pixelVariance);
         }
 
         //long time_residual0 = System.nanoTime();
@@ -247,7 +249,7 @@ public class GTagEdge extends GEdge
         for (int i=0; i < r.length; i++)
             chi2 += r[i]*r[i];
 
-        return chi2;
+        return chi2 / pixelVariance;
     }
 
     public void write(StructureWriter outs) throws IOException

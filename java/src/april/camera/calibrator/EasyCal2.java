@@ -1290,6 +1290,13 @@ public class EasyCal2
         }
 
         calibrator.draw();
+
+        if (false) {
+            april.graph.Graph.ErrorStats es = calibrator.getGraphCopy().getErrorStats();
+            System.out.printf("Graph chi2 %f \n", es.chi2);
+            System.out.printf("Graph chi2 norm %f \n", es.chi2normalized);
+            System.out.printf("Graph dof %d \n", es.degreesOfFreedom);
+        }
     }
 
     private double[][] getPlottingTransformation(BufferedImage im, boolean mirror)
