@@ -1,5 +1,12 @@
 package april.camera.calibrator;
 
+import java.awt.image.*;
+import java.util.*;
+
+import april.camera.*;
+import april.jmat.*;
+import april.tag.*;
+
 // TODO
 //  - use of cameraNumber and cameraIndex not fully fleshed out, especially
 //    for MosaicWrapper data (images and detections that are indexed by cameras.size())
@@ -40,7 +47,7 @@ package april.camera.calibrator;
             \-- depends on: cameraY's intrinsics have been initialized
     }
 */
-public class CameraCalibrationGraph
+public class CameraCalibrationSystem
 {
     public int REQUIRED_TAGS_PER_IMAGE = 8;   // number of constraints needed per image
     public static boolean verbose = true;
@@ -89,8 +96,8 @@ public class CameraCalibrationGraph
 
     ////////////////////////////////////////////////////////////////////////////////
     // Methods
-    public CameraCalibrationGraph(List<CalibrationInitializer> initializers,
-                                  TagFamily tf, double metersPerTag)
+    public CameraCalibrationSystem(List<CalibrationInitializer> initializers,
+                                   TagFamily tf, double metersPerTag)
     {
         this.tf = tf;
         this.tm = new TagMosaic(tf, metersPerTag);
@@ -117,6 +124,8 @@ public class CameraCalibrationGraph
             // that are in their own coordinate system have rootNumber == cameraNumber
             cam.CameraToRootXyzrpy = new double[6];
             cam.rootNumber = cam.cameraNumber;
+
+            cameras.add(cam);
         }
 
         // no frames yet
@@ -271,16 +280,16 @@ public class CameraCalibrationGraph
         {
             MosaicWrapper mosaic = mosaics.get(mosaicIndex);
 
-            Set<Integer> rootNumbers = mosaic.MosaicToRootXyzrpys.keySet();
+            Integer rootNumbers[] = mosaic.MosaicToRootXyzrpys.keySet().toArray(new Integer[0]);
 
             // if this mosaic isn't currently defined in multiple subsystems,
             // we can't use it to merge subsystems
-            if (rootNumbers.size() < 2)
+            if (rootNumbers.length < 2)
                 continue;
 
             // get camera with lowest unique identifier. All other connected
             // subsystems will transform into this camera's coordinate frame
-            int rootNumber = rootNumbers.get(0); // start here
+            int rootNumber = rootNumbers[0];
             for (int cameraNumber : rootNumbers)
                 rootNumber = Math.min(rootNumber, cameraNumber);
 
@@ -291,6 +300,8 @@ public class CameraCalibrationGraph
             assert(MosaicToRootXyzrpy != null);
 
             double MosaicToRoot[][] = LinAlg.xyzrpyToMatrix(MosaicToRootXyzrpy);
+
+            List<Integer> defunctRoots = new ArrayList<Integer>();
 
             // loop over every other camera connected to this mosaic and transform its subsystem
             for (int cameraNumber : rootNumbers) {
@@ -310,13 +321,10 @@ public class CameraCalibrationGraph
                 double CameraToRoot[][] = LinAlg.matrixAB(MosaicToRoot,
                                                           LinAlg.inverse(MosaicToCamera));
 
-                // XXX should we remove this key/value pair from the hashmap?
-                // be careful to remove correctly, changes in the map will be
-                // reflected in the set
-                //
-                // XXX think more about this
-                transformMosaics(rootNumber, cameraNumber, CameraToRoot);
+                // apply the transformation
+                transformMosaicsExcept(mosaicIndex, rootNumber, cameraNumber, CameraToRoot);
                 transformCameras(rootNumber, cameraNumber, CameraToRoot);
+                defunctRoots.add(cameraNumber);
 
                 if (verbose)
                     System.out.printf("Connected subsystems for roots %d and %d"+
@@ -325,6 +333,13 @@ public class CameraCalibrationGraph
                                       cameraNumber, rootNumber,
                                       mosaicIndex);
             }
+
+            for (int defunctRoot : defunctRoots)
+                mosaic.MosaicToRootXyzrpys.remove(defunctRoot);
+
+            if (verbose)
+                System.out.printf("Removed %d defunct roots from mosaic %d\n",
+                                  defunctRoots.size(), mosaicIndex);
         }
     }
 
@@ -338,7 +353,7 @@ public class CameraCalibrationGraph
         for (MosaicWrapper mosaic : mosaics) {
             List<TagDetection> detections = mosaic.detectionSet.get(cameraIndex);
 
-            if (detectionsUsable(detections)
+            if (detectionsUsable(detections))
                 currentCameraDetections.add(detections);
         }
 
@@ -371,8 +386,8 @@ public class CameraCalibrationGraph
         return true;
     }
 
-    private double[] estimateMosaicToCameraTransformation(ParameterizableCalibration cal,
-                                                          List<TagDetection> detections)
+    private double[][] estimateMosaicToCameraTransformation(ParameterizableCalibration cal,
+                                                            List<TagDetection> detections)
     {
         double K[][] = cal.copyIntrinsics();
 
@@ -401,19 +416,94 @@ public class CameraCalibrationGraph
         return null;
     }
 
-    private void transformMosaics(int newRootNumber, int oldRootNumber, double OldToNew[][])
+    private void transformMosaicsExcept(int skipIndex,
+                                        int newRootNumber, int oldRootNumber, double OldRootToNewRoot[][])
     {
         for (int mosaicIndex = 0; mosaicIndex < mosaics.size(); mosaicIndex++)
         {
+            // skip the mosaic that the caller is operating on
+            if (mosaicIndex == skipIndex)
+                continue;
+
             MosaicWrapper mosaic = mosaics.get(mosaicIndex);
 
+            double MosaicToOldRootXyzrpy[] = mosaic.MosaicToRootXyzrpys.remove(oldRootNumber);
 
+            // skip if this mosaic isn't rooted against our old root
+            if (MosaicToOldRootXyzrpy == null)
+                continue;
+
+            // if we're already connected to the new root, we're done since we removed the old one
+            if (mosaic.MosaicToRootXyzrpys.get(newRootNumber) != null)
+                continue;
+
+            double MosaicToOldRoot[][] = LinAlg.xyzrpyToMatrix(MosaicToOldRootXyzrpy);
+
+            double MosaicToNewRoot[][] = LinAlg.matrixAB(OldRootToNewRoot,
+                                                         MosaicToOldRoot);
+
+            double xyzrpy[] = LinAlg.matrixToXyzrpy(MosaicToNewRoot);
+
+            mosaic.MosaicToRootXyzrpys.put(newRootNumber, xyzrpy);
         }
     }
 
-    private void transformCameras(int newRootNumber, int oldRootNumber, double OldToNew[][])
+    /** Transform all cameras with the old root specified to the new root with the
+      * provided rigid-body transformation.
+      */
+    private void transformCameras(int newRootNumber, int oldRootNumber, double OldRootToNewRoot[][])
     {
+        assert(oldRootNumber != newRootNumber);
 
+        for (int cameraIndex = 0; cameraIndex < cameras.size(); cameraIndex++)
+        {
+            CameraWrapper cam = cameras.get(cameraIndex);
+
+            if (cam.rootNumber != oldRootNumber)
+                continue;
+
+            double CameraToOldRoot[][] = LinAlg.xyzrpyToMatrix(cam.CameraToRootXyzrpy);
+
+            double CameraToNewRoot[][] = LinAlg.matrixAB(OldRootToNewRoot,
+                                                         CameraToOldRoot);
+
+            double xyzrpy[] = LinAlg.matrixToXyzrpy(CameraToNewRoot);
+
+            cam.CameraToRootXyzrpy = xyzrpy;
+            cam.rootNumber = newRootNumber;
+        }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+
+    public List<CameraWrapper> getCameras()
+    {
+        return cameras;
+    }
+
+    public List<MosaicWrapper> getMosaics()
+    {
+        return mosaics;
+    }
+
+    public List<List<BufferedImage>> getAllImageSets()
+    {
+        List<List<BufferedImage>> allImageSets = new ArrayList<List<BufferedImage>>();
+
+        for (MosaicWrapper mosaic : mosaics)
+            allImageSets.add(mosaic.imageSet);
+
+        return allImageSets;
+    }
+
+    public List<List<List<TagDetection>>> getAllDetectionSets()
+    {
+        List<List<List<TagDetection>>> allDetectionSets = new ArrayList<List<List<TagDetection>>>();
+
+        for (MosaicWrapper mosaic : mosaics)
+            allDetectionSets.add(mosaic.detectionSet);
+
+        return allDetectionSets;
     }
 }
 
