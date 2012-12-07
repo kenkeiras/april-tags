@@ -8,8 +8,6 @@ import april.jmat.*;
 import april.tag.*;
 
 // TODO
-//  - use of cameraNumber and cameraIndex not fully fleshed out, especially
-//    for MosaicWrapper data (images and detections that are indexed by cameras.size())
 //  - replace xyzrpy with xyzquat?
 
 /** This class attempts to handle camera and mosaic initialization,
@@ -65,7 +63,7 @@ public class CameraCalibrationSystem
     // Classes
     public static class CameraWrapper
     {
-        public int                      cameraNumber; // original camera index, zero-indexed
+        public int                      cameraNumber; // camera index zero-indexed
         public String                   name;         // safe to change at any time
         public CalibrationInitializer   initializer;
 
@@ -293,7 +291,7 @@ public class CameraCalibrationSystem
             for (int cameraNumber : rootNumbers)
                 rootNumber = Math.min(rootNumber, cameraNumber);
 
-            CameraWrapper root = getCameraByNumber(rootNumber);
+            CameraWrapper root = cameras.get(rootNumber);
             assert(root != null);
 
             double MosaicToRootXyzrpy[] = mosaic.MosaicToRootXyzrpys.get(rootNumber);
@@ -309,8 +307,7 @@ public class CameraCalibrationSystem
                 if (cameraNumber == rootNumber)
                     continue;
 
-                CameraWrapper cam = getCameraByNumber(cameraNumber);
-                assert(cam != null);
+                CameraWrapper cam = cameras.get(cameraNumber);
                 assert(cam.cameraNumber == cam.rootNumber); // we expected to get a root camera
 
                 double MosaicToCameraXyzrpy[] = mosaic.MosaicToRootXyzrpys.get(cameraNumber);
@@ -365,7 +362,6 @@ public class CameraCalibrationSystem
         if (detections.size() < REQUIRED_TAGS_PER_IMAGE)
             return false;
 
-
         // skip if the tags don't span multiple rows and columns
         int minRow = this.tm.getRow(detections.get(0).id);
         int maxRow = minRow;
@@ -407,15 +403,8 @@ public class CameraCalibrationSystem
         return Rt;
     }
 
-    private CameraWrapper getCameraByNumber(int cameraNumber)
-    {
-        for (CameraWrapper cam : cameras)
-            if (cam.cameraNumber == cameraNumber)
-                return cam;
-
-        return null;
-    }
-
+    /** Transform all mosaics to the new coordinate system except the mosaic specified.
+      */
     private void transformMosaicsExcept(int skipIndex,
                                         int newRootNumber, int oldRootNumber, double OldRootToNewRoot[][])
     {
@@ -476,11 +465,24 @@ public class CameraCalibrationSystem
 
     ////////////////////////////////////////////////////////////////////////////////
 
+    /** Return reference to list of cameras in use by this class instance.
+      * The user is only allowed to change the camera name (not needed internally)
+      * or the parameters for the ParameterizableCalibration or CameraToRootXyzrpy.
+      * The user *shall not* initialize anything that has not been initialized
+      * or uninitialize variables that are null until initialization
+      * (e.g. ParameterizableCalibration)
+      */
     public List<CameraWrapper> getCameras()
     {
         return cameras;
     }
 
+    /** Return reference to list of mosaics in use by this class instance.
+      * The user is only allowed to read images/tag detections or change the
+      * values of entries in the MosaicToRootXyzrpys hashmap. The user is *not*
+      * allowed to add or remove entries in the hashmap nor remove images or
+      * tag detections.
+      */
     public List<MosaicWrapper> getMosaics()
     {
         return mosaics;

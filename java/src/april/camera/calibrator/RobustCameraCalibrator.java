@@ -133,33 +133,17 @@ public class RobustCameraCalibrator
         List<CameraCalibrationSystem.CameraWrapper> cameras = cal.getCameras();
         List<CameraCalibrationSystem.MosaicWrapper> mosaics = cal.getMosaics();
 
-        /*
-        Set<Integer> uniqueRoots = new TreeSet<Integer>();
-
-        for (CameraCalibrationSystem.CameraWrapper cam : cameras)
-            uniqueRoots.add(cam.rootNumber);
-
-        Integer roots[] = uniqueRoots.toArray(new Integer[0]);
-        */
-
-        for (int i = 0; i < worlds.length; i++)
-            drawSubsystem(cameras, mosaics, worlds[i], layers[i], i);
-
+        drawSubsystems(cameras, mosaics);
         updateLayerManagers(cameras);
     }
 
-    private void drawSubsystem(List<CameraCalibrationSystem.CameraWrapper> cameras,
-                               List<CameraCalibrationSystem.MosaicWrapper> mosaics,
-                               VisWorld vw, VisLayer vl,
-                               int root)
+    private void drawSubsystems(List<CameraCalibrationSystem.CameraWrapper> cameras,
+                                List<CameraCalibrationSystem.MosaicWrapper> mosaics)
     {
-        VisWorld.Buffer vb;
-
-        vb = vw.getBuffer("Cameras");
         for (CameraCalibrationSystem.CameraWrapper cam : cameras)
         {
-            if (cam.rootNumber != root)
-                continue;
+            VisWorld vw = worlds[cam.rootNumber];
+            VisWorld.Buffer vb = vw.getBuffer("Cameras");
 
             double CameraToRoot[][] = LinAlg.xyzrpyToMatrix(cam.CameraToRootXyzrpy);
 
@@ -168,33 +152,42 @@ public class RobustCameraCalibrator
                                     LinAlg.scale(0.05, 0.05, 0.05),
                                     new VzAxes()));
         }
-        vb.swap();
 
         // compute mosaic border
         double XY0[] = this.tm.getPositionMeters(minCol - 0.5, minRow - 0.5);
         double XY1[] = this.tm.getPositionMeters(maxCol + 0.5, maxRow + 0.5);
 
-        vb = vw.getBuffer("Mosaics");
         for (int mosaicIndex = 0; mosaicIndex < mosaics.size(); mosaicIndex++)
         {
             CameraCalibrationSystem.MosaicWrapper mosaic = mosaics.get(mosaicIndex);
 
-            double MosaicToRootXyzrpy[] = mosaic.MosaicToRootXyzrpys.get(root);
+            Integer rootNumbers[] = mosaic.MosaicToRootXyzrpys.keySet().toArray(new Integer[0]);
 
-            if (MosaicToRootXyzrpy == null)
-                continue;
+            for (int root : rootNumbers)
+            {
+                VisWorld vw = worlds[root];
+                VisWorld.Buffer vb = vw.getBuffer("Mosaics");
 
-            double MosaicToRoot[][] = LinAlg.xyzrpyToMatrix(MosaicToRootXyzrpy);
+                double MosaicToRootXyzrpy[] = mosaic.MosaicToRootXyzrpys.get(root);
+                assert(MosaicToRootXyzrpy != null);
 
-            Color c = ColorUtil.seededColor(mosaicIndex);
-            vb.addBack(new VisChain(Tvis,
-                                    MosaicToRoot,
-                                    LinAlg.translate((XY0[0]+XY1[0])/2.0, (XY0[1]+XY1[1])/2.0, 0),
-                                    new VzRectangle(XY1[0] - XY0[0],
-                                                    XY1[1] - XY0[1],
-                                                    new VzLines.Style(c, 2))));
+                double MosaicToRoot[][] = LinAlg.xyzrpyToMatrix(MosaicToRootXyzrpy);
+
+                Color c = ColorUtil.seededColor(mosaicIndex);
+                vb.addBack(new VisChain(Tvis,
+                                        MosaicToRoot,
+                                        LinAlg.translate((XY0[0]+XY1[0])/2.0, (XY0[1]+XY1[1])/2.0, 0),
+                                        new VzRectangle(XY1[0] - XY0[0],
+                                                        XY1[1] - XY0[1],
+                                                        new VzLines.Style(c, 2))));
+            }
         }
-        vb.swap();
+
+        // swap now in case the buffer was used multiple times
+        for (VisWorld vw : worlds) {
+            vw.getBuffer("Cameras").swap();
+            vw.getBuffer("Mosaics").swap();
+        }
     }
 
     private void updateLayerManagers(List<CameraCalibrationSystem.CameraWrapper> cameras)
@@ -227,7 +220,6 @@ public class RobustCameraCalibrator
 
             numUsedLayers = usedLayers;
         }
-
     }
 
     ////////////////////////////////////////////////////////////////////////////////
