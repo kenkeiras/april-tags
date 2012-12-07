@@ -198,7 +198,7 @@ public class MultiCameraCalibrator implements ParameterListener
                         BufferedImage im = ImageConvert.convertToImage(frmd);
                         imageSet.add(im);
                     }
-                    System.out.printf("Capture Loop: Took %12.6f seconds to get image set\n", tic.toctic());
+                    System.out.printf("TIMING: %12.6f seconds to get image set\n", tic.toctic());
 
                     List<List<TagDetection>> detectionSet = new ArrayList<List<TagDetection>>();
                     for (int i = 0; i < urls.length; i++) {
@@ -206,13 +206,13 @@ public class MultiCameraCalibrator implements ParameterListener
                         List<TagDetection> detections = td.process(im, new double[] {im.getWidth()/2.0, im.getHeight()/2.0});
                         detectionSet.add(detections);
                     }
-                    System.out.printf("Capture Loop: Took %12.6f seconds to detect tags\n", tic.toctic());
+                    System.out.printf("TIMING: %12.6f seconds to detect tags\n", tic.toctic());
 
                     drawSet(imageSet, detectionSet);
-                    System.out.printf("Capture Loop: Took %12.6f seconds to draw set\n", tic.toctic());
+                    System.out.printf("TIMING: %12.6f seconds to draw set\n", tic.toctic());
 
                     processSet(imageSet, detectionSet);
-                    System.out.printf("Capture Loop: Took %12.6f seconds to process set\n", tic.toctic());
+                    System.out.printf("TIMING: %12.6f seconds to process set\n", tic.toctic());
 
                     captureOnce = false;
                 }
@@ -323,10 +323,10 @@ public class MultiCameraCalibrator implements ParameterListener
     {
         Tic tic = new Tic();
         calibrator.addOneImageSet(imageSet, detectionSet);
-        System.out.printf("Took %12.6f seconds to add image set\n", tic.toctic());
+        System.out.printf("TIMING: %12.6f seconds to add image set\n", tic.toctic());
 
         calibrator.draw();
-        System.out.printf("Took %12.6f seconds to draw\n", tic.toctic());
+        System.out.printf("TIMING: %12.6f seconds to draw\n", tic.toctic());
     }
 
     public static void main(String args[])
