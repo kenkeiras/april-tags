@@ -39,6 +39,7 @@ public class MultiCameraCalibrator implements ParameterListener
 
     boolean captureOnce = false;
 
+    long start_utime;
     int imageCounter = 0;
 
     public MultiCameraCalibrator(List<CalibrationInitializer> initializers, String urls[], double metersPerTag)
@@ -52,6 +53,8 @@ public class MultiCameraCalibrator implements ParameterListener
         this.isrcs          = new ImageSource[urls.length];
         this.ifmts          = new ImageSourceFormat[urls.length];
         this.imageQueues    = new BlockingSingleQueue[urls.length];
+
+        this.start_utime = TimeUtil.utime();
 
         // Calibrator setup
         calibrator = new RobustCameraCalibrator(initializers, tf, metersPerTag, true);
@@ -84,8 +87,8 @@ public class MultiCameraCalibrator implements ParameterListener
         canvasPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
                                     vcImages,
                                     calibrator.getVisCanvas());
-        canvasPane.setDividerLocation(0.5);
-        canvasPane.setResizeWeight(0.5);
+        canvasPane.setDividerLocation(0.3);
+        canvasPane.setResizeWeight(0.3);
 
         JSplitPane jspane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, canvasPane, pg);
         jspane.setDividerLocation(1.0);
@@ -216,7 +219,8 @@ public class MultiCameraCalibrator implements ParameterListener
                     System.out.printf("TIMING: %12.6f seconds to draw set\n", tic.toctic());
 
                     if (pg.gb("screenshots")) {
-                        String path = String.format("/tmp/MultiCameraCalibrator-ScreenShot-CameraPane%04d.png", imageCounter);
+                        String path = String.format("/tmp/MultiCameraCalibrator-ScreenShot-%d-CameraPane%04d.png",
+                                                    start_utime, imageCounter);
                         vcImages.writeScreenShot(new File(path), "png");
                     }
 
@@ -224,7 +228,8 @@ public class MultiCameraCalibrator implements ParameterListener
                     System.out.printf("TIMING: %12.6f seconds to process set\n", tic.toctic());
 
                     if (pg.gb("screenshots")) {
-                        String path = String.format("/tmp/MultiCameraCalibrator-ScreenShot-CalibratorPane%04d.png", imageCounter);
+                        String path = String.format("/tmp/MultiCameraCalibrator-ScreenShot-%d-CalibratorPane%04d.png",
+                                                    start_utime, imageCounter);
                         calibrator.getVisCanvas().writeScreenShot(new File(path), "png");
                         imageCounter++;
                     }
