@@ -39,6 +39,8 @@ public class MultiCameraCalibrator implements ParameterListener
 
     boolean captureOnce = false;
 
+    int imageCounter = 0;
+
     public MultiCameraCalibrator(List<CalibrationInitializer> initializers, String urls[], double metersPerTag)
     {
         this.tf = new Tag36h11();
@@ -67,7 +69,9 @@ public class MultiCameraCalibrator implements ParameterListener
         april.camera.models.Radial10thOrderCaltechInitializer.verbose = false;
 
         pg = new ParameterGUI();
-        pg.addButtons("captureOnce","Capture once");
+        pg.addCheckBoxes("screenshots","Automatically save screenshots to /tmp", false);
+        pg.addButtons("captureOnce","Capture once",
+                      "print", "Print calibration block");
         pg.addListener(this);
 
         vwImages = new VisWorld();
@@ -113,11 +117,8 @@ public class MultiCameraCalibrator implements ParameterListener
             new AcquisitionThread(urls[i], isrcs[i], imageQueues[i]).start();
         }
 
-        double XY0[] = getXY0(0);
-        double XY1[] = getXY0(initializers.size()-1);
-        XY1[0] += ifmts[initializers.size()-1].width;
-        XY1[1] += ifmts[initializers.size()-1].height;
-
+        double XY0[] = getXY0(initializers.size()-1);
+        double XY1[] = getXY1(0);
         vlImages.cameraManager.fit2D(XY0, XY1, true);
 
         // get a shuffled set of nice tag colors
@@ -141,6 +142,9 @@ public class MultiCameraCalibrator implements ParameterListener
             if (captureOnce) captureOnce = false;
             else             captureOnce = true;
         }
+
+        if (name.equals("print"))
+            calibrator.printCalibrationBlock();
     }
 
     class AcquisitionThread extends Thread
@@ -211,8 +215,19 @@ public class MultiCameraCalibrator implements ParameterListener
                     drawSet(imageSet, detectionSet);
                     System.out.printf("TIMING: %12.6f seconds to draw set\n", tic.toctic());
 
+                    if (pg.gb("screenshots")) {
+                        String path = String.format("/tmp/MultiCameraCalibrator-ScreenShot-CameraPane%04d.png", imageCounter);
+                        vcImages.writeScreenShot(new File(path), "png");
+                    }
+
                     processSet(imageSet, detectionSet);
                     System.out.printf("TIMING: %12.6f seconds to process set\n", tic.toctic());
+
+                    if (pg.gb("screenshots")) {
+                        String path = String.format("/tmp/MultiCameraCalibrator-ScreenShot-CalibratorPane%04d.png", imageCounter);
+                        calibrator.getVisCanvas().writeScreenShot(new File(path), "png");
+                        imageCounter++;
+                    }
 
                     captureOnce = false;
                 }
@@ -254,12 +269,21 @@ public class MultiCameraCalibrator implements ParameterListener
         double XY0[] = new double[2];
 
         assert(index < ifmts.length);
-
-        for (int i=0; i < index; i++) {
-            XY0[0] += ifmts[i].width;
-        }
+        for (int i=0; i <= index; i++)
+            XY0[1] -= ifmts[i].height;
 
         return XY0;
+    }
+
+    double[] getXY1(int index)
+    {
+        double XY0[] = getXY0(index);
+        double XY1[] = new double[2];
+
+        XY1[0] = XY0[0] + ifmts[index].width;
+        XY1[1] = XY0[1] + ifmts[index].height;
+
+        return XY1;
     }
 
     double[][] ensurePixelTransform(int index)
@@ -268,8 +292,7 @@ public class MultiCameraCalibrator implements ParameterListener
 
         if (PixelsToVis == null) {
             double XY0[] = getXY0(index);
-            double XY1[] = new double[] { XY0[0] + ifmts[index].width,
-                                          XY0[1] + ifmts[index].height };
+            double XY1[] = getXY1(index);
 
             PixelsToVis = CameraMath.makeVisPlottingTransform(ifmts[index].width, ifmts[index].height,
                                                               XY0, XY1, true);
@@ -321,12 +344,33 @@ public class MultiCameraCalibrator implements ParameterListener
 
     void processSet(List<BufferedImage> imageSet, List<List<TagDetection>> detectionSet)
     {
-        Tic tic = new Tic();
+        //Tic tic = new Tic();
         calibrator.addOneImageSet(imageSet, detectionSet);
-        System.out.printf("TIMING: %12.6f seconds to add image set\n", tic.toctic());
+        //System.out.printf("TIMING: %12.6f seconds to add image set\n", tic.toctic());
+
+        List<RobustCameraCalibrator.GraphWrapper> graphWrappers = calibrator.buildCalibrationGraphs();
+        //System.out.printf("TIMING: %12.6f seconds to build graphs\n", tic.toctic());
+
+        List<RobustCameraCalibrator.GraphStats> stats = calibrator.iterateUntilConvergence(graphWrappers,
+                                                                                           0.01, 3, 50);
+        //System.out.printf("TIMING: %12.6f seconds to iterate graphs\n", tic.toctic());
+
+        calibrator.updateFromGraphs(graphWrappers, stats);
+        //System.out.printf("TIMING: %12.6f seconds to update from graphs\n", tic.toctic());
 
         calibrator.draw();
-        System.out.printf("TIMING: %12.6f seconds to draw\n", tic.toctic());
+        //System.out.printf("TIMING: %12.6f seconds to draw\n", tic.toctic());
+
+        calibrator.printCalibrationBlock();
+
+        for (RobustCameraCalibrator.GraphStats s : stats) {
+            if (s == null) {
+                System.out.printf("Graph is null\n");
+                continue;
+            }
+            System.out.printf("Graph with %d observations, MRE %12.6f pixels, MSE %12.6f pixels, SPD Error: %s\n",
+                              s.numObs, s.MRE, s.MSE, s.SPDError ? "true" : "false");
+        }
     }
 
     public static void main(String args[])

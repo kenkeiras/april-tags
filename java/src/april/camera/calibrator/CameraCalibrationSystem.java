@@ -357,7 +357,7 @@ public class CameraCalibrationSystem
         return currentCameraDetections;
     }
 
-    private boolean detectionsUsable(List<TagDetection> detections)
+    public boolean detectionsUsable(List<TagDetection> detections)
     {
         if (detections.size() < REQUIRED_TAGS_PER_IMAGE)
             return false;
