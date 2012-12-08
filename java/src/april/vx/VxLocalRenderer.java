@@ -111,13 +111,12 @@ public class VxLocalRenderer extends VxRenderer
 
     public void update_buffer(long worldId, String buffer_name, int drawOrder, VxCodeOutputStream codes)
     {
-        assert(false);
         synchronized(gl_thread)
         {
             byte codeData[] = codes.getBuffer();
             int codeLen = codes.size();
 
-            update_codes(instanceID, VxUtil.copyStringZ(buffer_name), drawOrder, codeLen, codeData);
+            update_buffer(instanceID, worldId, VxUtil.copyStringZ(buffer_name), drawOrder, codeLen, codeData);
         }
     }
 
@@ -255,7 +254,7 @@ public class VxLocalRenderer extends VxRenderer
 
     private static native int add_resources(int instanceID, int nresc,
                                             int types[], Object[] rescs, int counts[], int fieldwidths[], long ids[]);
-    private static native int update_codes(int instanceID, byte[] buf_name, int draw_order, int code_len, byte[] codes);
+    private static native int update_buffer(int instanceID, long worldId, byte[] buf_name, int draw_order, int code_len, byte[] codes);
     private static native void deallocate_resources(int instanceID, long[] guids, int nguids);
     private static native int render(int instanceID, int width, int height, byte[] img);
     private static native int get_canvas_size(int instanceID, int dim[]);
