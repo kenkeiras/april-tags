@@ -1,18 +1,28 @@
 package april.vx;
 import java.util.*;
 
+import java.util.concurrent.atomic.*;
+
 public class VxWorld
 {
+    // These don't need to be long, but we've already got the c data structures for longs.
+    static AtomicLong worldNextId = new AtomicLong(1);
 
-    VxResourceManager vxm;
+    // Each world gets a unique ID. Ensures there aren't name collisions on buffer names,
+    // and makes it easy for a VxLayer to specify which world to render.
+    final long worldId = worldNextId.getAndIncrement();
+
+    VxRenderer vxrend;
+    VxResourceManager vxman;
     HashMap<String, Buffer> bufferMap = new HashMap();
 
-    public VxWorld(VxResourceManager vxm)
+    public VxWorld(VxRenderer _vxrend, VxResourceManager _vxman)
     {
-        this.vxm = vxm;
+        vxman = _vxman;
+        vxrend = _vxrend;
     }
 
-    public Buffer getBuffer(String name)
+    public synchronized Buffer getBuffer(String name)
     {
         Buffer buf = bufferMap.get(name);
         if (buf == null) {
@@ -66,8 +76,10 @@ public class VxWorld
                 vxo.appendTo(resources, codes, ms);
             }
 
-            // Notify the Layer we need to be rem
-            vxm.swap_buffer(name, drawOrder, resources, codes);
+            // Use the managed path for updating the resources
+            vxrend.update_resources_managed(worldId, name, resources);
+            // Codes can go straight to the renderer
+            vxrend.update_buffer(worldId, name, drawOrder, codes);
         }
     }
 

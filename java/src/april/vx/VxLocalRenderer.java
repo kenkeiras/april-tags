@@ -26,6 +26,8 @@ public class VxLocalRenderer extends VxRenderer
 
     int width, height;
 
+    VxResourceManager manager;
+
     public VxLocalRenderer(String url)
     {
         if (!url.startsWith("java://"))
@@ -50,6 +52,8 @@ public class VxLocalRenderer extends VxRenderer
         {
             instanceID = create();
         }
+
+        manager = new VxResourceManager(this);
     }
 
     @Override
@@ -61,8 +65,14 @@ public class VxLocalRenderer extends VxRenderer
         }
     }
 
+    public void update_resources_managed(long worldId, String name, HashSet<VxResource> resources)
+    {
+        manager.update_resources_managed(worldId, name, resources);
+    }
+
+
     //*** Methods for all VxRenderers ***//
-    public void add_resources(HashSet<VxResource> resources)
+    protected void add_resources_direct(HashSet<VxResource> resources)
     {
         synchronized(gl_thread)
         {
@@ -92,8 +102,16 @@ public class VxLocalRenderer extends VxRenderer
     }
 
 
-    public void update_codes(String buffer_name, int drawOrder, VxCodeOutputStream codes)
+    // Set the viewport and worldId for a specific layer
+    public void update_layer(long layerId, long worldId, double viewport_rel[])
     {
+        assert(false);
+    }
+
+
+    public void update_buffer(long worldId, String buffer_name, int drawOrder, VxCodeOutputStream codes)
+    {
+        assert(false);
         synchronized(gl_thread)
         {
             byte codeData[] = codes.getBuffer();
@@ -104,7 +122,7 @@ public class VxLocalRenderer extends VxRenderer
     }
 
 
-    public void remove_resources(HashSet<VxResource> resources)
+    public void remove_resources_direct(HashSet<VxResource> resources)
     {
         synchronized(gl_thread)
         {

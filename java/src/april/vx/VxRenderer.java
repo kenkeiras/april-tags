@@ -6,9 +6,25 @@ public abstract class VxRenderer
 {
     // Methods which all renderers must support
     // Direct mirror of C-side implementation
-    public abstract void add_resources(HashSet<VxResource> resources);
-    public abstract void update_codes(String buffer_name, int drawOrder, VxCodeOutputStream codes);
-    public abstract void remove_resources(HashSet<VxResource> resources);
+
+    // Resource management: Caller is responsible to ensure resources are set before referenced in render codes.
+    //   update_resources() requires local access to all resources, and then removes duplicates
+    //   add_resources() only requires access to new resources, used for remote management
+
+    // Declare the exact resources needed to render this buffer. Will cause add_resource() calls for new resources
+    public abstract void update_resources_managed(long worldId, String buffer_name, HashSet<VxResource> resources);
+
+    // upload/remove resources without checking for duplicates.
+    // These method should only be called from VxRenderers, not from any other Vx class
+    protected abstract void add_resources_direct(HashSet<VxResource> resources);
+    protected abstract void remove_resources_direct(HashSet<VxResource> resources);
+
+    // Detail a new set of render codes for a specific buffer
+    public abstract void update_buffer(long worldId, String buffer_name, int drawOrder, VxCodeOutputStream codes);
+
+    // Set the viewport and worldId for a specific layer
+    public abstract void update_layer(long layerId, long worldId, double viewport_rel[]);
+
 
     // Warning -- this could be very slow, requiring a round-trip to the server
     public abstract int[] get_canvas_size();
