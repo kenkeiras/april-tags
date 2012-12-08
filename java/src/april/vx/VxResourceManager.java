@@ -8,7 +8,7 @@ class VxResourceManager
     VxRenderer rend;
 
     // For world and each buffer, keep track of which guids have been uploaded
-    HashMap<Long, HashMap<String, HashSet<VxResource>>> allLiveSets = new HashMap();
+    HashMap<Integer, HashMap<String, HashSet<VxResource>>> allLiveSets = new HashMap();
     HashSet<VxResource> remoteResources = new HashSet();
 
     protected VxResourceManager(VxRenderer rend)
@@ -16,7 +16,7 @@ class VxResourceManager
         this.rend = rend;
     }
 
-    protected void update_resources_managed(long worldId, String name, HashSet<VxResource> resources)
+    protected void update_resources_managed(int worldID, String name, HashSet<VxResource> resources)
     {
         // Step 1: Determine which resources are new, and need to be sent:
         HashSet<VxResource> send = new HashSet(resources); // copy
@@ -27,10 +27,10 @@ class VxResourceManager
         rend.add_resources_direct(send);
 
         // Step 2: Record which resources are currently in use by the named buffer:
-        HashMap<String, HashSet<VxResource>> worldLiveSet = allLiveSets.get(worldId);
+        HashMap<String, HashSet<VxResource>> worldLiveSet = allLiveSets.get(worldID);
         if (worldLiveSet == null) {
             worldLiveSet = new HashMap();
-            allLiveSets.put(worldId, worldLiveSet);
+            allLiveSets.put(worldID, worldLiveSet);
         }
         HashSet<VxResource> oldResources = worldLiveSet.get(name); // could be null
         if (oldResources == null)

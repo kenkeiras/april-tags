@@ -58,9 +58,9 @@ public class VxTCPRenderer extends VxRenderer
 
     //*** Methods for all VxRenderers ***//
 
-    public void update_resources_managed(long worldId, String name, HashSet<VxResource> resources)
+    public void update_resources_managed(int worldID, String name, HashSet<VxResource> resources)
     {
-        manager.update_resources_managed(worldId, name, resources);
+        manager.update_resources_managed(worldID, name, resources);
     }
 
     public void add_resources_direct(HashSet<VxResource> resources)
@@ -84,7 +84,7 @@ public class VxTCPRenderer extends VxRenderer
         writeLCM(VxTCPServer.VX_TCP_ADD_RESOURCES, lcm_resources);
     }
 
-    public void update_buffer(long worldId, String buffer_name, int drawOrder, VxCodeOutputStream codes)
+    public void update_buffer(int worldID, String buffer_name, int drawOrder, VxCodeOutputStream codes)
     {
         lcmvx_render_codes_t lcodes = new lcmvx_render_codes_t();
         lcodes.draw_order = drawOrder;
@@ -95,15 +95,15 @@ public class VxTCPRenderer extends VxRenderer
         writeLCM(VxTCPServer.VX_TCP_BUFFER_UPDATE, lcodes);
     }
 
-    public void update_layer(long layerId, long worldId, float viewport_rel[])
+    public void update_layer(int layerID, int worldID, float viewport_rel[])
     {
         assert(viewport_rel.length == 4);
         try{
             synchronized (outs) {
                 outs.writeInt(VxTCPServer.VX_TCP_LAYER_UPDATE);
-                outs.writeInt(8+8+4*4);
-                outs.writeLong(layerId);
-                outs.writeLong(worldId);
+                outs.writeInt(4+4+4*4);
+                outs.writeInt(layerID);
+                outs.writeInt(worldID);
                 outs.writeFloat(viewport_rel[0]);
                 outs.writeFloat(viewport_rel[1]);
                 outs.writeFloat(viewport_rel[2]);

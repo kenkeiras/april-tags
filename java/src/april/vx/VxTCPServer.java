@@ -52,16 +52,16 @@ public class VxTCPServer extends Thread
         }
     }
 
-    private void process_layer(long layerId, long worldId, float viewport_rel[])
+    private void process_layer(int layerID, int worldID, float viewport_rel[])
     {
-        rend.update_layer(layerId, worldId, viewport_rel);
+        rend.update_layer(layerID, worldID, viewport_rel);
     }
 
     private void process_buffer(lcmvx_render_codes_t lcm_codes)
     {
         // Convert and send off
         VxCodeOutputStream vout = new VxCodeOutputStream(lcm_codes.buf);
-        rend.update_buffer(lcm_codes.worldId, lcm_codes.buffer_name, lcm_codes.draw_order, vout);
+        rend.update_buffer(lcm_codes.worldID, lcm_codes.buffer_name, lcm_codes.draw_order, vout);
     }
 
     private void process_dealloc(lcmvx_dealloc_t lcm_dealloc)
@@ -135,7 +135,7 @@ public class VxTCPServer extends Thread
                             process_buffer(new lcmvx_render_codes_t(dins));
                             break;
                         case VX_TCP_LAYER_UPDATE:
-                            process_layer(dins.readLong(),dins.readLong(),
+                            process_layer(dins.readInt(),dins.readInt(),
                                           new float[]{dins.readFloat(),dins.readFloat(),dins.readFloat(),dins.readFloat()});
                             break;
                         default:

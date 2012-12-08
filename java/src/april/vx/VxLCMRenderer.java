@@ -21,7 +21,7 @@ public class VxLCMRenderer extends VxRenderer
 
     //*** Methods for all VxRenderers ***//
 
-    public void update_resources_managed(long worldId, String name, HashSet<VxResource> resources)
+    public void update_resources_managed(int worldID, String name, HashSet<VxResource> resources)
     {
         // Do no resource management for LCM, always send everything
         add_resources_direct(resources);
@@ -35,14 +35,14 @@ public class VxLCMRenderer extends VxRenderer
     {
     }
 
-    public void update_buffer(long worldId, String buffer_name, int drawOrder, VxCodeOutputStream codes)
+    public void update_buffer(int worldID, String buffer_name, int drawOrder, VxCodeOutputStream codes)
     {
     }
 
     // XXX Need to figure out how much of the interface we will support in the LCM case.
     // A reasonable model here would be to never worry about any layer commands -- all objects go
     // into the same vis world, same layer, etc
-    public void update_layer(long layerId, long worldId, double viewport_rel[])
+    public void update_layer(int layerID, int worldID, float viewport_rel[])
     {
         assert(false);
     }

@@ -5,12 +5,11 @@ import java.util.concurrent.atomic.*;
 
 public class VxWorld
 {
-    // These don't need to be long, but we've already got the c data structures for longs.
-    static AtomicLong worldNextId = new AtomicLong(1);
+    static AtomicInteger worldNextID = new AtomicInteger(1);
 
     // Each world gets a unique ID. Ensures there aren't name collisions on buffer names,
     // and makes it easy for a VxLayer to specify which world to render.
-    final long worldId = worldNextId.getAndIncrement();
+    final int worldID = worldNextID.getAndIncrement();
 
     VxRenderer vxrend;
     HashMap<String, Buffer> bufferMap = new HashMap();
@@ -75,9 +74,9 @@ public class VxWorld
             }
 
             // Use the managed path for updating the resources
-            vxrend.update_resources_managed(worldId, name, resources);
+            vxrend.update_resources_managed(worldID, name, resources);
             // Codes can go straight to the renderer
-            vxrend.update_buffer(worldId, name, drawOrder, codes);
+            vxrend.update_buffer(worldID, name, drawOrder, codes);
         }
     }
 

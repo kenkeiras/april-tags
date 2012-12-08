@@ -14,13 +14,13 @@ import java.util.concurrent.atomic.*;
 public class VxLayer
 {
     // These don't need to be long, but we've already got the c data structures for longs.
-    static AtomicLong layerNextId = new AtomicLong(1);
+    static AtomicInteger layerNextID = new AtomicInteger(1);
 
     VxWorld vw;
     VxRenderer rend;
 
     // Each layer gets a unique ID to allow server to manage multiple layersx
-    final long layerId = layerNextId.getAndIncrement();
+    final int layerID = layerNextID.getAndIncrement();
 
 
     VxLayer(VxRenderer _rend, VxWorld _vw)
@@ -40,7 +40,7 @@ public class VxLayer
 
         // Don't use code stream, since it's relatively short, and since we need the meta data about viewport size
         // to know about event handling on server side
-        rend.update_layer(layerId, vw.worldId, viewport_rel);
+        rend.update_layer(layerID, vw.worldID, viewport_rel);
     }
 
 }

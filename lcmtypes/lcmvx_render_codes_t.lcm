@@ -2,7 +2,7 @@ struct lcmvx_render_codes_t
 {
     int64_t utime;
 
-    int64_t worldId;
+    int32_t worldID;
     string buffer_name;
     int32_t draw_order;
 
