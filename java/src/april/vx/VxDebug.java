@@ -34,7 +34,7 @@ public class VxDebug
 
         float proj[][] = VxUtil.copyFloats(proj_d);
         vxlr.set_system_pm_matrix(proj);
-        VxWorld vw = new VxWorld(new VxResourceManager(vxlr));
+        VxWorld vw = new VxWorld(vxlr);
 
         ArrayList<VxObject> progs1 = new ArrayList();
         ArrayList<VxObject> progs2 = new ArrayList();

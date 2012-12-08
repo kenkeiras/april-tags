@@ -36,7 +36,7 @@ public class VxLayer
     private void update()
     {
         // by default we use the entire screen;
-        double viewport_rel[] = {0,0,1.0,1.0};
+        float viewport_rel[] = {0.0f,0.0f,1.0f,1.0f};
 
         // Don't use code stream, since it's relatively short, and since we need the meta data about viewport size
         // to know about event handling on server side

@@ -13,6 +13,8 @@ public class VxTCPRenderer extends VxRenderer
     DataInputStream ins;
     DataOutputStream outs;
 
+    VxResourceManager manager;
+
     public VxTCPRenderer(String url)
     {
         if (!url.startsWith("tcp://"))
@@ -47,11 +49,21 @@ public class VxTCPRenderer extends VxRenderer
 
         // Setup a FIFO queue for incoming resource additions, code
         // updates, or deallocations to preserve order on other side
+
+
+        // manage resources so we don't use unnecessary bandwidth
+        manager = new VxResourceManager(this);
     }
 
 
     //*** Methods for all VxRenderers ***//
-    public void add_resources(HashSet<VxResource> resources)
+
+    public void update_resources_managed(long worldId, String name, HashSet<VxResource> resources)
+    {
+        manager.update_resources_managed(worldId, name, resources);
+    }
+
+    public void add_resources_direct(HashSet<VxResource> resources)
     {
         lcmvx_resource_list_t lcm_resources = new lcmvx_resource_list_t();
         lcm_resources.nresources = resources.size();
@@ -72,7 +84,7 @@ public class VxTCPRenderer extends VxRenderer
         writeLCM(VxTCPServer.VX_TCP_ADD_RESOURCES, lcm_resources);
     }
 
-    public  void update_codes(String buffer_name, int drawOrder, VxCodeOutputStream codes)
+    public void update_buffer(long worldId, String buffer_name, int drawOrder, VxCodeOutputStream codes)
     {
         lcmvx_render_codes_t lcodes = new lcmvx_render_codes_t();
         lcodes.draw_order = drawOrder;
@@ -80,10 +92,31 @@ public class VxTCPRenderer extends VxRenderer
         lcodes.buf = codes.getBuffer();
         lcodes.buflen = codes.size();
 
-        writeLCM(VxTCPServer.VX_TCP_CODES, lcodes);
+        writeLCM(VxTCPServer.VX_TCP_BUFFER_UPDATE, lcodes);
     }
 
-    public void remove_resources(HashSet<VxResource> resources)
+    public void update_layer(long layerId, long worldId, float viewport_rel[])
+    {
+        assert(viewport_rel.length == 4);
+        try{
+            synchronized (outs) {
+                outs.writeInt(VxTCPServer.VX_TCP_LAYER_UPDATE);
+                outs.writeInt(8+8+4*4);
+                outs.writeLong(layerId);
+                outs.writeLong(worldId);
+                outs.writeFloat(viewport_rel[0]);
+                outs.writeFloat(viewport_rel[1]);
+                outs.writeFloat(viewport_rel[2]);
+                outs.writeFloat(viewport_rel[3]);
+
+                outs.flush();
+            }
+        } catch(IOException e){
+            System.out.println("Ex: "+e); e.printStackTrace();
+        }
+    }
+
+    public void remove_resources_direct(HashSet<VxResource> resources)
     {
         lcmvx_dealloc_t dealloc = new lcmvx_dealloc_t();
         dealloc.nguids = resources.size();

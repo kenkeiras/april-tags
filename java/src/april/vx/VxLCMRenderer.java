@@ -21,19 +21,33 @@ public class VxLCMRenderer extends VxRenderer
 
     //*** Methods for all VxRenderers ***//
 
+    public void update_resources_managed(long worldId, String name, HashSet<VxResource> resources)
+    {
+        // Do no resource management for LCM, always send everything
+        add_resources_direct(resources);
+    }
+
     // Specifics for handling these messages needs to be determined. Some issues:
     //   1) on lossy comms, it's possible that some resources will never be received by the
     //      the remote. Currently this would cause vx.c to crash
     //   2) how/if to aggregate/split messages
-    public void add_resources(HashSet<VxResource> resources)
+    public void add_resources_direct(HashSet<VxResource> resources)
     {
     }
 
-    public void update_codes(String buffer_name, int drawOrder, VxCodeOutputStream codes)
+    public void update_buffer(long worldId, String buffer_name, int drawOrder, VxCodeOutputStream codes)
     {
     }
 
-    public void remove_resources(HashSet<VxResource> resources)
+    // XXX Need to figure out how much of the interface we will support in the LCM case.
+    // A reasonable model here would be to never worry about any layer commands -- all objects go
+    // into the same vis world, same layer, etc
+    public void update_layer(long layerId, long worldId, double viewport_rel[])
+    {
+        assert(false);
+    }
+
+    public void remove_resources_direct(HashSet<VxResource> resources)
     {
         // For the C Side, we'll also need to figure out how to cleanup the memory in use by the resources here?
         assert(false);// For VxLCM, resources are sent each frame, and greedily deallocated after rendering (remotely)

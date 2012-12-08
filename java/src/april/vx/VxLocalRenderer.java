@@ -103,7 +103,7 @@ public class VxLocalRenderer extends VxRenderer
 
 
     // Set the viewport and worldId for a specific layer
-    public void update_layer(long layerId, long worldId, double viewport_rel[])
+    public void update_layer(long layerId, long worldId, float viewport_rel[])
     {
         assert(false);
     }

@@ -39,7 +39,7 @@ public class VxTest
         VxRenderer vxr = VxRenderer.make(opts.getString("url"));//width,height);
 
 
-        VxWorld vw = new VxWorld(new VxResourceManager(vxr));
+        VxWorld vw = new VxWorld(vxr);
 
         ArrayList<VxVertexAttrib> point_attribs = new ArrayList();
         {

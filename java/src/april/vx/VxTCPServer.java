@@ -16,8 +16,8 @@ public class VxTCPServer extends Thread
 
     // The server listens for codes on the input stream -- it expects either
     // a set of resources, or a set of codes. Marshalling is handled by LCM data types
-    public static final int VX_TCP_ADD_RESOURCES = 0x1,VX_TCP_CODES = 0x2, VX_TCP_DEALLOC_RESOURCES = 0x3,
-        VX_TCP_REQUEST_SIZE = 0x4, VX_TCP_CANVAS_SIZE = 0x5;
+    public static final int VX_TCP_ADD_RESOURCES = 0x1,VX_TCP_BUFFER_UPDATE = 0x2, VX_TCP_DEALLOC_RESOURCES = 0x3,
+        VX_TCP_REQUEST_SIZE = 0x4, VX_TCP_CANVAS_SIZE = 0x5, VX_TCP_LAYER_UPDATE = 0x6;
 
     final int port;
 
@@ -52,11 +52,16 @@ public class VxTCPServer extends Thread
         }
     }
 
-    private void process_codes(lcmvx_render_codes_t lcm_codes)
+    private void process_layer(long layerId, long worldId, float viewport_rel[])
+    {
+        rend.update_layer(layerId, worldId, viewport_rel);
+    }
+
+    private void process_buffer(lcmvx_render_codes_t lcm_codes)
     {
         // Convert and send off
         VxCodeOutputStream vout = new VxCodeOutputStream(lcm_codes.buf);
-        rend.update_codes(lcm_codes.buffer_name, lcm_codes.draw_order, vout);
+        rend.update_buffer(lcm_codes.worldId, lcm_codes.buffer_name, lcm_codes.draw_order, vout);
     }
 
     private void process_dealloc(lcmvx_dealloc_t lcm_dealloc)
@@ -66,7 +71,7 @@ public class VxTCPServer extends Thread
         for (int i = 0; i < lcm_dealloc.nguids; i++)
             dealloc.add(new VxResource(0, null, 0, 0, lcm_dealloc.guids[i]));
 
-        rend.remove_resources(dealloc);
+        rend.remove_resources_direct(dealloc);
     }
 
     private void process_resources(lcmvx_resource_list_t lcm_resources)
@@ -80,7 +85,7 @@ public class VxTCPServer extends Thread
             VxResource vr = new VxResource(lvr.type, res, lvr.count, lvr.fieldwidth, lvr.id);
             resources.add(vr);
         }
-        rend.add_resources(resources);
+        rend.add_resources_direct(resources);
     }
 
     class ClientThread extends Thread
@@ -118,17 +123,23 @@ public class VxTCPServer extends Thread
                     ins.read(buf);
                     // printHex(buf);
                     // System.out.printf("Read len %d\n",len);
-
+                    LCMDataInputStream dins = new LCMDataInputStream(buf);
                     switch(code) {
                         case VX_TCP_ADD_RESOURCES:
-                            process_resources(new lcmvx_resource_list_t(new LCMDataInputStream(buf)));
+                            process_resources(new lcmvx_resource_list_t(dins));
                             break;
                         case VX_TCP_DEALLOC_RESOURCES:
-                            process_dealloc(new lcmvx_dealloc_t(new LCMDataInputStream(buf)));
+                            process_dealloc(new lcmvx_dealloc_t(dins));
                             break;
-                        case VX_TCP_CODES:
-                            process_codes(new lcmvx_render_codes_t(new LCMDataInputStream(buf)));
+                        case VX_TCP_BUFFER_UPDATE:
+                            process_buffer(new lcmvx_render_codes_t(dins));
                             break;
+                        case VX_TCP_LAYER_UPDATE:
+                            process_layer(dins.readLong(),dins.readLong(),
+                                          new float[]{dins.readFloat(),dins.readFloat(),dins.readFloat(),dins.readFloat()});
+                            break;
+                        default:
+                            System.out.printf("WRN: Unsupported OP code! 0x%x\n",code);
                     }
                 }
 

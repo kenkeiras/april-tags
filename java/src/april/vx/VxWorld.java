@@ -13,12 +13,10 @@ public class VxWorld
     final long worldId = worldNextId.getAndIncrement();
 
     VxRenderer vxrend;
-    VxResourceManager vxman;
     HashMap<String, Buffer> bufferMap = new HashMap();
 
-    public VxWorld(VxRenderer _vxrend, VxResourceManager _vxman)
+    public VxWorld(VxRenderer _vxrend)
     {
-        vxman = _vxman;
         vxrend = _vxrend;
     }
 
