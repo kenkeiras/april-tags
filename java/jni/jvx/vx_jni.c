@@ -32,7 +32,7 @@ JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_vx_1local_1initialize
 JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_vx_1create_1local_1renderer
 (JNIEnv * jenv, jclass jcls, jint width, jint height)
 {
-    uint32_t instanceID = instanceIDcounter++; // NOTE: java must guarantee concurrency
+    uint32_t instanceID = instanceIDcounter++; // XXX NOTE: java no longer guarantees concurrency
 
     vx_local_renderer_t *lrend = vx_create_local_renderer(width, height);
 

@@ -18,11 +18,8 @@ public class VxLocalRenderer extends VxRenderer
     // even if no rendering going to be performed
     static {
         System.loadLibrary("jvx");
+        vx_local_initialize();
     }
-
-    // XXX This thread can be removed once synchronous  GL access has been
-    // implemented on the C Side
-    static GLThread gl_thread = new GLThread();
 
     int width, height;
 
@@ -48,10 +45,7 @@ public class VxLocalRenderer extends VxRenderer
             }
         }
 
-        synchronized(gl_thread)
-        {
-            instanceID = vx_create_local_renderer(width, height);
-        }
+        instanceID = vx_create_local_renderer(width, height);
 
         manager = new VxResourceManager(this);
     }
@@ -59,10 +53,7 @@ public class VxLocalRenderer extends VxRenderer
     @Override
     public void finalize()
     {
-        synchronized(gl_thread)
-        {
-            destroy(instanceID);
-        }
+        destroy(instanceID);
     }
 
     public void update_resources_managed(int worldID, String name, HashSet<VxResource> resources)
@@ -74,33 +65,29 @@ public class VxLocalRenderer extends VxRenderer
     //*** Methods for all VxRenderers ***//
     protected void add_resources_direct(HashSet<VxResource> resources)
     {
-        synchronized(gl_thread)
-        {
-            // Process all the resources, and compact them into primitive arrays
-            // where possible, theoretically makes jni faster than doing cumbersome
-            // object access
-            int nresc = resources.size();
-            int types[] = new int[nresc];
-            Object rescs[] = new Object[nresc];
-            int counts[] = new int[nresc];
-            int fieldwidths[] = new int[nresc];
-            long ids [] = new long[nresc];
+        // Process all the resources, and compact them into primitive arrays
+        // where possible, theoretically makes jni faster than doing cumbersome
+        // object access
+        int nresc = resources.size();
+        int types[] = new int[nresc];
+        Object rescs[] = new Object[nresc];
+        int counts[] = new int[nresc];
+        int fieldwidths[] = new int[nresc];
+        long ids [] = new long[nresc];
 
-            int i = 0;
-            for (VxResource r : resources) {
-                types[i] = r.type;
-                rescs[i] = r.res;
-                counts[i] = r.count;
-                fieldwidths[i] = r.fieldwidth;
-                ids[i] = r.id;
+        int i = 0;
+        for (VxResource r : resources) {
+            types[i] = r.type;
+            rescs[i] = r.res;
+            counts[i] = r.count;
+            fieldwidths[i] = r.fieldwidth;
+            ids[i] = r.id;
 
-                i++;
-            }
-
-            add_resources(instanceID, nresc, types, rescs, counts, fieldwidths, ids);
+            i++;
         }
-    }
 
+        add_resources(instanceID, nresc, types, rescs, counts, fieldwidths, ids);
+    }
 
     // Set the viewport and worldID for a specific layer
     public void update_layer(int layerID, int worldID, int drawOrder, float viewport_rel[])
@@ -111,29 +98,23 @@ public class VxLocalRenderer extends VxRenderer
 
     public void update_buffer(int worldID, String buffer_name, int drawOrder, VxCodeOutputStream codes)
     {
-        synchronized(gl_thread)
-        {
-            byte codeData[] = codes.getBuffer();
-            int codeLen = codes.size();
+        byte codeData[] = codes.getBuffer();
+        int codeLen = codes.size();
 
-            update_buffer(instanceID, worldID, VxUtil.copyStringZ(buffer_name), drawOrder, codeLen, codeData);
-        }
+        update_buffer(instanceID, worldID, VxUtil.copyStringZ(buffer_name), drawOrder, codeLen, codeData);
     }
 
 
     public void remove_resources_direct(HashSet<VxResource> resources)
     {
-        synchronized(gl_thread)
-        {
-            long deallocate_guids[] = new long[resources.size()];
+        long deallocate_guids[] = new long[resources.size()];
 
-            int j = 0;
-            for (VxResource vr : resources)
-                deallocate_guids[j++] = vr.id;
+        int j = 0;
+        for (VxResource vr : resources)
+            deallocate_guids[j++] = vr.id;
 
 
-            deallocate_resources(instanceID, deallocate_guids, deallocate_guids.length);
-        }
+        deallocate_resources(instanceID, deallocate_guids, deallocate_guids.length);
     }
 
     // Fast for a local implementation
@@ -147,33 +128,14 @@ public class VxLocalRenderer extends VxRenderer
         return dim;
     }
 
-    public void render(final int width, final int height, final byte[] img)
+    public void render(int width, int height, byte[] img)
     {
         // Update dimensions
         this.width = width;
         this.height = height;
 
-        final Object lock = new Object();
-        Runnable r = new Runnable()
-            {
-                public void run()
-                {
-                    synchronized(gl_thread) {
-                        render(instanceID, width, height, img);
-                    }
-                    synchronized(lock) {
-                        lock.notifyAll();
-                    }
-                }
-            };
-        gl_thread.add_task(r);
 
-
-        synchronized(lock) {
-            try {
-                lock.wait();
-            } catch(InterruptedException e){}
-        }
+        render(instanceID, width, height, img);
     }
 
     // Takes as input a row-major projection-model matrix which is
@@ -192,60 +154,6 @@ public class VxLocalRenderer extends VxRenderer
                 pm2[i*4 + j] = pm[i][j];
         set_layer_pm_matrix(instanceID, layerID, pm2);
     }
-
-
-
-
-    // GL Thread management
-
-
-    // A single instance of this thread is created to
-    // manage any GL calls
-
-
-    private static class GLThread extends Thread
-    {
-        ArrayBlockingQueue<Runnable> tasks = new ArrayBlockingQueue<Runnable>(10);
-
-        GLThread()
-        {
-            start();
-        }
-
-        public void add_task(Runnable t)
-        {
-            tasks.offer(t); // XXX Not doing any duplicate checking. Why does GLManager need to do it?
-        }
-        public void run()
-        {
-            vx_local_initialize(); // XXX This needs to be called from the GL thread
-            while(true) {
-
-                Runnable r;
-
-                try {
-                    r = tasks.take();
-                } catch (InterruptedException ex) {
-                    System.out.println("VxLocalRenderer interrupted "+ex);
-                    break;
-                }
-
-                try {
-                    r.run();
-                } catch (Exception ex) {
-                    System.out.println("VXLocalRenderer task "+r+" had exception "+ex);
-                    ex.printStackTrace();
-                    System.exit(-1);
-                }
-
-
-            }
-        }
-    }
-
-
-
-
 
     // Native methods
     private static native int vx_local_initialize();
