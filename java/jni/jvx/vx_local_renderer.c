@@ -91,7 +91,7 @@ static void checkVersions()
 }
 
 //XXXX how do we handle this? Depends on whether you want local rendering or not.
-int vx_initialize()
+int vx_local_initialize()
 {
     if (verbose) printf("Creating GL context\n");
     glc = glcontext_X11_create();
@@ -656,7 +656,6 @@ static void vx_update_resources_managed(vx_renderer_t * rend, int worldID, char 
 
 static void vx_add_resources_direct(vx_renderer_t * rend, varray_t * resources)
 {
-    assert(0); // Need to convert to 'state'
     vx_local_add_resources_direct((vx_local_renderer_t *)(rend->impl), resources);
 }
 
@@ -688,7 +687,7 @@ static void vx_destroy(vx_renderer_t * rend)
 }
 
 // XXX deal with width and height
-vx_local_renderer_t * vx_create_local(int width, int height)
+vx_local_renderer_t * vx_create_local_renderer(int width, int height)
 {
     vx_local_renderer_t * local = malloc(sizeof(vx_local_renderer_t));
     local->super = malloc(sizeof(vx_renderer_t));

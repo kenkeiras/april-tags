@@ -3,6 +3,7 @@
 
 #include "varray.h"
 #include "vx_code_input_stream.h"
+#include "vx_resc.h"
 
 typedef struct vx_renderer vx_renderer_t;
 

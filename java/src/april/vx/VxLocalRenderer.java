@@ -50,7 +50,7 @@ public class VxLocalRenderer extends VxRenderer
 
         synchronized(gl_thread)
         {
-            instanceID = create();
+            instanceID = vx_create_local_renderer(width, height);
         }
 
         manager = new VxResourceManager(this);
@@ -218,7 +218,7 @@ public class VxLocalRenderer extends VxRenderer
         }
         public void run()
         {
-            init(); // XXX This needs to be called from the GL thread
+            vx_local_initialize(); // XXX This needs to be called from the GL thread
             while(true) {
 
                 Runnable r;
@@ -248,8 +248,8 @@ public class VxLocalRenderer extends VxRenderer
 
 
     // Native methods
-    private static native int init();
-    private static native int create();
+    private static native int vx_local_initialize();
+    private static native int vx_create_local_renderer(int width, int height);
     private static native int destroy(int instanceID);
 
     private static native int add_resources(int instanceID, int nresc,
