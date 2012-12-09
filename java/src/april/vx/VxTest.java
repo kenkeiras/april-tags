@@ -40,6 +40,7 @@ public class VxTest
 
 
         VxWorld vw = new VxWorld(vxr);
+        VxLayer vl = new VxLayer(vxr, vw);
 
         ArrayList<VxVertexAttrib> point_attribs = new ArrayList();
         {

@@ -99,6 +99,17 @@ JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_add_1resources
 }
 
 
+JNIEXPORT void JNICALL Java_april_vx_VxLocalRenderer_update_1layer
+(JNIEnv * jenv, jclass jcls, jint instanceID, jint layerID, jint worldID, jint draw_order, jfloatArray jviewport_rel)
+{
+    vx_local_renderer_t * lrend = vhash_get(vx_instance_map, (void*)instanceID);
+
+    jfloat *viewport_rel = (*jenv)->GetPrimitiveArrayCritical(jenv, jviewport_rel, NULL);
+    lrend->super->update_layer(lrend->super,layerID, worldID, draw_order, viewport_rel);
+    (*jenv)->ReleasePrimitiveArrayCritical(jenv, jviewport_rel, viewport_rel, 0);
+
+}
+
 JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_update_1buffer
 (JNIEnv * jenv, jclass jcls, jint instanceID, jint worldID, jbyteArray jbuf_name, jint draw_order, jint codes_len, jbyteArray jcodes)
 {
@@ -152,15 +163,13 @@ JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_render
     return 0; // XXX
 }
 
-JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_set_1system_1pm_1matrix
-(JNIEnv * jenv, jclass jcls, jint instanceID, jfloatArray jpm_mat)
+JNIEXPORT void JNICALL Java_april_vx_VxLocalRenderer_set_1layer_1pm_1matrix
+(JNIEnv * jenv, jclass jcls, jint instanceID, jint layerID, jfloatArray jpm_mat)
 {
     vx_local_renderer_t * lrend = vhash_get(vx_instance_map, (void*)instanceID);
 
     jfloat* pm_mat = (*jenv)->GetPrimitiveArrayCritical(jenv, jpm_mat, NULL);
-    lrend->set_system_pm_matrix(lrend, pm_mat);
+    lrend->set_layer_pm_matrix(lrend, layerID, pm_mat);
     (*jenv)->ReleasePrimitiveArrayCritical(jenv, jpm_mat, pm_mat, 0);
-
-    return 0;//XXX
 }
 

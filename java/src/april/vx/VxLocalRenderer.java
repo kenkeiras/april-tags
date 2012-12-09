@@ -103,9 +103,9 @@ public class VxLocalRenderer extends VxRenderer
 
 
     // Set the viewport and worldID for a specific layer
-    public void update_layer(int layerID, int worldID, float viewport_rel[])
+    public void update_layer(int layerID, int worldID, int drawOrder, float viewport_rel[])
     {
-        assert(false);
+        update_layer(instanceID, layerID, worldID, drawOrder, viewport_rel);
     }
 
 
@@ -184,13 +184,13 @@ public class VxLocalRenderer extends VxRenderer
     //     set_system_pm_matrix(LinAlg.copyFloats(pm));
     // }
 
-    public void set_system_pm_matrix(float pm[][])
+    public void set_layer_pm_matrix(int layerID, float pm[][])
     {
         float pm2[] = new float[16];
         for (int i = 0; i < 4; i++)
             for (int j = 0; j < 4; j++)
                 pm2[i*4 + j] = pm[i][j];
-        set_system_pm_matrix(instanceID, pm2);
+        set_layer_pm_matrix(instanceID, layerID, pm2);
     }
 
 
@@ -255,8 +255,9 @@ public class VxLocalRenderer extends VxRenderer
     private static native int add_resources(int instanceID, int nresc,
                                             int types[], Object[] rescs, int counts[], int fieldwidths[], long ids[]);
     private static native int update_buffer(int instanceID, int worldID, byte[] buf_name, int draw_order, int code_len, byte[] codes);
+    private static native void update_layer(int instanceID, int layerID, int worldID, int draw_order, float viewport_rel[]);
     private static native void deallocate_resources(int instanceID, long[] guids, int nguids);
     private static native int render(int instanceID, int width, int height, byte[] img);
     private static native int get_canvas_size(int instanceID, int dim[]);
-    native static int set_system_pm_matrix(int instanceID, float pm[]);
+    native static void set_layer_pm_matrix(int instanceID, int layerID, float pm[]);
 }

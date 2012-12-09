@@ -23,7 +23,7 @@ public abstract class VxRenderer
     public abstract void update_buffer(int worldID, String buffer_name, int drawOrder, VxCodeOutputStream codes);
 
     // Set the viewport and worldID for a specific layer
-    public abstract void update_layer(int layerID, int worldID, float viewport_rel[]);
+    public abstract void update_layer(int layerID, int worldID, int drawOrder, float viewport_rel[]);
 
 
     // Warning -- this could be very slow, requiring a round-trip to the server

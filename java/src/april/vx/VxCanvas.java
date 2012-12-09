@@ -30,7 +30,7 @@ public class VxCanvas extends JComponent
                                             VxUtil.lookAt(new double[]{0,0,10}, new double[3], new double[]{0,1,0}));
 
         float proj[][] = VxUtil.copyFloats(proj_d);
-        ((VxLocalRenderer)rend).set_system_pm_matrix(proj);
+        ((VxLocalRenderer)rend).set_layer_pm_matrix(1, proj); // XXX LayerID
 
         new RepaintThread().start();
     }

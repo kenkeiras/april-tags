@@ -206,10 +206,16 @@ static void vx_local_update_layer(vx_local_renderer_t * lrend, int layerID, int 
         layer->layerID = layerID;
         layer->worldID = worldID;
 
+        if (verbose) printf("Initializing layer %d\n", layerID);
         // Initialize projection*model matrix to the identity
         for (int i = 0; i < 4; i++)
             for (int j = 0; j < 4; j++)
                 layer->layer_pm[i*4 + j] = (i == j ? 1.0f : 0.0f);
+
+        int old_key = 0;
+        vx_layer_info_t * old_value = NULL;
+        vhash_put(lrend->state->layer_map, (void *) layerID, layer, &old_key, &old_value);
+        assert(old_value == NULL);
     }
     // changing worlds is not allowed, for now
     assert(layerID == layer->layerID);
@@ -352,7 +358,7 @@ static void validate_program(GLint prog_id, char * stage_description)
 //
 // Note: After step 1 and 4, the state of the program is queried,
 //       and debugging information (if an error occurs) is printed to stdout
-int render_program(vx_local_state_t * state, vx_code_input_stream_t * codes)
+int render_program(vx_local_state_t * state, vx_layer_info_t *layer, vx_code_input_stream_t * codes)
 {
     if (codes->len == codes->pos) // exhausted the stream
         return 1;
@@ -429,7 +435,7 @@ int render_program(vx_local_state_t * state, vx_code_input_stream_t * codes)
         char * pmName = codes->read_str(codes);
 
         float PM[16];
-        mult44(state->system_pm, (float *)userM, PM); //XXX
+        mult44(layer->layer_pm, (float *)userM, PM); //XXX
 
         GLint unif_loc = glGetUniformLocation(prog_id, pmName);
         assert(unif_loc >= 0); // Ensure this field exists
@@ -627,25 +633,51 @@ static void vx_local_render(vx_local_renderer_t * lrend, int width, int height, 
     glViewport(0,0,width,height);
 
     // debug: print stats
-    if (verbose) printf(" n resc %d, n vbos %d, n programs %d n tex %d\n",
+    if (verbose) printf("n layers %d n resc %d, n vbos %d, n programs %d n tex %d\n",
+                        vhash_size(lrend->state->layer_map),
                         lrend->state->resource_map->size, lrend->state->vbo_map->size,
                         lrend->state->program_map->size, lrend->state->texture_map->size);
 
+
+    // We process each layer, change the viewport, and then process each buffer in the associated world:
+    varray_t * layers = vhash_values(lrend->state->layer_map);
+    //XXX Need to sort
+
+    for (int i = 0; i < varray_size(layers); i++) {
+        vx_layer_info_t * layer = varray_get(layers, i);
+        vx_world_info_t * world = vhash_get(lrend->state->world_map, (void *)layer->worldID);
+        assert(world != NULL);
+
+        // convert from relative to absolute viewport
+        int viewport[] = {(int)(width  * layer->viewport_rel[0]),
+                          (int)(height * layer->viewport_rel[1]),
+                          (int)(width  * layer->viewport_rel[2]),
+                          (int)(height * layer->viewport_rel[3])};
+
+        glScissor(viewport[0],viewport[1],viewport[2],viewport[3]);
+        glViewport(viewport[0],viewport[1],viewport[2],viewport[3]);
+
+        // XXX Background color
+
+        varray_t * buffers = vhash_values(world->buffer_map);
+        varray_sort(buffers, buffer_compare);
+
+        for (int i = 0; i < varray_size(buffers); i++) {
+            vx_buffer_info_t * buffer = varray_get(buffers, i);
+
+            buffer->codes->reset(buffer->codes);
+
+            if (verbose) printf("  Rendering buffer: %s with order %d codes->len %d codes->pos %d\n",
+                                buffer->name, buffer->draw_order, buffer->codes->len, buffer->codes->pos);
+
+            while (!render_program(lrend->state, layer, buffer->codes));
+        }
+
+    }
+
+
     // For each buffer, process all the programs
 
-    varray_t * buffers = vhash_values(lrend->state->buffer_map);
-    varray_sort(buffers, buffer_compare);
-
-    for (int i = 0; i < varray_size(buffers); i++) {
-        vx_buffer_info_t * buffer = varray_get(buffers, i);
-
-        buffer->codes->reset(buffer->codes);
-
-        if (verbose) printf("  Rendering buffer: %s with order %d codes->len %d codes->pos %d\n",
-                            buffer->name, buffer->draw_order, buffer->codes->len, buffer->codes->pos);
-
-        while (!render_program(lrend->state, buffer->codes));
-    }
 
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glReadPixels(0, 0, width, height, GL_BGR, GL_UNSIGNED_BYTE, out_buf);

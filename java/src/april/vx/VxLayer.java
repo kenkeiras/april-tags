@@ -21,7 +21,7 @@ public class VxLayer
 
     // Each layer gets a unique ID to allow server to manage multiple layersx
     final int layerID = layerNextID.getAndIncrement();
-
+    int drawOrder = 0;
 
     VxLayer(VxRenderer _rend, VxWorld _vw)
     {
@@ -40,7 +40,7 @@ public class VxLayer
 
         // Don't use code stream, since it's relatively short, and since we need the meta data about viewport size
         // to know about event handling on server side
-        rend.update_layer(layerID, vw.worldID, viewport_rel);
+        rend.update_layer(layerID, vw.worldID, drawOrder, viewport_rel);
     }
 
 }
