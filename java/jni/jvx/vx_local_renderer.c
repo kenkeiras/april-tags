@@ -7,6 +7,7 @@
 #include <GL/glew.h>
 #include <GL/gl.h>
 #include <GL/glx.h>
+#include <pthread.h>
 
 #include "glcontext.h"
 
@@ -39,6 +40,8 @@ struct vx_local_state
 
     vhash_t * layer_map; // <int, vx_layer_info_t>
     vhash_t * world_map; // <int, vx_world_info_t>
+
+    pthread_mutex_t mutex; // this mutex must be locked before any state is modified or accessed
 };
 
 #define IMPL_TYPE 0x23847182;
@@ -59,7 +62,7 @@ struct gl_prog_resc {
 
 
 /* static vx_t state; */
-static int verbose = 0;
+static int verbose = 0 ;
 
 
 typedef struct vx_buffer_info vx_buffer_info_t;
@@ -85,6 +88,27 @@ struct vx_world_info {
     vhash_t * buffer_map; // holds vx_buffer_info_t
 };
 
+
+typedef struct vx_render_task vx_render_task_t;
+struct vx_render_task
+{
+    vx_local_renderer_t * lrend;
+    int width, height;
+    uint8_t * out_buf;
+    pthread_cond_t cond; // signal when job is done
+    pthread_mutex_t mutex;
+};
+
+struct gl_thread_info {
+    pthread_mutex_t  mutex; // lock to access * tasks list
+    pthread_cond_t  cond; // signal to notify when new element appears in *tasks
+    pthread_t  thread;
+
+    varray_t *  tasks;
+};
+
+static struct gl_thread_info gl_thread;
+
 static int buffer_compare(const void * a, const void * b)
 {
     return ((vx_buffer_info_t *) a)->draw_order - ((vx_buffer_info_t *)b)->draw_order;
@@ -104,13 +128,26 @@ static void checkVersions()
     if (verbose) printf("GLSL version %s\n",glslVersion);
 }
 
-//XXXX how do we handle this? Depends on whether you want local rendering or not.
-int vx_local_initialize()
+// foward declaration
+void* gl_thread_run();
+
+void gl_init()
 {
     if (verbose) printf("Creating GL context\n");
     glc = glcontext_X11_create();
     glewInit(); // Call this after GL context created XXX How sure are we that we need this?
     checkVersions();
+}
+
+//XXXX how do we handle this? Depends on whether you want local rendering or not.
+int vx_local_initialize()
+{
+
+    // start gl_thread
+    gl_thread.tasks = varray_create();
+    pthread_mutex_init(&gl_thread.mutex, NULL);
+    pthread_cond_init(&gl_thread.cond, NULL);
+    pthread_create(&gl_thread.thread, NULL, gl_thread_run, NULL);
 
     return 0;
 }
@@ -138,6 +175,7 @@ static vx_local_state_t * vx_local_state_create()
     state->world_map = vhash_create(vhash_uint32_hash, vhash_uint32_equals);
     state->layer_map = vhash_create(vhash_uint32_hash, vhash_uint32_equals);
 
+    pthread_mutex_init(&state->mutex, NULL);
 
     return state;
 }
@@ -627,6 +665,12 @@ static void resize_fbo(vx_local_state_t * state, int width, int height)
 // NOTE: Thread safety must be guaranteed externally
 static void vx_local_render(vx_local_renderer_t * lrend, int width, int height, uint8_t *out_buf)
 {
+    // debug: print stats
+    if (verbose) printf("n layers %d n resc %d, n vbos %d, n programs %d n tex %d w %d h %d\n",
+                        vhash_size(lrend->state->layer_map),
+                        lrend->state->resource_map->size, lrend->state->vbo_map->size,
+                        lrend->state->program_map->size, lrend->state->texture_map->size, width, height);
+
     resize_fbo(lrend->state, width, height);
 
     // Deallocate any resources flagged for deletion
@@ -635,11 +679,6 @@ static void vx_local_render(vx_local_renderer_t * lrend, int width, int height, 
     glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glViewport(0,0,width,height);
 
-    // debug: print stats
-    if (verbose) printf("n layers %d n resc %d, n vbos %d, n programs %d n tex %d\n",
-                        vhash_size(lrend->state->layer_map),
-                        lrend->state->resource_map->size, lrend->state->vbo_map->size,
-                        lrend->state->program_map->size, lrend->state->texture_map->size);
 
 
     // We process each layer, change the viewport, and then process each buffer in the associated world:
@@ -731,41 +770,126 @@ static void vx_local_get_canvas_size(vx_local_renderer_t * lrend, int * dim_out)
 }
 
 // Wrapper methods for the interface --> cast to vx_local_renderer_t and then call correct function
-static void vx_update_resources_managed(vx_renderer_t * rend, int worldID, char * buffer_name, varray_t * resources)
+// Also ensure pthread safety (suffix _ts means "thread-safe")
+static void vx_update_resources_managed_ts(vx_renderer_t * rend, int worldID, char * buffer_name, varray_t * resources)
 {
-    vx_local_update_resources_managed((vx_local_renderer_t *)(rend->impl), worldID, buffer_name, resources);
+    vx_local_renderer_t * lrend =  (vx_local_renderer_t *)(rend->impl);
+    pthread_mutex_lock(&lrend->state->mutex);
+    vx_local_update_resources_managed(lrend, worldID, buffer_name, resources);
+    pthread_mutex_unlock(&lrend->state->mutex);
 }
 
-static void vx_add_resources_direct(vx_renderer_t * rend, varray_t * resources)
+static void vx_add_resources_direct_ts(vx_renderer_t * rend, varray_t * resources)
 {
-    vx_local_add_resources_direct((vx_local_renderer_t *)(rend->impl), resources);
+    vx_local_renderer_t * lrend =  (vx_local_renderer_t *)(rend->impl);
+    pthread_mutex_lock(&lrend->state->mutex);
+    vx_local_add_resources_direct(lrend, resources);
+    pthread_mutex_unlock(&lrend->state->mutex);
 }
 
-static void vx_remove_resources_direct(vx_renderer_t * rend, varray_t * resources)
+static void vx_remove_resources_direct_ts(vx_renderer_t * rend, varray_t * resources)
 {
-    vx_local_remove_resources_direct((vx_local_renderer_t *)(rend->impl), resources);
+    vx_local_renderer_t * lrend =  (vx_local_renderer_t *)(rend->impl);
+    pthread_mutex_lock(&lrend->state->mutex);
+    vx_local_remove_resources_direct(lrend, resources);
+    pthread_mutex_unlock(&lrend->state->mutex);
 }
 
-static void vx_update_buffer(vx_renderer_t * rend, int worldID, char * buffer_name, int drawOrder, vx_code_input_stream_t * codes)
+static void vx_update_buffer_ts(vx_renderer_t * rend, int worldID, char * buffer_name, int drawOrder, vx_code_input_stream_t * codes)
 {
-    vx_local_update_buffer((vx_local_renderer_t *)(rend->impl), worldID, buffer_name, drawOrder, codes);
+    vx_local_renderer_t * lrend =  (vx_local_renderer_t *)(rend->impl);
+    pthread_mutex_lock(&lrend->state->mutex);
+    vx_local_update_buffer(lrend, worldID, buffer_name, drawOrder, codes);
+    pthread_mutex_unlock(&lrend->state->mutex);
 }
 
-static void vx_update_layer(vx_renderer_t * rend, int layerID, int worldID, int draw_order, float viewport_rel[4])
+static void vx_update_layer_ts(vx_renderer_t * rend, int layerID, int worldID, int draw_order, float viewport_rel[4])
 {
-    vx_local_update_layer((vx_local_renderer_t *)(rend->impl), layerID, worldID, draw_order, viewport_rel);
+    vx_local_renderer_t * lrend =  (vx_local_renderer_t *)(rend->impl);
+    pthread_mutex_lock(&lrend->state->mutex);
+    vx_local_update_layer(lrend, layerID, worldID, draw_order, viewport_rel);
+    pthread_mutex_unlock(&lrend->state->mutex);
 }
 
-static void vx_get_canvas_size(vx_renderer_t * rend, int * dim_out)
+static void vx_get_canvas_size_ts(vx_renderer_t * rend, int * dim_out)
 {
-    vx_local_get_canvas_size((vx_local_renderer_t *)(rend->impl), dim_out);
+    vx_local_renderer_t * lrend =  (vx_local_renderer_t *)(rend->impl);
+    pthread_mutex_lock(&lrend->state->mutex);
+    vx_local_get_canvas_size(lrend, dim_out);
+    pthread_mutex_unlock(&lrend->state->mutex);
 }
 
-static void vx_destroy(vx_renderer_t * rend)
+static void vx_destroy_ts(vx_renderer_t * rend)
 {
+    // XXX Is there a thread safe way to do this?
     vx_local_state_destroy(((vx_local_renderer_t *)(rend->impl))->state);
     free(rend->impl);
     free(rend);
+}
+
+// methods specific to vx_local:
+static void vx_local_set_layer_pm_matrix_ts(vx_local_renderer_t *lrend, int layerID, float * pm)
+{
+    pthread_mutex_lock(&lrend->state->mutex);
+
+    vx_local_set_layer_pm_matrix(lrend, layerID, pm);
+
+    pthread_mutex_unlock(&lrend->state->mutex);
+}
+
+// push a render task onto the stack
+static void vx_local_render_ts(vx_local_renderer_t * lrend, int width, int height, uint8_t *out_buf)
+{
+    // init
+    vx_render_task_t task;
+    pthread_cond_init(&task.cond, NULL);
+    pthread_mutex_init(&task.mutex, NULL);
+
+    task.lrend = lrend;
+    task.width = width;
+    task.height = height;
+    task.out_buf = out_buf;
+
+    // lock early to ensure that we will be notified about the task being complete.
+    pthread_mutex_lock(&task.mutex);
+
+    // push the task, and notify
+    pthread_mutex_lock(&gl_thread.mutex);
+    varray_add(gl_thread.tasks, &task);
+    pthread_cond_signal(&gl_thread.cond);
+    pthread_mutex_unlock(&gl_thread.mutex);
+
+    //wait for completion, and unlock
+    pthread_cond_wait(&task.cond, &task.mutex);
+    pthread_mutex_unlock(&task.mutex);
+
+    // cleanup
+    pthread_cond_destroy(&task.cond);
+    pthread_mutex_destroy(&task.mutex);
+}
+
+
+void* gl_thread_run()
+{
+    gl_init(); // Ensure this occurs in the gl thread
+    while (1) {
+        pthread_mutex_lock(&gl_thread.mutex);
+        if (varray_size(gl_thread.tasks) == 0) {
+            pthread_cond_wait(&gl_thread.cond, &gl_thread.mutex);
+        } else {
+            // run a rending task
+            vx_render_task_t * task = varray_remove(gl_thread.tasks, 0);
+
+            pthread_mutex_lock(&task->lrend->state->mutex);
+            vx_local_render(task->lrend, task->width, task->height, task->out_buf);
+            pthread_mutex_unlock(&task->lrend->state->mutex);
+
+            pthread_cond_signal(&task->cond);
+
+        }
+        pthread_mutex_unlock(&gl_thread.mutex);
+    }
+    pthread_exit(NULL);
 }
 
 // XXX deal with width and height
@@ -776,16 +900,16 @@ vx_local_renderer_t * vx_create_local_renderer(int width, int height)
     local->super->impl_type = IMPL_TYPE;
 
     // set all methods
-    local->super->update_resources_managed = vx_update_resources_managed;
-    local->super->add_resources_direct = vx_add_resources_direct;
-    local->super->remove_resources_direct = vx_remove_resources_direct;
-    local->super->update_buffer = vx_update_buffer;
-    local->super->update_layer = vx_update_layer;
-    local->super->get_canvas_size = vx_get_canvas_size;
-    local->super->destroy = vx_destroy;
+    local->super->update_resources_managed = vx_update_resources_managed_ts;
+    local->super->add_resources_direct = vx_add_resources_direct_ts;
+    local->super->remove_resources_direct = vx_remove_resources_direct_ts;
+    local->super->update_buffer = vx_update_buffer_ts;
+    local->super->update_layer = vx_update_layer_ts;
+    local->super->get_canvas_size = vx_get_canvas_size_ts;
+    local->super->destroy = vx_destroy_ts;
 
-    local->render = vx_local_render;
-    local->set_layer_pm_matrix = vx_local_set_layer_pm_matrix;
+    local->render = vx_local_render_ts;
+    local->set_layer_pm_matrix = vx_local_set_layer_pm_matrix_ts;
 
     // Deal with private storage:
     local->super->impl = local; // ugly circular reference, but allows us to convert classes both ways
