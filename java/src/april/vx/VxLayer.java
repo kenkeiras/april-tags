@@ -23,6 +23,9 @@ public class VxLayer
     final int layerID = layerNextID.getAndIncrement();
     int drawOrder = 0;
 
+    // by default we use the entire screen;
+    private float viewport_rel[] = {0.0f,0.0f,1.0f,1.0f};
+
     VxLayer(VxRenderer _rend, VxWorld _vw)
     {
         vw = _vw;
@@ -32,11 +35,15 @@ public class VxLayer
         update();
     }
 
+    public void set_viewport(float _viewport_rel[])
+    {
+        viewport_rel = _viewport_rel;
+        update();
+    }
+
 
     private void update()
     {
-        // by default we use the entire screen;
-        float viewport_rel[] = {0.0f,0.0f,1.0f,1.0f};
 
         // Don't use code stream, since it's relatively short, and since we need the meta data about viewport size
         // to know about event handling on server side

@@ -41,6 +41,7 @@ public class VxTest
 
         VxWorld vw = new VxWorld(vxr);
         VxLayer vl = new VxLayer(vxr, vw);
+        vl.set_viewport(new float[]{0,0,.5f,.5f});
 
         ArrayList<VxVertexAttrib> point_attribs = new ArrayList();
         {

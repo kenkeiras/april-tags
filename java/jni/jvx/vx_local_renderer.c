@@ -224,6 +224,8 @@ static void vx_local_update_layer(vx_local_renderer_t * lrend, int layerID, int 
     // dynamic content: order and viewport
     layer->draw_order = draw_order;
     memcpy(layer->viewport_rel, viewport_rel, 4*4);
+    if (verbose) printf("New viewport for id %d is [%f, %f, %f, %f]\n",
+                        layerID, layer->viewport_rel[0],layer->viewport_rel[1],layer->viewport_rel[2],layer->viewport_rel[3]);
 }
 
 static void vx_local_update_buffer(vx_local_renderer_t * lrend, int worldID, char * name, int draw_order, vx_code_input_stream_t * codes)
@@ -656,6 +658,8 @@ static void vx_local_render(vx_local_renderer_t * lrend, int width, int height, 
 
         glScissor(viewport[0],viewport[1],viewport[2],viewport[3]);
         glViewport(viewport[0],viewport[1],viewport[2],viewport[3]);
+        if (verbose) printf("viewport for layer %d is [%d, %d, %d, %d]\n",
+                            layer->layerID, viewport[0],viewport[1],viewport[2],viewport[3]);
 
         // XXX Background color
 
