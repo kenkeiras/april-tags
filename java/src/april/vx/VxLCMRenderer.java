@@ -42,7 +42,7 @@ public class VxLCMRenderer extends VxRenderer
     // XXX Need to figure out how much of the interface we will support in the LCM case.
     // A reasonable model here would be to never worry about any layer commands -- all objects go
     // into the same vis world, same layer, etc
-    public void update_layer(int layerID, int worldID, float viewport_rel[])
+    public void update_layer(int layerID, int worldID, int draw_order, float viewport_rel[])
     {
         assert(false);
     }

@@ -87,6 +87,7 @@ public class VxTCPRenderer extends VxRenderer
     public void update_buffer(int worldID, String buffer_name, int drawOrder, VxCodeOutputStream codes)
     {
         lcmvx_render_codes_t lcodes = new lcmvx_render_codes_t();
+        lcodes.worldID = worldID;
         lcodes.draw_order = drawOrder;
         lcodes.buffer_name = buffer_name;
         lcodes.buf = codes.getBuffer();
@@ -95,15 +96,16 @@ public class VxTCPRenderer extends VxRenderer
         writeLCM(VxTCPServer.VX_TCP_BUFFER_UPDATE, lcodes);
     }
 
-    public void update_layer(int layerID, int worldID, float viewport_rel[])
+    public void update_layer(int layerID, int worldID, int drawOrder, float viewport_rel[])
     {
         assert(viewport_rel.length == 4);
         try{
             synchronized (outs) {
                 outs.writeInt(VxTCPServer.VX_TCP_LAYER_UPDATE);
-                outs.writeInt(4+4+4*4);
+                outs.writeInt(4+4+4+4*4);
                 outs.writeInt(layerID);
                 outs.writeInt(worldID);
+                outs.writeInt(drawOrder);
                 outs.writeFloat(viewport_rel[0]);
                 outs.writeFloat(viewport_rel[1]);
                 outs.writeFloat(viewport_rel[2]);

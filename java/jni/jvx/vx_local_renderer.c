@@ -59,7 +59,7 @@ struct gl_prog_resc {
 
 
 /* static vx_t state; */
-static int verbose = 0;
+static int verbose = 1;
 
 
 typedef struct vx_buffer_info vx_buffer_info_t;
@@ -247,7 +247,7 @@ static void vx_local_update_buffer(vx_local_renderer_t * lrend, int worldID, cha
     buf->draw_order = draw_order;
     buf->codes = codes;
 
-    if (verbose) printf("Updating codes buffer: %s codes->len %d codes->pos %d\n", buf->name, buf->codes->len, buf->codes->pos);
+    if (verbose) printf("Updating codes buffer: world ID %d %s codes->len %d codes->pos %d\n", worldID, buf->name, buf->codes->len, buf->codes->pos);
 
     char * prev_key = NULL; // ignore this, since the key is stored in the struct
     vx_buffer_info_t * prev_value = NULL;
@@ -647,8 +647,12 @@ static void vx_local_render(vx_local_renderer_t * lrend, int width, int height, 
 
     for (int i = 0; i < varray_size(layers); i++) {
         vx_layer_info_t * layer = varray_get(layers, i);
-        vx_world_info_t * world = vhash_get(lrend->state->world_map, (void *)layer->worldID);
-        assert(world != NULL);
+        vx_world_info_t * world = vhash_get(lrend->state->world_map, (void *)(layer->worldID));
+        if (world == NULL){ // haven't uploaded world yet?
+            if (verbose) printf("WRN: world %d not populated yet!", layer->worldID);
+            continue;
+        }
+        /* assert(world != NULL); */
 
         // convert from relative to absolute viewport
         int viewport[] = {(int)(width  * layer->viewport_rel[0]),

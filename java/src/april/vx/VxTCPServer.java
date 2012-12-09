@@ -52,9 +52,9 @@ public class VxTCPServer extends Thread
         }
     }
 
-    private void process_layer(int layerID, int worldID, float viewport_rel[])
+    private void process_layer(int layerID, int worldID, int draw_order, float viewport_rel[])
     {
-        rend.update_layer(layerID, worldID, viewport_rel);
+        rend.update_layer(layerID, worldID, draw_order, viewport_rel);
     }
 
     private void process_buffer(lcmvx_render_codes_t lcm_codes)
@@ -135,12 +135,13 @@ public class VxTCPServer extends Thread
                             process_buffer(new lcmvx_render_codes_t(dins));
                             break;
                         case VX_TCP_LAYER_UPDATE:
-                            process_layer(dins.readInt(),dins.readInt(),
+                            process_layer(dins.readInt(),dins.readInt(),dins.readInt(),
                                           new float[]{dins.readFloat(),dins.readFloat(),dins.readFloat(),dins.readFloat()});
                             break;
                         default:
                             System.out.printf("WRN: Unsupported OP code! 0x%x\n",code);
                     }
+                    assert(dins.available() == 0);
                 }
 
             } catch (EOFException ex) {
