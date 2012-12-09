@@ -59,7 +59,7 @@ struct gl_prog_resc {
 
 
 /* static vx_t state; */
-static int verbose = 1;
+static int verbose = 0;
 
 
 typedef struct vx_buffer_info vx_buffer_info_t;
@@ -95,7 +95,7 @@ static void checkVersions()
 	if (glewIsSupported("GL_VERSION_2_0")) {
 		if (verbose) printf("Ready for OpenGL 2.0\n");
 	}else {
-		if (verbose) printf("OpenGL 2.0 not supported\n");
+		printf("ERR: OpenGL 2.0 not supported\n");
 		exit(1);
 	}
 
@@ -111,6 +111,7 @@ int vx_local_initialize()
     glc = glcontext_X11_create();
     glewInit(); // Call this after GL context created XXX How sure are we that we need this?
     checkVersions();
+
     return 0;
 }
 

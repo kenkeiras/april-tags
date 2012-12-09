@@ -31,6 +31,41 @@ public class VxUtil
         return M;
     }
 
+    public static double[][] glOrtho(double left, double right, double bottom, double top, double znear, double zfar)
+    {
+        double M[][] = new double[4][4];
+
+        M[0][0] = 2 / (right - left);
+        M[0][3] = -(right+left)/(right-left);
+        M[1][1] = 2 / (top-bottom);
+        M[1][3] = -(top+bottom)/(top-bottom);
+        M[2][2] = -2 / (zfar - znear);
+        M[2][3] = -(zfar+znear)/(zfar-znear);
+        M[3][3] = 1;
+
+        return M;
+    }
+
+    /** uses winy=0 at the bottom (opengl) convention **/
+    public static double[] unProject(double winxyz[], double M[][], double P[][], int viewport[])
+    {
+        double invPM[][] = LinAlg.inverse(LinAlg.matrixAB(P, M));
+
+        double v[] = new double[] { 2*(winxyz[0]-viewport[0]) / viewport[2] - 1,
+                                    2*(winxyz[1]-viewport[1]) / viewport[3] - 1,
+                                    2*winxyz[2] - 1,
+                                    1 };
+
+        double objxyzh[] = LinAlg.matrixAB(invPM, v);
+
+        double objxyz[] = new double[3];
+        objxyz[0] = objxyzh[0] / objxyzh[3];
+        objxyz[1] = objxyzh[1] / objxyzh[3];
+        objxyz[2] = objxyzh[2] / objxyzh[3];
+
+        return objxyz;
+    }
+
     public static double[][] lookAt(double eye[], double c[], double up[])
     {
         up = LinAlg.normalize(up);

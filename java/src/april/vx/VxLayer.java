@@ -19,6 +19,9 @@ public class VxLayer
     VxWorld vw;
     VxRenderer rend;
 
+    // Managers. Note that they only work when connected to a local rendering context. (VxCanvas will poll)
+    VxCameraManager cameraManager = new DefaultCameraManager();
+
     // Each layer gets a unique ID to allow server to manage multiple layersx
     final int layerID = layerNextID.getAndIncrement();
     int drawOrder = 0;
@@ -42,6 +45,14 @@ public class VxLayer
     }
 
 
+    public int[] getAbsoluteViewport(int width, int height)
+    {
+        int layerViewport[] = {(int)(width  * viewport_rel[0]),
+                               (int)(height * viewport_rel[1]),
+                               (int)(width  * viewport_rel[2]),
+                               (int)(height * viewport_rel[3])};
+        return layerViewport;
+    }
     private void update()
     {
 

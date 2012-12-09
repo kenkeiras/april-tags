@@ -42,6 +42,7 @@ public class VxTest
         VxWorld vw = new VxWorld(vxr);
         VxLayer vl = new VxLayer(vxr, vw);
         vl.set_viewport(new float[]{0,0,.5f,.5f});
+        vl.cameraManager.uiLookAt(new double[]{0,0,10}, new double[3], new double[]{0,1,0}, true);
 
         ArrayList<VxVertexAttrib> point_attribs = new ArrayList();
         {
@@ -198,7 +199,7 @@ public class VxTest
             int canvas_size[] = vxr.get_canvas_size();
             int width = canvas_size[0], height = canvas_size[1];
 
-            VxCanvas vc = new VxCanvas(((VxLocalRenderer)vxr));
+            VxCanvas vc = new VxCanvas(((VxLocalRenderer)vxr), vl);
             jf.add(vc);
             jf.setSize(width,height+22);
             jf.setVisible(true);
