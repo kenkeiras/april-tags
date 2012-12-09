@@ -1,6 +1,5 @@
 #define GL_GLEXT_PROTOTYPES
 
-#include "vx.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <malloc.h>
@@ -9,7 +8,6 @@
 #include <GL/gl.h>
 #include <GL/glx.h>
 
-#include "vx_codes.h"
 #include "glcontext.h"
 
 #include "lphash.h"
@@ -18,14 +16,14 @@
 #include "larray.h"
 #include "sort_util.h"
 
+#include "vx_renderer.h"
+#include "vx_local_renderer.h"
+#include "vx_codes.h"
 #include "vx_resc.h"
 
 static glcontext_t *glc;
 
-typedef struct vx vx_t;
-
-
-struct vx
+struct vx_local_state
 {
     gl_fbo_t *fbo;
     int fbo_width, fbo_height;
@@ -45,6 +43,7 @@ struct vx
 
 };
 
+#define IMPL_TYPE 0x23847182;
 
 // Resource management for gl program and associated shaders:
 // When the associated guid for the vertex shader is dealloacted (vx_resc_t)
@@ -61,7 +60,7 @@ struct gl_prog_resc {
 };
 
 
-static vx_t state;
+/* static vx_t state; */
 static int verbose = 0;
 
 
@@ -91,6 +90,7 @@ static void checkVersions()
     if (verbose) printf("GLSL version %s\n",glslVersion);
 }
 
+//XXXX how do we handle this? Depends on whether you want local rendering or not.
 int vx_initialize()
 {
     if (verbose) printf("Creating GL context\n");
@@ -100,40 +100,50 @@ int vx_initialize()
     return 0;
 }
 
-void vx_create()
+static void vx_local_state_destroy(vx_local_state_t * state)
 {
-    state.fbo = NULL; // uninitialized
-
-    state.resource_map = lphash_create();
-
-    state.program_map = lphash_create();
-    state.vbo_map = lihash_create();
-    state.texture_map = lihash_create();
-
-    state.buffer_map = vhash_create(vhash_str_hash, vhash_str_equals);
+    assert(0); // Need to implement, wait until design gets more finalized
+}
 
 
-    state.dealloc_ids = larray_create();
+static vx_local_state_t * vx_local_state_create()
+{
+    vx_local_state_t * state = malloc(sizeof(vx_local_state_t));
+
+    state->fbo = NULL; // uninitialized
+
+    state->resource_map = lphash_create();
+
+    state->program_map = lphash_create();
+    state->vbo_map = lihash_create();
+    state->texture_map = lihash_create();
+
+    state->buffer_map = vhash_create(vhash_str_hash, vhash_str_equals);
+
+
+    state->dealloc_ids = larray_create();
 
     // Initialize to the identity
     for (int i = 0; i < 4; i++)
         for (int j = 0; j < 4; j++)
-            state.system_pm[i*4 + j] = (i == j ? 1.0f : 0.0f);
+            state->system_pm[i*4 + j] = (i == j ? 1.0f : 0.0f);
 
+    return state;
 }
 
-void vx_process_deallocations()
-{
-    if (verbose) printf("Dealloc %d ids:\n   ", state.dealloc_ids->size);
 
-    for (int i =0; i < state.dealloc_ids->size; i++) {
-        uint64_t guid = state.dealloc_ids->get(state.dealloc_ids, i);
-        vx_resc_t * vr = lphash_remove(state.resource_map, guid).value;
+static void process_deallocations(vx_local_state_t * state)
+{
+    if (verbose) printf("Dealloc %d ids:\n   ", state->dealloc_ids->size);
+
+    for (int i =0; i < state->dealloc_ids->size; i++) {
+        uint64_t guid = state->dealloc_ids->get(state->dealloc_ids, i);
+        vx_resc_t * vr = lphash_remove(state->resource_map, guid).value;
 
         if (verbose) printf("%ld,",guid);
        // There may also be a program, or a vbo or texture for each guid
         int vbo_success = 0;
-        lihash_pair_t vbo_pair = lihash_remove(state.vbo_map, guid, &vbo_success);
+        lihash_pair_t vbo_pair = lihash_remove(state->vbo_map, guid, &vbo_success);
         if (vbo_success) {
             // Tell open GL to deallocate this VBO
             glDeleteBuffers(1, &vbo_pair.value);
@@ -153,14 +163,14 @@ void vx_process_deallocations()
 
 
         int tex_success = 0;
-        lihash_pair_t tex_pair = lihash_remove(state.texture_map, guid, &tex_success);
+        lihash_pair_t tex_pair = lihash_remove(state->texture_map, guid, &tex_success);
         if (tex_success) {
             // Tell open GL to deallocate this texture
             glDeleteTextures(1, &tex_pair.value);
             if (verbose) printf(" Deleted TEX %d \n", tex_pair.value);
         }
 
-        gl_prog_resc_t * prog = lphash_remove(state.program_map, guid).value;
+        gl_prog_resc_t * prog = lphash_remove(state->program_map, guid).value;
         if (prog != NULL) {
             glDetachShader(prog->prog_id,prog->vert_id);
             glDeleteShader(prog->vert_id);
@@ -174,14 +184,17 @@ void vx_process_deallocations()
         }
     }
 
-    state.dealloc_ids->clear(state.dealloc_ids);
+    state->dealloc_ids->clear(state->dealloc_ids);
     if (verbose) printf("\n");
 }
 
-int vx_update_codes(char * name, int draw_order, vx_code_input_stream_t * codes)
+static void vx_local_update_layer(vx_local_renderer_t * lrend, int layerID, int worldId, float viewport_rel[4])
 {
+    assert(0);
+}
 
-
+static void vx_local_update_buffer(vx_local_renderer_t * lrend, int worldID, char * name, int draw_order, vx_code_input_stream_t * codes)
+{
     vx_buffer_t * buf = malloc(sizeof(vx_buffer_t));
     buf->name = strdup(name);
     buf->draw_order = draw_order;
@@ -191,29 +204,28 @@ int vx_update_codes(char * name, int draw_order, vx_code_input_stream_t * codes)
 
     char * prev_key = NULL; // ignore this, since the key is stored in the struct
     vx_buffer_t * prev_value = NULL;
-    vhash_put(state.buffer_map, buf->name, buf, &prev_key, &prev_value);
+    vhash_put(lrend->state->buffer_map, buf->name, buf, &prev_key, &prev_value);
 
     if (prev_value != NULL) {
         vx_code_input_stream_destroy(prev_value->codes);
         free(prev_value->name);
         free(prev_value);
     }
-
-    return 0;
 }
 
-int vx_update_resources(int nresc, vx_resc_t ** resources)
+static void vx_local_add_resources_direct(vx_local_renderer_t * lrend, varray_t * resources)  //int nresc, vx_resc_t ** resources)
 {
+    int nresc = varray_size(resources);
     if (verbose) printf("Updating %d resources:\n", nresc);
     if (verbose) printf("  ");
     for (int i = 0; i < nresc; i++) {
-        vx_resc_t *vr = resources[i];
+        vx_resc_t *vr = varray_get(resources, i);
         if (verbose) printf("%ld,",vr->id);
-        vx_resc_t * old_vr = lphash_get(state.resource_map, vr->id);
+        vx_resc_t * old_vr = lphash_get(lrend->state->resource_map, vr->id);
 
 
         if (old_vr == NULL) {
-            lphash_put(state.resource_map, vr->id, vr);
+            lphash_put(lrend->state->resource_map, vr->id, vr);
 
         } else {
             // Check to see if this was previously flagged for deletion.
@@ -221,15 +233,15 @@ int vx_update_resources(int nresc, vx_resc_t ** resources)
 
             int found_idx = -1;
             int found = 0;
-            for (int i = 0; i < state.dealloc_ids->size; i++) {
-                uint64_t del_guid = state.dealloc_ids->get(state.dealloc_ids, i);
+            for (int i = 0; i < lrend->state->dealloc_ids->size; i++) {
+                uint64_t del_guid = lrend->state->dealloc_ids->get(lrend->state->dealloc_ids, i);
                 if (del_guid == vr->id) {
                     found_idx = i;
                     found++;
                 }
             }
 
-            state.dealloc_ids->remove(state.dealloc_ids, found_idx);
+            lrend->state->dealloc_ids->remove(lrend->state->dealloc_ids, found_idx);
             assert(found <= 1);
 
             if (found == 0)
@@ -238,7 +250,6 @@ int vx_update_resources(int nresc, vx_resc_t ** resources)
         }
     }
     if (verbose) printf("\n");
-    return 0;
 }
 
 static void print44(float mat[16])
@@ -264,7 +275,7 @@ static void mult44(float * A, float * B, float * C)
 }
 
 // Allocates new VBO, and stores in hash table, results in a bound VBO
-static GLuint vx_buffer_allocate(GLenum target, vx_resc_t *vr)
+static GLuint vbo_allocate(vx_local_state_t * state, GLenum target, vx_resc_t *vr)
 {
     GLuint vbo_id;
     glGenBuffers(1, &vbo_id);
@@ -272,12 +283,12 @@ static GLuint vx_buffer_allocate(GLenum target, vx_resc_t *vr)
     glBufferData(target, vr->count * vr->fieldwidth, vr->res, GL_STATIC_DRAW);
     if (verbose) printf("      Allocated VBO %d for guid %ld\n", vbo_id, vr->id);
 
-    lihash_put(state.vbo_map, vr->id, vbo_id);
+    lihash_put(state->vbo_map, vr->id, vbo_id);
 
     return vbo_id;
 }
 
-static void vx_validate_program(GLint prog_id, char * stage_description)
+static void validate_program(GLint prog_id, char * stage_description)
 {
     char output[65535];
 
@@ -302,7 +313,7 @@ static void vx_validate_program(GLint prog_id, char * stage_description)
 //
 // Note: After step 1 and 4, the state of the program is queried,
 //       and debugging information (if an error occurs) is printed to stdout
-int vx_render_program(vx_code_input_stream_t * codes)
+int render_program(vx_local_state_t * state, vx_code_input_stream_t * codes)
 {
     if (codes->len == codes->pos) // exhausted the stream
         return 1;
@@ -317,15 +328,15 @@ int vx_render_program(vx_code_input_stream_t * codes)
         uint64_t fragId = codes->read_uint64(codes);
 
         // Programs can be found by the guid of the vertex shader
-        gl_prog_resc_t * prog = lphash_get(state.program_map, vertId);
+        gl_prog_resc_t * prog = lphash_get(state->program_map, vertId);
         if (prog == NULL) {
             prog = calloc(sizeof(gl_prog_resc_t), 1);
             // Allocate a program if we haven't made it yet
             prog->vert_id = glCreateShader(GL_VERTEX_SHADER);
             prog->frag_id = glCreateShader(GL_FRAGMENT_SHADER);
 
-            vx_resc_t * vertResc = lphash_get(state.resource_map, vertId);
-            vx_resc_t * fragResc = lphash_get(state.resource_map, fragId);
+            vx_resc_t * vertResc = lphash_get(state->resource_map, vertId);
+            vx_resc_t * fragResc = lphash_get(state->resource_map, fragId);
 
             // shouldn't fail, if resources are uploaded first
             assert(vertResc != NULL);
@@ -347,7 +358,7 @@ int vx_render_program(vx_code_input_stream_t * codes)
 
             glLinkProgram(prog->prog_id);
 
-            lphash_put(state.program_map, vertId, prog);
+            lphash_put(state->program_map, vertId, prog);
 
             if (verbose) printf("  Created gl program %d from guid %ld and %ld (gl ids %d and %d)\n",
                    prog->prog_id, vertId, fragId, prog->vert_id, prog->frag_id);
@@ -360,7 +371,7 @@ int vx_render_program(vx_code_input_stream_t * codes)
     assert(validateProgramOp == OP_VALIDATE_PROGRAM);
     uint32_t validateProgram = codes->read_uint32(codes);
     if (validateProgram)
-        vx_validate_program(prog_id, "Post-link");
+        validate_program(prog_id, "Post-link");
 
     // STEP 1.5: Read the user-specified model matrix, and multiply
     // with the system defined projection-model matrix. Then bind to
@@ -379,7 +390,7 @@ int vx_render_program(vx_code_input_stream_t * codes)
         char * pmName = codes->read_str(codes);
 
         float PM[16];
-        mult44(state.system_pm, (float *)userM, PM); //XXX
+        mult44(state->system_pm, (float *)userM, PM); //XXX
 
         GLint unif_loc = glGetUniformLocation(prog_id, pmName);
         assert(unif_loc >= 0); // Ensure this field exists
@@ -400,17 +411,17 @@ int vx_render_program(vx_code_input_stream_t * codes)
         char * name = codes->read_str(codes); //Not a copy!
 
         // This should never fail!
-        vx_resc_t * vr  = lphash_get(state.resource_map, attribId);
+        vx_resc_t * vr  = lphash_get(state->resource_map, attribId);
         assert(vr != NULL);
 
         int success = 0;
-        GLuint vbo_id = lihash_get(state.vbo_map, attribId, &success);
+        GLuint vbo_id = lihash_get(state->vbo_map, attribId, &success);
 
         // lazily create VBOs
         if (success)
             glBindBuffer(GL_ARRAY_BUFFER, vbo_id);
         else
-            vbo_id = vx_buffer_allocate(GL_ARRAY_BUFFER, vr);
+            vbo_id = vbo_allocate(state, GL_ARRAY_BUFFER, vr);
 
         // Attach to attribute
         GLint attr_loc = glGetAttribLocation(prog_id, name);
@@ -482,7 +493,7 @@ int vx_render_program(vx_code_input_stream_t * codes)
         char * name = codes->read_str(codes);
         uint64_t texId = codes->read_uint64(codes);
         // This should never fail!
-        vx_resc_t * vr  = lphash_get(state.resource_map, texId);
+        vx_resc_t * vr  = lphash_get(state->resource_map, texId);
         assert(vr != NULL);
 
         uint32_t width = codes->read_uint32(codes);
@@ -490,7 +501,7 @@ int vx_render_program(vx_code_input_stream_t * codes)
         uint32_t format = codes->read_uint32(codes);
 
         int success = 0;
-        GLuint tex_id = lihash_get(state.texture_map, texId, &success);
+        GLuint tex_id = lihash_get(state->texture_map, texId, &success);
 
         if (success)
             glBindTexture(GL_TEXTURE_2D, tex_id);
@@ -504,7 +515,7 @@ int vx_render_program(vx_code_input_stream_t * codes)
             glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, vr->res);
 
             if (verbose) printf("Allocated TEX %d for guid %ld\n", tex_id, vr->id);
-            lihash_put(state.texture_map, vr->id, tex_id);
+            lihash_put(state->texture_map, vr->id, tex_id);
         }
 
         int attrTexI = glGetUniformLocation(prog_id, name);
@@ -513,7 +524,7 @@ int vx_render_program(vx_code_input_stream_t * codes)
     }
 
     if (validateProgram)
-        vx_validate_program(prog_id, "Post-binding");
+        validate_program(prog_id, "Post-binding");
 
     // Step 5: Rendering
     uint32_t arrayOp = codes->read_uint32(codes);
@@ -524,16 +535,16 @@ int vx_render_program(vx_code_input_stream_t * codes)
         uint32_t elementType = codes->read_uint32(codes);
 
         // This should never fail!
-        vx_resc_t * vr  = lphash_get(state.resource_map, elementId);
+        vx_resc_t * vr  = lphash_get(state->resource_map, elementId);
         assert(vr != NULL);
 
         int success = 0;
-        GLuint vbo_id = lihash_get(state.vbo_map, elementId, &success);
+        GLuint vbo_id = lihash_get(state->vbo_map, elementId, &success);
 
         if (success)
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo_id);
         else
-            vbo_id = vx_buffer_allocate(GL_ELEMENT_ARRAY_BUFFER, vr);
+            vbo_id = vbo_allocate(state, GL_ELEMENT_ARRAY_BUFFER, vr);
 
         glDrawElements(elementType, vr->count, vr->type, NULL);
     } else if (arrayOp == OP_DRAW_ARRAY) {
@@ -551,35 +562,39 @@ int vx_render_program(vx_code_input_stream_t * codes)
     return 0;
 }
 
-
-// NOTE: Thread safety must be guaranteed externally
-int vx_render_read(int width, int height, uint8_t *out_buf)
+static void resize_fbo(vx_local_state_t * state, int width, int height)
 {
     // Check whether we have a FBO of the correct size
-    if (state.fbo == NULL || state.fbo_width != width || state.fbo_height != height) {
-        if(state.fbo != NULL)
-            gl_fbo_destroy(state.fbo);
+    if (state->fbo == NULL || state->fbo_width != width || state->fbo_height != height) {
+        if(state->fbo != NULL)
+            gl_fbo_destroy(state->fbo);
 
-        state.fbo = gl_fbo_create(glc, width, height);
-        state.fbo_width = width;
-        state.fbo_height = height;
-        if (verbose) printf("Allocated FBO of dimension %d %d\n",state.fbo_width, state.fbo_height);
+        state->fbo = gl_fbo_create(glc, width, height);
+        state->fbo_width = width;
+        state->fbo_height = height;
+        if (verbose) printf("Allocated FBO of dimension %d %d\n",state->fbo_width, state->fbo_height);
     }
+}
+
+// NOTE: Thread safety must be guaranteed externally
+static void vx_local_render(vx_local_renderer_t * lrend, int width, int height, uint8_t *out_buf)
+{
+    resize_fbo(lrend->state, width, height);
 
     // Deallocate any resources flagged for deletion
-    vx_process_deallocations();
+    process_deallocations(lrend->state);
 
     glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glViewport(0,0,width,height);
 
     // debug: print stats
     if (verbose) printf(" n resc %d, n vbos %d, n programs %d n tex %d\n",
-           state.resource_map->size,state.vbo_map->size,
-           state.program_map->size, state.texture_map->size);
+                        lrend->state->resource_map->size, lrend->state->vbo_map->size,
+                        lrend->state->program_map->size, lrend->state->texture_map->size);
 
     // For each buffer, process all the programs
 
-    varray_t * buffers = vhash_values(state.buffer_map);
+    varray_t * buffers = vhash_values(lrend->state->buffer_map);
     varray_sort(buffers, buffer_compare);
 
     for (int i = 0; i < varray_size(buffers); i++) {
@@ -590,36 +605,111 @@ int vx_render_read(int width, int height, uint8_t *out_buf)
         if (verbose) printf("  Rendering buffer: %s with order %d codes->len %d codes->pos %d\n",
                             buffer->name, buffer->draw_order, buffer->codes->len, buffer->codes->pos);
 
-        while (!vx_render_program(buffer->codes));
+        while (!render_program(lrend->state, buffer->codes));
     }
 
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
     glReadPixels(0, 0, width, height, GL_BGR, GL_UNSIGNED_BYTE, out_buf);
-    return 0;
 }
 
-void vx_deallocate_resources(uint64_t * guids, int nguids)
+static void vx_local_remove_resources_direct(vx_local_renderer_t *lrend, varray_t * resources)
 {
     // Add the resources, flag them for deletion later
     // XXX We don't currently handle duplicates already in the list.
 
-    if (verbose) printf("Marking for deletion %d ids:\n   ", nguids);
-    for (int i =0; i < nguids; i++) {
-        state.dealloc_ids->add(state.dealloc_ids, guids[i]);
+    int nresc = varray_size(resources);
+    if (verbose) printf("Marking for deletion %d ids:\n   ", nresc);
+    for (int i =0; i < nresc; i++) {
+        vx_resc_t * vr = varray_get(resources, i);
+        lrend->state->dealloc_ids->add(lrend->state->dealloc_ids, vr->id);
 
-        if (verbose) printf("%ld,", guids[i]);
+        if (verbose) printf("%ld,", vr->id);
     }
     if (verbose) printf("\n");
 }
 
 
 
-
-int vx_set_system_pm_mat(float * pm)
+static void vx_local_set_system_pm_matrix(vx_local_renderer_t *lrend, float * pm)
 {
     // copy the specified matrix into state
     for (int i = 0; i < 16; i++) {
-        state.system_pm[i] = pm[i];
+        lrend->state->system_pm[i] = pm[i];
     }
-    return 0;
+}
+
+static void vx_local_update_resources_managed(vx_local_renderer_t * lrend, int worldID, char * buffer_name, varray_t * resources)
+{
+    assert(0);
+}
+
+static void vx_local_get_canvas_size(vx_local_renderer_t * lrend, int * dim_out)
+{
+    assert(0);
+}
+
+// Wrapper methods for the interface --> cast to vx_local_renderer_t and then call correct function
+static void vx_update_resources_managed(vx_renderer_t * rend, int worldID, char * buffer_name, varray_t * resources)
+{
+    vx_local_update_resources_managed((vx_local_renderer_t *)(rend->impl), worldID, buffer_name, resources);
+}
+
+static void vx_add_resources_direct(vx_renderer_t * rend, varray_t * resources)
+{
+    assert(0); // Need to convert to 'state'
+    vx_local_add_resources_direct((vx_local_renderer_t *)(rend->impl), resources);
+}
+
+static void vx_remove_resources_direct(vx_renderer_t * rend, varray_t * resources)
+{
+    vx_local_remove_resources_direct((vx_local_renderer_t *)(rend->impl), resources);
+}
+
+static void vx_update_buffer(vx_renderer_t * rend, int worldID, char * buffer_name, int drawOrder, vx_code_input_stream_t * codes)
+{
+    vx_local_update_buffer((vx_local_renderer_t *)(rend->impl), worldID, buffer_name, drawOrder, codes);
+}
+
+static void vx_update_layer(vx_renderer_t * rend, int layerID, int worldID, float viewport_rel[4])
+{
+    vx_local_update_layer((vx_local_renderer_t *)(rend->impl), layerID, worldID, viewport_rel);
+}
+
+static void vx_get_canvas_size(vx_renderer_t * rend, int * dim_out)
+{
+    vx_local_get_canvas_size((vx_local_renderer_t *)(rend->impl), dim_out);
+}
+
+static void vx_destroy(vx_renderer_t * rend)
+{
+    vx_local_state_destroy(((vx_local_renderer_t *)(rend->impl))->state);
+    free(rend->impl);
+    free(rend);
+}
+
+// XXX deal with width and height
+vx_local_renderer_t * vx_create_local(int width, int height)
+{
+    vx_local_renderer_t * local = malloc(sizeof(vx_local_renderer_t));
+    local->super = malloc(sizeof(vx_renderer_t));
+    local->super->impl_type = IMPL_TYPE;
+
+    // set all methods
+    local->super->update_resources_managed = vx_update_resources_managed;
+    local->super->add_resources_direct = vx_add_resources_direct;
+    local->super->remove_resources_direct = vx_remove_resources_direct;
+    local->super->update_buffer = vx_update_buffer;
+    local->super->update_layer = vx_update_layer;
+    local->super->get_canvas_size = vx_get_canvas_size;
+    local->super->destroy = vx_destroy;
+
+    local->render = vx_local_render;
+    local->set_system_pm_matrix = vx_local_set_system_pm_matrix;
+
+    // Deal with private storage:
+    local->super->impl = local; // ugly circular reference, but allows us to convert classes both ways
+
+
+    local->state = vx_local_state_create();
+    return local;
 }

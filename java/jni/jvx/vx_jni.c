@@ -94,7 +94,7 @@ JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_add_1resources
 
 
 JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_update_1buffer
-(JNIEnv * jenv, jclass jcls, jint instanceID, jint worldID, jbyteArray jbuf_name, jint draw_order, jint codes_len, jbyteArray jcodes)
+(JNIEnv * jenv, jclass jcls, jint instanceID, jinti worldID, jbyteArray jbuf_name, jint draw_order, jint codes_len, jbyteArray jcodes)
 {
 
     // Grab buffer name
