@@ -13,7 +13,7 @@ struct vx_local_renderer
 
     // XXX layer info
     void (*render)(vx_local_renderer_t * lrend, int width, int height, uint8_t *out_buf);
-    void (*set_system_pm_matrix)(vx_local_renderer_t * lrend, float pm[]);
+    void (*set_layer_pm_matrix)(vx_local_renderer_t * lrend, int layerID, float pm[]);
 };
 
 int vx_is_local_renderer(vx_renderer_t * rend);

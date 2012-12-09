@@ -25,22 +25,20 @@ static glcontext_t *glc;
 
 struct vx_local_state
 {
+    // current state of the fbo for this canvas
     gl_fbo_t *fbo;
     int fbo_width, fbo_height;
 
     lphash_t * resource_map; // holds vx_resc_t
-
     lphash_t * program_map; // holds gl_prog_resc_t
-    lihash_t * vbo_map;
+    larray_t * dealloc_ids; // resources that need to be deleted
 
+    // holds info about vbo and textures which have been allocated with GL
+    lihash_t * vbo_map;
     lihash_t * texture_map;
 
-    vhash_t * buffer_map; // holds vx_buffer_t
-
-    larray_t * dealloc_ids;
-
-    float system_pm[16];
-
+    vhash_t * layer_map; // <int, vx_layer_info_t>
+    vhash_t * world_map; // <int, vx_world_info_t>
 };
 
 #define IMPL_TYPE 0x23847182;
@@ -64,16 +62,32 @@ struct gl_prog_resc {
 static int verbose = 0;
 
 
-typedef struct vx_buffer vx_buffer_t;
-struct vx_buffer {
+typedef struct vx_buffer_info vx_buffer_info_t;
+struct vx_buffer_info {
     char * name; // used as key in the hash map
     int draw_order;
     vx_code_input_stream_t * codes;
 };
 
+
+typedef struct vx_layer_info vx_layer_info_t;
+struct vx_layer_info {
+    int layerID;
+    int worldID;
+    int draw_order;
+    float viewport_rel[4];
+    float layer_pm[16];
+};
+
+typedef struct vx_world_info vx_world_info_t;
+struct vx_world_info {
+    int worldID;
+    vhash_t * buffer_map; // holds vx_buffer_info_t
+};
+
 static int buffer_compare(const void * a, const void * b)
 {
-    return ((vx_buffer_t *) a)->draw_order - ((vx_buffer_t *)b)->draw_order;
+    return ((vx_buffer_info_t *) a)->draw_order - ((vx_buffer_info_t *)b)->draw_order;
 }
 
 static void checkVersions()
@@ -118,15 +132,11 @@ static vx_local_state_t * vx_local_state_create()
     state->vbo_map = lihash_create();
     state->texture_map = lihash_create();
 
-    state->buffer_map = vhash_create(vhash_str_hash, vhash_str_equals);
-
-
     state->dealloc_ids = larray_create();
 
-    // Initialize to the identity
-    for (int i = 0; i < 4; i++)
-        for (int j = 0; j < 4; j++)
-            state->system_pm[i*4 + j] = (i == j ? 1.0f : 0.0f);
+    state->world_map = vhash_create(vhash_uint32_hash, vhash_uint32_equals);
+    state->layer_map = vhash_create(vhash_uint32_hash, vhash_uint32_equals);
+
 
     return state;
 }
@@ -188,14 +198,43 @@ static void process_deallocations(vx_local_state_t * state)
     if (verbose) printf("\n");
 }
 
-static void vx_local_update_layer(vx_local_renderer_t * lrend, int layerID, int worldId, float viewport_rel[4])
+static void vx_local_update_layer(vx_local_renderer_t * lrend, int layerID, int worldID, int draw_order, float viewport_rel[4])
 {
-    assert(0);
+    vx_layer_info_t * layer = vhash_get(lrend->state->layer_map, (void*)layerID);
+    if (layer == NULL) { // Allocate a new layer  -- XXX no way to dealloc
+        layer = malloc(sizeof(vx_layer_info_t));
+        layer->layerID = layerID;
+        layer->worldID = worldID;
+
+        // Initialize projection*model matrix to the identity
+        for (int i = 0; i < 4; i++)
+            for (int j = 0; j < 4; j++)
+                layer->layer_pm[i*4 + j] = (i == j ? 1.0f : 0.0f);
+    }
+    // changing worlds is not allowed, for now
+    assert(layerID == layer->layerID);
+    assert(worldID == layer->worldID);
+
+    // dynamic content: order and viewport
+    layer->draw_order = draw_order;
+    memcpy(layer->viewport_rel, viewport_rel, 4*4);
 }
 
 static void vx_local_update_buffer(vx_local_renderer_t * lrend, int worldID, char * name, int draw_order, vx_code_input_stream_t * codes)
 {
-    vx_buffer_t * buf = malloc(sizeof(vx_buffer_t));
+    vx_world_info_t * world = vhash_get(lrend->state->world_map, (void *)worldID);
+    if (world == NULL) { // Allocate a new world -- XXX no way to dealloc
+        world = malloc(sizeof(vx_world_info_t));
+        world->worldID = worldID;
+        world->buffer_map = vhash_create(vhash_str_hash, vhash_str_equals);
+
+        int old_key = 0;
+        vx_world_info_t * old_value = NULL;
+        vhash_put(lrend->state->world_map, (void*)worldID, world, &old_key, &old_value);
+        assert(old_value == NULL);
+    }
+
+    vx_buffer_info_t * buf = malloc(sizeof(vx_buffer_info_t));
     buf->name = strdup(name);
     buf->draw_order = draw_order;
     buf->codes = codes;
@@ -203,8 +242,8 @@ static void vx_local_update_buffer(vx_local_renderer_t * lrend, int worldID, cha
     if (verbose) printf("Updating codes buffer: %s codes->len %d codes->pos %d\n", buf->name, buf->codes->len, buf->codes->pos);
 
     char * prev_key = NULL; // ignore this, since the key is stored in the struct
-    vx_buffer_t * prev_value = NULL;
-    vhash_put(lrend->state->buffer_map, buf->name, buf, &prev_key, &prev_value);
+    vx_buffer_info_t * prev_value = NULL;
+    vhash_put(world->buffer_map, buf->name, buf, &prev_key, &prev_value);
 
     if (prev_value != NULL) {
         vx_code_input_stream_destroy(prev_value->codes);
@@ -598,7 +637,7 @@ static void vx_local_render(vx_local_renderer_t * lrend, int width, int height, 
     varray_sort(buffers, buffer_compare);
 
     for (int i = 0; i < varray_size(buffers); i++) {
-        vx_buffer_t * buffer = varray_get(buffers, i);
+        vx_buffer_info_t * buffer = varray_get(buffers, i);
 
         buffer->codes->reset(buffer->codes);
 
@@ -630,12 +669,14 @@ static void vx_local_remove_resources_direct(vx_local_renderer_t *lrend, varray_
 
 
 
-static void vx_local_set_system_pm_matrix(vx_local_renderer_t *lrend, float * pm)
+static void vx_local_set_layer_pm_matrix(vx_local_renderer_t *lrend, int layerID, float * pm)
 {
-    // copy the specified matrix into state
-    for (int i = 0; i < 16; i++) {
-        lrend->state->system_pm[i] = pm[i];
+    vx_layer_info_t * layer = vhash_get(lrend->state->layer_map, (void*)layerID);
+    if (layer == NULL) {
+        printf("WRN: Layer %d not found when attempting to set pm matrix\n", layerID);
+        return;
     }
+    memcpy(layer->layer_pm, pm, 16*4);
 }
 
 static void vx_local_update_resources_managed(vx_local_renderer_t * lrend, int worldID, char * buffer_name, varray_t * resources)
@@ -669,9 +710,9 @@ static void vx_update_buffer(vx_renderer_t * rend, int worldID, char * buffer_na
     vx_local_update_buffer((vx_local_renderer_t *)(rend->impl), worldID, buffer_name, drawOrder, codes);
 }
 
-static void vx_update_layer(vx_renderer_t * rend, int layerID, int worldID, float viewport_rel[4])
+static void vx_update_layer(vx_renderer_t * rend, int layerID, int worldID, int draw_order, float viewport_rel[4])
 {
-    vx_local_update_layer((vx_local_renderer_t *)(rend->impl), layerID, worldID, viewport_rel);
+    vx_local_update_layer((vx_local_renderer_t *)(rend->impl), layerID, worldID, draw_order, viewport_rel);
 }
 
 static void vx_get_canvas_size(vx_renderer_t * rend, int * dim_out)
@@ -703,7 +744,7 @@ vx_local_renderer_t * vx_create_local_renderer(int width, int height)
     local->super->destroy = vx_destroy;
 
     local->render = vx_local_render;
-    local->set_system_pm_matrix = vx_local_set_system_pm_matrix;
+    local->set_layer_pm_matrix = vx_local_set_layer_pm_matrix;
 
     // Deal with private storage:
     local->super->impl = local; // ugly circular reference, but allows us to convert classes both ways
