@@ -1,6 +1,6 @@
 package april.vx;
 
-
+import java.util.*;
 import java.util.concurrent.atomic.*;
 
 // The layer encapsulates drawing a World in a specific viewport, as
@@ -21,6 +21,9 @@ public class VxLayer
 
     // Managers. Note that they only work when connected to a local rendering context. (VxCanvas will poll)
     VxCameraManager cameraManager = new DefaultCameraManager();
+    boolean enabled = true;
+    ArrayList<VxEventHandler> eventHandlers = new ArrayList();
+    VxManipulationManager manipulationManager = new DefaultManipulationManager();
 
     // Each layer gets a unique ID to allow server to manage multiple layersx
     final int layerID = layerNextID.getAndIncrement();

@@ -47,6 +47,21 @@ public class VxUtil
     }
 
     /** uses winy=0 at the bottom (opengl) convention **/
+    public static double[] project(double xyz[], double M[][], double P[][], int viewport[])
+    {
+        double xyzh[] = new double[] { xyz[0], xyz[1], xyz[2], 1 };
+        double p[] = LinAlg.matrixAB(LinAlg.matrixAB(P, M), xyzh);
+
+        p[0] = p[0] / p[3];
+        p[1] = p[1] / p[3];
+        p[2] = p[2] / p[3];
+
+        return new double[] { viewport[0] + viewport[2]*(p[0]+1)/2.0,
+                              viewport[1] + viewport[3]*(p[1]+1)/2.0,
+                              (viewport[2] + 1)/2.0 };
+    }
+
+    /** uses winy=0 at the bottom (opengl) convention **/
     public static double[] unProject(double winxyz[], double M[][], double P[][], int viewport[])
     {
         double invPM[][] = LinAlg.inverse(LinAlg.matrixAB(P, M));

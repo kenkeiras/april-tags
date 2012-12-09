@@ -5,20 +5,26 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.image.*;
 
-import april.jmat.*;
+import java.awt.event.*;
 
+import april.jmat.*;
+import april.jmat.geom.*;
 // Class which maintains a VxLocalRenderer instance (preferably through some synchronous wrapper)
 // Also can be painted as a component
 public class VxCanvas extends JComponent
 {
+    EventHandler eh = new EventHandler();
 
     VxLocalRenderer rend;
 
     BufferedImage im;
+    RenderInfo lastRenderInfo;
 
     int targetFrameRate = 5; // draw really slow for now
 
     HashMap<Integer, VxLayer> layerMap = new HashMap();
+
+
 
     public VxCanvas(VxLocalRenderer rend, VxLayer ... layers)
     {
@@ -30,7 +36,26 @@ public class VxCanvas extends JComponent
         int width = canvas_size[0], height = canvas_size[1];
 
 
+        addMouseMotionListener(eh);
+        addMouseListener(eh);
+        addMouseWheelListener(eh);
+        addKeyListener(eh);
+
+        setFocusTraversalKeysEnabled(false); // Black magic
+
+
         new RepaintThread().start();
+    }
+
+    public static class RenderInfo
+    {
+        // The layers, in the order that they were rendered.
+        public ArrayList<VxLayer> layers = new ArrayList();
+
+        // The position of the layers when they were rendered.
+        public HashMap<VxLayer, int[]> layerPositions = new HashMap();
+
+        public HashMap<VxLayer, VxCameraManager.CameraPosition> cameraPositions = new HashMap();
     }
 
     class RepaintThread extends Thread
@@ -50,6 +75,8 @@ public class VxCanvas extends JComponent
                 }
 
                 if (VxCanvas.this.isVisible()) {
+
+                    RenderInfo rinfo = new RenderInfo();
 
                     int width = VxCanvas.this.getWidth();
                     int height = VxCanvas.this.getHeight();
@@ -73,7 +100,9 @@ public class VxCanvas extends JComponent
                     for (VxLayer layer : layerMap.values()) {
                         int layerViewport[] = layer.getAbsoluteViewport(width,height);
                         VxCameraManager.CameraPosition cp = layer.cameraManager.getCameraPosition(layerViewport, mtime);
-
+                        rinfo.layerPositions.put(layer, layerViewport);
+                        rinfo.cameraPositions.put(layer, cp);
+                        rinfo.layers.add(layer);
                         double PM[][] = LinAlg.matrixAB(cp.getProjectionMatrix(), cp.getModelViewMatrix());
                         rend.set_layer_pm_matrix(layer.layerID,
                                                  VxUtil.copyFloats(PM));
@@ -82,6 +111,7 @@ public class VxCanvas extends JComponent
                     rend.render(width,height,buf);
 
                     im = canvas;
+                    lastRenderInfo = rinfo;
                     repaint();
                 }
             }
@@ -98,6 +128,225 @@ public class VxCanvas extends JComponent
             g.translate(0, getHeight());
             g.scale(1, -1);
             g.drawImage(im, 0, 0, null);
+        }
+    }
+
+
+    class EventHandler implements MouseMotionListener, MouseListener, MouseWheelListener, KeyListener
+    {
+        VxLayer mousePressedLayer;
+        VxLayer keyboardFocusLayer;
+
+        int lastex = -1, lastey = -1;
+
+        public void keyPressed(KeyEvent e)
+        {
+            dispatchKeyEvent(e);
+        }
+
+        public void keyReleased(KeyEvent e)
+        {
+            dispatchKeyEvent(e);
+        }
+
+        public void keyTyped(KeyEvent e)
+        {
+            dispatchKeyEvent(e);
+        }
+
+        public void mouseWheelMoved(MouseWheelEvent e)
+        {
+            dispatchMouseEvent(e);
+        }
+
+        public void mouseDragged(MouseEvent e)
+        {
+            dispatchMouseEvent(e);
+        }
+
+        public void mouseMoved(MouseEvent e)
+        {
+            dispatchMouseEvent(e);
+        }
+
+        public void mousePressed(MouseEvent e)
+        {
+            dispatchMouseEvent(e);
+        }
+
+        public void mouseReleased(MouseEvent e)
+        {
+            dispatchMouseEvent(e);
+        }
+
+        public void mouseClicked(MouseEvent e)
+        {
+            dispatchMouseEvent(e);
+        }
+
+        public void mouseEntered(MouseEvent e)
+        {
+            dispatchMouseEvent(e);
+            requestFocus();
+        }
+
+        public void mouseExited(MouseEvent e)
+        {
+            dispatchMouseEvent(e);
+        }
+
+        // Find a layer that can consume this event.
+        void dispatchMouseEvent(MouseEvent e)
+        {
+            RenderInfo rinfo = lastRenderInfo;
+            if (rinfo == null)
+                return;
+
+            int ex = e.getX();
+            int ey = getHeight() - e.getY();
+
+            lastex = ex;
+            lastey = ey;
+
+            // these events go to the layer that got the MOUSE_PRESSED
+            // event, not the layer under the event.
+            if (e.getID() == MouseEvent.MOUSE_DRAGGED || e.getID() == MouseEvent.MOUSE_RELEASED) {
+                if (mousePressedLayer != null && rinfo.cameraPositions.get(mousePressedLayer) != null)
+                    dispatchMouseEventToLayer(VxCanvas.this, mousePressedLayer, rinfo,
+                                              rinfo.cameraPositions.get(mousePressedLayer).computeRay(ex, ey), e);
+
+                return;
+            }
+
+            for (int lidx = rinfo.layers.size()-1; lidx >= 0; lidx--) {
+                VxLayer layer = rinfo.layers.get(lidx);
+                if (!layer.enabled)
+                    continue;
+
+                int pos[] = rinfo.layerPositions.get(layer);
+
+                GRay3D ray = rinfo.cameraPositions.get(layer).computeRay(ex, ey);
+
+                if (ex >= pos[0] && ey >= pos[1] &&
+                    ex < pos[0]+pos[2] && ey < pos[1]+pos[3]) {
+
+                    boolean handled = dispatchMouseEventToLayer(VxCanvas.this, layer, rinfo, ray, e);
+
+                    if (e.getID() == MouseEvent.MOUSE_PRESSED) {
+                        if (handled)
+                            mousePressedLayer = layer;
+                        else
+                            mousePressedLayer = null;
+                    }
+
+                    if (handled)
+                        return;
+                }
+            }
+        }
+
+        // this is used by dispatchMouseEvent. It processes the event
+        // handlers within the layer, returning true if one of them
+        // consumed the event.
+        boolean dispatchMouseEventToLayer(VxCanvas vc, VxLayer layer, VxCanvas.RenderInfo rinfo, GRay3D ray, MouseEvent e)
+        {
+            boolean handled = false;
+
+            synchronized (layer.eventHandlers) {
+                for (VxEventHandler eh : layer.eventHandlers) {
+
+                    switch (e.getID()) {
+                        case MouseEvent.MOUSE_PRESSED:
+                            mousePressedLayer = layer;
+                            handled = eh.mousePressed(VxCanvas.this, layer, rinfo, ray, e);
+                            break;
+                        case MouseEvent.MOUSE_RELEASED:
+                            handled = eh.mouseReleased(VxCanvas.this, layer, rinfo, ray, e);
+                            break;
+                        case MouseEvent.MOUSE_CLICKED:
+                            handled = eh.mouseClicked(VxCanvas.this, layer, rinfo, ray, e);
+                            break;
+                        case MouseEvent.MOUSE_DRAGGED:
+                            handled = eh.mouseDragged(VxCanvas.this, layer, rinfo, ray, e);
+                            break;
+                        case MouseEvent.MOUSE_MOVED:
+                            handled = eh.mouseMoved(VxCanvas.this, layer, rinfo, ray, e);
+                            break;
+                        case MouseEvent.MOUSE_WHEEL:
+                            handled = eh.mouseWheel(VxCanvas.this, layer, rinfo, ray, (MouseWheelEvent) e);
+                            break;
+                        case MouseEvent.MOUSE_ENTERED:
+                            handled = false;
+                            break;
+                        case MouseEvent.MOUSE_EXITED:
+                            handled = false;
+                            break;
+                        default:
+                            System.out.println("Unhandled mouse event id: "+e.getID());
+                            handled = false;
+                            break;
+                    }
+
+                    if (handled)
+                        break;
+                }
+            }
+
+            return handled;
+        }
+
+        void dispatchKeyEvent(KeyEvent e)
+        {
+            RenderInfo rinfo = lastRenderInfo;
+            if (rinfo == null)
+                return;
+
+            for (int lidx = rinfo.layers.size()-1; lidx >= 0; lidx--) {
+                VxLayer layer = rinfo.layers.get(lidx);
+                if (!layer.enabled)
+                    continue;
+
+                int pos[] = rinfo.layerPositions.get(layer);
+
+                if (lastex >= pos[0] && lastey >= pos[1] &&
+                    lastex < pos[0]+pos[2] && lastey < pos[1]+pos[3]) {
+
+                    boolean handled = dispatchKeyEventToLayer(VxCanvas.this, layer, rinfo, e);
+
+                    if (handled)
+                        return;
+                }
+            }
+        }
+
+        boolean dispatchKeyEventToLayer(VxCanvas vc, VxLayer layer, VxCanvas.RenderInfo rinfo, KeyEvent e)
+        {
+            boolean handled = false;
+
+            synchronized (layer.eventHandlers) {
+                for (VxEventHandler eh : layer.eventHandlers) {
+
+                    switch (e.getID()) {
+                        case KeyEvent.KEY_TYPED:
+                            handled = eh.keyTyped(VxCanvas.this, layer, rinfo, e);
+                            break;
+                        case KeyEvent.KEY_PRESSED:
+                            handled = eh.keyPressed(VxCanvas.this, layer, rinfo, e);
+                            break;
+                        case KeyEvent.KEY_RELEASED:
+                            handled = eh.keyReleased(VxCanvas.this, layer, rinfo, e);
+                            break;
+                        default:
+                            System.out.println("Unhandled key event id: "+e.getID());
+                            break;
+                    }
+
+                    if (handled)
+                        break;
+                }
+
+                return handled;
+            }
         }
     }
 
