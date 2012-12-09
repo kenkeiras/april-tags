@@ -37,6 +37,7 @@ public class VxLayer
         vw = _vw;
         rend = _rend;
 
+        eventHandlers.add(new DefaultEventHandler());
 
         update();
     }
