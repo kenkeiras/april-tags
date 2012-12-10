@@ -53,7 +53,9 @@ $(DESTLIB) : $(LIB)
 $(DESTLIB_JNI) : $(LIB_JNI)
 	cp $(LIB_JNI) $(DESTLIB_JNI)
 
-LIBVX_OBJS += vx_renderer.o vx_local_renderer.o glcontext.o  lphash.o vx_code_input_stream.o vx_resc.o vhash.o lihash.o larray.o varray.o sort_util.o
+
+LIBVX_USER_OBJS = vx_world.o vx_layer.o
+LIBVX_OBJS += vx_renderer.o vx_local_renderer.o glcontext.o  lphash.o vx_code_input_stream.o vx_resc.o vhash.o lihash.o larray.o varray.o sort_util.o $(LIBVX_USER_OBJS)
 
 LIB_JNI_OBJS += vx_jni.o
 
@@ -63,7 +65,11 @@ $(LIB_JNI) : april_vx_VxLocalRenderer.h $(LIB_JNI_OBJS) $(LIB)
 	$(LD) $(LDFLAGS) $(LDFLAGS_COMMON) $(LIB) $(LIB_JNI_OBJS) -o $@
 
 $(LIB):  $(LIBVX_OBJS)
-	$(LD) $(LDFLAGS) $(LDFLAGS_COMMON) $(LIBVX_OBJS) -o $@
+	ar rc $@ $(LIBVX_OBJS)
+
+
+vx_test: vx_test.o $(LIB)
+	gcc -o $@ vx_test.o $(LIB) -lX11 -lGL -lGLEW  -lpthread
 
 #############################################################
 %.o: %.c
@@ -74,7 +80,7 @@ april_vx_VxLocalRenderer.h: ../../src/april/vx/VxLocalRenderer.java
 	javah -classpath ../../april.jar  april.vx.VxLocalRenderer
 
 clean:
-	rm -rf $(LIB_JNI_OBJS) $(LIBVX_OBJS) *~ april_vx_VxLocalServer.h $(LIB) $(DESTLIB) $(LIB_JNI) $(DESTLIB_JNI)
+	rm -rf $(LIB_JNI_OBJS) $(LIBVX_OBJS) *~ april_vx_VxLocalServer.h $(LIB) $(DESTLIB) $(LIB_JNI) $(DESTLIB_JNI) vx_test
 
 
 SORT_OBJS=sort_test.o sort_util.o varray.o
