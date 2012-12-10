@@ -182,7 +182,8 @@ public class GenericTokenizer<T>
     {
         String s;
         int pos;
-        int line = 1, col;
+        int line = 0, col = 0; // these are the position of the LAST returned character
+        char lastc = '\n';
 
         StringFeeder(String s)
         {
@@ -196,15 +197,15 @@ public class GenericTokenizer<T>
 
         char next()
         {
-            char c = s.charAt(pos++);
-            if (c=='\n') {
+            if (lastc == '\n') {
                 line++;
-                col=0;
+                col = 1;
             } else {
                 col++;
             }
 
-            return c;
+            lastc = s.charAt(pos++);
+            return lastc;
         }
 
         char peek()
