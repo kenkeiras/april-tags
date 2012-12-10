@@ -931,6 +931,7 @@ public class GenericTokenizer<T>
             // restart parsing from the root node.
             if (state.t != null && !state.ignore)
                 tokens.add(new Token(state.t, sb.toString(), sf.line, sf.col));
+
             sb = new StringBuilder();
             state = droot;
         }

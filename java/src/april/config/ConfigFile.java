@@ -37,17 +37,9 @@ public class ConfigFile extends Config
     {
         HashMap<String, String[]> newkeys = new HashMap<String, String[]>();
 
-        //Inelegant way to combine two Sets...
-        Set<String> cKeySet = keys.keySet();
-        Set<String> aKeySet = abstractKeys.keySet();
-        ArrayList<String> keyList = new ArrayList<String>(aKeySet.size() + cKeySet.size());
-        for(String aKey : aKeySet) keyList.add(aKey);
-        for(String cKey : cKeySet) keyList.add(cKey);
+        for (String key : keys.keySet()) {
 
-        //Search in the concrete and abstarct keys together. Watch out for ':' beginning
-        for (String key : keyList) {
-            if (key.startsWith(srcNameSpace))
-            {
+            if (key.startsWith(srcNameSpace)) {
                 String propertyName = key.substring(srcNameSpace.length());
                 String newKeyName = destNameSpace + propertyName;
 
@@ -57,20 +49,12 @@ public class ConfigFile extends Config
                     newKeyName = newKeyName.replace(":","");
                 }
 
-                if (key.startsWith(":")) {
-                        newkeys.put(newKeyName, abstractKeys.get(key));
-                } else {
-                    newkeys.put(newKeyName, keys.get(key));
-                }
+                newkeys.put(newKeyName, keys.get(key));
             }
         }
 
         for (String key : newkeys.keySet()) {
-            if (destNameSpace.startsWith(":")) {
-                abstractKeys.put(key, newkeys.get(key));
-            } else {
-                keys.put(key, newkeys.get(key));
-            }
+            keys.put(key, newkeys.get(key));
         }
     }
 
@@ -191,12 +175,7 @@ public class ConfigFile extends Config
 //                parseError(t, "Duplicate key definition for: "+key);
             }
 
-            //Check for 'abstract' or 'invisible' keys
-            if (key.startsWith(":")){
-                abstractKeys.put(key, values.toArray(new String[0]));
-            }else{
-                keys.put(key, values.toArray(new String[0]));
-            }
+            keys.put(key, values.toArray(new String[0]));
         }
     }
 
@@ -208,15 +187,6 @@ public class ConfigFile extends Config
             System.out.println("Keys: ");
             for (String key : cf.getKeys()){
                 String vs[] = cf.keys.get(key);
-
-                for (int vidx = 0; vidx < vs.length; vidx++)
-                    System.out.printf("  %-40s : %s\n", vidx == 0 ? key : "", vs[vidx]);
-            }
-
-            System.out.println("Abstract keys: ");
-            for (String key : cf.getAbstractKeys()) {
-
-                String vs[] = cf.abstractKeys.get(key);
 
                 for (int vidx = 0; vidx < vs.length; vidx++)
                     System.out.printf("  %-40s : %s\n", vidx == 0 ? key : "", vs[vidx]);
