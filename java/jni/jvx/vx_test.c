@@ -3,6 +3,7 @@
 
 #include "vx_layer.h"
 #include "vx_world.h"
+#include "vx_program.h"
 
 #include "vx_local_renderer.h"
 
@@ -50,6 +51,13 @@ int main(int argc, char ** args)
 
     vx_world_t * world = vx_world_create(rend);
     vx_layer_t * layer = vx_layer_create(rend, world);
+
+
+    vx_program_t * program = vx_program_create(vx_resc_load("../../shaders/single-color.vert"),
+                                               vx_resc_load("../../shaders/single-color.frag"));
+
+    vx_buffer_stage(vx_world_get_buffer(world, "foo"), program->super);
+    vx_buffer_commit(vx_world_get_buffer(world, "foo"));
 
     uint8_t * data = calloc(width*height*3, sizeof(uint8_t));
     lrend->render(lrend, width, height, data);

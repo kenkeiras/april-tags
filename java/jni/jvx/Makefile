@@ -54,7 +54,7 @@ $(DESTLIB_JNI) : $(LIB_JNI)
 	cp $(LIB_JNI) $(DESTLIB_JNI)
 
 
-LIBVX_USER_OBJS = vx_world.o vx_layer.o
+LIBVX_USER_OBJS = vx_world.o vx_layer.o vx_util.o vx_program.o
 LIBVX_OBJS += vx_renderer.o vx_local_renderer.o glcontext.o  lphash.o vx_code_input_stream.o vx_resc.o vhash.o lihash.o larray.o varray.o sort_util.o $(LIBVX_USER_OBJS)
 
 LIB_JNI_OBJS += vx_jni.o
