@@ -62,7 +62,7 @@ LIB_JNI_OBJS += vx_jni.o
 
 
 $(LIB_JNI) : april_vx_VxLocalRenderer.h $(LIB_JNI_OBJS) $(LIB)
-	$(LD) $(LDFLAGS) $(LDFLAGS_COMMON) $(LIB) $(LIB_JNI_OBJS) -o $@
+	$(LD)  $(LDFLAGS_COMMON) $(LIB_JNI_OBJS)  $(LDFLAGS) -L./ -lvx  -o $@
 
 $(LIB):  $(LIBVX_OBJS)
 	ar rc $@ $(LIBVX_OBJS)

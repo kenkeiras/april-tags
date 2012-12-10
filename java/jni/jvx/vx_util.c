@@ -1,4 +1,4 @@
-#include "vx_util.h";
+#include "vx_util.h"
 
 
 uint64_t xxxAtomicLong = 1; //XXXX
