@@ -340,6 +340,42 @@ public class CameraCalibrationSystem
         }
     }
 
+    public void printSystem()
+    {
+        // print cameras
+        for (int cameraIndex = 0; cameraIndex < cameras.size(); cameraIndex++)
+        {
+            CameraCalibrationSystem.CameraWrapper cam = cameras.get(cameraIndex);
+            System.out.printf("Camera %d '%s'", cameraIndex, cam.name);
+            System.out.printf(" cameraNumber %d rootNumber %d", cam.cameraNumber, cam.rootNumber);
+            System.out.printf(" width %4d height %4d\n", cam.width, cam.height);
+            if (cam.cal != null) {
+                System.out.printf("    intrinsics: ");
+                LinAlg.printTranspose(cam.cal.getParameterization());
+            }
+            System.out.printf("    extrinsics: ");
+            LinAlg.printTranspose(cam.CameraToRootXyzrpy);
+        }
+
+        // print mosaics
+        for (int mosaicIndex = 0; mosaicIndex < mosaics.size(); mosaicIndex++)
+        {
+            CameraCalibrationSystem.MosaicWrapper mosaic = mosaics.get(mosaicIndex);
+            System.out.printf("Mosaic %d", mosaicIndex);
+            System.out.printf(" %d images, %d detection sets with [ ",
+                              mosaic.imageSet.size(), mosaic.detectionSet.size());
+            for (List<TagDetection> d : mosaic.detectionSet)
+                System.out.printf("%d ", d.size());
+            System.out.println("] detections");
+
+            Set<Map.Entry<Integer,double[]>> xyzrpys = mosaic.MosaicToRootXyzrpys.entrySet();
+            for (Map.Entry<Integer,double[]> xyzrpy : xyzrpys) {
+                System.out.printf("    Extrinsics for root %d: ", xyzrpy.getKey());
+                LinAlg.printTranspose(xyzrpy.getValue());
+            }
+        }
+    }
+
     ////////////////////////////////////////////////////////////////////////////////
     // Helper methods
 

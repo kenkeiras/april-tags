@@ -356,9 +356,15 @@ public class MultiCameraCalibrator implements ParameterListener
         List<RobustCameraCalibrator.GraphWrapper> graphWrappers = calibrator.buildCalibrationGraphs();
         //System.out.printf("TIMING: %12.6f seconds to build graphs\n", tic.toctic());
 
+        //System.out.println("CALIBRATION BEFORE ITERATION");
+        //calibrator.printCalibrationBlock();
+
         List<RobustCameraCalibrator.GraphStats> stats = calibrator.iterateUntilConvergence(graphWrappers,
                                                                                            0.01, 3, 50);
         //System.out.printf("TIMING: %12.6f seconds to iterate graphs\n", tic.toctic());
+
+        //System.out.println("CALIBRATION AFTER ITERATION");
+        //calibrator.printCalibrationBlock();
 
         calibrator.updateFromGraphs(graphWrappers, stats);
         //System.out.printf("TIMING: %12.6f seconds to update from graphs\n", tic.toctic());
@@ -366,6 +372,7 @@ public class MultiCameraCalibrator implements ParameterListener
         calibrator.draw();
         //System.out.printf("TIMING: %12.6f seconds to draw\n", tic.toctic());
 
+        //System.out.println("CALIBRATION AFTER UPDATE");
         calibrator.printCalibrationBlock();
 
         for (RobustCameraCalibrator.GraphStats s : stats) {

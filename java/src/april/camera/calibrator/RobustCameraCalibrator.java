@@ -15,6 +15,7 @@ public class RobustCameraCalibrator
 {
     public static boolean verbose = true;
 
+    List<CalibrationInitializer> initializers;
     CameraCalibrationSystem cal;
     CalibrationRenderer renderer;
 
@@ -25,6 +26,7 @@ public class RobustCameraCalibrator
     public RobustCameraCalibrator(List<CalibrationInitializer> initializers,
                                   TagFamily tf, double metersPerTag, boolean gui)
     {
+        this.initializers = initializers;
         this.tf = tf;
         this.tm = new TagMosaic(tf, metersPerTag);
         this.metersPerTag = metersPerTag;
@@ -52,23 +54,30 @@ public class RobustCameraCalibrator
 
     public class GraphStats
     {
-        public int numObs;
-        public double MRE; // mean reprojection error
-        public double MSE; // mean-squared reprojection error
-        public boolean SPDError;
+        public int numObs;       // number of tags used
+        public double MRE;       // mean reprojection error
+        public double MSE;       // mean-squared reprojection error
+        public boolean SPDError; // did we catch an SPD error from the graph solver?
     }
 
     public class GraphWrapper
     {
+        // The graph that was created (all graph state can be changed without affecting the camera system)
         public Graph g;
 
+        // The root camera number for this graph
         public int rootNumber;
 
+        // Maps that connect a camera or mosaic wrapper to the GNode index in the graph
+        // Note: The keys in these maps are from the original CameraCalibrationSystem
+        //  -- changing their values will modify the original system
         public HashMap<CameraCalibrationSystem.CameraWrapper,Integer> cameraToIntrinsicsNodeIndex;
         public HashMap<CameraCalibrationSystem.CameraWrapper,Integer> cameraToExtrinsicsNodeIndex;
         public HashMap<CameraCalibrationSystem.MosaicWrapper,Integer> mosaicToExtrinsicsNodeIndex;
     }
 
+    /** Compute MRE and MSE for a graph.
+      */
     public GraphStats getGraphStats(Graph g)
     {
         GraphStats stats = new GraphStats();
@@ -99,6 +108,8 @@ public class RobustCameraCalibrator
         return stats;
     }
 
+    /** Iterate each graph until convergence. See the single-graph method for details.
+      */
     public List<GraphStats> iterateUntilConvergence(List<GraphWrapper> graphs, double improvementThreshold,
                                                     int minConvergedIterations, int maxIterations)
     {
@@ -112,6 +123,9 @@ public class RobustCameraCalibrator
         return stats;
     }
 
+    /** Iterate graph until it converges. Catch SPD errors and set the field in the
+      * GraphStats object that is returned.
+      */
     public GraphStats iterateUntilConvergence(GraphWrapper gw, double improvementThreshold,
                                               int minConvergedIterations, int maxIterations)
     {
@@ -123,13 +137,6 @@ public class RobustCameraCalibrator
         GraphStats lastStats = getGraphStats(gw.g);
         int convergedCount = 0;
         int iterationCount = 0;
-
-        // back up intrinsic parameters, since these objects are changed by graph operations
-        Map<CameraCalibrationSystem.CameraWrapper,double[]> intrinsicsBackups = new HashMap();
-        Set<CameraCalibrationSystem.CameraWrapper> camera_intrinsics =
-            gw.cameraToIntrinsicsNodeIndex.keySet();
-        for (CameraCalibrationSystem.CameraWrapper cam : camera_intrinsics)
-            intrinsicsBackups.put(cam, cam.cal.getParameterization());
 
         try {
             while (iterationCount < maxIterations && convergedCount < minConvergedIterations) {
@@ -151,13 +158,6 @@ public class RobustCameraCalibrator
         } catch (RuntimeException ex) {
             lastStats.SPDError = true;
 
-            // reset ParameterizableCalibration objects (which are affected by graph optimization)
-            for (CameraCalibrationSystem.CameraWrapper cam : camera_intrinsics) {
-                double state[] = intrinsicsBackups.get(cam);
-                assert(state != null);
-                cam.cal.resetParameterization(state);
-            }
-
             if (verbose)
                 System.out.println("RobustCameraCalibrator: Caught SPD error during optimization");
         }
@@ -169,9 +169,15 @@ public class RobustCameraCalibrator
                                                                        int minConvergedIterations,
                                                                        int maxIterations)
     {
+        // to be implemented...
+        assert(false);
         return null;
     }
 
+    /** Convenience method to build graphs for all connected subsystems. Finds
+      * all unique rootNumbers in the camera system and calls buildCalibrationGraph()
+      * to build a graph for each subsystem. See buildCalibrationGraph() for details.
+      */
     public List<GraphWrapper> buildCalibrationGraphs()
     {
         List<CameraCalibrationSystem.CameraWrapper> cameras = cal.getCameras();
@@ -188,8 +194,13 @@ public class RobustCameraCalibrator
         return graphWrappers;
     }
 
-    /** Build a graph for the specified root camera. Returns null if the
-      * graph cannot be built yet (e.g. intrinsics not initialized).
+    /** Build a graph for the specified root camera. Returns null if the graph
+      * cannot be built yet (e.g. intrinsics not initialized). All state in the
+      * contained graph is safe to change, as it is copied or regenerated from
+      * the underlying CameraCalibrationSystem. This means you can optimize the
+      * graph safely and ensure that it has suceeded before updating the
+      * underlying CameraCalibrationSystem. See updateFromGraph() and related
+      * methods
       */
     public GraphWrapper buildCalibrationGraph(int rootNumber)
     {
@@ -214,7 +225,12 @@ public class RobustCameraCalibrator
             if (cam.cal == null)
                 return null;
 
-            GIntrinsicsNode intrinsics = new GIntrinsicsNode(cam.cal);
+            // make a new camera model
+            double params[] = cam.cal.getParameterization();
+            ParameterizableCalibration pcal =
+                cam.initializer.initializeWithParameters(cam.width, cam.height, params);
+
+            GIntrinsicsNode intrinsics = new GIntrinsicsNode(pcal);
 
             gw.g.nodes.add(intrinsics);
             int intrinsicsNodeIndex = gw.g.nodes.size()-1;
@@ -307,6 +323,11 @@ public class RobustCameraCalibrator
         return gw;
     }
 
+    /** Update the CameraCalibrationSystem from the graphs provided. If an
+      * entry in either argument is null or the GraphStats.SPDError field is
+      * true, the camera system will <b>not</b> be updated from the
+      * corresponding GraphWrapper.
+      */
     public void updateFromGraphs(List<GraphWrapper> graphWrappers,
                                  List<GraphStats> stats)
     {
@@ -319,8 +340,15 @@ public class RobustCameraCalibrator
 
             updateFromGraph(gw, s);
         }
+
+        if (verbose)
+            cal.printSystem();
     }
 
+    /** Update the CameraCalibrationSystem from the graph provided. If either
+      * argument is null or the GraphStats.SPDError field is true, the camera
+      * system will <b>not</b> be updated from the corresponding GraphWrapper.
+      */
     public void updateFromGraph(GraphWrapper gw, GraphStats s)
     {
         updateCameraIntrinsicsFromGraph(gw, s);
@@ -328,6 +356,11 @@ public class RobustCameraCalibrator
         updateMosaicExtrinsicsFromGraph(gw, s);
     }
 
+    /** Update the CameraCalibrationSystem's camera intrinsics from the graph
+      * provided. If either * argument is null or the GraphStats.SPDError field
+      * is true, the camera * system will <b>not</b> be updated from the
+      * corresponding GraphWrapper.
+      */
     public void updateCameraIntrinsicsFromGraph(GraphWrapper gw, GraphStats s)
     {
         if (gw == null || s == null || s.SPDError == true)
@@ -356,6 +389,11 @@ public class RobustCameraCalibrator
         }
     }
 
+    /** Update the CameraCalibrationSystem's camera extrinsics from the graph
+      * provided. If either * argument is null or the GraphStats.SPDError field
+      * is true, the camera * system will <b>not</b> be updated from the
+      * corresponding GraphWrapper.
+      */
     public void updateCameraExtrinsicsFromGraph(GraphWrapper gw, GraphStats s)
     {
         if (gw == null || s == null || s.SPDError == true)
@@ -383,6 +421,11 @@ public class RobustCameraCalibrator
         }
     }
 
+    /** Update the CameraCalibrationSystem's mosaic extrinsics from the graph
+      * provided. If either * argument is null or the GraphStats.SPDError field
+      * is true, the camera * system will <b>not</b> be updated from the
+      * corresponding GraphWrapper.
+      */
     public void updateMosaicExtrinsicsFromGraph(GraphWrapper gw, GraphStats s)
     {
         if (gw == null || s == null || s.SPDError == true)
@@ -416,6 +459,8 @@ public class RobustCameraCalibrator
     ////////////////////////////////////////////////////////////////////////////////
     // rendering code
 
+    /** Return a reference to the CalibrationRenderer's VisCanvas, if it exists.
+      */
     public VisCanvas getVisCanvas()
     {
         if (renderer == null)
@@ -424,6 +469,8 @@ public class RobustCameraCalibrator
         return renderer.vc;
     }
 
+    /** Tell the CalibrationRenderer to draw(), if it exists.
+      */
     public void draw()
     {
         if (renderer == null)
@@ -435,11 +482,17 @@ public class RobustCameraCalibrator
     ////////////////////////////////////////////////////////////////////////////////
     // file io code
 
+    /** Print the camera calibration string to the terminal. Uses the
+      * getCalibrationBlockString() method.
+      */
     public void printCalibrationBlock()
     {
         System.out.printf(getCalibrationBlockString());
     }
 
+    /** Get the camera calibration string. Intrinsics that aren't initialized
+      * result in a comment (thus an invalid calibration block).
+      */
     public String getCalibrationBlockString()
     {
         List<CameraCalibrationSystem.CameraWrapper> cameras = cal.getCameras();
@@ -502,7 +555,12 @@ public class RobustCameraCalibrator
 
         return str;
     }
+
+    /** Save the calibration to a file and all images.
+      */
     public void saveCalibrationAndImages(String basepath)
     {
+        // to be implemented...
+        assert(false);
     }
 }
