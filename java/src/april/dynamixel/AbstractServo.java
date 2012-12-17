@@ -190,7 +190,49 @@ public abstract class AbstractServo
      * @param torquefrac
      *            [0, 1]
      **/
-    protected abstract void setJointGoal(double radians, double speedfrac, double torquefrac);
+    public abstract void setJointGoal(double radians, double speedfrac, double torquefrac);
+
+    protected void setJointGoal(int pmask,
+                                double radians, double speedfrac, double torquefrac)
+    {
+        assert(!rotationMode && (pmask == 0xfff || pmask == 0x3ff));
+
+        // ensure proper ranges
+        radians = mod2pi(radians);  // do not use MathUtil.mod2pi
+        speedfrac = Math.max(0, Math.min(1, Math.abs(speedfrac)));
+        torquefrac = Math.max(0, Math.min(1, torquefrac));
+
+        double min = getMinimumPositionRadians();
+        double max = getMaximumPositionRadians();
+        radians = Math.max(min, Math.min(max, radians));
+
+        boolean stop = speedfrac < (1.0/0x3ff);
+
+        int posv = ((int) Math.round((radians - min) / (max - min) * pmask)) & pmask;
+        // in joint-mode, speed == 0 --> maxspeed
+        int speedv = stop ? 0x1 : (int)(speedfrac * 0x3ff);
+        int torquev = (int) (torquefrac * 0x3ff);
+
+        writeToRAM(new byte[] { 0x1e,
+                                (byte) (posv & 0xff), (byte) (posv >> 8),
+                                (byte) (speedv & 0xff), (byte) (speedv >> 8),
+                                (byte) (torquev & 0xff), (byte) (torquev >> 8) }, true);
+
+        // handle speed = 0 case (after slowing down, above) by relay current position back
+        //                  to servo; do not set torque = 0, b/c that is possibly not desired
+        if (stop) {
+            byte resp[] = bus.sendCommand(id,
+                                          AbstractBus.INST_READ_DATA,
+                                          new byte[] { 0x24, 2 },
+                                          true);
+            if (resp != null) {
+                posv = (resp[1] & 0xff) + ((resp[2] & 0xff) << 8);
+                writeToRAM(new byte[] { 0x1e,
+                                        (byte) (posv & 0xff), (byte) (posv >> 8) }, true);
+            }
+
+        }
+    }
 
     /**
      * @param speedfrac
@@ -198,7 +240,7 @@ public abstract class AbstractServo
      * @param torquefrac
      *            [0, 1]
      **/
-    protected void setContinuousGoal(double speedfrac, double torquefrac)
+    public void setContinuousGoal(double speedfrac, double torquefrac)
     {
         assert(rotationMode);
 
@@ -315,7 +357,7 @@ public abstract class AbstractServo
         return rotationMode;
     }
 
-    /** read rotation mode from servo **/
+    /** read (and set) rotation mode from servo **/
     public boolean readRotationMode()
     {
         boolean mode = true;
@@ -328,8 +370,10 @@ public abstract class AbstractServo
                 return rotationMode;   // best guess
             }
             for (int i = 1; i < 5; i++)
-                if (limits[i] != 0)
+                if (limits[i] != 0) {
                     mode = false;
+                    break;
+                }
             rotationMode = mode;
         }
         return mode;
