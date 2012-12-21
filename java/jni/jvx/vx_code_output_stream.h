@@ -11,15 +11,13 @@ struct vx_code_output_stream
     uint32_t pos;
     uint32_t len;
 
-    uint32_t (* write_uint32)(vx_code_output_stream_t * stream);
-    uint64_t (* write_uint64)(vx_code_output_stream_t * stream);
-    float (* write_float)(vx_code_output_stream_t * stream);
-    char * (* write_str)(vx_code_output_stream_t * stream);
-    void (* reset)(vx_code_output_stream_t * stream);
+    void (* write_uint32)(vx_code_output_stream_t * stream, uint32_t val);
+    void (* write_uint64)(vx_code_output_stream_t * stream, uint64_t val);
+    void (* write_float)(vx_code_output_stream_t * stream, float val);
+    void (* write_str)(vx_code_output_stream_t * stream, char *  str);
 };
 
-// Copies the data
-vx_code_output_stream_t * vx_code_output_stream_init(uint8_t *data, uint32_t codes_len);
+vx_code_output_stream_t * vx_code_output_stream_init(int startlen);
 void vx_code_output_stream_destroy(vx_code_output_stream_t * stream);
 
 #endif
