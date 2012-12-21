@@ -3,6 +3,7 @@
 #include "vx_util.h"
 #include <malloc.h>
 #include <assert.h>
+#include <string.h>
 
 #define MAX_SHD_SZ 65355
 
@@ -29,5 +30,19 @@ vx_resc_t * vx_resc_load(char* path)
         vr->res = chars;
         fclose(fp);
     }
+    return vr;
+}
+
+vx_resc_t * vx_resc_copy(float * data, int count)
+{
+    vx_resc_t * vr = calloc(1, sizeof(vx_resc_t));
+    vr->type = GL_FLOAT;
+    vr->id = vx_alloc_id();
+    vr->fieldwidth = sizeof(float);
+    vr->count = count;
+
+
+    vr->res = malloc(vr->fieldwidth*vr->count);
+    memcpy(vr->res, data, vr->fieldwidth*vr->count);
     return vr;
 }
