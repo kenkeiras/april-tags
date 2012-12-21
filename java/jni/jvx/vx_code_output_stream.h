@@ -7,7 +7,7 @@ typedef struct vx_code_output_stream vx_code_output_stream_t;
 
 struct vx_code_output_stream
 {
-    const uint8_t * data;
+    uint8_t * data;
     uint32_t pos;
     uint32_t len;
 
