@@ -67,7 +67,19 @@ void vx_buffer_commit(vx_buffer_t * buffer)
 
     // send off the codes
 
+    vx_code_output_stream_t * codes = vx_code_output_stream_create(256);
+    lphash_t * resources = lphash_create();
+    vx_matrix_stack_t *ms = vx_matrix_stack_create();
 
+
+    for (int i = 0; i < varray_size(cobjs); i++) {
+        vx_object_t * obj = varray_get(cobjs, i);
+        obj->append(obj, resources, codes, ms);
+    }
+
+    // XXX reference counting
+    lphash_destroy(resources);
+    vx_code_output_stream_destroy(codes);
     varray_destroy(cobjs);
 
 }

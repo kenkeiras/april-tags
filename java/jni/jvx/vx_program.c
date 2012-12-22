@@ -91,7 +91,7 @@ static void vx_program_append(vx_object_t * obj, lphash_t * resources, vx_code_o
 
 
     // bind drawing instructions
-    if (state->indices == NULL) {
+    if (state->indices != NULL) {
         // Element array
         assert(0);
     } else {

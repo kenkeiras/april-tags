@@ -59,7 +59,7 @@ void vx_code_reset(vx_code_input_stream_t *stream)
     stream->pos = 0;
 }
 
-vx_code_input_stream_t * vx_code_input_stream_init(uint8_t *data, uint32_t codes_len)
+vx_code_input_stream_t * vx_code_input_stream_create(uint8_t *data, uint32_t codes_len)
 {
     vx_code_input_stream_t * stream = malloc(sizeof(vx_code_input_stream_t));
     stream->len = codes_len;

@@ -267,8 +267,10 @@ static void vx_local_update_layer(vx_local_renderer_t * lrend, int layerID, int 
                         layerID, layer->viewport_rel[0],layer->viewport_rel[1],layer->viewport_rel[2],layer->viewport_rel[3]);
 }
 
-static void vx_local_update_buffer(vx_local_renderer_t * lrend, int worldID, char * name, int draw_order, vx_code_input_stream_t * codes)
+static void vx_local_update_buffer(vx_local_renderer_t * lrend, int worldID, char * name, int draw_order, uint8_t * data, int datalen)
 {
+    vx_code_input_stream_t * codes = vx_code_input_stream_create(data, datalen); // copies data
+
     vx_world_info_t * world = vhash_get(lrend->state->world_map, (void *)worldID);
     if (world == NULL) { // Allocate a new world -- XXX no way to dealloc
         world = malloc(sizeof(vx_world_info_t));
@@ -795,11 +797,11 @@ static void vx_remove_resources_direct_ts(vx_renderer_t * rend, varray_t * resou
     pthread_mutex_unlock(&lrend->state->mutex);
 }
 
-static void vx_update_buffer_ts(vx_renderer_t * rend, int worldID, char * buffer_name, int drawOrder, vx_code_input_stream_t * codes)
+static void vx_update_buffer_ts(vx_renderer_t * rend, int worldID, char * buffer_name, int drawOrder, uint8_t * data, int datalen)
 {
     vx_local_renderer_t * lrend =  (vx_local_renderer_t *)(rend->impl);
     pthread_mutex_lock(&lrend->state->mutex);
-    vx_local_update_buffer(lrend, worldID, buffer_name, drawOrder, codes);
+    vx_local_update_buffer(lrend, worldID, buffer_name, drawOrder, data, datalen);
     pthread_mutex_unlock(&lrend->state->mutex);
 }
 

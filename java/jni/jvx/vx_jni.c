@@ -122,11 +122,10 @@ JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_update_1buffer
 
     // Copy over the Opcodes and integer parameters
     jbyte * codes_env = (*jenv)->GetPrimitiveArrayCritical(jenv, jcodes, NULL);
-    vx_code_input_stream_t * codes = vx_code_input_stream_init((uint8_t *)codes_env, (uint32_t)codes_len);
+    lrend->super->update_buffer(lrend->super, worldID, buf_name, draw_order, codes_env, codes_len);
     (*jenv)->ReleasePrimitiveArrayCritical(jenv, jcodes, codes_env, 0);
 
 
-    lrend->super->update_buffer(lrend->super, worldID, buf_name, draw_order, codes);
 
     return 0;
 }

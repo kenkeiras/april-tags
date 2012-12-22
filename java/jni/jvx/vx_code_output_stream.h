@@ -17,7 +17,7 @@ struct vx_code_output_stream
     void (* write_str)(vx_code_output_stream_t * stream, char *  str);
 };
 
-vx_code_output_stream_t * vx_code_output_stream_init(int startlen);
+vx_code_output_stream_t * vx_code_output_stream_create(int startlen);
 void vx_code_output_stream_destroy(vx_code_output_stream_t * stream);
 
 #endif

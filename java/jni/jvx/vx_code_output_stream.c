@@ -1,6 +1,6 @@
 #include "vx_code_output_stream.h"
 #include "stdlib.h"
-
+#include "assert.h"
 // checks whether there is an additional 'remaining' bytes free past 'pos'
 static void _ensure_space(vx_code_output_stream_t * codes, int remaining)
 {
@@ -9,8 +9,10 @@ static void _ensure_space(vx_code_output_stream_t * codes, int remaining)
     while (remaining + codes->pos > newlen)
         newlen *= 2;
 
-    codes->data = realloc(codes->data, newlen);
-    codes->len = newlen;
+    if (newlen != codes->len) {
+        codes->data = realloc(codes->data, newlen);
+        codes->len = newlen;
+    }
 }
 
 static void _write_uint32(vx_code_output_stream_t * codes, uint32_t val)
@@ -47,7 +49,7 @@ static void _write_str (vx_code_output_stream_t * codes, char *  str)
     codes->pos+=slen;
 }
 
-vx_code_output_stream_t * vx_code_output_stream_init(int startlen)
+vx_code_output_stream_t * vx_code_output_stream_create(int startlen)
 {
     // all fields 0/NULL
     vx_code_output_stream_t * codes = calloc(sizeof(vx_code_output_stream_t), 1);
@@ -55,7 +57,12 @@ vx_code_output_stream_t * vx_code_output_stream_init(int startlen)
     codes->write_uint64 = _write_uint64;
     codes->write_float = _write_float;
     codes->write_str = _write_str;
-    _ensure_space(codes, startlen);
+
+    assert(startlen != 0);
+    // set initial allocation
+    codes->len = startlen;
+    codes->data = malloc(startlen);
+
     return codes;
 }
 
