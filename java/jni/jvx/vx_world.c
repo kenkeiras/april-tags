@@ -77,8 +77,26 @@ void vx_buffer_commit(vx_buffer_t * buffer)
         obj->append(obj, resources, codes, ms);
     }
 
-    // XXX reference counting
+    // convert the resources to a list
+    varray_t * reslist = varray_create();
+    {
+        lphash_iterator_t itr;
+        lphash_iterator_init(resources, &itr);
+        while(lphash_iterator_has_next(resources, &itr)) {
+            uint64_t key = lphash_iterator_next_key(resources, &itr);
+            vx_resc_t * vr = lphash_get(resources, key);
+            varray_add(reslist, vr);
+        }
+    }
     lphash_destroy(resources);
+
+    vx_world_t * world = buffer->world;
+    vx_renderer_t * rend = world->rend;
+    rend->update_resources_managed(rend, world->worldID, buffer->name, reslist);
+    rend->update_buffer(rend, world->worldID, buffer->name, buffer->draw_order, codes->data, codes->pos);
+
+    // XXX reference counting
+    varray_destroy(reslist);
     vx_code_output_stream_destroy(codes);
     varray_destroy(cobjs);
 
