@@ -33,6 +33,11 @@ vx_world_t * vx_world_create(vx_renderer_t * rend)
     return world;
 }
 
+int vx_world_get_id(vx_world_t * world)
+{
+    return world->worldID;
+}
+
 
 vx_buffer_t * vx_world_get_buffer(vx_world_t * world, char * name)
 {

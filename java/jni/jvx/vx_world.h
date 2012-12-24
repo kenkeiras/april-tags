@@ -9,6 +9,7 @@ typedef struct vx_buffer vx_buffer_t;// forward reference
 
 vx_world_t * vx_world_create(vx_renderer_t * rend);
 vx_buffer_t * vx_world_get_buffer(vx_world_t * world, char * name);
+int vx_world_get_id(vx_world_t * world);
 
 // These calls are not thread safe -- need to be called from the same thread.
 // E.g Don't access the same buffer from different threads
