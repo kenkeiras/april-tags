@@ -65,7 +65,7 @@ struct gl_prog_resc {
 
 
 /* static vx_t state; */
-static int verbose = 0 ;
+static int verbose = 1 ;
 
 
 typedef struct vx_buffer_info vx_buffer_info_t;

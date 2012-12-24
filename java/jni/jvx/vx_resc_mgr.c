@@ -6,6 +6,8 @@
 #include "vhash.h"
 #include "lphash.h"
 
+#include <stdio.h>
+
 struct vx_resc_mgr
 {
     vx_renderer_t * rend;
@@ -35,7 +37,9 @@ static void removeAll(lphash_t * A, lphash_t  * B)
     lphash_iterator_t itr;
     lphash_iterator_init(A, &itr);
     uint64_t id = -1;
-    while(lphash_iterator_next(&itr, &id, NULL)) {
+    void * value;
+    while(lphash_iterator_next(&itr, &id, &value)) {
+        /* printf("Processing id %ld\n", id); */
         if (lphash_contains(B, id))
             lphash_iterator_remove(&itr);
     }
