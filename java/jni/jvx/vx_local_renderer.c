@@ -180,7 +180,11 @@ static vx_local_state_t * vx_local_state_create()
 
     state->mgr = NULL; // delayed
 
-    pthread_mutex_init(&state->mutex, NULL);
+    pthread_mutexattr_t mutexAttr;
+    pthread_mutexattr_init(&mutexAttr);
+    pthread_mutexattr_settype(&mutexAttr, PTHREAD_MUTEX_RECURSIVE);
+
+    pthread_mutex_init(&state->mutex, &mutexAttr);
 
     return state;
 }
@@ -784,8 +788,6 @@ static void vx_local_set_layer_pm_matrix(vx_local_renderer_t *lrend, int layerID
 static void vx_local_update_resources_managed(vx_local_renderer_t * lrend, int worldID, char * buffer_name, lphash_t * resources)
 {
     vx_resc_mgr_update_resources_managed(lrend->state->mgr, worldID, buffer_name, resources);
-
-    assert(0);
 }
 
 static void vx_local_get_canvas_size(vx_local_renderer_t * lrend, int * dim_out)
