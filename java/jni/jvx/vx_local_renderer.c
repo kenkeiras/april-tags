@@ -187,7 +187,10 @@ static void process_deallocations(vx_local_state_t * state)
 
     for (int i =0; i < state->dealloc_ids->size; i++) {
         uint64_t guid = state->dealloc_ids->get(state->dealloc_ids, i);
-        vx_resc_t * vr = lphash_remove(state->resource_map, guid).value;
+
+        vx_resc_t * vr = NULL;
+        lphash_remove(state->resource_map, guid, &vr);
+        assert(vr != NULL);
 
         if (verbose) printf("%ld,",guid);
        // There may also be a program, or a vbo or texture for each guid
@@ -219,7 +222,10 @@ static void process_deallocations(vx_local_state_t * state)
             if (verbose) printf(" Deleted TEX %d \n", tex_pair.value);
         }
 
-        gl_prog_resc_t * prog = lphash_remove(state->program_map, guid).value;
+        gl_prog_resc_t * prog = NULL;
+        lphash_remove(state->program_map, guid, &prog);
+        assert(prog!=NULL);
+
         if (prog != NULL) {
             glDetachShader(prog->prog_id,prog->vert_id);
             glDeleteShader(prog->vert_id);
@@ -301,6 +307,7 @@ static void vx_local_update_buffer(vx_local_renderer_t * lrend, int worldID, cha
     }
 }
 
+// XXX Need to setup a memory management scheme for vx_resc_t that are passed in. Who is responsible for freeing them? Should we just always make a copy?
 static void vx_local_add_resources_direct(vx_local_renderer_t * lrend, varray_t * resources)  //int nresc, vx_resc_t ** resources)
 {
     int nresc = varray_size(resources);
@@ -309,12 +316,10 @@ static void vx_local_add_resources_direct(vx_local_renderer_t * lrend, varray_t 
     for (int i = 0; i < nresc; i++) {
         vx_resc_t *vr = varray_get(resources, i);
         if (verbose) printf("%ld,",vr->id);
+
         vx_resc_t * old_vr = lphash_get(lrend->state->resource_map, vr->id);
-
-
         if (old_vr == NULL) {
-            lphash_put(lrend->state->resource_map, vr->id, vr);
-
+            lphash_put(lrend->state->resource_map, vr->id, vr, NULL);
         } else {
             // Check to see if this was previously flagged for deletion.
             // If so, unmark for deletion
@@ -334,7 +339,9 @@ static void vx_local_add_resources_direct(vx_local_renderer_t * lrend, varray_t 
 
             if (found == 0)
                 printf("WRN: ID collision, 0x%lx resource already exists\n", vr->id);
-            vx_resc_destroy(vr);
+
+            if (vr != old_vr) // Only delete this if it won't cause trouble later
+                vx_resc_destroy(vr);
         }
     }
     if (verbose) printf("\n");
@@ -446,7 +453,7 @@ int render_program(vx_local_state_t * state, vx_layer_info_t *layer, vx_code_inp
 
             glLinkProgram(prog->prog_id);
 
-            lphash_put(state->program_map, vertId, prog);
+            lphash_put(state->program_map, vertId, prog, NULL);
 
             if (verbose) printf("  Created gl program %d from guid %ld and %ld (gl ids %d and %d)\n",
                    prog->prog_id, vertId, fragId, prog->vert_id, prog->frag_id);
@@ -670,8 +677,10 @@ static void vx_local_render(vx_local_renderer_t * lrend, int width, int height, 
     // debug: print stats
     if (verbose) printf("n layers %d n resc %d, n vbos %d, n programs %d n tex %d w %d h %d\n",
                         vhash_size(lrend->state->layer_map),
-                        lrend->state->resource_map->size, lrend->state->vbo_map->size,
-                        lrend->state->program_map->size, lrend->state->texture_map->size, width, height);
+                        lphash_size(lrend->state->resource_map),
+                        lrend->state->vbo_map->size,
+                        lphash_size(lrend->state->program_map),
+                        lrend->state->texture_map->size, width, height);
 
     resize_fbo(lrend->state, width, height);
 

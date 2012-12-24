@@ -5,3 +5,4 @@ libvx.a
 april_vx_VxLocalRenderer_GLThread.h
 sort_test
 vx_test
+lphash_test

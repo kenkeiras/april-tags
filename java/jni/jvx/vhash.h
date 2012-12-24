@@ -19,12 +19,6 @@ extern "C" {
  *
  **/
 
-typedef struct
-{
-    void *key;
-    void *value;
-} vhash_pair_t;
-
 typedef struct vhash vhash_t;
 
 // The contents of the iterator should be considered private. However,

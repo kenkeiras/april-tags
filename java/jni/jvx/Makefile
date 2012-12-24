@@ -83,6 +83,9 @@ clean:
 	rm -rf $(LIB_JNI_OBJS) $(LIBVX_OBJS) *~ april_vx_VxLocalServer.h $(LIB) $(DESTLIB) $(LIB_JNI) $(DESTLIB_JNI) vx_test
 
 
+lphash_test:  varray.o lphash.o lphash_test.o
+	gcc -o $@ $^
+
 SORT_OBJS=sort_test.o sort_util.o varray.o
 sort_test: $(SORT_OBJS)
 	$(CC) -o $@ $(SORT_OBJS)

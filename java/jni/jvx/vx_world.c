@@ -82,9 +82,9 @@ void vx_buffer_commit(vx_buffer_t * buffer)
     {
         lphash_iterator_t itr;
         lphash_iterator_init(resources, &itr);
-        while(lphash_iterator_has_next(resources, &itr)) {
-            uint64_t key = lphash_iterator_next_key(resources, &itr);
-            vx_resc_t * vr = lphash_get(resources, key);
+        uint64_t id = -1;
+        vx_resc_t * vr =  NULL;
+        while(lphash_iterator_next(&itr, &id, & vr)) {
             varray_add(reslist, vr);
         }
     }

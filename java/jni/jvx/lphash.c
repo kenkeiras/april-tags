@@ -1,197 +1,243 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 
 #include "lphash.h"
 
-#define INITIAL_SIZE 16
+#define INITIAL_NBUCKETS 16
+#define INITIAL_BUCKET_CAPACITY 4
 
 // when the ratio of allocations to actual size drops below this
 // ratio, we rehash. (Reciprocal of more typical load factor.)
 #define REHASH_RATIO 2
 
+struct bucket_entry
+{
+    uint64_t key;
+    void *value;
+};
+
+struct bucket
+{
+    uint32_t size; // # entries in this bucket
+    uint32_t alloc; // # entries allocated
+    struct bucket_entry *entries;
+};
+
+struct lphash
+{
+    int size; // # of items in hash table
+
+    struct bucket *buckets;
+    int nbuckets;
+};
+
 lphash_t *lphash_create()
 {
     lphash_t *vh = (lphash_t*) calloc(1, sizeof(lphash_t));
 
-    vh->alloc = INITIAL_SIZE;
-    vh->elements = (struct lphash_element**) calloc(vh->alloc, sizeof(struct lphash_element*));
+    vh->nbuckets = INITIAL_NBUCKETS;
+    vh->buckets = (struct bucket*) calloc(vh->nbuckets, sizeof(struct bucket));
     return vh;
 }
 
-// free all lphash_element structs. (does not free keys or values).
-static void free_elements(struct lphash_element **elements, int alloc)
+lphash_t * lphash_copy(lphash_t * orig)
 {
-    for (int i = 0; i < alloc; i++) {
-        struct lphash_element *el = elements[i];
-        while (el != NULL) {
-            struct lphash_element *nextel = el->next;
-            free(el);
-            el = nextel;
-        }
+    lphash_t * out = lphash_create();
+    {
+        lphash_iterator_t itr;
+        lphash_iterator_init(orig, &itr);
+        uint64_t key = 0;
+        void * value = NULL;
+        while ( lphash_iterator_next(&itr, &key, &value))
+            lphash_put(out, key, value, NULL);
     }
+    return out;
 }
 
 void lphash_destroy(lphash_t *vh)
 {
-    free_elements(vh->elements, vh->alloc);
-    free(vh->elements);
+    for (int i = 0; i < vh->nbuckets; i++)
+        free(vh->buckets[i].entries);
+    free(vh->buckets);
     free(vh);
+}
+
+int lphash_size(lphash_t *vh)
+{
+    return vh->size;
+}
+
+int lphash_contains(lphash_t *vh, uint64_t key)
+{
+    int idx = key % vh->nbuckets;
+    struct bucket *bucket = &vh->buckets[idx];
+    for (int i = 0; i < bucket->size; i++) {
+        if (key == bucket->entries[i].key)
+            return 1;
+    }
+
+    return 0;
 }
 
 void *lphash_get(lphash_t *vh, uint64_t key)
 {
-    uint64_t hash = key;
-    int idx = hash % vh->alloc;
+    int idx = key % vh->nbuckets;
 
-    struct lphash_element *el = vh->elements[idx];
-    while (el != NULL) {
-        if (el->key == key) {
-            return el->value;
-        }
-        el = el->next;
+    struct bucket *bucket = &vh->buckets[idx];
+    for (int i = 0; i < bucket->size; i++) {
+        if (key ==  bucket->entries[i].key)
+            return bucket->entries[i].value;
     }
 
     return NULL;
 }
 
-// returns one if a new element was added, 0 else. This is abstracted
-// so that we can use it when put-ing and resizing.
-static inline int lphash_put_real(lphash_t *vh, struct lphash_element **elements, int alloc, uint64_t key, void *value)
+// returns 1 if there was an oldkey/oldvalue.
+static inline int lphash_put_real(lphash_t *vh, struct bucket *buckets, int nbuckets, uint64_t key, void *value, void *oldvalue)
 {
-    uint64_t hash = key;
-    int idx = hash % alloc;
+    int idx = key % nbuckets;
+    struct bucket *bucket = &buckets[idx];
 
     // replace an existing key if it exists.
-    struct lphash_element *el = elements[idx];
-    while (el != NULL) {
-        if (el->key == key) {
-            el->value = value;
-            return 0;
-        }
-        el = el->next;
-    }
+    for (int i = 0; i < bucket->size; i++) {
+        if (key ==  bucket->entries[i].key) {
+            if (oldvalue)
+                *((void**) oldvalue) = bucket->entries[i].value;
 
-    // create a new key and prepend it to our linked list.
-    el = (struct lphash_element*) calloc(1, sizeof(struct lphash_element));
-    el->key = key;
-    el->value = value;
-    el->next = elements[idx];
-
-    elements[idx] = el;
-    return 1;
-}
-
-// returns number of elements removed
-lphash_pair_t lphash_remove(lphash_t *vh, uint64_t key)
-{
-    uint64_t hash = key;
-    int idx = hash % vh->alloc;
-
-    struct lphash_element **out = &vh->elements[idx];
-    struct lphash_element *in = vh->elements[idx];
-
-    lphash_pair_t pair;
-    pair.key = 0;
-    pair.value = NULL;
-
-    while (in != NULL) {
-        if (in->key == key) {
-            // remove this element.
-            pair.key = in->key;
-            pair.value = in->value;
-
-            vh->size -= 1;
-
-            struct lphash_element *tmp = in->next;
-            free(in);
-            in = tmp;
-        } else {
-            // keep this element (copy it back out)
-            *out = in;
-            out = &in->next;
-            in = in->next;
+            bucket->entries[i].key = key;
+            bucket->entries[i].value = value;
+            return 1;
         }
     }
 
-    *out = NULL;
-    return pair;
+    // enlarge bucket?
+    if (bucket->size == bucket->alloc) {
+        if (bucket->alloc == 0)
+            bucket->alloc = INITIAL_BUCKET_CAPACITY;
+        else
+            bucket->alloc *= 2;
+
+        bucket->entries = realloc(bucket->entries, bucket->alloc * sizeof(struct bucket_entry));
+    }
+
+    // add!
+    bucket->entries[bucket->size].key = key;
+    bucket->entries[bucket->size].value = value;
+    bucket->size++;
+
+    if (oldvalue)
+        *((void**) oldvalue) = NULL;
+
+    return 0;
 }
 
-void lphash_put(lphash_t *vh, uint64_t key, void *value)
+int lphash_remove(lphash_t *vh, uint64_t key, void *oldvalue)
 {
-    int added = lphash_put_real(vh, vh->elements, vh->alloc, key, value);
-    vh->size += added;
+    int idx = key % vh->nbuckets;
+    struct bucket *bucket = &vh->buckets[idx];
 
-    int ratio = vh->alloc / vh->size;
+    // replace an existing key if it exists.
+    for (int i = 0; i < bucket->size; i++) {
+        if (key == bucket->entries[i].key) {
+            if (oldvalue)
+                *((void**) oldvalue) = bucket->entries[i].value;
 
-    if (ratio < REHASH_RATIO) {
+            // shuffle remove.
+            bucket->entries[i] = bucket->entries[bucket->size-1];
+            bucket->size--;
+            vh->size--;
+
+            return 1;
+        }
+    }
+
+    if (oldvalue)
+        *((void**) oldvalue) = NULL;
+
+    return 0;
+}
+
+int lphash_put(lphash_t *vh, uint64_t key, void *value, void *oldvalue)
+{
+    if (vh->nbuckets * REHASH_RATIO < vh->size) {
+
         // resize
-        int newalloc = vh->alloc*2;
-        struct lphash_element **newelements = (struct lphash_element**) calloc(newalloc, sizeof(struct lphash_element*));
+        int new_nbuckets = vh->nbuckets*2;
+        struct bucket *new_buckets = calloc(new_nbuckets, sizeof(struct bucket));
 
         // put all our existing elements into the new hash table
-        for (int i = 0; i < vh->alloc; i++) {
-            struct lphash_element *el = vh->elements[i];
-            while (el != NULL) {
-                lphash_put_real(vh, newelements, newalloc, el->key, el->value);
-                el = el->next;
-            }
+        lphash_iterator_t vit;
+        lphash_iterator_init(vh, &vit);
+        uint64_t key, *value;
+        while (lphash_iterator_next(&vit, &key, &value)) {
+            lphash_put_real(vh, new_buckets, new_nbuckets, key, value, NULL);
         }
 
         // free the old elements
-        free_elements(vh->elements, vh->alloc);
+        for (int i = 0; i < vh->nbuckets; i++)
+            free(vh->buckets[i].entries);
+        free(vh->buckets);
 
         // switch to the new elements
-        vh->alloc = newalloc;
-        vh->elements = newelements;
+        vh->nbuckets = new_nbuckets;
+        vh->buckets = new_buckets;
     }
-}
 
-static void lphash_iterator_find_next(lphash_t *vh, lphash_iterator_t *vit)
-{
-    // fetch the next one.
+    int has_oldkey = lphash_put_real(vh, vh->buckets, vh->nbuckets, key, value, oldvalue);
+    if (!has_oldkey)
+        vh->size++;
 
-    // any more left in this bucket?
-    if (vit->el != NULL)
-        vit->el = vit->el->next;
-
-    // search for the next non-empty bucket.
-    while (vit->el == NULL) {
-        if (vit->bucket + 1 == vh->alloc) {
-            vit->el = NULL; // the end
-            return;
-        }
-
-        vit->bucket++;
-        vit->el = vh->elements[vit->bucket];
-    }
+    return has_oldkey;
 }
 
 void lphash_iterator_init(lphash_t *vh, lphash_iterator_t *vit)
 {
-    vit->bucket = -1;
-    vit->el = NULL;
-    lphash_iterator_find_next(vh, vit);
+    vit->vh = vh;
+    vit->bucket = 0;
+    vit->idx = 0;
 }
 
-uint64_t lphash_iterator_next_key(lphash_t *vh, lphash_iterator_t *vit)
+// Supply a pointer to a pointer
+// e.g. char* key; varray_t *value; int res = lphash_iterator_next(&vit, &key, &value);
+int lphash_iterator_next(lphash_iterator_t *vit, uint64_t * key, void *value)
 {
-    if (vit->el == NULL) {
-        // has_next would have returned false.
-        assert(0);
-        return 0;
+    lphash_t *vh = vit->vh;
+
+    while (vit->bucket < vh->nbuckets) {
+
+        if (vit->idx < vh->buckets[vit->bucket].size) {
+            *key = vh->buckets[vit->bucket].entries[vit->idx].key;
+            *((void**) value) = vh->buckets[vit->bucket].entries[vit->idx].value;
+            vit->idx++;
+
+            return 1;
+        }
+
+        vit->bucket++;
+        vit->idx = 0;
     }
 
-    uint64_t key = vit->el->key;
-
-    lphash_iterator_find_next(vh, vit);
-
-    return key;
+    return 0;
 }
 
-int lphash_iterator_has_next(lphash_t *vh, lphash_iterator_t *vit)
+void lphash_iterator_remove(lphash_iterator_t *vit)
 {
-    return (vit->el != NULL);
+    lphash_t *vh = vit->vh;
+
+    uint64_t key = vh->buckets[vit->bucket].entries[vit->idx-1].key;
+
+    lphash_remove(vh, key, NULL);
+    vit->idx--;
 }
 
+varray_t * lphash_values(lphash_t * vh)
+{
+    varray_t * values = varray_create();
+
+    for (int i = 0; i < vh->nbuckets; i++) {
+        for (int j = 0; j < vh->buckets[i].size; j++)
+            varray_add(values, vh->buckets[i].entries[j].value);
+    }
+    return values;
+}

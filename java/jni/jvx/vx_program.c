@@ -48,8 +48,8 @@ static void vx_program_append(vx_object_t * obj, lphash_t * resources, vx_code_o
     codes->write_uint64(codes, state->vert->id);
     codes->write_uint64(codes, state->frag->id);
 
-    lphash_put(resources, state->vert->id, state->vert);
-    lphash_put(resources, state->frag->id, state->frag);
+    lphash_put(resources, state->vert->id, state->vert, NULL); // XXX return values?
+    lphash_put(resources, state->frag->id, state->frag, NULL);
 
     codes->write_uint32(codes, OP_VALIDATE_PROGRAM);
     codes->write_uint32(codes, 1);
@@ -80,7 +80,7 @@ static void vx_program_append(vx_object_t * obj, lphash_t * resources, vx_code_o
             codes->write_uint32(codes, value->dim);
             codes->write_str(codes,  value->name);
 
-            lphash_put(resources, value->vr->id, value->vr);
+            lphash_put(resources, value->vr->id, value->vr, NULL); //XXX Existing values?
         }
     }
     codes->write_uint32(codes, OP_UNIFORM_COUNT);
