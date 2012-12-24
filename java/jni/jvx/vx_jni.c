@@ -60,7 +60,7 @@ JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_add_1resources
  jint nresc, jintArray jtypes, jobjectArray jrescs, jintArray jcounts, jintArray jfieldwidths, jlongArray jids)
 {
 
-    varray_t * resources = varray_create();
+    lphash_t * resources = lphash_create();
 
     jint * types_env = (*jenv)->GetPrimitiveArrayCritical(jenv, jtypes, NULL);
     jint * counts_env = (*jenv)->GetPrimitiveArrayCritical(jenv, jcounts, NULL);
@@ -83,8 +83,7 @@ JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_add_1resources
         memcpy(vr->res, res_env, vr->count * vr->fieldwidth);
         (*jenv)->ReleasePrimitiveArrayCritical(jenv, jres, res_env, 0);
 
-        varray_add(resources, vr);
-        /* resources[i] = vr; */
+        lphash_put(resources, vr->id, vr, NULL);
     }
     (*jenv)->ReleasePrimitiveArrayCritical(jenv, jtypes, types_env, 0);
     (*jenv)->ReleasePrimitiveArrayCritical(jenv, jcounts, counts_env, 0);
@@ -93,7 +92,7 @@ JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_add_1resources
 
     vx_local_renderer_t * lrend = vhash_get(vx_instance_map, (void*)instanceID);
     lrend->super->add_resources_direct(lrend->super, resources);
-    varray_destroy(resources);
+    lphash_destroy(resources);
 
     return 0;
 }
@@ -122,7 +121,7 @@ JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_update_1buffer
 
     // Copy over the Opcodes and integer parameters
     jbyte * codes_env = (*jenv)->GetPrimitiveArrayCritical(jenv, jcodes, NULL);
-    lrend->super->update_buffer(lrend->super, worldID, buf_name, draw_order, codes_env, codes_len);
+    lrend->super->update_buffer(lrend->super, worldID, buf_name, draw_order, (uint8_t*)codes_env, codes_len);
     (*jenv)->ReleasePrimitiveArrayCritical(jenv, jcodes, codes_env, 0);
 
 
@@ -133,7 +132,7 @@ JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_update_1buffer
 JNIEXPORT void JNICALL Java_april_vx_VxLocalRenderer_deallocate_1resources
 (JNIEnv * jenv, jclass jcls, jint instanceID, jlongArray jguids, jint nguids)
 {
-    varray_t * resources = varray_create();
+    lphash_t * resources = lphash_create();
 
     jlong* guids = (*jenv)->GetPrimitiveArrayCritical(jenv, jguids, NULL);
     for (int i = 0; i < nguids; i++) {
@@ -141,13 +140,13 @@ JNIEXPORT void JNICALL Java_april_vx_VxLocalRenderer_deallocate_1resources
         vr->id = guids[i];
         vr->res = NULL;
 
-        varray_add(resources, vr);
+        lphash_put(resources, vr->id, vr, NULL);
     }
     (*jenv)->ReleasePrimitiveArrayCritical(jenv, jguids, guids, 0);
 
     vx_local_renderer_t * lrend = vhash_get(vx_instance_map, (void*)instanceID);
     lrend->super->remove_resources_direct(lrend->super, resources);
-    varray_destroy(resources);
+    lphash_destroy(resources);
 }
 
 JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_render

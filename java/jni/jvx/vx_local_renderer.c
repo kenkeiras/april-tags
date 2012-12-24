@@ -21,6 +21,7 @@
 #include "vx_local_renderer.h"
 #include "vx_codes.h"
 #include "vx_resc.h"
+#include "vx_resc_mgr.h"
 
 static glcontext_t *glc;
 
@@ -40,6 +41,8 @@ struct vx_local_state
 
     vhash_t * layer_map; // <int, vx_layer_info_t>
     vhash_t * world_map; // <int, vx_world_info_t>
+
+    vx_resc_mgr_t * mgr;
 
     pthread_mutex_t mutex; // this mutex must be locked before any state is modified or accessed
 };
@@ -175,6 +178,8 @@ static vx_local_state_t * vx_local_state_create()
     state->world_map = vhash_create(vhash_uint32_hash, vhash_uint32_equals);
     state->layer_map = vhash_create(vhash_uint32_hash, vhash_uint32_equals);
 
+    state->mgr = NULL; // delayed
+
     pthread_mutex_init(&state->mutex, NULL);
 
     return state;
@@ -308,16 +313,19 @@ static void vx_local_update_buffer(vx_local_renderer_t * lrend, int worldID, cha
 }
 
 // XXX Need to setup a memory management scheme for vx_resc_t that are passed in. Who is responsible for freeing them? Should we just always make a copy?
-static void vx_local_add_resources_direct(vx_local_renderer_t * lrend, varray_t * resources)  //int nresc, vx_resc_t ** resources)
+static void vx_local_add_resources_direct(vx_local_renderer_t * lrend, lphash_t * resources)
 {
-    int nresc = varray_size(resources);
-    if (verbose) printf("Updating %d resources:\n", nresc);
+    if (verbose) printf("Updating %d resources:\n", lphash_size(resources));
     if (verbose) printf("  ");
-    for (int i = 0; i < nresc; i++) {
-        vx_resc_t *vr = varray_get(resources, i);
-        if (verbose) printf("%ld,",vr->id);
 
+
+    lphash_iterator_t itr;
+    lphash_iterator_init(resources, &itr);
+    uint64_t id = -1;
+    vx_resc_t * vr = NULL;
+    while(lphash_iterator_next(&itr, &id, &vr)) {
         vx_resc_t * old_vr = lphash_get(lrend->state->resource_map, vr->id);
+
         if (old_vr == NULL) {
             lphash_put(lrend->state->resource_map, vr->id, vr, NULL);
         } else {
@@ -340,7 +348,7 @@ static void vx_local_add_resources_direct(vx_local_renderer_t * lrend, varray_t 
             if (found == 0)
                 printf("WRN: ID collision, 0x%lx resource already exists\n", vr->id);
 
-            if (vr != old_vr) // Only delete this if it won't cause trouble later
+            if (vr != old_vr) // XXX Only delete this if it won't cause trouble later
                 vx_resc_destroy(vr);
         }
     }
@@ -742,15 +750,18 @@ static void vx_local_render(vx_local_renderer_t * lrend, int width, int height, 
     glReadPixels(0, 0, width, height, GL_BGR, GL_UNSIGNED_BYTE, out_buf);
 }
 
-static void vx_local_remove_resources_direct(vx_local_renderer_t *lrend, varray_t * resources)
+static void vx_local_remove_resources_direct(vx_local_renderer_t *lrend, lphash_t * resources)
 {
     // Add the resources, flag them for deletion later
     // XXX We don't currently handle duplicates already in the list.
 
-    int nresc = varray_size(resources);
-    if (verbose) printf("Marking for deletion %d ids:\n   ", nresc);
-    for (int i =0; i < nresc; i++) {
-        vx_resc_t * vr = varray_get(resources, i);
+    if (verbose) printf("Marking for deletion %d ids:\n", lphash_size(resources));
+
+    lphash_iterator_t itr;
+    lphash_iterator_init(resources, &itr);
+    uint64_t id = -1;
+    vx_resc_t * vr = NULL;
+    while(lphash_iterator_next(&itr, &id, &vr)) {
         lrend->state->dealloc_ids->add(lrend->state->dealloc_ids, vr->id);
 
         if (verbose) printf("%ld,", vr->id);
@@ -770,8 +781,10 @@ static void vx_local_set_layer_pm_matrix(vx_local_renderer_t *lrend, int layerID
     memcpy(layer->layer_pm, pm, 16*4);
 }
 
-static void vx_local_update_resources_managed(vx_local_renderer_t * lrend, int worldID, char * buffer_name, varray_t * resources)
+static void vx_local_update_resources_managed(vx_local_renderer_t * lrend, int worldID, char * buffer_name, lphash_t * resources)
 {
+    vx_resc_mgr_update_resources_managed(lrend->state->mgr, worldID, buffer_name, resources);
+
     assert(0);
 }
 
@@ -782,7 +795,7 @@ static void vx_local_get_canvas_size(vx_local_renderer_t * lrend, int * dim_out)
 
 // Wrapper methods for the interface --> cast to vx_local_renderer_t and then call correct function
 // Also ensure pthread safety (suffix _ts means "thread-safe")
-static void vx_update_resources_managed_ts(vx_renderer_t * rend, int worldID, char * buffer_name, varray_t * resources)
+static void vx_update_resources_managed_ts(vx_renderer_t * rend, int worldID, char * buffer_name, lphash_t * resources)
 {
     vx_local_renderer_t * lrend =  (vx_local_renderer_t *)(rend->impl);
     pthread_mutex_lock(&lrend->state->mutex);
@@ -790,7 +803,7 @@ static void vx_update_resources_managed_ts(vx_renderer_t * rend, int worldID, ch
     pthread_mutex_unlock(&lrend->state->mutex);
 }
 
-static void vx_add_resources_direct_ts(vx_renderer_t * rend, varray_t * resources)
+static void vx_add_resources_direct_ts(vx_renderer_t * rend, lphash_t * resources)
 {
     vx_local_renderer_t * lrend =  (vx_local_renderer_t *)(rend->impl);
     pthread_mutex_lock(&lrend->state->mutex);
@@ -798,7 +811,7 @@ static void vx_add_resources_direct_ts(vx_renderer_t * rend, varray_t * resource
     pthread_mutex_unlock(&lrend->state->mutex);
 }
 
-static void vx_remove_resources_direct_ts(vx_renderer_t * rend, varray_t * resources)
+static void vx_remove_resources_direct_ts(vx_renderer_t * rend, lphash_t * resources)
 {
     vx_local_renderer_t * lrend =  (vx_local_renderer_t *)(rend->impl);
     pthread_mutex_lock(&lrend->state->mutex);
@@ -927,5 +940,6 @@ vx_local_renderer_t * vx_create_local_renderer(int width, int height)
 
 
     local->state = vx_local_state_create();
+    local->state->mgr = vx_resc_mgr_create(local->super);
     return local;
 }

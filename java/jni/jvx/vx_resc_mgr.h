@@ -9,6 +9,6 @@ typedef struct vx_resc_mgr vx_resc_mgr_t;
 vx_resc_mgr_t* vx_resc_mgr_create(vx_renderer_t * rend);
 vx_resc_mgr_t* vx_resc_mgr_destroy();
 void vx_resc_mgr_update_resources_managed(vx_resc_mgr_t * mgr, int worldID,
-                                          char * buffer_name, varray_t * resources);
+                                          char * buffer_name, lphash_t * resources);
 
 #endif

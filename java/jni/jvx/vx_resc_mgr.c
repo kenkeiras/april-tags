@@ -42,25 +42,13 @@ static void removeAll(lphash_t * A, lphash_t  * B)
 }
 
 void vx_resc_mgr_update_resources_managed(vx_resc_mgr_t * mgr, int worldID,
-                                          char * buffer_name, varray_t * resources_list)
+                                          char * buffer_name, lphash_t * resources)
 {
 
-    // copy input into a hash set
-    lphash_t * send = lphash_create();
-    for (int i = 0; i < varray_size(resources_list); i++) {
-        vx_resc_t * vr = varray_get(resources_list, i);
-        vx_resc_t * old_vr = NULL;
-        lphash_put(send, vr->id, vr, &old_vr);
-        assert(old_vr == NULL);// err on duplicates for now
-    }
-    lphash_t *resources = lphash_copy(send); // contains the complete set
-
-    // Remove all elements already on the remote
+    // Step 1: Send only the resources not already sent before:
+    lphash_t * send = lphash_copy(resources);
     removeAll(send, mgr->remoteResc); // XXX Memory leak?
-
-    varray_t * send_vals = lphash_values(send);
-    mgr->rend->add_resources_direct(mgr->rend,send_vals);
-    varray_destroy(send_vals);
+    mgr->rend->add_resources_direct(mgr->rend,send);
 
     // Step 2: Record which resources are currently in use by the named buffer
     vhash_t * worldLiveSet = vhash_get(mgr->allLiveSets, (void *)worldID);
@@ -76,21 +64,36 @@ void vx_resc_mgr_update_resources_managed(vx_resc_mgr_t * mgr, int worldID,
     // Find out which of the old resources are no longer referenced, and then deallocate them
     if (prev_resources != NULL) {
 
-        varray_t * dealloc = varray_create();
+        lphash_t * dealloc = lphash_create();
 
         lphash_iterator_t prev_itr;
         lphash_iterator_init(prev_resources, &prev_itr);
         uint64_t id = -1;
         vx_resc_t * vr = NULL;
         while(lphash_iterator_next(&prev_itr, &id, &vr)) {
-            assert(0);
+            // Check all worlds
+            vhash_iterator_t  world_itr;// gives us all worlds
+            vhash_iterator_init(mgr->allLiveSets, &world_itr);
+            uint32_t wID = -1;
+            vhash_t * buffer_map = NULL;
+            while(vhash_iterator_next(&world_itr, &wID, &buffer_map)) {
+                vhash_iterator_t buffer_itr; // gives us all buffers
+                vhash_iterator_init(buffer_map, &buffer_itr);
+                char * bName = NULL;
+                lphash_t * resc_map = NULL;
+                while(vhash_iterator_next(&buffer_itr, &bName, &resc_map)) {
+                    if (lphash_contains(resc_map, id))
+                        goto continue_outer_loop;
+                }
+            }
+
+            // If none of the worlds have this resource, we need to flag removal
+            lphash_put(dealloc, id, vr, NULL);
+          continue_outer_loop:
+            ;
         }
 
+        mgr->rend->remove_resources_direct(mgr->rend, dealloc);
     }
-
-    // Determine which resources are new, and which need to be sent
-    /* vhash_t * world_map = vhash_get(mgr->allLiveSets,worldID); */
-
-
 
 }
