@@ -113,7 +113,7 @@ vx_program_t * vx_program_create(vx_resc_t * vert_src, vx_resc_t * frag_src)
     program->super = obj;
     program->state = vx_program_state_create();
     program->state->vert = vert_src;
-    program->state->frag = vert_src;
+    program->state->frag = frag_src;
 
 
     return program;

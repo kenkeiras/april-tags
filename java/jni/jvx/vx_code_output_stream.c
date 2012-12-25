@@ -43,9 +43,9 @@ static void _write_float(vx_code_output_stream_t * codes, float val)
 static void _write_str (vx_code_output_stream_t * codes, char *  str)
 {
     int slen = strlen(str);
-    _ensure_space(codes,slen);
-    memcpy(codes->data+codes->pos, str, slen);
-    codes->pos+=slen;
+    _ensure_space(codes,slen+1);
+    memcpy(codes->data+codes->pos, str, slen+1);
+    codes->pos+=slen+1;
 }
 
 vx_code_output_stream_t * vx_code_output_stream_create(int startlen)
