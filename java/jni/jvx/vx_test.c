@@ -54,20 +54,20 @@ int main(int argc, char ** args)
     vx_layer_t * layer = vx_layer_create(rend, world);
 
     const int npoints = 6;
-    float data1[6*2] = { 1.0, 1.0,
-                               0.0, 1.0,
-                               0.0, 0.0,
-                               0.0, 0.0,
-                               1.0, 0.0,
-                               1.0, 1.0};
+    float data1[6*2] = { 1.0f, 1.0f,
+                         0.0f, 1.0f,
+                         0.0f, 0.0f,
+                         0.0f, 0.0f,
+                         1.0f, 0.0f,
+                         1.0f, 1.0f};
 
-    float colors1[6*3] = { 1.0, 0.0, 0.0,
-                                 1.0, 0.0, 1.0,
-                                 0.0, 1.0, 0.0,
+    float colors1[6*3] = { 1.0f, 0.0f, 0.0f,
+                           1.0f, 0.0f, 1.0f,
+                           0.0f, 1.0f, 0.0f,
 
-                                 0.0, 1.0, 0.0,
-                                 1.0, 1.0, 0.0,
-                                 1.0, 0.0, 0.0};
+                           0.0f, 1.0f, 0.0f,
+                           1.0f, 1.0f, 0.0f,
+                           1.0f, 0.0f, 0.0f};
 
     /* int nidxs = 6; */
     /* uint32_t idxs_tri[] = {0,1,2, */
@@ -76,9 +76,9 @@ int main(int argc, char ** args)
     vx_program_t * program = vx_program_create(vx_resc_load("../../shaders/multi-colored.vert"),
                                                vx_resc_load("../../shaders/multi-colored.frag"));
 
-    vx_program_set_vertex_attrib(program, "position", vx_resc_copy(data1, npoints), 2);
-    vx_program_set_vertex_attrib(program, "color", vx_resc_copy(colors1, npoints), 3);
-    vx_program_set_draw_array(program, 2, GL_TRIANGLES);
+    vx_program_set_vertex_attrib(program, "position", vx_resc_copy(data1, npoints*2), 2);
+    vx_program_set_vertex_attrib(program, "color", vx_resc_copy(colors1, npoints*3), 3);
+    vx_program_set_draw_array(program, 6, GL_TRIANGLES);
 
 
     vx_buffer_stage(vx_world_get_buffer(world, "foo"), program->super);

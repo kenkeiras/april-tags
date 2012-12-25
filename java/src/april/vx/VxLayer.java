@@ -32,7 +32,7 @@ public class VxLayer
     // by default we use the entire screen;
     private float viewport_rel[] = {0.0f,0.0f,1.0f,1.0f};
 
-    VxLayer(VxRenderer _rend, VxWorld _vw)
+    public VxLayer(VxRenderer _rend, VxWorld _vw)
     {
         vw = _vw;
         rend = _rend;

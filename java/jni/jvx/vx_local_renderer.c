@@ -554,6 +554,15 @@ int render_program(vx_local_state_t * state, vx_layer_info_t *layer, vx_code_inp
         else
             vbo_id = vbo_allocate(state, GL_ARRAY_BUFFER, vr);
 
+        if (verbose > 1) {
+            printf("vertex attrib %d \n", attribId);
+            for (int i = 0; i < vr->count; i++) {
+                printf("%f,",((float*)vr->res)[i]);
+                if ((i + 1) % dim == 0)
+                    printf("\n");
+            }
+        }
+
         // Attach to attribute
         GLint attr_loc = glGetAttribLocation(prog_id, name);
         attribLocs[i] = attr_loc;
@@ -664,6 +673,8 @@ int render_program(vx_local_state_t * state, vx_layer_info_t *layer, vx_code_inp
     {
         uint64_t elementId = codes->read_uint64(codes);
         uint32_t elementType = codes->read_uint32(codes);
+        if (verbose) printf("Rendering ELEMENT_ARRAY type %d\n",
+                            elementType);
 
         // This should never fail!
         vx_resc_t * vr  = lphash_get(state->resource_map, elementId);
@@ -681,6 +692,9 @@ int render_program(vx_local_state_t * state, vx_layer_info_t *layer, vx_code_inp
     } else if (arrayOp == OP_DRAW_ARRAY) {
         uint32_t drawCount = codes->read_uint32(codes);
         uint32_t drawType = codes->read_uint32(codes);
+
+        if (verbose) printf("Rendering DRAW_ARRAY type %d\n",
+                            drawType);
 
         glDrawArrays(drawType, 0, drawCount);
     }
