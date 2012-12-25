@@ -65,7 +65,7 @@ struct gl_prog_resc {
 
 
 /* static vx_t state; */
-static int verbose = 2;
+static int verbose = 0;
 
 
 typedef struct vx_buffer_info vx_buffer_info_t;
@@ -233,8 +233,6 @@ static void process_deallocations(vx_local_state_t * state)
 
         gl_prog_resc_t * prog = NULL;
         lphash_remove(state->program_map, guid, &prog);
-        assert(prog!=NULL);
-
         if (prog != NULL) {
             glDetachShader(prog->prog_id,prog->vert_id);
             glDeleteShader(prog->vert_id);
@@ -439,7 +437,7 @@ int render_program(vx_local_state_t * state, vx_layer_info_t *layer, vx_code_inp
         return 1;
     if (verbose) printf("  Processing program, codes has %d remaining\n",codes->len-codes->pos);
 
-    if (verbose) print_hex(codes->data + codes->pos, codes->len - codes->pos);
+    if (verbose > 1) print_hex(codes->data + codes->pos, codes->len - codes->pos);
 
     // STEP 1: find/allocate the glProgram (using vertex shader and fragment shader)
     GLuint prog_id = -1;
