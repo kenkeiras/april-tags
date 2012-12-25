@@ -1,6 +1,8 @@
 #include "vx_code_output_stream.h"
-#include "stdlib.h"
-#include "assert.h"
+#include <stdlib.h>
+#include <assert.h>
+#include <endian.h>
+
 // checks whether there is an additional 'remaining' bytes free past 'pos'
 static void _ensure_space(vx_code_output_stream_t * codes, int remaining)
 {
@@ -19,7 +21,7 @@ static void _write_uint32(vx_code_output_stream_t * codes, uint32_t val)
 {
     _ensure_space(codes,sizeof(uint32_t));
     uint32_t * ptr = (uint32_t *)(codes->data+codes->pos);
-    *ptr = val;
+    *ptr = htobe32(val);
     codes->pos+=sizeof(uint32_t);
 }
 
@@ -27,18 +29,15 @@ static void _write_uint64(vx_code_output_stream_t * codes, uint64_t val)
 {
     _ensure_space(codes,sizeof(uint64_t));
     uint64_t * ptr = (uint64_t *)(codes->data+codes->pos);
-    *ptr = val;
+    *ptr = htobe64(val);
 
     codes->pos+=sizeof(uint64_t);
 }
 
 static void _write_float(vx_code_output_stream_t * codes, float val)
 {
-    _ensure_space(codes,sizeof(float));
-    float * ptr = (float *)(codes->data+codes->pos);
-    *ptr = val;
-
-    codes->pos+=sizeof(float);
+    // convert float bits to integer bits
+    codes->write_uint32(codes, *((int *)(&val)));
 }
 
 static void _write_str (vx_code_output_stream_t * codes, char *  str)

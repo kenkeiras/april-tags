@@ -65,7 +65,7 @@ struct gl_prog_resc {
 
 
 /* static vx_t state; */
-static int verbose = 1 ;
+static int verbose = 2;
 
 
 typedef struct vx_buffer_info vx_buffer_info_t;
@@ -381,6 +381,19 @@ static void mult44(float * A, float * B, float * C)
     }
 }
 
+static void print_hex(const uint8_t * buf, int buflen)
+{
+    for (int i = 0; i < buflen; i++) {
+        printf("%02x ", buf[i]);
+
+        if ((i + 1) % 16 == 0)
+            printf("\n");
+        else if ((i + 1) % 8 == 0)
+            printf(" ");
+    }
+    printf("\n");
+}
+
 // Allocates new VBO, and stores in hash table, results in a bound VBO
 static GLuint vbo_allocate(vx_local_state_t * state, GLenum target, vx_resc_t *vr)
 {
@@ -426,6 +439,8 @@ int render_program(vx_local_state_t * state, vx_layer_info_t *layer, vx_code_inp
         return 1;
     if (verbose) printf("  Processing program, codes has %d remaining\n",codes->len-codes->pos);
 
+    if (verbose) print_hex(codes->data + codes->pos, codes->len - codes->pos);
+
     // STEP 1: find/allocate the glProgram (using vertex shader and fragment shader)
     GLuint prog_id = -1;
     {
@@ -451,6 +466,11 @@ int render_program(vx_local_state_t * state, vx_layer_info_t *layer, vx_code_inp
 
             const char * vertSource = vertResc->res;
             const char * fragSource = fragResc->res;
+
+            if (verbose > 1) {
+                printf("Vertex source:\n%s\n", vertSource);
+                printf("Fragment source:\n%s\n", fragSource);
+            }
 
             glShaderSource(prog->vert_id, 1, &vertSource, NULL);
             glShaderSource(prog->frag_id, 1, &fragSource, NULL);
@@ -498,6 +518,10 @@ int render_program(vx_local_state_t * state, vx_layer_info_t *layer, vx_code_inp
 
         float PM[16];
         mult44(layer->layer_pm, (float *)userM, PM); //XXX
+
+        if (verbose > 1) {
+            print44(PM);
+        }
 
         GLint unif_loc = glGetUniformLocation(prog_id, pmName);
         assert(unif_loc >= 0); // Ensure this field exists
