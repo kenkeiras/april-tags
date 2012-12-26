@@ -33,12 +33,26 @@ vx_resc_t * vx_resc_load(char* path)
     return vr;
 }
 
-vx_resc_t * vx_resc_copy(float * data, int count)
+vx_resc_t * vx_resc_copyf(float * data, int count)
 {
     vx_resc_t * vr = calloc(1, sizeof(vx_resc_t));
     vr->type = GL_FLOAT;
     vr->id = vx_alloc_id();
     vr->fieldwidth = sizeof(float);
+    vr->count = count;
+
+
+    vr->res = malloc(vr->fieldwidth*vr->count);
+    memcpy(vr->res, data, vr->fieldwidth*vr->count);
+    return vr;
+}
+
+vx_resc_t * vx_resc_copyui(uint32_t * data, int count)
+{
+    vx_resc_t * vr = calloc(1, sizeof(vx_resc_t));
+    vr->type = GL_UNSIGNED_INT;
+    vr->id = vx_alloc_id();
+    vr->fieldwidth = sizeof(uint32_t);
     vr->count = count;
 
 

@@ -19,6 +19,7 @@ struct vx_resc {
 void vx_resc_destroy(vx_resc_t * r);
 
 vx_resc_t * vx_resc_load(char* path);
-vx_resc_t * vx_resc_copy(float * data, int count);
+vx_resc_t * vx_resc_copyf(float * data, int count); // count, not total byte size
+vx_resc_t * vx_resc_copyui(uint32_t * data, int count);
 
 #endif

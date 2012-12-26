@@ -5,7 +5,7 @@
 
 #include "vx_codes.h"
 #include "vhash.h"
-
+#include <GL/gl.h>
 struct vx_program_state
 {
     vx_resc_t * vert;
@@ -114,7 +114,11 @@ static void vx_program_append(vx_object_t * obj, lphash_t * resources, vx_code_o
     // bind drawing instructions
     if (state->indices != NULL) {
         // Element array
-        assert(0);
+        codes->write_uint32(codes, OP_ELEMENT_ARRAY);
+        codes->write_uint64(codes, state->indices->id);
+        codes->write_uint32(codes, state->draw_type);
+
+        lphash_put(resources, state->indices->id, state->indices, NULL);
     } else {
         // draw array
         codes->write_uint32(codes, OP_DRAW_ARRAY);
@@ -146,6 +150,14 @@ void vx_program_set_draw_array(vx_program_t * program, int count, int type)
 
     program->state->draw_type = type;
     program->state->draw_count = count;
+}
+
+void vx_program_set_element_array(vx_program_t * program, vx_resc_t * indices, int type)
+{
+    assert(program->state->draw_type == -1); // Enforce only calling this once, for now
+    assert(indices->type == GL_UNSIGNED_INT);
+    program->state->draw_type = type;
+    program->state->indices = indices;
 }
 
 
