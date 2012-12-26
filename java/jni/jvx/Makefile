@@ -68,8 +68,8 @@ $(LIB):  $(LIBVX_OBJS)
 	ar rc $@ $(LIBVX_OBJS)
 
 
-vx_test: vx_test.o $(LIB)
-	gcc -o $@ vx_test.o $(LIB) -lX11 -lGL -lGLEW  -lpthread
+vx_test: vx_test.o image_u8.o $(LIB)
+	gcc -o $@ $^ -lX11 -lGL -lGLEW  -lpthread
 
 #############################################################
 %.o: %.c
