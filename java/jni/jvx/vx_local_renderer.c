@@ -215,9 +215,8 @@ static void process_deallocations(vx_local_state_t * state)
         if (verbose) printf("Deallocating guid %ld:\n",guid);
         assert(guid == vr->id);
         if (vr != NULL) {
-            if (verbose) printf("Deallocating resource GUID=%ld\n", vr->id);
-            free(vr->res);
-            free(vr);
+            if (verbose) printf("Attempting deallocating resource GUID=%ld\n", vr->id);
+            vx_resc_dec_destroy(vr);
         } else {
             printf("WRN!: Invalid request. Resource %ld does not exist", guid);
         }
@@ -326,11 +325,12 @@ static void vx_local_add_resources_direct(vx_local_renderer_t * lrend, lphash_t 
     uint64_t id = -1;
     vx_resc_t * vr = NULL;
     while(lphash_iterator_next(&itr, &id, &vr)) {
-        vx_resc_t * old_vr = lphash_get(lrend->state->resource_map, vr->id);
+        vx_resc_t * old_vr = NULL;// lphash_get(lrend->state->resource_map, vr->id);
+        vx_resc_incr_ref(vr);
 
-        if (old_vr == NULL) {
-            lphash_put(lrend->state->resource_map, vr->id, vr, NULL);
-        } else {
+        lphash_put(lrend->state->resource_map, vr->id, vr, &old_vr);
+
+        if (old_vr != NULL) {
             // Check to see if this was previously flagged for deletion.
             // If so, unmark for deletion
 
@@ -350,8 +350,7 @@ static void vx_local_add_resources_direct(vx_local_renderer_t * lrend, lphash_t 
             if (found == 0)
                 printf("WRN: ID collision, 0x%lx resource already exists\n", vr->id);
 
-            if (vr != old_vr) // XXX Only delete this if it won't cause trouble later
-                vx_resc_destroy(vr);
+            vx_resc_dec_destroy(old_vr);
         }
     }
     if (verbose) printf("\n");

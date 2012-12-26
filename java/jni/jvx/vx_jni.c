@@ -146,7 +146,7 @@ JNIEXPORT void JNICALL Java_april_vx_VxLocalRenderer_deallocate_1resources
 
     vx_local_renderer_t * lrend = vhash_get(vx_instance_map, (void*)instanceID);
     lrend->super->remove_resources_direct(lrend->super, resources);
-    lphash_destroy(resources);
+    lphash_destroy(resources); //XXX are we leaking the dummy vx_resc_t here?
 }
 
 JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_render
