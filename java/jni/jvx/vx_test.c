@@ -73,11 +73,15 @@ int main(int argc, char ** args)
     /* uint32_t idxs_tri[] = {0,1,2, */
     /*                        2,3,0}; */
 
-    vx_program_t * program = vx_program_create(vx_resc_load("../../shaders/multi-colored.vert"),
-                                               vx_resc_load("../../shaders/multi-colored.frag"));
+    vx_program_t * program = vx_program_create(vx_resc_load("../../shaders/single-color.vert"),
+                                               vx_resc_load("../../shaders/single-color.frag"));
+
+    /* vx_program_t * program = vx_program_create(vx_resc_load("../../shaders/multi-colored.vert"), */
+    /*                                            vx_resc_load("../../shaders/multi-colored.frag")); */
 
     vx_program_set_vertex_attrib(program, "position", vx_resc_copy(data1, npoints*2), 2);
-    vx_program_set_vertex_attrib(program, "color", vx_resc_copy(colors1, npoints*3), 3);
+    //vx_program_set_vertex_attrib(program, "color", vx_resc_copy(colors1, npoints*3), 3);
+    vx_program_set_uniform4fv(program,"color", colors1); // just use the first one
     vx_program_set_draw_array(program, 6, GL_TRIANGLES);
 
 

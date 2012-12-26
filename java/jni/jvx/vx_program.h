@@ -20,7 +20,8 @@ vx_program_t * vx_program_create(vx_resc_t * vert_src, vx_resc_t * frag_src);
 
 void vx_program_set_draw_array(vx_program_t * program, int count, int type);
 void vx_program_set_vertex_attrib(vx_program_t * program, char * name, vx_resc_t * attrib, int dim);
-//void vx_program_set_uniform4fv(vx_program_t * program, char * name, float * vec4);
+void vx_program_set_uniform4fv(vx_program_t * program, char * name, float * vec4);
+
 //void vx_program_set_uniform_matrix4fv(vx_program_t * program, char * name, float * mat44);
 
 

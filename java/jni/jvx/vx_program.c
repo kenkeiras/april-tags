@@ -13,6 +13,11 @@ struct vx_program_state
 
 
     vhash_t * attribMap; // and many more
+
+    // Uniforms have memory allocated by this object, stored in these maps
+    // which must be freed when this object is destroyed
+    vhash_t * uniform4fvMap; // 4D vector
+
     int draw_type;
     int draw_count; // if draw_array
     vx_resc_t * indices; // if element_array
@@ -31,6 +36,7 @@ static vx_program_state_t * vx_program_state_create()
 {
     vx_program_state_t * state = malloc(sizeof(vx_program_state_t));
     state->attribMap = vhash_create(vhash_str_hash, vhash_str_equals);
+    state->uniform4fvMap = vhash_create(vhash_str_hash, vhash_str_equals);
     state->draw_type = -1;
     state->draw_count = -1;
     state->indices = NULL;
@@ -84,7 +90,22 @@ static void vx_program_append(vx_object_t * obj, lphash_t * resources, vx_code_o
         }
     }
     codes->write_uint32(codes, OP_UNIFORM_COUNT);
-    codes->write_uint32(codes, 0); // XXX Unsupported
+    codes->write_uint32(codes, vhash_size(state->uniform4fvMap));
+    {
+        vhash_iterator_t itr;
+        vhash_iterator_init(state->uniform4fvMap, &itr);
+        char * key = NULL;
+        float * value = NULL;
+
+        while(vhash_iterator_next(&itr, &key, &value)) {
+            codes->write_uint32(codes, OP_UNIFORM_VECTOR_FV);
+            codes->write_str(codes, key);
+            codes->write_uint32(codes, 4);
+            codes->write_uint32(codes, 1); // Count, just support for sending one at a time
+            for (int i = 0; i < 4; i++)
+                codes->write_float(codes, value[i]);
+        }
+    }
 
     codes->write_uint32(codes, OP_TEXTURE_COUNT);
     codes->write_uint32(codes, 0); // XXX Unsupported
@@ -142,4 +163,20 @@ void vx_program_set_vertex_attrib(vx_program_t * program, char * name, vx_resc_t
     vhash_put(program->state->attribMap,va->name, va, &old_key, &old_value);
 
     assert(old_key == NULL);
+}
+
+
+void vx_program_set_uniform4fv(vx_program_t * program, char * name, float * vec4)
+{
+    char * local_name = strdup(name);
+    float * local_vec4 = malloc(sizeof(float)*4);
+    memcpy(local_vec4, vec4, sizeof(float)*4);
+
+    char * old_name = NULL;
+    float * old_vec4 = NULL;
+    vhash_put(program->state->uniform4fvMap,local_name,local_vec4, &old_name, &old_vec4);
+
+    // If there's an old value, free them
+    if (old_name) free(old_name);
+    if (old_vec4) free(old_vec4);
 }
