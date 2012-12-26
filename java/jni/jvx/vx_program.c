@@ -18,6 +18,9 @@ struct vx_program_state
     // which must be freed when this object is destroyed
     vhash_t * uniform4fvMap; // 4D vector
 
+    //Textures
+    vhash_t * texMap;
+
     int draw_type;
     int draw_count; // if draw_array
     vx_resc_t * indices; // if element_array
@@ -32,11 +35,21 @@ struct _vertex_attrib
     char * name;
 };
 
+typedef struct _texinfo _texinfo_t;
+struct _texinfo
+{
+    vx_resc_t * vr; // XXX how to manage the lifetime?
+    char * name;
+    int width, height, format;
+};
+
 static vx_program_state_t * vx_program_state_create()
 {
     vx_program_state_t * state = malloc(sizeof(vx_program_state_t));
     state->attribMap = vhash_create(vhash_str_hash, vhash_str_equals);
     state->uniform4fvMap = vhash_create(vhash_str_hash, vhash_str_equals);
+    state->texMap = vhash_create(vhash_str_hash, vhash_str_equals);
+
     state->draw_type = -1;
     state->draw_count = -1;
     state->indices = NULL;
@@ -108,7 +121,26 @@ static void vx_program_append(vx_object_t * obj, lphash_t * resources, vx_code_o
     }
 
     codes->write_uint32(codes, OP_TEXTURE_COUNT);
-    codes->write_uint32(codes, 0); // XXX Unsupported
+    codes->write_uint32(codes, vhash_size(state->texMap));
+    {
+        vhash_iterator_t itr;
+        vhash_iterator_init(state->texMap, &itr);
+
+        char * key = NULL;
+        _texinfo_t * value = NULL;
+        while(vhash_iterator_next(&itr, &key, &value)) {
+            codes->write_uint32(codes, OP_TEXTURE);
+            codes->write_str(codes,  value->name);
+            codes->write_uint64(codes, value->vr->id);
+
+            codes->write_uint32(codes, value->width);
+            codes->write_uint32(codes, value->height);
+            codes->write_uint32(codes, value->format);
+
+            lphash_put(resources, value->vr->id, value->vr, NULL); //XXX Existing values?
+        }
+    }
+
 
 
     // bind drawing instructions
@@ -191,4 +223,20 @@ void vx_program_set_uniform4fv(vx_program_t * program, char * name, float * vec4
     // If there's an old value, free them
     if (old_name) free(old_name);
     if (old_vec4) free(old_vec4);
+}
+
+
+void vx_program_set_texture(vx_program_t * program, char * name, vx_resc_t * vr, int width, int height, int format)
+{
+    _texinfo_t * tinfo = malloc(sizeof(_texinfo_t));
+    tinfo->name = strdup(name);
+    tinfo->vr = vr;
+    tinfo->width = width;
+    tinfo->height = height;
+    tinfo->format = format;
+
+    char * old_key = NULL;
+    _vertex_attrib_t * old_value = NULL;
+    vhash_put(program->state->texMap, tinfo->name, tinfo, old_key, old_value);
+    assert(old_key == NULL); // For now, don't support over writing existing values
 }

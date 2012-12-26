@@ -65,7 +65,7 @@ vx_program_t * make_square()
     return program;
 }
 
-static vx_program * make_tex(image_u8_t * img)
+static vx_program_t * make_tex(image_u8_t * img)
 {
     const int npoints = 4;
     float data1[] = { 0.0f, 0.0f,
@@ -116,7 +116,7 @@ int main(int argc, char ** args)
     vx_buffer_stage(vx_world_get_buffer(world, "foo"), program->super);
     vx_buffer_commit(vx_world_get_buffer(world, "foo"));
 
-    vx_program_t * program2 = make_tex();
+    vx_program_t * program2 = make_tex(img);
     vx_buffer_stage(vx_world_get_buffer(world, "img"), program2->super);
     vx_buffer_commit(vx_world_get_buffer(world, "img"));
 

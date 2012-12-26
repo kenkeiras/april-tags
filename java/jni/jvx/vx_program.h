@@ -22,6 +22,7 @@ void vx_program_set_draw_array(vx_program_t * program, int count, int type);
 void vx_program_set_element_array(vx_program_t * program, vx_resc_t * indices, int type);
 void vx_program_set_vertex_attrib(vx_program_t * program, char * name, vx_resc_t * attrib, int dim);
 void vx_program_set_uniform4fv(vx_program_t * program, char * name, float * vec4);
+void vx_program_set_texture(vx_program_t * program, char * name, vx_resc_t * vr, int width, int height, int type);
 
 //void vx_program_set_uniform_matrix4fv(vx_program_t * program, char * name, float * mat44);
 

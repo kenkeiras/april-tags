@@ -60,3 +60,17 @@ vx_resc_t * vx_resc_copyui(uint32_t * data, int count)
     memcpy(vr->res, data, vr->fieldwidth*vr->count);
     return vr;
 }
+
+vx_resc_t * vx_resc_copyub(uint8_t * data, int count)
+{
+    vx_resc_t * vr = calloc(1, sizeof(vx_resc_t));
+    vr->type = GL_UNSIGNED_INT;
+    vr->id = vx_alloc_id();
+    vr->fieldwidth = sizeof(uint8_t);
+    vr->count = count;
+
+
+    vr->res = malloc(vr->fieldwidth*vr->count);
+    memcpy(vr->res, data, vr->fieldwidth*vr->count);
+    return vr;
+}
