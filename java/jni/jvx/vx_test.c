@@ -40,10 +40,15 @@ finish:
 vx_program_t * make_square()
 {
     const int npoints = 4;
-    float data1[] = { 1.0f, 1.0f,
-                      0.0f, 1.0f,
-                      0.0f, 0.0f,
-                      1.0f, 0.0f};
+
+    float data1[] = { 0.0f, 0.0f,
+                      -1.0f, 0.0f,
+                      -1.0f, -1.0f,
+                      0.0f, -1.0f};
+    /* float data1[] = { 1.0f, 1.0f, */
+    /*                   0.0f, 1.0f, */
+    /*                   0.0f, 0.0f, */
+    /*                   1.0f, 0.0f}; */
 
     float colors1[] = { 1.0f, 0.0f, 0.0f,
                         1.0f, 0.0f, 1.0f,
@@ -68,10 +73,12 @@ vx_program_t * make_square()
 static vx_program_t * make_tex(image_u8_t * img)
 {
     const int npoints = 4;
-    float data1[] = { 0.0f, 0.0f,
-                      -1.0f, 0.0f,
-                      -1.0f, -1.0f,
-                      0.0f, -1.0f};
+
+    float data[] = { 0.0f, -1.0f,
+                     1.0f,  -1.0f,
+                     1.0f, 0.0f,
+                     0.0f,  0.0f};
+
     float texcoords[] = { 0.0f, 0.0f,
                           1.0f, 0.0f,
                           1.0f, 1.0f,
@@ -84,9 +91,9 @@ static vx_program_t * make_tex(image_u8_t * img)
     vx_program_t * program = vx_program_create(vx_resc_load("../../shaders/texture.vert"),
                                                vx_resc_load("../../shaders/texture.frag"));
 
-    vx_program_set_vertex_attrib(program, "position", vx_resc_copyf(data1, npoints*2), 2);
-    vx_program_set_vertex_attrib(program, "texIn", vx_resc_copyf(texcoords, npoints*2), 3);
-    vx_program_set_texture(program, "texture", vx_resc_copyub(img->buf, img->width*img->height),  img->width, img->height, GL_RGB);
+    vx_program_set_vertex_attrib(program, "position", vx_resc_copyf(data, npoints*2), 2);
+    vx_program_set_vertex_attrib(program, "texIn", vx_resc_copyf(texcoords, npoints*2), 2);
+    vx_program_set_texture(program, "texture", vx_resc_copyub(img->buf, img->width*img->height*3),  img->width, img->height, GL_RGB);
     vx_program_set_element_array(program, vx_resc_copyui(idxs_tri, nidxs), GL_TRIANGLES);
     return program;
 }

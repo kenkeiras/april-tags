@@ -553,7 +553,7 @@ int render_program(vx_local_state_t * state, vx_layer_info_t *layer, vx_code_inp
             vbo_id = vbo_allocate(state, GL_ARRAY_BUFFER, vr);
 
         if (verbose > 1) {
-            printf("vertex attrib %d \n", attribId);
+            printf("vertex attrib %ld \n", attribId);
             for (int i = 0; i < vr->count; i++) {
                 printf("%f,",((float*)vr->res)[i]);
                 if ((i + 1) % dim == 0)
