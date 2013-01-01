@@ -90,6 +90,7 @@ void vx_buffer_commit(vx_buffer_t * buffer)
 
     // XXX reference counting
     /* varray_destroy(reslist); */
+    vx_matrix_stack_destroy(ms);
     vx_code_output_stream_destroy(codes);
     varray_destroy(cobjs);
 
