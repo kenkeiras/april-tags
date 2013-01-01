@@ -87,6 +87,11 @@ int vhash_remove(vhash_t *vh, void *key, void *oldkey, void *oldvalue);
 
 int vhash_size(vhash_t *vh);
 
+// apply a pair of functions to every [key,value] pair in the hash (e.g. free())
+// OK to set a function pointer to NULL if not needed
+void vhash_map2(vhash_t *vh, void (*f_key)(), void (*f_value)());
+
+
 /////////////////////////////////////////////////////
 // functions for keys that can be compared via their pointers.
 uint32_t vhash_ptr_hash(const void *a);

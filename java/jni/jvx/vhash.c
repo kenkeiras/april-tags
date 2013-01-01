@@ -261,6 +261,19 @@ varray_t * vhash_values(vhash_t * vh)
     return values;
 }
 
+void vhash_map2(vhash_t * vh, void (*f_key)(), void (*f_value)())
+{
+    vhash_iterator_t itr;
+    vhash_iterator_init(vh, &itr);
+
+    void * key = NULL;
+    void * value = NULL;
+    while(vhash_iterator_next(&itr, &key, &value)) {
+        f_key(key);
+        f_value(value);
+    }
+}
+
 uint32_t vhash_str_hash(const void *_a)
 {
     char *a = (char*) _a;

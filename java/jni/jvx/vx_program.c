@@ -12,14 +12,14 @@ struct vx_program_state
     vx_resc_t * frag;
 
 
-    vhash_t * attribMap; // and many more
+    vhash_t * attribMap; //<char*, _vertex_attrib_t> and many more
 
     // Uniforms have memory allocated by this object, stored in these maps
     // which must be freed when this object is destroyed
-    vhash_t * uniform4fvMap; // 4D vector
+    vhash_t * uniform4fvMap; //<char*, float *> 4D vector
 
     //Textures
-    vhash_t * texMap;
+    vhash_t * texMap; // <char*, _texinfo_t>
 
     int draw_type;
     int draw_count; // if draw_array
@@ -30,7 +30,7 @@ struct vx_program_state
 typedef struct _vertex_attrib _vertex_attrib_t;
 struct _vertex_attrib
 {
-    vx_resc_t * vr; // XXX how to manage the lifetime?
+    vx_resc_t * vr;
     int dim; // how many 'types' per vertex. e.g. 3 for xyz data
     char * name;
 };
@@ -38,7 +38,7 @@ struct _vertex_attrib
 typedef struct _texinfo _texinfo_t;
 struct _texinfo
 {
-    vx_resc_t * vr; // XXX how to manage the lifetime?
+    vx_resc_t * vr;
     char * name;
     int width, height, format;
 };
@@ -55,6 +55,47 @@ static vx_program_state_t * vx_program_state_create()
     state->indices = NULL;
 
     return state;
+}
+
+static void _vertex_attrib_destroy(_vertex_attrib_t * attrib)
+{
+    vx_resc_dec_destroy(attrib->vr);
+    free(attrib->name);
+    free(attrib);
+
+}
+
+static void _texinfo_destroy(_texinfo_t * tex)
+{
+    vx_resc_dec_destroy(tex->vr);
+    free(tex->name);
+    free(tex);
+}
+
+static void vx_program_destroy(vx_object_t * vo)
+{
+    vx_program_t * prog = (vx_program_t*)vo->impl;
+    vx_program_state_t *state = prog->state;
+
+    // decrement references to all vx_resources, then call destroy
+
+    // direct references
+    vx_resc_dec_destroy(state->vert);
+    vx_resc_dec_destroy(state->frag);
+    vx_resc_dec_destroy(state->indices);
+
+    // maps:
+    vhash_map2(state->attribMap, NULL, &_vertex_attrib_destroy); // <char*, _vertex_attrib_t>
+    vhash_map2(state->uniform4fvMap, &free, &free); // <char*, float*>
+    vhash_map2(state->texMap, NULL, &_texinfo_destroy); // <char*, _texinfo_t>
+
+    // note, for _vertex_attrib_t and _texinfo_t, the 'char* name' is
+    // stored in the associated struct, so it does not need to be freed using
+    // the map2 call, hence we pass NULL.
+
+    vhash_destroy(state->attribMap);
+    vhash_destroy(state->uniform4fvMap);
+    vhash_destroy(state->texMap);
 }
 
 
@@ -163,9 +204,10 @@ static void vx_program_append(vx_object_t * obj, lphash_t * resources, vx_code_o
 vx_program_t * vx_program_create(vx_resc_t * vert_src, vx_resc_t * frag_src)
 {
     vx_program_t * program = malloc(sizeof(vx_program_t));
-    vx_object_t * obj = malloc(sizeof(vx_object_t));
+    vx_object_t * obj = calloc(1,sizeof(vx_object_t));
     obj->append = vx_program_append;
     obj->impl = program;
+    obj->destroy = vx_program_destroy;
     program->super = obj;
     program->state = vx_program_state_create();
     program->state->vert = vert_src;
@@ -194,6 +236,7 @@ void vx_program_set_element_array(vx_program_t * program, vx_resc_t * indices, i
 
 void vx_program_set_vertex_attrib(vx_program_t * program, char * name, vx_resc_t * attrib, int dim)
 {
+    vx_resc_incr_ref(attrib);
 
     _vertex_attrib_t * va = malloc(sizeof(_vertex_attrib_t));
     va->vr = attrib;
@@ -227,6 +270,8 @@ void vx_program_set_uniform4fv(vx_program_t * program, char * name, float * vec4
 
 void vx_program_set_texture(vx_program_t * program, char * name, vx_resc_t * vr, int width, int height, int format)
 {
+    vx_resc_incr_ref(vr);
+
     _texinfo_t * tinfo = malloc(sizeof(_texinfo_t));
     tinfo->name = strdup(name);
     tinfo->vr = vr;

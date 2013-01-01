@@ -133,5 +133,8 @@ int main(int argc, char ** args)
 
 
     write_BGR(width, height, data, args[2]);
+
+
+
     return 0;
 }
