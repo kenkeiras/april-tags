@@ -8,6 +8,8 @@
 
 #include <stdio.h>
 
+static uint8_t verbose = 1;
+
 struct vx_resc_mgr
 {
     vx_renderer_t * rend;
@@ -48,6 +50,8 @@ static void removeAll(lphash_t * A, lphash_t  * B)
 void vx_resc_mgr_update_resources_managed(vx_resc_mgr_t * mgr, int worldID,
                                           char * buffer_name, lphash_t * resources)
 {
+    if (verbose) printf("Got %d resources for buffer %s in world %d\n",
+                        lphash_size(resources), buffer_name, worldID);
 
     // Step 1: Send only the resources not already sent before:
     lphash_t * send = lphash_copy(resources);
@@ -64,6 +68,9 @@ void vx_resc_mgr_update_resources_managed(vx_resc_mgr_t * mgr, int worldID,
     char * prev_name = NULL;
     lphash_t * prev_resources = NULL;
     vhash_put(worldLiveSet, buffer_name, resources, &prev_name, &prev_resources); //XXX Need to copy the buffer_name!
+    if (verbose && prev_resources) printf("  had %d resources previously\n",
+                                          lphash_size(prev_resources));
+
 
     // Find out which of the old resources are no longer referenced, and then deallocate them
     if (prev_resources != NULL) {
@@ -75,21 +82,40 @@ void vx_resc_mgr_update_resources_managed(vx_resc_mgr_t * mgr, int worldID,
         uint64_t id = -1;
         vx_resc_t * vr = NULL;
         while(lphash_iterator_next(&prev_itr, &id, &vr)) {
+            if (verbose) printf("Looking over %d worlds:\n", vhash_size(mgr->allLiveSets));
+
             // Check all worlds
             vhash_iterator_t  world_itr;// gives us all worlds
             vhash_iterator_init(mgr->allLiveSets, &world_itr);
-            uint32_t wID = -1;
+            printf("  init vh address: 0x%x\n", world_itr.vh);
+            uint64_t wIDl = -1; //XXX if this is an int, vhash breaks!
             vhash_t * buffer_map = NULL;
-            while(vhash_iterator_next(&world_itr, &wID, &buffer_map)) {
+            while(vhash_iterator_next(&world_itr, &wIDl, &buffer_map)) { // XXXX bug
+
+                printf("  World %d has %d buffers:\n", wID, vhash_size(buffer_map));
                 vhash_iterator_t buffer_itr; // gives us all buffers
+                printf("  ,,, vh address: 0x%x\n", world_itr.vh);
                 vhash_iterator_init(buffer_map, &buffer_itr);
+                printf("  ... vh address: 0x%x\n", world_itr.vh);
                 char * bName = NULL;
                 lphash_t * resc_map = NULL;
                 while(vhash_iterator_next(&buffer_itr, &bName, &resc_map)) {
-                    if (lphash_contains(resc_map, id))
+                    printf("    Buffer %s has %d resc:\n", bName, vhash_size(resc_map));
+                    if (lphash_contains(resc_map, id)) {
+                        printf("      Found id %d !\n", id);
                         goto continue_outer_loop;
+                    }
+                    printf("      Did not find id %d in buffer %s !\n", id, bName);
+                    printf("    ... vh address: 0x%x\n", world_itr.vh);
                 }
+                printf("    Did not find id %d in world %d !\n", id, wID);
+
+                printf("  DBG: Next bucket: %d\n", world_itr.bucket);
+                printf("  Current vh address: 0x%x\n", world_itr.vh);
             }
+            printf("  Did not find id %d anywhere, deallocating! !\n", id);
+
+
 
             // If none of the worlds have this resource, we need to flag removal
             lphash_put(dealloc, id, vr, NULL);

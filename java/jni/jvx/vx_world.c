@@ -82,19 +82,6 @@ void vx_buffer_commit(vx_buffer_t * buffer)
         obj->append(obj, resources, codes, ms);
     }
 
-    /* // convert the resources to a list */
-    /* varray_t * reslist = varray_create(); */
-    /* { */
-    /*     lphash_iterator_t itr; */
-    /*     lphash_iterator_init(resources, &itr); */
-    /*     uint64_t id = -1; */
-    /*     vx_resc_t * vr =  NULL; */
-    /*     while(lphash_iterator_next(&itr, &id, & vr)) { */
-    /*         varray_add(reslist, vr); */
-    /*     } */
-    /* } */
-    /* lphash_destroy(resources); */
-
     vx_world_t * world = buffer->world;
     vx_renderer_t * rend = world->rend;
     rend->update_resources_managed(rend, world->worldID, buffer->name, resources);

@@ -211,17 +211,24 @@ void vhash_iterator_init(vhash_t *vh, vhash_iterator_t *vit)
 int vhash_iterator_next(vhash_iterator_t *vit, void *key, void *value)
 {
     vhash_t *vh = vit->vh;
+    /* printf("Current bucket %d, current size %d\n", vit->bucket, vhash_size(vh)); */
+    printf("  itr vh address: 0x%x, key 0x%x, * key 0x%x, value 0x%x, * value 0x%x \n", vit->vh, key, *((void**)key), value, *((void**)value));
 
     while (vit->bucket < vh->nbuckets) {
+        printf("    bar vh address: 0x%x\n", vit->vh);
 
         if (vit->idx < vh->buckets[vit->bucket].size) {
-            *((void**) key) = vh->buckets[vit->bucket].entries[vit->idx].key;
+            printf("       preprereturn vh address: 0x%x\n", vit->vh);
             *((void**) value) = vh->buckets[vit->bucket].entries[vit->idx].value;
+            printf("       preprereturn vh address: 0x%x\n", vit->vh);
+            *((void**) key) = vh->buckets[vit->bucket].entries[vit->idx].key;
             vit->idx++;
+
+            printf("       prereturn vh address: 0x%x\n", vit->vh);
 
             return 1;
         }
-
+        /* printf("Not in this bucket!\n"); */
         vit->bucket++;
         vit->idx = 0;
     }

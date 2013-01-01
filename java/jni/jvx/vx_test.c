@@ -134,6 +134,9 @@ int main(int argc, char ** args)
 
     write_BGR(width, height, data, args[2]);
 
+    // cleanup:
+    vx_buffer_commit(vx_world_get_buffer(world, "img"));
+    vx_buffer_commit(vx_world_get_buffer(world, "foo"));
 
 
     return 0;
