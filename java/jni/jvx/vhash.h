@@ -77,6 +77,8 @@ int vhash_put(vhash_t *vh, void *key, void *value, void *oldkey, void *oldvalue)
 // though you can call vhash_iterator_remove.
 void vhash_iterator_init(vhash_t *vh, vhash_iterator_t *vit);
 
+// Supply a pointer to a pointer
+// e.g. char* key; varray_t *value; int res = vhash_iterator_next(&vit, &key, &value);
 // NOTE/XXX: if your keys are uint32, this will fail, since (void *key) has 64 bits usually
 //           a workaround is to assign a larger size for copying out the keys
 int vhash_iterator_next(vhash_iterator_t *vit, void *key, void *value);
