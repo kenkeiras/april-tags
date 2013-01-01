@@ -99,6 +99,21 @@ static void vx_program_destroy(vx_object_t * vo)
 }
 
 
+static void vx_program_dec_destroy(vx_object_t * vo)
+{
+    assert(vo->rcts > 0);
+
+    vo->rcts--;
+    if (vo->rcts == 0) {
+        vx_program_destroy(vo);
+
+        // only if this reference count reaches zero do we need to recurse:
+        // but there are no sub objects, so we don't need to do anything here:
+        // call dec_destroy(); on all sub objects
+    }
+}
+
+
 static void vx_program_append(vx_object_t * obj, lphash_t * resources, vx_code_output_stream_t * codes, vx_matrix_stack_t * ms)
 {
     // Safe because this function is only assigned to vx_program types
@@ -207,7 +222,7 @@ vx_program_t * vx_program_create(vx_resc_t * vert_src, vx_resc_t * frag_src)
     vx_object_t * obj = calloc(1,sizeof(vx_object_t));
     obj->append = vx_program_append;
     obj->impl = program;
-    obj->destroy = vx_program_destroy;
+    obj->dec_destroy = vx_program_dec_destroy;
     program->super = obj;
     program->state = vx_program_state_create();
     program->state->vert = vert_src;

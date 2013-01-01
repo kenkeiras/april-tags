@@ -63,6 +63,8 @@ vx_buffer_t * vx_world_get_buffer(vx_world_t * world, char * name)
 void vx_buffer_stage(vx_buffer_t * buffer, vx_object_t * obj)
 {
     varray_add(buffer->objs, obj);
+    obj->inc_ref(obj);
+
 }
 
 void vx_buffer_commit(vx_buffer_t * buffer)
@@ -80,6 +82,7 @@ void vx_buffer_commit(vx_buffer_t * buffer)
     for (int i = 0; i < varray_size(cobjs); i++) {
         vx_object_t * obj = varray_get(cobjs, i);
         obj->append(obj, resources, codes, ms);
+        obj->dec_destroy(obj);
     }
 
     vx_world_t * world = buffer->world;
@@ -88,10 +91,8 @@ void vx_buffer_commit(vx_buffer_t * buffer)
 
     rend->update_buffer(rend, world->worldID, buffer->name, buffer->draw_order, codes->data, codes->pos);
 
-    // XXX reference counting
     /* varray_destroy(reslist); */
     vx_matrix_stack_destroy(ms);
     vx_code_output_stream_destroy(codes);
     varray_destroy(cobjs);
-
 }

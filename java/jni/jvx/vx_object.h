@@ -15,7 +15,8 @@ struct vx_object
 
     // Reference counting:
     uint32_t rcts; // how many places have a reference to this?
-    void (*destroy)(vx_object_t * vo);
+    void (*dec_destroy)(vx_object_t * vo); // decrease reference count
+    void (*inc_ref)(vx_object_t * vo); //increase reference count
 };
 
 // Note: Subclasses must be sure to properly initialize the reference count to zero, e.g.:
