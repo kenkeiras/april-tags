@@ -96,3 +96,18 @@ vx_resc_t * vx_resc_copyub(uint8_t * data, int count)
     memcpy(vr->res, data, vr->fieldwidth*vr->count);
     return vr;
 }
+
+
+vx_resc_t * vx_resc_create_copy(void * data, int count, int fieldwidth, uint64_t id, int type)
+{
+    vx_resc_t * vr = vx_resc_create();
+
+    // primitive fields
+    vr->type = type;
+    vr->count = count;
+    vr->fieldwidth = fieldwidth;
+    vr->id = id;
+    vr->res = malloc(vr->fieldwidth*vr->count);
+    memcpy(vr->res, data, vr->fieldwidth*vr->count);
+    return vr;
+}

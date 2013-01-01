@@ -49,6 +49,6 @@ vx_resc_t * vx_resc_copyui(uint32_t * data, int count);
 vx_resc_t * vx_resc_copyub(uint8_t * data, int count);
 
 
-vx_resc_t * vx_resc_copy(void * data, int count, int fieldwidth, uint64_t id, int type);
+vx_resc_t * vx_resc_create_copy(void * data, int count, int fieldwidth, uint64_t id, int type);
 
 #endif

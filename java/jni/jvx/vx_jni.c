@@ -67,20 +67,14 @@ JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_add_1resources
     jint * fieldwidths_env = (*jenv)->GetPrimitiveArrayCritical(jenv, jfieldwidths, NULL);
     jlong * ids_env = (*jenv)->GetPrimitiveArrayCritical(jenv, jids, NULL);
     for (int i = 0; i < nresc; i++) {
-        vx_resc_t * vr = malloc(sizeof(vx_resc_t));
-
-        // primitive fields
-        vr->type = types_env[i];
-        vr->count = counts_env[i];
-        vr->fieldwidth = fieldwidths_env[i];
-        vr->id = ids_env[i];
-        vr->res = malloc(vr->count * vr->fieldwidth);
-
-
         // Copy over the resource XXX Do we need to case the array access?
         jobject jres  = (*jenv)->GetObjectArrayElement(jenv, jrescs, i);
         jbyte* res_env = (*jenv)->GetPrimitiveArrayCritical(jenv, jres, NULL);
-        memcpy(vr->res, res_env, vr->count * vr->fieldwidth);
+
+        // create a vx resources with the proper reference count (0)
+        // once we pass this 'vr' to vx core, we don't need to manage it.
+        vx_resc_t * vr = vx_resc_create_copy(res_env, counts_env[i], fieldwidths_env[i], ids_env[i], types_env[i]);
+
         (*jenv)->ReleasePrimitiveArrayCritical(jenv, jres, res_env, 0);
 
         lphash_put(resources, vr->id, vr, NULL);
@@ -124,8 +118,6 @@ JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_update_1buffer
     lrend->super->update_buffer(lrend->super, worldID, buf_name, draw_order, (uint8_t*)codes_env, codes_len);
     (*jenv)->ReleasePrimitiveArrayCritical(jenv, jcodes, codes_env, 0);
 
-
-
     return 0;
 }
 
@@ -146,7 +138,19 @@ JNIEXPORT void JNICALL Java_april_vx_VxLocalRenderer_deallocate_1resources
 
     vx_local_renderer_t * lrend = vhash_get(vx_instance_map, (void*)instanceID);
     lrend->super->remove_resources_direct(lrend->super, resources);
-    lphash_destroy(resources); //XXX are we leaking the dummy vx_resc_t here?
+
+    // Cleanup -- these "fake" resources will not be managed by vx_core, so we need
+    // to manage them ourselves
+    {
+        lphash_iterator_t itr;
+        lphash_iterator_init(resources, &itr);
+        uint64_t id = -1;
+        vx_resc_t * vr =  NULL;
+        while(lphash_iterator_next(&itr, &id, & vr)) {
+            free(vr);
+        }
+    }
+    lphash_destroy(resources);
 }
 
 JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_render
