@@ -69,7 +69,7 @@ void vx_resc_mgr_update_resources_managed(vx_resc_mgr_t * mgr, int worldID,
 
     // Step 1: Send only the resources not already sent before:
     lphash_t * send = lphash_copy(resources);
-    removeAll(send, mgr->remoteResc); // XXX Memory leak?
+    removeAll(send, mgr->remoteResc);
     mgr->rend->add_resources_direct(mgr->rend,send);
     lphash_destroy(send);
 
@@ -82,7 +82,7 @@ void vx_resc_mgr_update_resources_managed(vx_resc_mgr_t * mgr, int worldID,
 
     char * prev_name = NULL;
     lphash_t * prev_resources = NULL;
-    vhash_put(worldLiveSet, buffer_name, resources, &prev_name, &prev_resources); //XXX Need to copy the buffer_name!
+    vhash_put(worldLiveSet, buffer_name, resources, &prev_name, &prev_resources);
     if (verbose && prev_resources) printf("  had %d resources previously\n",
                                           lphash_size(prev_resources));
 
@@ -102,8 +102,7 @@ void vx_resc_mgr_update_resources_managed(vx_resc_mgr_t * mgr, int worldID,
             vhash_iterator_init(mgr->allLiveSets, &world_itr);
             uint64_t wIDl = -1; //XXX if this is an int, vhash breaks!
             vhash_t * buffer_map = NULL;
-            while(vhash_iterator_next(&world_itr, &wIDl, &buffer_map)) { // XXXX bug
-
+            while(vhash_iterator_next(&world_itr, &wIDl, &buffer_map)) {
                 vhash_iterator_t buffer_itr; // gives us all buffers
                 vhash_iterator_init(buffer_map, &buffer_itr);
                 char * bName = NULL;

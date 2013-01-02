@@ -336,7 +336,7 @@ static void vx_local_state_destroy(vx_local_state_t * state)
 static void vx_local_update_layer(vx_local_renderer_t * lrend, int layerID, int worldID, int draw_order, float viewport_rel[4])
 {
     vx_layer_info_t * layer = vhash_get(lrend->state->layer_map, (void*)layerID);
-    if (layer == NULL) { // Allocate a new layer  -- XXX no way to dealloc
+    if (layer == NULL) { // Allocate a new layer
         layer = malloc(sizeof(vx_layer_info_t));
         layer->layerID = layerID;
         layer->worldID = worldID;
@@ -368,7 +368,7 @@ static void vx_local_update_buffer(vx_local_renderer_t * lrend, int worldID, cha
     vx_code_input_stream_t * codes = vx_code_input_stream_create(data, datalen); // copies data
 
     vx_world_info_t * world = vhash_get(lrend->state->world_map, (void *)worldID);
-    if (world == NULL) { // Allocate a new world -- XXX no way to dealloc
+    if (world == NULL) { // Allocate a new world
         world = malloc(sizeof(vx_world_info_t));
         world->worldID = worldID;
         world->buffer_map = vhash_create(vhash_str_hash, vhash_str_equals);
@@ -397,7 +397,7 @@ static void vx_local_update_buffer(vx_local_renderer_t * lrend, int worldID, cha
     }
 }
 
-// XXX Need to setup a memory management scheme for vx_resc_t that are passed in. Who is responsible for freeing them? Should we just always make a copy?
+// Accepts reference counted resources
 static void vx_local_add_resources_direct(vx_local_renderer_t * lrend, lphash_t * resources)
 {
     if (verbose) printf("Updating %d resources:\n", lphash_size(resources));
@@ -598,7 +598,7 @@ int render_program(vx_local_state_t * state, vx_layer_info_t *layer, vx_code_inp
         char * pmName = codes->read_str(codes);
 
         float PM[16];
-        mult44(layer->layer_pm, (float *)userM, PM); //XXX
+        mult44(layer->layer_pm, userM, PM);
 
         if (verbose > 1) {
             print44(PM);
