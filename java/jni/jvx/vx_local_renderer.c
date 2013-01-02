@@ -91,15 +91,24 @@ struct vx_world_info {
     vhash_t * buffer_map; // holds vx_buffer_info_t
 };
 
+// specify a task to be run on the gl_thread
+typedef struct gl_task gl_task_t;
+struct gl_task
+{
+    void * arg;
+    void (*f)(void * arg);
 
-typedef struct vx_render_task vx_render_task_t;
-struct vx_render_task
+    pthread_cond_t cond; // signal when job is done
+    pthread_mutex_t mutex;
+};
+
+// Contains all details necessary to render:
+typedef struct vx_render_info vx_render_info_t;
+struct vx_render_info
 {
     vx_local_renderer_t * lrend;
     int width, height;
     uint8_t * out_buf;
-    pthread_cond_t cond; // signal when job is done
-    pthread_mutex_t mutex;
 };
 
 struct gl_thread_info {
@@ -140,6 +149,34 @@ void gl_init()
     glc = glcontext_X11_create();
     glewInit(); // Call this after GL context created XXX How sure are we that we need this?
     checkVersions();
+}
+
+static void _schedule_gl_task(void * arg, void (*f)(void * arg))
+{
+    // init
+    gl_task_t task;
+    pthread_cond_init(&task.cond, NULL);
+    pthread_mutex_init(&task.mutex, NULL);
+
+    task.arg = arg;
+    task.f = f;
+
+    // lock early to ensure that we will be notified about the task being complete.
+    pthread_mutex_lock(&task.mutex);
+
+    // push the task, and notify
+    pthread_mutex_lock(&gl_thread.mutex);
+    varray_add(gl_thread.tasks, &task);
+    pthread_cond_signal(&gl_thread.cond);
+    pthread_mutex_unlock(&gl_thread.mutex);
+
+    //wait for completion, and unlock
+    pthread_cond_wait(&task.cond, &task.mutex);
+    pthread_mutex_unlock(&task.mutex);
+
+    // cleanup
+    pthread_cond_destroy(&task.cond);
+    pthread_mutex_destroy(&task.mutex);
 }
 
 //XXXX how do we handle this? Depends on whether you want local rendering or not.
@@ -856,8 +893,6 @@ static void vx_local_remove_resources_direct(vx_local_renderer_t *lrend, lphash_
     if (verbose) printf("\n");
 }
 
-
-
 static void vx_local_set_layer_pm_matrix(vx_local_renderer_t *lrend, int layerID, float * pm)
 {
     vx_layer_info_t * layer = vhash_get(lrend->state->layer_map, (void*)layerID);
@@ -931,6 +966,8 @@ static void vx_get_canvas_size_ts(vx_renderer_t * rend, int * dim_out)
 static void vx_destroy_ts(vx_renderer_t * rend)
 {
     // XXX Is there a thread safe way to do this?
+
+
     vx_local_state_destroy(((vx_local_renderer_t *)(rend->impl))->state);
     free(rend->impl);
     free(rend);
@@ -946,35 +983,24 @@ static void vx_local_set_layer_pm_matrix_ts(vx_local_renderer_t *lrend, int laye
     pthread_mutex_unlock(&lrend->state->mutex);
 }
 
+static void vx_render_wrapper(void * arg)
+{
+    vx_render_info_t * rinfo = arg;
+    pthread_mutex_lock(&rinfo->lrend->state->mutex);
+    vx_local_render(rinfo->lrend, rinfo->width, rinfo->height, rinfo->out_buf);
+    pthread_mutex_unlock(&rinfo->lrend->state->mutex);
+}
+
 // push a render task onto the stack
 static void vx_local_render_ts(vx_local_renderer_t * lrend, int width, int height, uint8_t *out_buf)
 {
-    // init
-    vx_render_task_t task;
-    pthread_cond_init(&task.cond, NULL);
-    pthread_mutex_init(&task.mutex, NULL);
+    vx_render_info_t rinfo;
+    rinfo.lrend = lrend;
+    rinfo.width = width;
+    rinfo.height = height;
+    rinfo.out_buf = out_buf;
 
-    task.lrend = lrend;
-    task.width = width;
-    task.height = height;
-    task.out_buf = out_buf;
-
-    // lock early to ensure that we will be notified about the task being complete.
-    pthread_mutex_lock(&task.mutex);
-
-    // push the task, and notify
-    pthread_mutex_lock(&gl_thread.mutex);
-    varray_add(gl_thread.tasks, &task);
-    pthread_cond_signal(&gl_thread.cond);
-    pthread_mutex_unlock(&gl_thread.mutex);
-
-    //wait for completion, and unlock
-    pthread_cond_wait(&task.cond, &task.mutex);
-    pthread_mutex_unlock(&task.mutex);
-
-    // cleanup
-    pthread_cond_destroy(&task.cond);
-    pthread_mutex_destroy(&task.mutex);
+    _schedule_gl_task(&rinfo, vx_render_wrapper);
 }
 
 
@@ -987,14 +1013,11 @@ void* gl_thread_run()
             pthread_cond_wait(&gl_thread.cond, &gl_thread.mutex);
         } else {
             // run a rending task
-            vx_render_task_t * task = varray_remove(gl_thread.tasks, 0);
+            gl_task_t * task = varray_remove(gl_thread.tasks, 0);
 
-            pthread_mutex_lock(&task->lrend->state->mutex);
-            vx_local_render(task->lrend, task->width, task->height, task->out_buf);
-            pthread_mutex_unlock(&task->lrend->state->mutex);
+            task->f(task->arg);
 
             pthread_cond_signal(&task->cond);
-
         }
         pthread_mutex_unlock(&gl_thread.mutex);
     }

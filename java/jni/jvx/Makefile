@@ -86,6 +86,9 @@ clean:
 lphash_test:  varray.o lphash.o lphash_test.o
 	gcc -o $@ $^
 
+maptest:  vhash.o varray.o maptest.o
+	gcc -o $@ $^
+
 SORT_OBJS=sort_test.o sort_util.o varray.o
 sort_test: $(SORT_OBJS)
 	$(CC) -o $@ $(SORT_OBJS)
