@@ -21,7 +21,7 @@ struct vx_buffer
     varray_t * objs; // stores vx_object_t's
 };
 
-static int xxxAtomicID = 1;
+static int xxxAtomicID = 1; // XXXX need to actually make these atomic
 
 vx_world_t * vx_world_create(vx_renderer_t * rend)
 {
@@ -31,6 +31,21 @@ vx_world_t * vx_world_create(vx_renderer_t * rend)
     world->buffer_map = vhash_create(vhash_str_hash, vhash_str_equals);
 
     return world;
+}
+
+static void vx_world_buffer_destroy(vx_buffer_t * buffer)
+{
+    free(buffer->name);
+    varray_map(buffer->objs, vx_object_dec_destroy);
+    varray_destroy(buffer->objs);
+    free(buffer);
+}
+
+void vx_world_destroy(vx_world_t * world)
+{
+    vhash_map2(world->buffer_map, NULL, vx_world_buffer_destroy); // keys are stored in buffer struct
+    vhash_destroy(world->buffer_map);
+    free(world);
 }
 
 int vx_world_get_id(vx_world_t * world)

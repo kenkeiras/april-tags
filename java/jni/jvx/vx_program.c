@@ -72,11 +72,9 @@ static void _texinfo_destroy(_texinfo_t * tex)
     free(tex);
 }
 
-static void vx_program_destroy(vx_object_t * vo)
-{
-    vx_program_t * prog = (vx_program_t*)vo->impl;
-    vx_program_state_t *state = prog->state;
 
+static void vx_program_state_destroy(vx_program_state_t * state)
+{
     // decrement references to all vx_resources, then call destroy
 
     // direct references
@@ -100,11 +98,18 @@ static void vx_program_destroy(vx_object_t * vo)
     vhash_destroy(state->texMap);
 
     // Would also need to decrement any reference counts of sub vx_objects...
+    free(state);
+}
+
+static void vx_program_destroy(vx_object_t * vo)
+{
+    vx_program_t * prog = (vx_program_t*)vo->impl;
+
+    vx_program_state_destroy(prog->state);
 
     free(vo);
     free(prog);
 }
-
 
 static void vx_program_append(vx_object_t * obj, lphash_t * resources, vx_code_output_stream_t * codes, vx_matrix_stack_t * ms)
 {

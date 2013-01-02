@@ -139,6 +139,10 @@ int main(int argc, char ** args)
     vx_buffer_commit(vx_world_get_buffer(world, "foo"));
     lrend->render(lrend, width, height, data);
     rend->destroy(rend);
+    vx_world_destroy(world);
+    vx_layer_destroy(layer);
+    free(data);
+    image_u8_destroy(img);
 
     return 0;
 }

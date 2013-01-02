@@ -8,6 +8,8 @@ typedef struct vx_world vx_world_t;// forward reference
 typedef struct vx_buffer vx_buffer_t;// forward reference
 
 vx_world_t * vx_world_create(vx_renderer_t * rend);
+void vx_world_destroy(vx_world_t * world);
+
 vx_buffer_t * vx_world_get_buffer(vx_world_t * world, char * name);
 int vx_world_get_id(vx_world_t * world);
 

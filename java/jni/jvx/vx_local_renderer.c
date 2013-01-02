@@ -143,14 +143,6 @@ static void checkVersions()
 // foward declaration
 void* gl_thread_run();
 
-void gl_init()
-{
-    if (verbose) printf("Creating GL context\n");
-    glc = glcontext_X11_create();
-    glewInit(); // Call this after GL context created XXX How sure are we that we need this?
-    checkVersions();
-}
-
 static void _schedule_gl_task(void (*f)(void * arg), void * arg)
 {
     // init
@@ -182,7 +174,6 @@ static void _schedule_gl_task(void (*f)(void * arg), void * arg)
 //XXXX how do we handle this? Depends on whether you want local rendering or not.
 int vx_local_initialize()
 {
-
     // start gl_thread
     gl_thread.tasks = varray_create();
     pthread_mutex_init(&gl_thread.mutex, NULL);
@@ -203,6 +194,7 @@ static void vx_world_info_destroy(vx_world_info_t * winfo)
 {
     // keys are also in struct, so no need to free
     vhash_map2(winfo->buffer_map, NULL, &vx_buffer_info_destroy);
+    vhash_destroy(winfo->buffer_map);
     free(winfo);
 }
 
@@ -1018,11 +1010,17 @@ static void vx_local_render_ts(vx_local_renderer_t * lrend, int width, int heigh
 
 void* gl_thread_run()
 {
-    gl_init(); // Ensure this occurs in the gl thread
+    {
+        if (verbose) printf("Creating GL context\n");
+        glc = glcontext_X11_create();
+        glewInit(); // Call this after GL context created XXX How sure are we that we need this?
+        checkVersions();
+    }
+
     while (1) {
         pthread_mutex_lock(&gl_thread.mutex);
         if (varray_size(gl_thread.tasks) == 0) {
-            pthread_cond_wait(&gl_thread.cond, &gl_thread.mutex);
+            pthread_cond_wait(&gl_thread.cond, &gl_thread.mutex); // cancel point
         } else {
             // run a rending task
             gl_task_t * task = varray_remove(gl_thread.tasks, 0);

@@ -40,7 +40,7 @@ void vx_resc_mgr_destroy(vx_resc_mgr_t * mgr)
     lphash_destroy(mgr->remoteResc); // Will take care of keys, don't care about pointers
 
     vhash_map2(mgr->allLiveSets, NULL, _buffer_map_destroy);
-
+    vhash_destroy(mgr->allLiveSets);
     free(mgr);
 }
 
@@ -71,6 +71,7 @@ void vx_resc_mgr_update_resources_managed(vx_resc_mgr_t * mgr, int worldID,
     lphash_t * send = lphash_copy(resources);
     removeAll(send, mgr->remoteResc); // XXX Memory leak?
     mgr->rend->add_resources_direct(mgr->rend,send);
+    lphash_destroy(send);
 
     // Step 2: Record which resources are currently in use by the named buffer
     vhash_t * worldLiveSet = vhash_get(mgr->allLiveSets, (void *)worldID);
@@ -124,6 +125,8 @@ void vx_resc_mgr_update_resources_managed(vx_resc_mgr_t * mgr, int worldID,
 
         lphash_destroy(prev_resources);
         free(prev_name);
+
+        lphash_destroy(dealloc);
     }
 
 }
