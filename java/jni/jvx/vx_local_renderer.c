@@ -170,39 +170,6 @@ static void vx_world_info_destroy(vx_world_info_t * winfo)
 }
 
 
-// should be called on the gl thread
-static void vx_local_state_destroy(vx_local_state_t * state)
-{
-    assert(0); // Need to implement, wait until design gets more finalized
-
-    pthread_mutex_lock(&state->mutex);
-    gl_fbo_destroy(state->fbo);
-
-    // Make sure all resources are listed in the dealloc_ids array:
-    {
-        lphash_iterator_t itr;
-        lphash_iterator_init(state->resource_map, &itr);
-        uint64_t id = -1;
-        vx_resc_t *vr = NULL;
-        while(lphash_iterator_next(&itr, &id, &vr)){
-            if (!state->dealloc_ids->contains(state->dealloc_ids, id)) {
-                state->dealloc_ids->add(state->dealloc_ids, id);
-            }
-        }
-    }
-    process_deallocations(state); // remove all the resources, and associated GL stuff
-
-    vhash_map2(state->layer_map, NULL, &free); //just a simple struct
-    vhash_map2(state->world_map, NULL, &vx_world_info_destroy); // more complicated
-
-    vx_resc_mgr_destroy(state->mgr);
-
-    pthread_mutex_unlock(&state->mutex);
-    pthread_mutex_destroy(&state->mutex);
-    free(state);
-}
-
-
 static vx_local_state_t * vx_local_state_create()
 {
     vx_local_state_t * state = malloc(sizeof(vx_local_state_t));
@@ -289,6 +256,45 @@ static void process_deallocations(vx_local_state_t * state)
 
     state->dealloc_ids->clear(state->dealloc_ids);
     if (verbose) printf("\n");
+}
+
+// should be called on the gl thread
+static void vx_local_state_destroy(vx_local_state_t * state)
+{
+    assert(0); // Need to implement, wait until design gets more finalized
+
+    pthread_mutex_lock(&state->mutex);
+    gl_fbo_destroy(state->fbo);
+
+    // Make sure all resources are listed in the dealloc_ids array:
+    {
+        lphash_iterator_t itr;
+        lphash_iterator_init(state->resource_map, &itr);
+        uint64_t id = -1;
+        vx_resc_t *vr = NULL;
+        while(lphash_iterator_next(&itr, &id, &vr)){
+            if (!state->dealloc_ids->contains(state->dealloc_ids, id)) {
+                state->dealloc_ids->add(state->dealloc_ids, id);
+            }
+        }
+    }
+    process_deallocations(state); // remove all the resources, and associated GL stuff
+
+    //there should be nothing left in 'program_map' 'resource_map' 'vbo_map' and 'texture_map':
+    assert(lphash_size(state->resource_map) == 0);
+    assert(lphash_size(state->program_map) == 0);
+    assert(state->vbo_map->size == 0);
+    assert(state->texture_map->size == 0);
+
+
+    vhash_map2(state->layer_map, NULL, &free); //just a simple struct
+    vhash_map2(state->world_map, NULL, &vx_world_info_destroy); // more complicated
+
+    vx_resc_mgr_destroy(state->mgr);
+
+    pthread_mutex_unlock(&state->mutex);
+    pthread_mutex_destroy(&state->mutex);
+    free(state);
 }
 
 static void vx_local_update_layer(vx_local_renderer_t * lrend, int layerID, int worldID, int draw_order, float viewport_rel[4])

@@ -54,7 +54,7 @@ void vx_resc_mgr_update_resources_managed(vx_resc_mgr_t * mgr, int worldID,
                         lphash_size(resources), buffer_name, worldID);
 
     resources = lphash_copy(resources);
-    buffer_name = strdup(resources);
+    buffer_name = strdup(buffer_name);
 
     // Step 1: Send only the resources not already sent before:
     lphash_t * send = lphash_copy(resources);
