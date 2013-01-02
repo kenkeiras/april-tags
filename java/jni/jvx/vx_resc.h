@@ -2,7 +2,7 @@
 #define __VX_RESC_H__
 
 #include "stdint.h"
-
+#include <assert.h>
 
 // Vx resources are one of the key elements of the toolkit -- each
 // vx_resc_t associates a globalID with a block of memory.
@@ -38,8 +38,21 @@ struct vx_resc {
 
 // call this function to decrement your reference count
 // and destroy if yours was the last reference.
-void vx_resc_dec_destroy(vx_resc_t * r);
-void vx_resc_incr_ref(vx_resc_t * r);
+
+
+static inline void vx_resc_dec_destroy(vx_resc_t * r)
+{
+    assert(r->rcts > 0);
+
+    r->rcts--;
+    if (r->rcts == 0)
+        r->destroy(r);
+}
+
+static inline void vx_resc_inc_ref(vx_resc_t * r)
+{
+    r->rcts++;
+}
 
 // These methods all start with reference count = 0, so their memory will be managed
 // by the vx_program to which they are passed.

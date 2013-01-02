@@ -265,8 +265,10 @@ void vhash_map2(vhash_t * vh, void (*f_key)(), void (*f_value)())
     void * key = NULL;
     void * value = NULL;
     while(vhash_iterator_next(&itr, &key, &value)) {
-        f_key(key);
-        f_value(value);
+        if (f_key)
+            f_key(key);
+        if (f_value)
+            f_value(value);
     }
 }
 

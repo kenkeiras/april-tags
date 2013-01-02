@@ -82,7 +82,9 @@ static void vx_program_destroy(vx_object_t * vo)
     // direct references
     vx_resc_dec_destroy(state->vert);
     vx_resc_dec_destroy(state->frag);
-    vx_resc_dec_destroy(state->indices);
+
+    if (state->indices != NULL)
+        vx_resc_dec_destroy(state->indices);
 
     // maps:
     vhash_map2(state->attribMap, NULL, &_vertex_attrib_destroy); // <char*, _vertex_attrib_t>
@@ -96,21 +98,8 @@ static void vx_program_destroy(vx_object_t * vo)
     vhash_destroy(state->attribMap);
     vhash_destroy(state->uniform4fvMap);
     vhash_destroy(state->texMap);
-}
 
-
-static void vx_program_dec_destroy(vx_object_t * vo)
-{
-    assert(vo->rcts > 0);
-
-    vo->rcts--;
-    if (vo->rcts == 0) {
-        vx_program_destroy(vo);
-
-        // only if this reference count reaches zero do we need to recurse:
-        // but there are no sub objects, so we don't need to do anything here:
-        // call dec_destroy(); on all sub objects
-    }
+    // Would also need to decrement any reference counts of sub vx_objects...
 }
 
 
@@ -222,12 +211,15 @@ vx_program_t * vx_program_create(vx_resc_t * vert_src, vx_resc_t * frag_src)
     vx_object_t * obj = calloc(1,sizeof(vx_object_t));
     obj->append = vx_program_append;
     obj->impl = program;
-    obj->dec_destroy = vx_program_dec_destroy;
+    obj->destroy = vx_program_destroy;
+
     program->super = obj;
     program->state = vx_program_state_create();
     program->state->vert = vert_src;
     program->state->frag = frag_src;
 
+    vx_resc_inc_ref(program->state->vert);
+    vx_resc_inc_ref(program->state->frag);
 
     return program;
 }
@@ -246,12 +238,13 @@ void vx_program_set_element_array(vx_program_t * program, vx_resc_t * indices, i
     assert(indices->type == GL_UNSIGNED_INT);
     program->state->draw_type = type;
     program->state->indices = indices;
+    vx_resc_inc_ref(program->state->indices);
 }
 
 
 void vx_program_set_vertex_attrib(vx_program_t * program, char * name, vx_resc_t * attrib, int dim)
 {
-    vx_resc_incr_ref(attrib);
+    vx_resc_inc_ref(attrib);
 
     _vertex_attrib_t * va = malloc(sizeof(_vertex_attrib_t));
     va->vr = attrib;
@@ -285,7 +278,7 @@ void vx_program_set_uniform4fv(vx_program_t * program, char * name, float * vec4
 
 void vx_program_set_texture(vx_program_t * program, char * name, vx_resc_t * vr, int width, int height, int format)
 {
-    vx_resc_incr_ref(vr);
+    vx_resc_inc_ref(vr);
 
     _texinfo_t * tinfo = malloc(sizeof(_texinfo_t));
     tinfo->name = strdup(name);

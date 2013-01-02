@@ -120,7 +120,10 @@ int main(int argc, char ** args)
 
 
     vx_program_t * program = make_square();
+    printf("Program square 0x%x\n", program->super);
+
     vx_buffer_stage(vx_world_get_buffer(world, "foo"), program->super);
+    printf("about to commit\n");
     vx_buffer_commit(vx_world_get_buffer(world, "foo"));
 
     vx_program_t * program2 = make_tex(img);

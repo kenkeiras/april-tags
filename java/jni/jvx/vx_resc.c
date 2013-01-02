@@ -21,21 +21,6 @@ static vx_resc_t * vx_resc_create()
     return vr;
 }
 
-void vx_resc_dec_destroy(vx_resc_t * r)
-{
-    assert(r->rcts > 0);
-
-    r->rcts--;
-    if (r->rcts == 0)
-        r->destroy(r);
-}
-
-void vx_resc_incr_ref(vx_resc_t * r)
-{
-    r->rcts++;
-}
-
-
 vx_resc_t * vx_resc_load(char* path)
 {
     vx_resc_t * vr = vx_resc_create();
@@ -71,7 +56,7 @@ vx_resc_t * vx_resc_copyf(float * data, int count)
 
 vx_resc_t * vx_resc_copyui(uint32_t * data, int count)
 {
-    vx_resc_t * vr = calloc(1, sizeof(vx_resc_t));
+    vx_resc_t * vr = vx_resc_create();
     vr->type = GL_UNSIGNED_INT;
     vr->id = vx_alloc_id();
     vr->fieldwidth = sizeof(uint32_t);

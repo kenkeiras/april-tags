@@ -63,8 +63,7 @@ vx_buffer_t * vx_world_get_buffer(vx_world_t * world, char * name)
 void vx_buffer_stage(vx_buffer_t * buffer, vx_object_t * obj)
 {
     varray_add(buffer->objs, obj);
-    obj->inc_ref(obj);
-
+    vx_object_inc_ref(obj);
 }
 
 void vx_buffer_commit(vx_buffer_t * buffer)
@@ -78,11 +77,9 @@ void vx_buffer_commit(vx_buffer_t * buffer)
     lphash_t * resources = lphash_create();
     vx_matrix_stack_t *ms = vx_matrix_stack_create();
 
-
     for (int i = 0; i < varray_size(cobjs); i++) {
         vx_object_t * obj = varray_get(cobjs, i);
         obj->append(obj, resources, codes, ms);
-        obj->dec_destroy(obj);
     }
 
     vx_world_t * world = buffer->world;
@@ -91,8 +88,11 @@ void vx_buffer_commit(vx_buffer_t * buffer)
 
     rend->update_buffer(rend, world->worldID, buffer->name, buffer->draw_order, codes->data, codes->pos);
 
-    /* varray_destroy(reslist); */
+    // wait til the vx_core has had a chance to increment reference counters on all the resources
+    varray_map(cobjs, &vx_object_dec_destroy);
+
     vx_matrix_stack_destroy(ms);
     vx_code_output_stream_destroy(codes);
+    /* lphash_destroy(resources); */ // XXXX bug with buckets size zero for empty lists
     varray_destroy(cobjs);
 }

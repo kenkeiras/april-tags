@@ -326,7 +326,7 @@ static void vx_local_add_resources_direct(vx_local_renderer_t * lrend, lphash_t 
     vx_resc_t * vr = NULL;
     while(lphash_iterator_next(&itr, &id, &vr)) {
         vx_resc_t * old_vr = NULL;// lphash_get(lrend->state->resource_map, vr->id);
-        vx_resc_incr_ref(vr);
+        vx_resc_inc_ref(vr);
 
         lphash_put(lrend->state->resource_map, vr->id, vr, &old_vr);
 
