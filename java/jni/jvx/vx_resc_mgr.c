@@ -26,12 +26,23 @@ vx_resc_mgr_t* vx_resc_mgr_create(vx_renderer_t * rend)
     return mgr;
 }
 
-vx_resc_mgr_t* vx_resc_mgr_destroy()
+static void _buffer_map_destroy(vhash_t * bmap)
 {
-    assert(0);
-    // Need to intelligently traverse map structure and free the right things.
+    vhash_map2(bmap, free, lphash_destroy); // won't free vx_resc structs, but that's ok
 }
 
+void vx_resc_mgr_destroy(vx_resc_mgr_t * mgr)
+{
+    // Resources are managed elsewhere, so we actually don't care at
+    // all if our resources pointers go stale while they are in the maps.
+    // The only thing we really care about are the keys.
+
+    lphash_destroy(mgr->remoteResc); // Will take care of keys, don't care about pointers
+
+    vhash_map2(mgr->allLiveSets, NULL, _buffer_map_destroy);
+
+    free(mgr);
+}
 
 // Remove all elements from A which appear in B
 static void removeAll(lphash_t * A, lphash_t  * B)
@@ -54,7 +65,7 @@ void vx_resc_mgr_update_resources_managed(vx_resc_mgr_t * mgr, int worldID,
                         lphash_size(resources), buffer_name, worldID);
 
     resources = lphash_copy(resources);
-    buffer_name = strdup(buffer_name);
+    buffer_name = strdup(buffer_name); // freed with free(prev_name);
 
     // Step 1: Send only the resources not already sent before:
     lphash_t * send = lphash_copy(resources);

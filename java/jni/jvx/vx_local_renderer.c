@@ -321,9 +321,18 @@ static void vx_local_state_destroy(vx_local_state_t * state)
     assert(state->vbo_map->size == 0);
     assert(state->texture_map->size == 0);
 
+    lphash_destroy(state->resource_map);
+    lphash_destroy(state->program_map);
+    larray_destroy(state->dealloc_ids);
+
+    lihash_destroy(state->vbo_map);
+    lihash_destroy(state->texture_map);
 
     vhash_map2(state->layer_map, NULL, &free); //just a simple struct
     vhash_map2(state->world_map, NULL, &vx_world_info_destroy); // more complicated
+
+    vhash_destroy(state->layer_map);
+    vhash_destroy(state->world_map);
 
     vx_resc_mgr_destroy(state->mgr);
 

@@ -100,6 +100,9 @@ static void vx_program_destroy(vx_object_t * vo)
     vhash_destroy(state->texMap);
 
     // Would also need to decrement any reference counts of sub vx_objects...
+
+    free(vo);
+    free(prog);
 }
 
 
