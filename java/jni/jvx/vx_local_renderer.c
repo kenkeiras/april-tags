@@ -155,9 +155,51 @@ int vx_local_initialize()
     return 0;
 }
 
+static void vx_buffer_info_destroy(vx_buffer_info_t * binfo)
+{
+    free(binfo->name);
+    vx_code_input_stream_destroy(binfo->codes);
+    free(binfo);
+}
+
+static void vx_world_info_destroy(vx_world_info_t * winfo)
+{
+    // keys are also in struct, so no need to free
+    vhash_map2(winfo->buffer_map, NULL, &vx_buffer_info_destroy);
+    free(winfo);
+}
+
+
+// should be called on the gl thread
 static void vx_local_state_destroy(vx_local_state_t * state)
 {
     assert(0); // Need to implement, wait until design gets more finalized
+
+    pthread_mutex_lock(&state->mutex);
+    gl_fbo_destroy(state->fbo);
+
+    // Make sure all resources are listed in the dealloc_ids array:
+    {
+        lphash_iterator_t itr;
+        lphash_iterator_init(state->resource_map, &itr);
+        uint64_t id = -1;
+        vx_resc_t *vr = NULL;
+        while(lphash_iterator_next(&itr, &id, &vr)){
+            if (!state->dealloc_ids->contains(state->dealloc_ids, id)) {
+                state->dealloc_ids->add(state->dealloc_ids, id);
+            }
+        }
+    }
+    process_deallocations(state); // remove all the resources, and associated GL stuff
+
+    vhash_map2(state->layer_map, NULL, &free); //just a simple struct
+    vhash_map2(state->world_map, NULL, &vx_world_info_destroy); // more complicated
+
+    vx_resc_mgr_destroy(state->mgr);
+
+    pthread_mutex_unlock(&state->mutex);
+    pthread_mutex_destroy(&state->mutex);
+    free(state);
 }
 
 

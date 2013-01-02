@@ -12,7 +12,7 @@ struct larray {
     uint64_t (* remove)(larray_t * array, uint32_t idx);
     void (* add)(larray_t * array, uint64_t value);
     void (* clear)(larray_t * array);
-
+    uint8_t (* contains)(larray_t * array, uint64_t value);
 };
 
 

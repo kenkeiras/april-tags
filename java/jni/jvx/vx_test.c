@@ -137,6 +137,7 @@ int main(int argc, char ** args)
     // cleanup:
     vx_buffer_commit(vx_world_get_buffer(world, "img"));
     vx_buffer_commit(vx_world_get_buffer(world, "foo"));
+    lrend->render(lrend, width, height, data);
 
 
     return 0;
