@@ -53,6 +53,9 @@ void vx_resc_mgr_update_resources_managed(vx_resc_mgr_t * mgr, int worldID,
     if (verbose) printf("Got %d resources for buffer %s in world %d\n",
                         lphash_size(resources), buffer_name, worldID);
 
+    resources = lphash_copy(resources);
+    buffer_name = strdup(resources);
+
     // Step 1: Send only the resources not already sent before:
     lphash_t * send = lphash_copy(resources);
     removeAll(send, mgr->remoteResc); // XXX Memory leak?
@@ -107,6 +110,9 @@ void vx_resc_mgr_update_resources_managed(vx_resc_mgr_t * mgr, int worldID,
         }
 
         mgr->rend->remove_resources_direct(mgr->rend, dealloc);
+
+        lphash_destroy(prev_resources);
+        free(prev_name);
     }
 
 }

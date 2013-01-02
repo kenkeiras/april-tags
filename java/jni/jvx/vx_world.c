@@ -93,6 +93,6 @@ void vx_buffer_commit(vx_buffer_t * buffer)
 
     vx_matrix_stack_destroy(ms);
     vx_code_output_stream_destroy(codes);
-    /* lphash_destroy(resources); */ // XXXX bug with buckets size zero for empty lists
+    lphash_destroy(resources);
     varray_destroy(cobjs);
 }
