@@ -151,7 +151,7 @@ void gl_init()
     checkVersions();
 }
 
-static void _schedule_gl_task(void * arg, void (*f)(void * arg))
+static void _schedule_gl_task(void (*f)(void * arg), void * arg)
 {
     // init
     gl_task_t task;
@@ -298,8 +298,6 @@ static void process_deallocations(vx_local_state_t * state)
 // should be called on the gl thread
 static void vx_local_state_destroy(vx_local_state_t * state)
 {
-    assert(0); // Need to implement, wait until design gets more finalized
-
     pthread_mutex_lock(&state->mutex);
     gl_fbo_destroy(state->fbo);
 
@@ -963,12 +961,17 @@ static void vx_get_canvas_size_ts(vx_renderer_t * rend, int * dim_out)
     pthread_mutex_unlock(&lrend->state->mutex);
 }
 
+static void vx_local_state_destroy_wrapper(void * arg)
+{
+    vx_local_state_t * state = arg;
+    vx_local_state_destroy(state);
+}
+
 static void vx_destroy_ts(vx_renderer_t * rend)
 {
-    // XXX Is there a thread safe way to do this?
+    _schedule_gl_task(vx_local_state_destroy_wrapper,
+                      ((vx_local_renderer_t *)(rend->impl))->state);
 
-
-    vx_local_state_destroy(((vx_local_renderer_t *)(rend->impl))->state);
     free(rend->impl);
     free(rend);
 }
@@ -1000,7 +1003,7 @@ static void vx_local_render_ts(vx_local_renderer_t * lrend, int width, int heigh
     rinfo.height = height;
     rinfo.out_buf = out_buf;
 
-    _schedule_gl_task(&rinfo, vx_render_wrapper);
+    _schedule_gl_task(vx_render_wrapper, &rinfo);
 }
 
 
