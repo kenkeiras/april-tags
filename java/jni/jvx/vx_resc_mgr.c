@@ -29,6 +29,7 @@ vx_resc_mgr_t* vx_resc_mgr_create(vx_renderer_t * rend)
 static void _buffer_map_destroy(vhash_t * bmap)
 {
     vhash_map2(bmap, free, lphash_destroy); // won't free vx_resc structs, but that's ok
+    vhash_destroy(bmap);
 }
 
 void vx_resc_mgr_destroy(vx_resc_mgr_t * mgr)

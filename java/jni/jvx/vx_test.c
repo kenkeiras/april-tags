@@ -135,9 +135,9 @@ int main(int argc, char ** args)
     write_BGR(width, height, data, args[2]);
 
     // cleanup:
-    vx_buffer_commit(vx_world_get_buffer(world, "img"));
-    vx_buffer_commit(vx_world_get_buffer(world, "foo"));
-    lrend->render(lrend, width, height, data);
+    /* vx_buffer_commit(vx_world_get_buffer(world, "img")); */
+    /* vx_buffer_commit(vx_world_get_buffer(world, "foo")); */
+    /* lrend->render(lrend, width, height, data); */
     rend->destroy(rend);
     vx_world_destroy(world);
     vx_layer_destroy(layer);

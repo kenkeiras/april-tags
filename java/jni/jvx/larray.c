@@ -42,6 +42,14 @@ void larray_clear(larray_t * array)
     array->size = 0;
 }
 
+static uint8_t larray_contains(larray_t * array, uint64_t value)
+{
+    for (int i = 0; i < array->size; i++)
+        if (value == array->buf[i])
+            return 1;
+    return 0;
+}
+
 larray_t * larray_create()
 {
     larray_t * array = calloc(sizeof(larray_t), 1); // all fields set to 0/NULL
@@ -50,6 +58,7 @@ larray_t * larray_create()
     array->add = larray_add;
     array->clear = larray_clear;
     array->remove = larray_remove;
+    array->contains = larray_contains;
 
     larray_ensure_size(array, 10);
 
