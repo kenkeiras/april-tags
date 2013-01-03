@@ -64,7 +64,6 @@ public class VxTCPRenderer extends VxRenderer
     {
         VxCodeOutputStream ocodes = new VxCodeOutputStream();
 
-        ocodes.writeInt(VxTCPServer.VX_TCP_ADD_RESOURCES);
         ocodes.writeInt(resources.size());
 
         for (VxResource vr : resources) {
@@ -77,20 +76,19 @@ public class VxTCPRenderer extends VxRenderer
             ocodes.write(res, 0, res.length);
         }
 
-        writeVCOS(ocodes);
+        writeVCOS(VxTCPServer.VX_TCP_ADD_RESOURCES, ocodes);
     }
 
     public void update_buffer(int worldID, String buffer_name, int drawOrder, VxCodeOutputStream codes)
     {
         VxCodeOutputStream ocodes = new VxCodeOutputStream();
-        ocodes.writeInt(VxTCPServer.VX_TCP_BUFFER_UPDATE);
         ocodes.writeInt(worldID);
         ocodes.writeStringZ(buffer_name);
         ocodes.writeInt(drawOrder);
         ocodes.writeInt(codes.size());
         ocodes.write(codes.getBuffer(), 0, codes.size());
 
-        writeVCOS(ocodes);
+        writeVCOS(VxTCPServer.VX_TCP_BUFFER_UPDATE, ocodes);
     }
 
     public void update_layer(int layerID, int worldID, int drawOrder, float viewport_rel[])
@@ -99,8 +97,6 @@ public class VxTCPRenderer extends VxRenderer
 
         VxCodeOutputStream ocodes = new VxCodeOutputStream();
 
-        ocodes.writeInt(VxTCPServer.VX_TCP_LAYER_UPDATE);
-        ocodes.writeInt(4+4+4+4*4);
         ocodes.writeInt(layerID);
         ocodes.writeInt(worldID);
         ocodes.writeInt(drawOrder);
@@ -109,20 +105,18 @@ public class VxTCPRenderer extends VxRenderer
         ocodes.writeFloat(viewport_rel[2]);
         ocodes.writeFloat(viewport_rel[3]);
 
-        writeVCOS(ocodes);
+        writeVCOS(VxTCPServer.VX_TCP_LAYER_UPDATE, ocodes);
     }
 
     public void remove_resources_direct(HashSet<VxResource> resources)
     {
         VxCodeOutputStream ocodes = new VxCodeOutputStream();
 
-        ocodes.writeInt(VxTCPServer.VX_TCP_DEALLOC_RESOURCES);
         ocodes.writeInt(resources.size());
-
         for (VxResource vr : resources)
             ocodes.writeLong(vr.id);
 
-        writeVCOS(ocodes);
+        writeVCOS(VxTCPServer.VX_TCP_DEALLOC_RESOURCES, ocodes);
     }
 
     // Fast for a local implementation, not in this case though
@@ -149,10 +143,11 @@ public class VxTCPRenderer extends VxRenderer
         return dim;
     }
 
-    private void writeVCOS(VxCodeOutputStream codes)
+    private void writeVCOS(int code, VxCodeOutputStream codes)
     {
         try {
             synchronized(outs) {
+                outs.writeInt(code);
                 outs.writeInt(codes.size());
                 outs.write(codes.getBuffer(), 0, codes.size());
                 outs.flush();
@@ -161,6 +156,4 @@ public class VxTCPRenderer extends VxRenderer
             System.out.println("Ex: "+e); e.printStackTrace();
         }
     }
-
-
 }
