@@ -82,6 +82,13 @@ public final class VxCodeOutputStream
         buf[pos++] = (byte) (v>>>0);
     }
 
+    public void write(byte data[], int offset, int length)
+    {
+        ensureSpace(length);
+        System.arraycopy(data, offset, buf, pos, length);
+        pos+= length;
+    }
+
     /** Makes a copy of the internal buffer. **/
     public byte[] toByteArray()
     {
