@@ -52,40 +52,53 @@ public class VxTCPServer extends Thread
         }
     }
 
-    private void process_layer(int layerID, int worldID, int draw_order, float viewport_rel[])
-    {
-        rend.update_layer(layerID, worldID, draw_order, viewport_rel);
-    }
-
-    private void process_buffer(lcmvx_render_codes_t lcm_codes)
+    private void process_buffer(VxCodeInputStream cins)//lcmvx_render_codes_t lcm_codes)
     {
         // Convert and send off
-        VxCodeOutputStream vout = new VxCodeOutputStream(lcm_codes.buf);
-        rend.update_buffer(lcm_codes.worldID, lcm_codes.buffer_name, lcm_codes.draw_order, vout);
+        int worldID = cins.readInt();
+        String buffer_name = cins.readStringZ();
+        int drawOrder = cins.readInt();
+        int clen = cins.readInt();
+        byte buf[] = new byte[clen];
+        cins.readFully(buf);
+        VxCodeOutputStream vout = new VxCodeOutputStream(buf);
+
+        rend.update_buffer(worldID, buffer_name, drawOrder, vout);
     }
 
-    private void process_dealloc(lcmvx_dealloc_t lcm_dealloc)
+    private void process_dealloc(VxCodeInputStream cins)
     {
         // Convert and send off
         HashSet<VxResource> dealloc = new HashSet();
-        for (int i = 0; i < lcm_dealloc.nguids; i++)
-            dealloc.add(new VxResource(0, null, 0, 0, lcm_dealloc.guids[i]));
+        int ct = cins.readInt();
+        for (int i = 0; i < ct; i++)
+            dealloc.add(new VxResource(0, null, 0, 0, cins.readLong()));
 
         rend.remove_resources_direct(dealloc);
     }
 
-    private void process_resources(lcmvx_resource_list_t lcm_resources)
+    private void process_resources(VxCodeInputStream cins) //lcmvx_resource_list_t lcm_resources)
     {
         HashSet<VxResource> resources = new HashSet();
-        for (int i = 0; i < lcm_resources.nresources; i++) {
-            lcmvx_resource_t lvr = lcm_resources.resources[i];
-
-            // Returns a correctly parsed array. Transport is big-endian
-            Object res = VxUtil.copyToType(lvr.res, lvr.type);
-            VxResource vr = new VxResource(lvr.type, res, lvr.count, lvr.fieldwidth, lvr.id);
+        int nresources = cins.readInt();
+        for (int i = 0; i < nresources; i++) {
+            long id = cins.readLong();
+            int type = cins.readInt();
+            int count = cins.readInt();
+            int fieldwidth = cins.readInt();
+            byte resb[] = new byte[count*fieldwidth];
+            cins.readFully(resb);
+            Object res = VxUtil.copyToType(resb, type);
+            VxResource vr = new VxResource(type, res, count, fieldwidth, id);
             resources.add(vr);
         }
         rend.add_resources_direct(resources);
+    }
+
+    private void process_layer(VxCodeInputStream cins)
+    {
+        rend.update_layer(cins.readInt(), cins.readInt(), cins.readInt(),
+                          new float[]{cins.readFloat(), cins.readFloat(), cins.readFloat(), cins.readFloat()});
     }
 
     class ClientThread extends Thread
@@ -121,27 +134,25 @@ public class VxTCPServer extends Thread
                     int len = ins.readInt();
                     byte buf[] = new byte[len];
                     ins.read(buf);
-                    // printHex(buf);
-                    // System.out.printf("Read len %d\n",len);
-                    LCMDataInputStream dins = new LCMDataInputStream(buf);
+
+                    VxCodeInputStream cins = new VxCodeInputStream(buf);
                     switch(code) {
                         case VX_TCP_ADD_RESOURCES:
-                            process_resources(new lcmvx_resource_list_t(dins));
+                            process_resources(cins);
                             break;
                         case VX_TCP_DEALLOC_RESOURCES:
-                            process_dealloc(new lcmvx_dealloc_t(dins));
+                            process_dealloc(cins);
                             break;
                         case VX_TCP_BUFFER_UPDATE:
-                            process_buffer(new lcmvx_render_codes_t(dins));
+                            process_buffer(cins);
                             break;
                         case VX_TCP_LAYER_UPDATE:
-                            process_layer(dins.readInt(),dins.readInt(),dins.readInt(),
-                                          new float[]{dins.readFloat(),dins.readFloat(),dins.readFloat(),dins.readFloat()});
+                            process_layer(cins);
                             break;
                         default:
                             System.out.printf("WRN: Unsupported OP code! 0x%x\n",code);
                     }
-                    assert(dins.available() == 0);
+                    assert(cins.available() == 0);
                 }
 
             } catch (EOFException ex) {

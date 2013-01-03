@@ -1,11 +1,8 @@
 package april.vx;
 
-import lcm.lcm.*;
-
 import java.io.*;
 import java.util.*;
 import java.net.*;
-import april.lcmtypes.*;
 
 // Handels remote rendering
 public class VxTCPRenderer extends VxRenderer
@@ -65,94 +62,64 @@ public class VxTCPRenderer extends VxRenderer
 
     public void add_resources_direct(HashSet<VxResource> resources)
     {
-        lcmvx_resource_list_t lcm_resources = new lcmvx_resource_list_t();
-        lcm_resources.nresources = resources.size();
-        lcm_resources.resources = new lcmvx_resource_t[lcm_resources.nresources];
-        int idx = 0;
+        VxCodeOutputStream ocodes = new VxCodeOutputStream();
+
+        ocodes.writeInt(resources.size());
+
         for (VxResource vr : resources) {
-            lcmvx_resource_t lvr = new lcmvx_resource_t();
-
-            lvr.id   = vr.id;
-            lvr.type = vr.type;
-            lvr.count = vr.count;
-            lvr.fieldwidth = vr.fieldwidth;
-            lvr.len = lvr.count * lvr.fieldwidth;
-            lvr.res = VxUtil.copyByteArray(vr.res); // Big endian
-
-            lcm_resources.resources[idx++] = lvr;
+            ocodes.writeLong(vr.id);
+            ocodes.writeInt(vr.type);
+            ocodes.writeInt(vr.count);
+            ocodes.writeInt(vr.fieldwidth);
+            byte res[] = VxUtil.copyByteArray(vr.res); // float,longs, etc are stored as big endian!
+            assert(res.length == vr.count * vr.fieldwidth);
+            ocodes.write(res, 0, res.length);
         }
-        writeLCM(VxTCPServer.VX_TCP_ADD_RESOURCES, lcm_resources);
+
+        writeVCOS(VxTCPServer.VX_TCP_ADD_RESOURCES, ocodes);
     }
 
     public void update_buffer(int worldID, String buffer_name, int drawOrder, VxCodeOutputStream codes)
     {
-        lcmvx_render_codes_t lcodes = new lcmvx_render_codes_t();
-        lcodes.worldID = worldID;
-        lcodes.draw_order = drawOrder;
-        lcodes.buffer_name = buffer_name;
-        lcodes.buf = codes.getBuffer();
-        lcodes.buflen = codes.size();
+        VxCodeOutputStream ocodes = new VxCodeOutputStream();
+        ocodes.writeInt(worldID);
+        ocodes.writeStringZ(buffer_name);
+        ocodes.writeInt(drawOrder);
+        ocodes.writeInt(codes.size());
+        ocodes.write(codes.getBuffer(), 0, codes.size());
 
-        writeLCM(VxTCPServer.VX_TCP_BUFFER_UPDATE, lcodes);
+        writeVCOS(VxTCPServer.VX_TCP_BUFFER_UPDATE, ocodes);
     }
 
     public void update_layer(int layerID, int worldID, int drawOrder, float viewport_rel[])
     {
         assert(viewport_rel.length == 4);
-        try{
-            synchronized (outs) {
-                outs.writeInt(VxTCPServer.VX_TCP_LAYER_UPDATE);
-                outs.writeInt(4+4+4+4*4);
-                outs.writeInt(layerID);
-                outs.writeInt(worldID);
-                outs.writeInt(drawOrder);
-                outs.writeFloat(viewport_rel[0]);
-                outs.writeFloat(viewport_rel[1]);
-                outs.writeFloat(viewport_rel[2]);
-                outs.writeFloat(viewport_rel[3]);
 
-                outs.flush();
-            }
-        } catch(IOException e){
-            System.out.println("Ex: "+e); e.printStackTrace();
-        }
+        VxCodeOutputStream ocodes = new VxCodeOutputStream();
+
+        ocodes.writeInt(layerID);
+        ocodes.writeInt(worldID);
+        ocodes.writeInt(drawOrder);
+        ocodes.writeFloat(viewport_rel[0]);
+        ocodes.writeFloat(viewport_rel[1]);
+        ocodes.writeFloat(viewport_rel[2]);
+        ocodes.writeFloat(viewport_rel[3]);
+
+        writeVCOS(VxTCPServer.VX_TCP_LAYER_UPDATE, ocodes);
     }
 
     public void remove_resources_direct(HashSet<VxResource> resources)
     {
-        lcmvx_dealloc_t dealloc = new lcmvx_dealloc_t();
-        dealloc.nguids = resources.size();
-        dealloc.guids = new long[dealloc.nguids];
-        int  i = 0;
-        for (VxResource vx : resources)
-            dealloc.guids[i++] = vx.id;
+        VxCodeOutputStream ocodes = new VxCodeOutputStream();
 
-        writeLCM(VxTCPServer.VX_TCP_DEALLOC_RESOURCES, dealloc);
+        ocodes.writeInt(resources.size());
+        for (VxResource vr : resources)
+            ocodes.writeLong(vr.id);
+
+        writeVCOS(VxTCPServer.VX_TCP_DEALLOC_RESOURCES, ocodes);
     }
 
-    private void writeLCM(int code, LCMEncodable msg)
-    {
-        try {
-            LCMDataOutputStream lcm_out = new LCMDataOutputStream();
-            msg.encode(lcm_out);
-
-            // VxTCPServer.printHex(lcm_out.toByteArray());
-
-
-            // System.out.printf("code %d len %d\n",code,lcm_out.size());
-
-            synchronized (outs) {
-                outs.writeInt(code);
-                outs.writeInt(lcm_out.size());
-                outs.write(lcm_out.getBuffer(), 0, lcm_out.size());
-                outs.flush();
-            }
-        } catch(IOException e){
-            System.out.println("Ex: "+e); e.printStackTrace();
-        }
-    }
-
-    // Fast for a local implementation
+    // Fast for a local implementation, not in this case though
     public int[] get_canvas_size()
     {
         int dim[] = {0,0};
@@ -176,4 +143,17 @@ public class VxTCPRenderer extends VxRenderer
         return dim;
     }
 
+    private void writeVCOS(int code, VxCodeOutputStream codes)
+    {
+        try {
+            synchronized(outs) {
+                outs.writeInt(code);
+                outs.writeInt(codes.size());
+                outs.write(codes.getBuffer(), 0, codes.size());
+                outs.flush();
+            }
+        } catch (IOException e) {
+            System.out.println("Ex: "+e); e.printStackTrace();
+        }
+    }
 }
