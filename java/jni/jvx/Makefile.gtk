@@ -1,0 +1,39 @@
+
+# gtk
+CFLAGS_GTK   :=`pkg-config --cflags gtk+-2.0`
+LDFLAGS_GTK  :=`pkg-config --libs gtk+-2.0 gthread-2.0`
+
+#CFLAGS_VX   =
+#LDFLAGS_VX  = -lvx
+
+# XXX need to set these properly
+SHARED_JNI_EXT = so
+STATIC_EXT = a
+
+CC = gcc
+# XXX Need add optimization back in!!
+CCFLAGS = -std=gnu99 -fno-stack-protector -fPIC  -D_REENTRANT -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -Wno-unused-parameter -Wno-format-zero-length -Wall -Werror=implicit-function-declaration -g
+
+
+LIB_GTK=libvxgtk.$(STATIC_EXT)
+DESTLIB_GTK=../../../lib/$(LIB_GTK)
+
+LIBVX_GTK_OBJS = vx_canvas.o
+
+all: $(DESTLIB_GTK)
+
+$(DESTLIB_GTK) : $(LIB_GTK)
+	cp $(LIB_GTK) $(DESTLIB_GTK)
+
+$(LIB_GTK):  $(LIBVX_GTK_OBJS)
+	ar rc $@ $^
+
+
+%.o: %.c
+	$(CC) $(CCFLAGS) -c $(COMMON_INCLUDES) $(CFLAGS_GTK) $<
+
+vx_test: vx_test.o image_u8.o
+	gcc -o $@ $^ libvx.a -lX11 -lGL -lGLEW  -lpthread
+
+clean:
+	rm -rf  $(LIBGTK_OBJS) vx_test $(DESTLIB_GTK)
