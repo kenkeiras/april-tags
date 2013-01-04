@@ -32,8 +32,8 @@ $(LIB_GTK):  $(LIBVX_GTK_OBJS)
 %.o: %.c
 	$(CC) $(CCFLAGS) -c $(COMMON_INCLUDES) $(CFLAGS_GTK) $<
 
-vx_test: vx_test.o image_u8.o
-	gcc -o $@ $^ libvx.a -lX11 -lGL -lGLEW  -lpthread
+vx_test: vx_test.o image_u8.o $(LIB_GTK)
+	gcc -o $@ $^ libvx.a libvxgtk.a -lX11 -lGL -lGLEW  -lpthread $(LDFLAGS_GTK)
 
 clean:
 	rm -rf  $(LIBGTK_OBJS) vx_test $(DESTLIB_GTK)

@@ -9,6 +9,8 @@
 
 #include "vx_local_renderer.h"
 #include "image_u8.h"
+#include "vx_canvas.h"
+#include <gtk/gtk.h>
 
 int write_BGR(int width, int height, const uint8_t *data, const char *path)
 {
@@ -101,8 +103,8 @@ static vx_program_t * make_tex(image_u8_t * img)
 // C version of the test code
 int main(int argc, char ** args)
 {
-    if (argc < 3) {
-        printf("Usage: ./vx_test <texture.pnm> <output.pnm>\n");
+    if (argc < 2) {
+        printf("Usage: ./vx_test <texture.pnm>\n");// <output.pnm>\n");
         return 1;
     }
     image_u8_t * img = image_u8_create_from_pnm(args[1]);
@@ -131,8 +133,19 @@ int main(int argc, char ** args)
     uint8_t * data = calloc(width*height*3, sizeof(uint8_t));
     lrend->render(lrend, width, height, data);
 
+    gtk_init (&argc, &args);
+    vx_canvas_t * vc = vx_canvas_create(lrend);
 
-    write_BGR(width, height, data, args[2]);
+    /* write_BGR(width, height, data, args[2]); */
+
+    GtkWidget * window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
+    gtk_container_add(GTK_CONTAINER(window), vx_canvas_get_gtk_widget(vc));
+    gtk_widget_show_all (window);
+    g_signal_connect_swapped(G_OBJECT(window), "destroy",
+                             G_CALLBACK(gtk_main_quit), NULL);
+
+    gtk_main ();
+
 
     // cleanup:
     /* vx_buffer_commit(vx_world_get_buffer(world, "img")); */
