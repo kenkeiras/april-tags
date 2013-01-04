@@ -25,4 +25,7 @@ public class Vx
     public static final int GL_RGB = 0x1907, GL_RGBA =0x1908, GL_ALPHA = 0x1906,
         GL_LUMINANCE = 0x1909, GL_LUMINANCE_ALPHA = 0x190A;
 
+    // Return types for images rendered with local rendering:
+    public static final int GL_BGR  = 0x80E0;
+
 }

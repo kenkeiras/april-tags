@@ -154,12 +154,12 @@ JNIEXPORT void JNICALL Java_april_vx_VxLocalRenderer_deallocate_1resources
 }
 
 JNIEXPORT jint JNICALL Java_april_vx_VxLocalRenderer_render
-  (JNIEnv * jenv, jclass jcls, jint instanceID,  jint width, jint height, jbyteArray jimg)
+(JNIEnv * jenv, jclass jcls, jint instanceID,  jint width, jint height, jbyteArray jimg, jint format)
 {
     vx_local_renderer_t * lrend = vhash_get(vx_instance_map, (void*)instanceID);
 
     jbyte* img_env = (*jenv)->GetPrimitiveArrayCritical(jenv, jimg, NULL);
-    lrend->render(lrend, width, height, (uint8_t *) img_env);
+    lrend->render(lrend, width, height, (uint8_t *) img_env, format);
     (*jenv)->ReleasePrimitiveArrayCritical(jenv, jimg, img_env, 0);
 
     return 0; // XXX

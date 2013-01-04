@@ -108,7 +108,7 @@ public class VxCanvas extends JComponent
                                                  VxUtil.copyFloats(PM));
                     }
 
-                    rend.render(width,height,buf);
+                    rend.render(width,height,buf, Vx.GL_BGR);
 
                     im = canvas;
                     lastRenderInfo = rinfo;

@@ -12,7 +12,7 @@ struct vx_local_renderer
     vx_local_state_t * state; // data relating to local renderers (e.g. gl context, resource lists, etc)
 
     // XXX layer info
-    void (*render)(vx_local_renderer_t * lrend, int width, int height, uint8_t *out_buf);
+    void (*render)(vx_local_renderer_t * lrend, int width, int height, uint8_t *out_buf, int format);
     void (*set_layer_pm_matrix)(vx_local_renderer_t * lrend, int layerID, float pm[]);
 };
 

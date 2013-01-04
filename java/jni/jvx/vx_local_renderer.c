@@ -109,6 +109,7 @@ struct vx_render_info
     vx_local_renderer_t * lrend;
     int width, height;
     uint8_t * out_buf;
+    int format;
 };
 
 struct gl_thread_info {
@@ -803,7 +804,7 @@ static void resize_fbo(vx_local_state_t * state, int width, int height)
 }
 
 // NOTE: Thread safety must be guaranteed externally
-static void vx_local_render(vx_local_renderer_t * lrend, int width, int height, uint8_t *out_buf)
+static void vx_local_render(vx_local_renderer_t * lrend, int width, int height, uint8_t *out_buf, int format)
 {
     // debug: print stats
     if (verbose) printf("n layers %d n resc %d, n vbos %d, n programs %d n tex %d w %d h %d\n",
@@ -870,7 +871,7 @@ static void vx_local_render(vx_local_renderer_t * lrend, int width, int height, 
 
 
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
-    glReadPixels(0, 0, width, height, GL_BGR, GL_UNSIGNED_BYTE, out_buf);
+    glReadPixels(0, 0, width, height, format, GL_UNSIGNED_BYTE, out_buf);
 }
 
 static void vx_local_remove_resources_direct(vx_local_renderer_t *lrend, lphash_t * resources)
@@ -991,19 +992,19 @@ static void vx_render_wrapper(void * arg)
 {
     vx_render_info_t * rinfo = arg;
     pthread_mutex_lock(&rinfo->lrend->state->mutex);
-    vx_local_render(rinfo->lrend, rinfo->width, rinfo->height, rinfo->out_buf);
+    vx_local_render(rinfo->lrend, rinfo->width, rinfo->height, rinfo->out_buf, rinfo->format);
     pthread_mutex_unlock(&rinfo->lrend->state->mutex);
 }
 
 // push a render task onto the stack
-static void vx_local_render_ts(vx_local_renderer_t * lrend, int width, int height, uint8_t *out_buf)
+static void vx_local_render_ts(vx_local_renderer_t * lrend, int width, int height, uint8_t *out_buf, int format)
 {
     vx_render_info_t rinfo;
     rinfo.lrend = lrend;
     rinfo.width = width;
     rinfo.height = height;
     rinfo.out_buf = out_buf;
-
+    rinfo.format = format;
     _schedule_gl_task(vx_render_wrapper, &rinfo);
 }
 

@@ -130,10 +130,12 @@ int main(int argc, char ** args)
     vx_buffer_commit(vx_world_get_buffer(world, "img"));
 
 
-    uint8_t * data = calloc(width*height*3, sizeof(uint8_t));
-    lrend->render(lrend, width, height, data);
 
+    g_thread_init (NULL);
+    gdk_threads_init ();
+    gdk_threads_enter();
     gtk_init (&argc, &args);
+
     vx_canvas_t * vc = vx_canvas_create(lrend);
 
 
@@ -146,14 +148,14 @@ int main(int argc, char ** args)
     g_signal_connect_swapped(G_OBJECT(window), "destroy",
                              G_CALLBACK(gtk_main_quit), NULL);
 
-    gtk_main ();
+    gtk_main();
+    gdk_threads_leave();
 
 
     // cleanup:
     rend->destroy(rend);
     vx_world_destroy(world);
     vx_layer_destroy(layer);
-    free(data);
     image_u8_destroy(img);
 
     return 0;

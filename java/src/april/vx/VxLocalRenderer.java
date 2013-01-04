@@ -128,14 +128,14 @@ public class VxLocalRenderer extends VxRenderer
         return dim;
     }
 
-    public void render(int width, int height, byte[] img)
+    public void render(int width, int height, byte[] img, int format)
     {
         // Update dimensions
         this.width = width;
         this.height = height;
 
 
-        render(instanceID, width, height, img);
+        render(instanceID, width, height, img, format);
     }
 
     // Takes as input a row-major projection-model matrix which is
@@ -165,7 +165,7 @@ public class VxLocalRenderer extends VxRenderer
     private static native int update_buffer(int instanceID, int worldID, byte[] buf_name, int draw_order, int code_len, byte[] codes);
     private static native void update_layer(int instanceID, int layerID, int worldID, int draw_order, float viewport_rel[]);
     private static native void deallocate_resources(int instanceID, long[] guids, int nguids);
-    private static native int render(int instanceID, int width, int height, byte[] img);
+    private static native int render(int instanceID, int width, int height, byte[] img, int format);
     private static native int get_canvas_size(int instanceID, int dim[]);
     native static void set_layer_pm_matrix(int instanceID, int layerID, float pm[]);
 }
