@@ -163,6 +163,9 @@ void gtku_image_pane_set_buffer (GtkuImagePane * self, GdkPixbuf * pixbuf)
     GdkPixbuf * oldpb = priv->pixBuf;
     //1
     priv->pixBuf = pixbuf;
+    if (oldpb)
+        g_object_unref(oldpb);
+
     GdkPixmap * drawable = priv->pixMap;
 
     if (priv->pixMap == NULL)
@@ -183,8 +186,6 @@ void gtku_image_pane_set_buffer (GtkuImagePane * self, GdkPixbuf * pixbuf)
                                 0, 0,
                                 priv->width, priv->height);
 
-    if (oldpb)
-        g_object_unref(oldpb);
     gdk_threads_leave();
 
 }
