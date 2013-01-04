@@ -48,11 +48,11 @@ void* vx_canvas_run(void * arg)
 
         vc->lrend->render(vc->lrend, width, height, data);
 
-        /* GdkPixbuf * pixbuf = gdk_pixbuf_new_from_data(data, GDK_COLORSPACE_RGB, FALSE, 8, width, height, width, NULL, NULL); */
+        GdkPixbuf * pixbuf = gdk_pixbuf_new_from_data(data, GDK_COLORSPACE_RGB, FALSE, 8, width, height, width, NULL, NULL);
 
         // pixbuf is now managed by image pane
         // XXX Thread safety not ensured here?
-        /* gtku_image_pane_set_buffer(vc->imagePane, pixbuf); */
+        gtku_image_pane_set_buffer(vc->imagePane, pixbuf);
 
     }
     pthread_exit(NULL);

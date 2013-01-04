@@ -136,11 +136,13 @@ int main(int argc, char ** args)
     gtk_init (&argc, &args);
     vx_canvas_t * vc = vx_canvas_create(lrend);
 
-    /* write_BGR(width, height, data, args[2]); */
 
     GtkWidget * window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
-    gtk_container_add(GTK_CONTAINER(window), vx_canvas_get_gtk_widget(vc));
-    gtk_widget_show_all (window);
+    GtkWidget * canvas = vx_canvas_get_gtk_widget(vc);
+    gtk_container_add(GTK_CONTAINER(window), canvas);
+    gtk_widget_show (window);
+    gtk_widget_show (canvas); // XXX Show all causes errors!
+
     g_signal_connect_swapped(G_OBJECT(window), "destroy",
                              G_CALLBACK(gtk_main_quit), NULL);
 
@@ -148,9 +150,6 @@ int main(int argc, char ** args)
 
 
     // cleanup:
-    /* vx_buffer_commit(vx_world_get_buffer(world, "img")); */
-    /* vx_buffer_commit(vx_world_get_buffer(world, "foo")); */
-    /* lrend->render(lrend, width, height, data); */
     rend->destroy(rend);
     vx_world_destroy(world);
     vx_layer_destroy(layer);
