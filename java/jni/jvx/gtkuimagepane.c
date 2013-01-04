@@ -1,4 +1,4 @@
-#include "gtkimagepane.h"
+#include "gtkuimagepane.h"
 
 
 #define GTKU_IMAGE_PANE_GET_PRIVATE(o) (G_TYPE_INSTANCE_GET_PRIVATE ((o), GTKU_TYPE_IMAGE_PANE, GtkuImagePanePrivate))
@@ -168,6 +168,8 @@ void gtku_image_pane_set_buffer (GtkuImagePane * self, GdkPixbuf * pixbuf)
     if (priv->pixMap == NULL)
         return; // Nothing to do
 
+    gdk_threads_enter();
+
     gdk_draw_pixbuf(drawable,
                     NULL, // graphics context, for clipping?
                     priv->pixBuf,
@@ -183,6 +185,8 @@ void gtku_image_pane_set_buffer (GtkuImagePane * self, GdkPixbuf * pixbuf)
 
     if (oldpb)
         g_object_unref(oldpb);
+    gdk_threads_leave();
+
 }
 
 int gtku_image_pane_get_width (GtkuImagePane * imgPane)

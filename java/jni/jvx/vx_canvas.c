@@ -1,7 +1,7 @@
 #include "vx_canvas.h"
 
 #include <stdlib.h>
-#include "gtkimagepane.h"
+#include "gtkuimagepane.h"
 #include "GL/gl.h"
 
 struct vx_canvas
@@ -53,13 +53,7 @@ void* vx_canvas_run(void * arg)
 
 
         // pixbuf is now managed by image pane
-        // XXX Thread safety not ensured here?
-        // Bug: [xcb] Most likely this is a multi-threaded client and XInitThreads has not been called
-
-
-        gdk_threads_enter();
         gtku_image_pane_set_buffer(vc->imagePane, pixbuf);
-        gdk_threads_leave();
     }
     pthread_exit(NULL);
 }
