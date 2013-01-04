@@ -18,7 +18,7 @@ CCFLAGS = -std=gnu99 -fno-stack-protector -fPIC  -D_REENTRANT -D_FILE_OFFSET_BIT
 LIB_GTK=libvxgtk.$(STATIC_EXT)
 DESTLIB_GTK=../../../lib/$(LIB_GTK)
 
-LIBVX_GTK_OBJS = vx_canvas.o
+LIBVX_GTK_OBJS = gtkimagepane.o vx_canvas.o
 
 all: $(DESTLIB_GTK)
 
