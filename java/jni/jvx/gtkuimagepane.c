@@ -39,6 +39,8 @@ gtku_image_pane_init (GtkuImagePane *self)
     priv->height = 0;
     priv->pixMap = NULL;
     priv->pixBuf = NULL;
+
+    gtk_widget_add_events(GTK_WIDGET(self), GDK_ALL_EVENTS_MASK);
 }
 
 

@@ -15,11 +15,25 @@ struct vx_canvas
 
 void* vx_canvas_run(void *arg); // forward ref
 
+
+static gboolean
+on_key (GtkWidget *widget, GdkEventKey *event, gpointer release)
+{
+    printf("Canvas Key was %s\n",event->string);
+
+    return TRUE;
+}
+
 vx_canvas_t * vx_canvas_create(vx_local_renderer_t * lrend)
 {
     vx_canvas_t * vc = calloc(1, sizeof(vx_canvas_t));
     vc->imagePane = GTKU_IMAGE_PANE(gtku_image_pane_new());
     vc->lrend = lrend;
+
+    // Connect signals:
+    g_signal_connect (G_OBJECT (vc->imagePane), "key_press_event", G_CALLBACK (on_key), NULL);
+    g_signal_connect (G_OBJECT (vc->imagePane), "key_release_event", G_CALLBACK (on_key), (gpointer)1);
+
 
     vc->target_frame_rate = 5;
     pthread_create(&vc->thread, NULL, vx_canvas_run, vc);
