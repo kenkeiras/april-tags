@@ -11,12 +11,17 @@ public class VxWorld
     // and makes it easy for a VxLayer to specify which world to render.
     final int worldID = worldNextID.getAndIncrement();
 
-    VxRenderer vxrend;
+    ArrayList<VxRenderer> listeners = new ArrayList();
     HashMap<String, Buffer> bufferMap = new HashMap();
 
-    public VxWorld(VxRenderer _vxrend)
+    public VxWorld(VxRenderer ... vxrends)
     {
-        vxrend = _vxrend;
+        listeners.addAll(Arrays.asList(vxrends));
+    }
+
+    public void addListeners(VxRenderer ... vxrends)
+    {
+        listeners.addAll(Arrays.asList(vxrends));
     }
 
     public synchronized Buffer getBuffer(String name)
@@ -73,10 +78,12 @@ public class VxWorld
                 vxo.appendTo(resources, codes, ms);
             }
 
-            // Use the managed path for updating the resources
-            vxrend.update_resources_managed(worldID, name, resources);
-            // Codes can go straight to the renderer
-            vxrend.update_buffer(worldID, name, drawOrder, codes);
+            for (VxRenderer vxrend : listeners) {
+                // Use the managed path for updating the resources
+                vxrend.update_resources_managed(worldID, name, resources);
+                // Codes can go straight to the renderer
+                vxrend.update_buffer(worldID, name, drawOrder, codes);
+            }
         }
     }
 

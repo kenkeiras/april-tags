@@ -27,27 +27,32 @@ public class VxTest
         GetOpt opts  = new GetOpt();
 
         opts.addBoolean('h',"help",false,"See this help screen");
-        opts.addString('u',"url","java://?width=480&height=480","Which VxRenderer to use");
+        opts.addString('u',"url","java://?width=480&height=480","Which VxRenderer to use (Can specify multiple!)");
         opts.addString('i',"img-path","/home/jhstrom/Desktop/BlockM.png","Which image to display as a texture?");
 
-        if (!opts.parse(args) || opts.getBoolean("help") || opts.getExtraArgs().size() > 0) {
+        if (!opts.parse(args) || opts.getBoolean("help") ) {
             opts.doHelp();
             return;
         }
 
+        ArrayList<VxRenderer> renderers = new ArrayList();
+        VxRenderer vxr = VxRenderer.make(opts.getString("url"));
+        renderers.add(vxr);
+        for (String arg : opts.getExtraArgs()) {
+            try {
+                renderers.add(vxr);
+            } catch (IllegalArgumentException e){}
+        }
 
-        VxRenderer vxr = VxRenderer.make(opts.getString("url"));//width,height);
+        VxWorld vw = new VxWorld(renderers.toArray(new VxRenderer[0]));
 
 
-        VxWorld vw = new VxWorld(vxr);
-        VxLayer vl = new VxLayer(vxr, vw);
+        VxLayer vl = new VxLayer(vw);
         vl.set_viewport(new float[]{0,0,.5f,.5f});
         vl.cameraManager.uiLookAt(new double[]{0,0,10}, new double[3], new double[]{0,1,0}, true);
 
         ArrayList<VxVertexAttrib> point_attribs = new ArrayList();
         {
-
-
             // bottom right
             point_attribs.add(new VxVertexAttrib(new float[]{1.0f, 1.0f,
                                                              0.0f, 1.0f,
@@ -62,7 +67,6 @@ public class VxTest
                                                              -1.0f, 1.0f},
                                                  2));
 
-
             // top left
             point_attribs.add(new VxVertexAttrib(new float[]{0.0f, 0.0f,
                                                              -1.0f, 0.0f,
@@ -70,15 +74,12 @@ public class VxTest
                                                              0.0f, -1.0f},
                                                  2));
 
-
-
             // top right
             point_attribs.add(new VxVertexAttrib(new float[]{ 0.0f, -1.0f,
                                                               1.0f, -1.0f,
                                                               1.0f, 0.0f,
                                                               0.0f, 0.0f},
                                                  2));
-
         }
 
         ArrayList<VxVertexAttrib> color_attribs = new ArrayList();
@@ -101,7 +102,6 @@ public class VxTest
                                                               0.0f, 1.0f, 1.0f,
                                                               1.0f, 1.0f, 1.0f},
                                                  3));
-
 
             color_attribs.add(new VxVertexAttrib(new float []{0.0f, 1.0f, 0.7f,
                                                               0.0f, 1.0f, 1.0f,
@@ -140,8 +140,6 @@ public class VxTest
         }
 
         for (int i = 0; i < 4; i+=2) {
-
-
             VxProgram vp = VxProgram.make("multi-colored");//new VxProgram(vertRx,fragRx);
             vp.setVertexAttrib("position", point_attribs.get(i));
 
@@ -164,11 +162,6 @@ public class VxTest
             progs2.add(vp);
         }
 
-
-        // DEbug:
-        // progs2.clear();
-        // progs1.clear();
-
         if (true) {
             ArrayList<double[]> pts = new ArrayList();
 
@@ -181,29 +174,25 @@ public class VxTest
             VxVertexAttrib points = new VxVertexAttrib(pts);
             VxPoints vpts = new VxPoints(points, java.awt.Color.red);
 
-            // progs2.add(vpts);
-
-            // XXX This breaks totally
             vw.getBuffer("points").addBack(vpts);
             vw.getBuffer("points").setDrawOrder(10);
             vw.getBuffer("points").swap();
         }
 
+        for (VxRenderer rend : renderers) {
+            if (rend instanceof VxLocalRenderer) {
+                JFrame jf = new JFrame();
 
 
+                int canvas_size[] = rend.get_canvas_size();
+                int width = canvas_size[0], height = canvas_size[1];
 
-        if (vxr instanceof VxLocalRenderer) {
-            JFrame jf = new JFrame();
-
-
-            int canvas_size[] = vxr.get_canvas_size();
-            int width = canvas_size[0], height = canvas_size[1];
-
-            VxCanvas vc = new VxCanvas(((VxLocalRenderer)vxr), vl);
-            jf.add(vc);
-            jf.setSize(width,height+22);
-            jf.setVisible(true);
-            jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+                VxCanvas vc = new VxCanvas(((VxLocalRenderer)rend), vl);
+                jf.add(vc);
+                jf.setSize(width,height+22);
+                jf.setVisible(true);
+                jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            }
         }
 
         vw.getBuffer("first-buffer").setDrawOrder(-4);

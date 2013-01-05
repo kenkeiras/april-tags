@@ -17,7 +17,6 @@ public class VxLayer
     static AtomicInteger layerNextID = new AtomicInteger(1);
 
     VxWorld vw;
-    VxRenderer rend;
 
     // Managers. Note that they only work when connected to a local rendering context. (VxCanvas will poll)
     VxCameraManager cameraManager = new DefaultCameraManager();
@@ -32,10 +31,9 @@ public class VxLayer
     // by default we use the entire screen;
     private float viewport_rel[] = {0.0f,0.0f,1.0f,1.0f};
 
-    public VxLayer(VxRenderer _rend, VxWorld _vw)
+    public VxLayer(VxWorld _vw)
     {
         vw = _vw;
-        rend = _rend;
 
         eventHandlers.add(new DefaultEventHandler());
 
@@ -62,7 +60,8 @@ public class VxLayer
 
         // Don't use code stream, since it's relatively short, and since we need the meta data about viewport size
         // to know about event handling on server side
-        rend.update_layer(layerID, vw.worldID, drawOrder, viewport_rel);
+        for (VxRenderer rend : vw.listeners)
+            rend.update_layer(layerID, vw.worldID, drawOrder, viewport_rel);
     }
 
 }
