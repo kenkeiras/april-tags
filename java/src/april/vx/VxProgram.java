@@ -17,6 +17,9 @@ public class VxProgram implements VxObject
     final HashMap<String, VxTexture> textureMap = new HashMap();
 
     VxIndexData vxid = null;
+
+    float size = 1.0f;
+
     int vxid_count = -1;
     int vxid_type; // VX_POINTS, VX_TRIANGLES, etc
 
@@ -148,6 +151,9 @@ public class VxProgram implements VxObject
 
             resources.add(new VxResource(Vx.GL_UNSIGNED_BYTE, vtex.bbuf, vtex.bbuf.length, 1, vtex.id));
         }
+
+        codes.writeInt(Vx.OP_LINE_WIDTH);
+        codes.writeFloat(size);
 
         if (vxid != null) {
             codes.writeInt(Vx.OP_ELEMENT_ARRAY);

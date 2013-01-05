@@ -14,6 +14,7 @@
 #define OP_VALIDATE_PROGRAM   11
 #define OP_DRAW_ARRAY         12
 #define OP_UNIFORM_VECTOR_FV  13
+#define OP_LINE_WIDTH  14
 
 #define VX_FLOAT_ARRAY  0
 #define VX_BYTE_ARRAY   1

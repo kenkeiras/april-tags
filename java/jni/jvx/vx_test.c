@@ -157,12 +157,12 @@ int main(int argc, char ** args)
     vx_buffer_set_draw_order(vx_world_get_buffer(world, "points"), 10);
     vx_buffer_stage(vx_world_get_buffer(world, "points"),
                     /* vx_points_single_color4(vx_resc_copyf(rand_points, nrp*3), red, nrp)); */
-                    vxp_multi_colored(nrp, vx_resc_copyf(rand_points, nrp*3), vx_resc_copyf(rand_colors, nrp*3), 1.0, GL_POINTS));
+                    vxp_multi_colored(nrp, vx_resc_copyf(rand_points, nrp*3), vx_resc_copyf(rand_colors, nrp*3), 6.0, GL_POINTS));
     vx_buffer_commit(vx_world_get_buffer(world, "points"));
 
     vx_buffer_set_draw_order(vx_world_get_buffer(world, "lines"), 8);
     vx_buffer_stage(vx_world_get_buffer(world, "lines"),
-                    vxp_single_color(nrp, vx_resc_copyf(rand_points, nrp*3), red, 1.0, GL_LINES));
+                    vxp_single_color(nrp, vx_resc_copyf(rand_points, nrp*3), red, 3.0, GL_LINES));
                     /* vx_lines_single_color4(vx_resc_copyf(rand_points, nrp*3), red, nrp)); */
     vx_buffer_commit(vx_world_get_buffer(world, "lines"));
 

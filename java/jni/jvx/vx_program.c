@@ -22,6 +22,8 @@ struct vx_program_state
     //Textures
     vhash_t * texMap; // <char*, _texinfo_t>
 
+    float size;
+
     int draw_type;
     int draw_count; // if draw_array
     vx_resc_t * indices; // if element_array
@@ -117,6 +119,7 @@ static vx_program_state_t * vx_program_state_create()
     state->uniform4fvMap = vhash_create(vhash_str_hash, vhash_str_equals);
     state->texMap = vhash_create(vhash_str_hash, vhash_str_equals);
 
+    state->size = 1.0f;
     state->draw_type = -1;
     state->draw_count = -1;
     state->indices = NULL;
@@ -261,6 +264,10 @@ static void vx_program_append(vx_object_t * obj, lphash_t * resources, vx_code_o
         }
     }
 
+    {
+        codes->write_uint32(codes, OP_LINE_WIDTH);
+        codes->write_float(codes, state->size);
+    }
 
     // bind drawing instructions
     if (state->indices != NULL) {
@@ -366,4 +373,9 @@ void vx_program_set_texture(vx_program_t * program, char * name, vx_resc_t * vr,
     _vertex_attrib_t * old_value = NULL;
     vhash_put(program->state->texMap, tinfo->name, tinfo, old_key, old_value);
     assert(old_key == NULL); // For now, don't support over writing existing values
+}
+
+void vx_program_set_line_width(vx_program_t * program, float size)
+{
+    program->state->size = size;
 }

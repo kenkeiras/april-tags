@@ -748,6 +748,16 @@ int render_program(vx_local_state_t * state, vx_layer_info_t *layer, vx_code_inp
     if (validateProgram)
         validate_program(prog_id, "Post-binding");
 
+    uint32_t lineWdOp = codes->read_uint32(codes);
+    assert(lineWdOp == OP_LINE_WIDTH);
+    {
+        float size = codes->read_float(codes);
+        glLineWidth(size);
+        glEnable(GL_PROGRAM_POINT_SIZE);
+        int unifPtSz = glGetUniformLocation(prog_id, "pointSize");
+        glUniform1f(unifPtSz, size); // Attempt to set the point size, harmless? if pointSize is not in program
+    }
+
     // Step 5: Rendering
     uint32_t arrayOp = codes->read_uint32(codes);
     assert(arrayOp == OP_ELEMENT_ARRAY ||  arrayOp == OP_DRAW_ARRAY);
