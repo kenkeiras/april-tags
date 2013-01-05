@@ -59,6 +59,34 @@ static void removeAll(lphash_t * A, lphash_t  * B)
     }
 }
 
+
+// Add all elements in B to A
+static void addAll(lphash_t * A, lphash_t  * B)
+{
+    lphash_iterator_t itr;
+    lphash_iterator_init(B, &itr);
+    uint64_t id = -1;
+    void * value;
+    while(lphash_iterator_next(&itr, &id, &value)) {
+        if (!lphash_contains(A, id))
+            lphash_put(A, id, value, NULL);
+    }
+}
+
+static void lphash_print(lphash_t * hash)
+{
+    lphash_iterator_t itr;
+    lphash_iterator_init(hash, &itr);
+    uint64_t key = -1;
+    void * value = NULL;
+    printf("[");
+    while(lphash_iterator_next(&itr, &key, &value)) {
+        printf("%ld,",key);
+    }
+    printf("]");
+}
+
+
 void vx_resc_mgr_update_resources_managed(vx_resc_mgr_t * mgr, int worldID,
                                           char * buffer_name, lphash_t * resources)
 {
@@ -68,9 +96,18 @@ void vx_resc_mgr_update_resources_managed(vx_resc_mgr_t * mgr, int worldID,
     resources = lphash_copy(resources);
     buffer_name = strdup(buffer_name); // freed with free(prev_name);
 
+    if (verbose) {
+        printf("Existing resources: "); lphash_print(mgr->remoteResc); printf("\n");
+    }
+
+
     // Step 1: Send only the resources not already sent before:
     lphash_t * send = lphash_copy(resources);
+    if (verbose) {
+        printf("Sending resources: "); lphash_print(send); printf("\n");
+    }
     removeAll(send, mgr->remoteResc);
+    addAll(mgr->remoteResc, send);
     mgr->rend->add_resources_direct(mgr->rend,send);
     lphash_destroy(send);
 
