@@ -64,15 +64,16 @@ vx_program_t * make_square()
     uint32_t idxs_tri[] = {0,1,2,
                            2,3,0};
 
-    vx_program_t * program = vx_program_create(vx_resc_load("../../shaders/multi-colored.vert"),
-                                               vx_resc_load("../../shaders/multi-colored.frag"));
+    /* vx_program_t * program = vx_program_create(vx_resc_load("../../shaders/multi-colored.vert"), */
+    /*                                            vx_resc_load("../../shaders/multi-colored.frag")); */
 
-    vx_program_set_vertex_attrib(program, "position", vx_resc_copyf(data1, npoints*2), 2);
-    vx_program_set_vertex_attrib(program, "color", vx_resc_copyf(colors1, npoints*3), 3);
-    /* vx_program_set_uniform4fv(program,"color", colors1); // just use the first one */
-    /* vx_program_set_draw_array(program, 6, GL_TRIANGLES); */
-    vx_program_set_element_array(program, vx_resc_copyui(idxs_tri, nidxs), GL_TRIANGLES);
-    return program;
+    /* vx_program_set_vertex_attrib(program, "position", , 2); */
+    /* vx_program_set_vertex_attrib(program, "color", , 3); */
+    /* /\* vx_program_set_uniform4fv(program,"color", colors1); // just use the first one *\/ */
+    /* /\* vx_program_set_draw_array(program, 6, GL_TRIANGLES); *\/ */
+    /* vx_program_set_element_array(program, vx_resc_copyui(idxs_tri, nidxs), GL_TRIANGLES); */
+
+    return vxp_multi_colored_indexed(vx_resc_copyui(idxs_tri, nidxs), vx_resc_copyf(data1, npoints*2), vx_resc_copyf(colors1, npoints*3), 1.0, GL_TRIANGLES);
 }
 
 static vx_program_t * make_tex(image_u8_t * img)
@@ -100,7 +101,7 @@ static vx_program_t * make_tex(image_u8_t * img)
     vx_program_set_vertex_attrib(program, "texIn", vx_resc_copyf(texcoords, npoints*2), 2);
     vx_program_set_texture(program, "texture", vx_resc_copyub(img->buf, img->width*img->height*3),  img->width, img->height, GL_RGB);
     vx_program_set_element_array(program, vx_resc_copyui(idxs_tri, nidxs), GL_TRIANGLES);
-    return program;
+    return program->super;
 }
 
 static double runif()
@@ -119,6 +120,7 @@ int main(int argc, char ** args)
     assert(img);
 
     vx_local_initialize();
+    vx_program_library_init();
 
     int width = 640, height = 480;
     vx_local_renderer_t *lrend =vx_create_local_renderer(width, height);
@@ -128,15 +130,14 @@ int main(int argc, char ** args)
     vx_world_t * world = vx_world_create(rend);
     vx_layer_t * layer = vx_layer_create(rend, world);
 
-    vx_program_t * program = make_square();
-    vx_buffer_stage(vx_world_get_buffer(world, "foo"), program->super);
+    vx_object_t * o1 = make_square();
+    vx_buffer_stage(vx_world_get_buffer(world, "foo"), o1);
     vx_buffer_commit(vx_world_get_buffer(world, "foo"));
 
-    vx_program_t * program2 = make_tex(img);
-    vx_buffer_stage(vx_world_get_buffer(world, "img"), program2->super);
+    vx_object_t * o2 = make_tex(img);
+    vx_buffer_stage(vx_world_get_buffer(world, "img"), o2);
     vx_buffer_commit(vx_world_get_buffer(world, "img"));
 
-    vx_program_library_init();
 
     srand(9L);
     int nrp = 100;
@@ -156,14 +157,12 @@ int main(int argc, char ** args)
 
     vx_buffer_set_draw_order(vx_world_get_buffer(world, "points"), 10);
     vx_buffer_stage(vx_world_get_buffer(world, "points"),
-                    /* vx_points_single_color4(vx_resc_copyf(rand_points, nrp*3), red, nrp)); */
                     vxp_multi_colored(nrp, vx_resc_copyf(rand_points, nrp*3), vx_resc_copyf(rand_colors, nrp*3), 6.0, GL_POINTS));
     vx_buffer_commit(vx_world_get_buffer(world, "points"));
 
     vx_buffer_set_draw_order(vx_world_get_buffer(world, "lines"), 8);
     vx_buffer_stage(vx_world_get_buffer(world, "lines"),
                     vxp_single_color(nrp, vx_resc_copyf(rand_points, nrp*3), red, 3.0, GL_LINES));
-                    /* vx_lines_single_color4(vx_resc_copyf(rand_points, nrp*3), red, nrp)); */
     vx_buffer_commit(vx_world_get_buffer(world, "lines"));
 
 

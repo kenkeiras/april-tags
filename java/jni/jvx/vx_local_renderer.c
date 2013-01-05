@@ -429,11 +429,12 @@ static void vx_local_add_resources_direct(vx_local_renderer_t * lrend, lphash_t 
                 }
             }
 
+            if (found == 0)
+                printf("WRN: ID collision, 0x%lx resource already exists\n", vr->id);
+
             lrend->state->dealloc_ids->remove(lrend->state->dealloc_ids, found_idx);
             assert(found <= 1);
 
-            if (found == 0)
-                printf("WRN: ID collision, 0x%lx resource already exists\n", vr->id);
 
             vx_resc_dec_destroy(old_vr);
         }
