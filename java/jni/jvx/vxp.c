@@ -90,8 +90,6 @@ vx_object_t * vxp_image(vx_resc_t * tex, int width, int height, int format)
                            2,3,0};
 
 
-    vx_program_t * program = vx_program_load_library("texture");
-
     return vxp_texture(npoints, vx_resc_copyf(data, npoints*2), vx_resc_copyf(texcoords, npoints*2),
                        tex,  width, height, format,
                        GL_TRIANGLES, vx_resc_copyui(idxs_tri, nidxs));

@@ -8,6 +8,8 @@
 #include "vx_program.h"
 #include "vx_points.h"
 #include "vx_lines.h"
+#include "vx_chain.h"
+
 #include "vxp.h"
 
 #include "vx_local_renderer.h"
@@ -42,7 +44,7 @@ finish:
     return res;
 }
 
-vx_program_t * make_square()
+vx_object_t * make_square()
 {
     const int npoints = 4;
 
@@ -63,7 +65,7 @@ vx_program_t * make_square()
     return vxp_multi_colored_indexed(npoints, vx_resc_copyf(data1, npoints*2), vx_resc_copyf(colors1, npoints*3), 1.0, GL_TRIANGLES, vx_resc_copyui(idxs_tri, nidxs));
 }
 
-static vx_program_t * make_tex(image_u8_t * img)
+static vx_object_t * make_tex(image_u8_t * img)
 {
     const int npoints = 4;
 
@@ -113,15 +115,17 @@ int main(int argc, char ** args)
     vx_layer_t * layer = vx_layer_create(rend, world);
 
     vx_object_t * o1 = make_square();
-    vx_buffer_stage(vx_world_get_buffer(world, "foo"), o1);
-    vx_buffer_commit(vx_world_get_buffer(world, "foo"));
 
     vx_object_t * o2 = make_tex(img);
-    vx_buffer_stage(vx_world_get_buffer(world, "tex"), o2);
-    vx_buffer_commit(vx_world_get_buffer(world, "tex"));
+    vx_object_t * o3 = vxp_image(vx_resc_copyub(img->buf, img->width*img->height*3),  img->width, img->height, GL_RGB);
 
-    vx_buffer_stage(vx_world_get_buffer(world, "img"), vxp_image(vx_resc_copyub(img->buf, img->width*img->height*3),  img->width, img->height, GL_RGB));
-    vx_buffer_commit(vx_world_get_buffer(world, "img"));
+    vx_object_inc_ref(o2);
+    vx_object_inc_ref(o3); // XXX debug
+
+    vx_object_t * vchain = vx_chain(o2,o3);
+    vx_chain_add(vchain, o1);
+    vx_buffer_stage(vx_world_get_buffer(world, "tex"), vchain);
+    vx_buffer_commit(vx_world_get_buffer(world, "tex"));
 
 
     srand(9L);
