@@ -81,14 +81,9 @@ static vx_program_t * make_tex(image_u8_t * img)
     uint32_t idxs_tri[] = {0,1,2,
                            2,3,0};
 
-    vx_program_t * program = vx_program_create(vx_resc_load("../../shaders/texture.vert"),
-                                               vx_resc_load("../../shaders/texture.frag"));
-
-    vx_program_set_vertex_attrib(program, "position", vx_resc_copyf(data, npoints*2), 2);
-    vx_program_set_vertex_attrib(program, "texIn", vx_resc_copyf(texcoords, npoints*2), 2);
-    vx_program_set_texture(program, "texture", vx_resc_copyub(img->buf, img->width*img->height*3),  img->width, img->height, GL_RGB);
-    vx_program_set_element_array(program, vx_resc_copyui(idxs_tri, nidxs), GL_TRIANGLES);
-    return program->super;
+    return vxp_texture(npoints, vx_resc_copyf(data, npoints*2), vx_resc_copyf(texcoords, npoints*2),
+                       vx_resc_copyub(img->buf, img->width*img->height*3),  img->width, img->height, GL_RGB,
+                       GL_TRIANGLES, vx_resc_copyui(idxs_tri, nidxs));
 }
 
 static double runif()
@@ -122,7 +117,10 @@ int main(int argc, char ** args)
     vx_buffer_commit(vx_world_get_buffer(world, "foo"));
 
     vx_object_t * o2 = make_tex(img);
-    vx_buffer_stage(vx_world_get_buffer(world, "img"), o2);
+    vx_buffer_stage(vx_world_get_buffer(world, "tex"), o2);
+    vx_buffer_commit(vx_world_get_buffer(world, "tex"));
+
+    vx_buffer_stage(vx_world_get_buffer(world, "img"), vxp_image(vx_resc_copyub(img->buf, img->width*img->height*3),  img->width, img->height, GL_RGB));
     vx_buffer_commit(vx_world_get_buffer(world, "img"));
 
 
