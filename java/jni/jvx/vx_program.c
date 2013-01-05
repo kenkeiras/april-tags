@@ -2,6 +2,7 @@
 
 #include <stdlib.h>
 #include <assert.h>
+#include <stdio.h>
 
 #include "vx_codes.h"
 #include "vhash.h"
@@ -42,6 +43,72 @@ struct _texinfo
     char * name;
     int width, height, format;
 };
+
+
+// XXX thread safety, in access, AND initialization....
+static char * shader_dir = NULL;
+static vhash_t * shader_store = NULL; // Stores _shader_pair each shader name
+
+typedef struct {
+    vx_resc_t * vert;
+    vx_resc_t * frag;
+} _shader_pair_t;
+
+void vx_program_library_init()
+{
+    assert(shader_dir == NULL && shader_store == NULL);
+
+    shader_dir = malloc(1024);
+    char * home_dir = getenv("HOME");
+    sprintf(shader_dir, "%s/april/java/shaders",home_dir);
+    shader_store = vhash_create(vhash_str_hash, vhash_str_equals);
+}
+
+static void shader_pair_destroy(_shader_pair_t * pair)
+{
+    vx_resc_dec_destroy(pair->vert);
+    vx_resc_dec_destroy(pair->frag);
+    free(pair);
+}
+
+void vx_program_library_destroy()
+{
+    assert(shader_dir != NULL && shader_store != NULL);
+    free(shader_dir);
+
+    vhash_map2(shader_store, free, shader_pair_destroy);
+    vhash_destroy(shader_store);
+}
+
+
+vx_program_t * vx_program_load_library(char * name)
+{
+    assert(shader_dir != NULL && shader_store != NULL);
+
+    _shader_pair_t * pair = vhash_get(shader_store, name);
+
+    if (pair == NULL) {
+        char frag_file[1024];
+        char vert_file[1024];
+
+        sprintf(frag_file, "%s/%s.frag", shader_dir, name);
+        sprintf(vert_file, "%s/%s.vert", shader_dir, name);
+
+        printf("Loading program from %s and %s\n", frag_file, vert_file);
+
+        pair = calloc(1, sizeof(_shader_pair_t));
+        pair->vert = vx_resc_load(vert_file);
+        pair->frag = vx_resc_load(frag_file);
+
+        vx_resc_inc_ref(pair->vert); // Manually hold onto a reference
+        vx_resc_inc_ref(pair->frag);
+
+        vhash_put(shader_store, strdup(name), pair, NULL, NULL);
+    }
+
+    return vx_program_create(pair->vert, pair->frag);
+}
+
 
 static vx_program_state_t * vx_program_state_create()
 {

@@ -6,6 +6,7 @@
 #include "vx_layer.h"
 #include "vx_world.h"
 #include "vx_program.h"
+#include "vx_points.h"
 
 #include "vx_local_renderer.h"
 #include "image_u8.h"
@@ -100,6 +101,11 @@ static vx_program_t * make_tex(image_u8_t * img)
     return program;
 }
 
+static double runif()
+{
+    return (double)rand() / (double)RAND_MAX;
+}
+
 // C version of the test code
 int main(int argc, char ** args)
 {
@@ -120,7 +126,6 @@ int main(int argc, char ** args)
     vx_world_t * world = vx_world_create(rend);
     vx_layer_t * layer = vx_layer_create(rend, world);
 
-
     vx_program_t * program = make_square();
     vx_buffer_stage(vx_world_get_buffer(world, "foo"), program->super);
     vx_buffer_commit(vx_world_get_buffer(world, "foo"));
@@ -129,6 +134,28 @@ int main(int argc, char ** args)
     vx_buffer_stage(vx_world_get_buffer(world, "img"), program2->super);
     vx_buffer_commit(vx_world_get_buffer(world, "img"));
 
+    vx_program_library_init();
+
+    srand(9L);
+    int nrp = 100;
+    float red[] = {1.0,0.0,0.0,1.0};
+    float rand_points[3*nrp];
+    float rand_colors[3*nrp];
+    for (int i = 0; i < nrp; i++) {
+        rand_points[3*i + 0] = 2*runif() - 1;
+        rand_points[3*i + 1] = 2*runif() - 1;
+        rand_points[3*i + 2] = 2*runif() - 1;
+
+        rand_colors[3*i + 0] = runif();
+        rand_colors[3*i + 1] = runif();
+        rand_colors[3*i + 2] = runif();
+
+    }
+
+    vx_buffer_stage(vx_world_get_buffer(world, "points"),
+                    /* vx_points_single_color4(vx_resc_copyf(rand_points, nrp*3), red, nrp)); */
+                    vx_points_multi_colored(vx_resc_copyf(rand_points, nrp*3), vx_resc_copyf(rand_colors, nrp*3), nrp));
+    vx_buffer_commit(vx_world_get_buffer(world, "points"));
 
 
     g_thread_init (NULL);

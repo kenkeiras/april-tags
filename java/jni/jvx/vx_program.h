@@ -14,6 +14,11 @@ struct vx_program
     vx_program_state_t *state;
 };
 
+// You must call library_init before the load_library call
+void vx_program_library_init();
+void vx_program_library_destroy();
+
+vx_program_t * vx_program_load_library(char * name);
 
 vx_program_t * vx_program_create(vx_resc_t * vert_src, vx_resc_t * frag_src);
 //XXX use vx_object_dec_destroy() to destroy?
