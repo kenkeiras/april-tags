@@ -14,11 +14,13 @@ struct vx_chain
 
 static void vx_chain_append (vx_object_t * obj, lphash_t * resources, vx_code_output_stream_t * codes, vx_matrix_stack_t * ms)
 {
+    vx_matrix_stack_push(ms);
     vx_chain_t *vc = (vx_chain_t *) obj->impl;
     for (int i = 0; i < varray_size(vc->objs); i++) {
         vx_object_t * vo = varray_get(vc->objs, i);
         vo->append(vo, resources, codes, ms);
     }
+    vx_matrix_stack_pop(ms);
 }
 
 static void vx_chain_destroy(vx_object_t * vo)

@@ -11,7 +11,8 @@ ifeq "$(shell uname)" "Linux"
 
 CC = gcc
 # XXX Need add optimization back in!!
-CCFLAGS = -std=gnu99 -fno-stack-protector -fPIC  -D_REENTRANT -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -Wno-unused-parameter -Wno-format-zero-length -Wall -Werror=implicit-function-declaration -g
+# XXX Currently disabled int-to-pointer-cast warnings, probably need to address those issues later
+CCFLAGS = -std=gnu99 -fno-stack-protector -fPIC  -D_REENTRANT -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -Wno-unused-parameter -Wno-format-zero-length -Wall -Werror=implicit-function-declaration -Wno-int-to-pointer-cast -g -fstrict-aliasing  -Wstrict-aliasing=3 -Werror=strict-aliasing -Werror
 
 JNI_INCLUDES = -I/usr/lib/jvm/java-6-sun/include/ -I/usr/lib/jvm/java-6-sun/include/linux -I/usr/lib/jvm/java-6-openjdk/include/ -I/usr/lib/jvm/java-7-openjdk-amd64/include/
 
@@ -58,7 +59,7 @@ $(DESTLIB_JNI) : $(LIB_JNI)
 	cp $(LIB_JNI) $(DESTLIB_JNI)
 
 
-LIBVX_USER_OBJS = vx_world.o vx_layer.o vx_util.o vx_program.o vx_matrix_stack.o vxp.o vx_chain.o
+LIBVX_USER_OBJS = vx_world.o vx_layer.o vx_util.o vx_program.o vx_matrix_stack.o vxp.o vx_chain.o vx_mat.o
 
 LIBVX_OBJS += vx_renderer.o vx_local_renderer.o glcontext.o  lphash.o vx_code_input_stream.o vx_code_output_stream.o vx_resc_mgr.o vx_resc.o vhash.o lihash.o larray.o varray.o sort_util.o $(LIBVX_USER_OBJS)
 

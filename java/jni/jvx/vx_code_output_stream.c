@@ -36,8 +36,10 @@ static void _write_uint64(vx_code_output_stream_t * codes, uint64_t val)
 
 static void _write_float(vx_code_output_stream_t * codes, float val)
 {
+
+    int *p = (int *)(&val);
     // convert float bits to integer bits
-    codes->write_uint32(codes, *((int *)(&val)));
+    codes->write_uint32(codes, *p);
 }
 
 static void _write_str (vx_code_output_stream_t * codes, char *  str)

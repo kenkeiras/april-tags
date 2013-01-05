@@ -52,9 +52,6 @@ gtku_image_pane_new ()
 static void
 gtku_image_pane_realize (GtkWidget * widget)
 {
-    GtkuImagePane * self = GTKU_IMAGE_PANE (widget);
-    GtkuImagePanePrivate * priv = GTKU_IMAGE_PANE_GET_PRIVATE (self);
-
     /* chain up */
     GTK_WIDGET_CLASS (gtku_image_pane_parent_class)->realize (widget);
 }
@@ -62,9 +59,6 @@ gtku_image_pane_realize (GtkWidget * widget)
 static void
 gtku_image_pane_unrealize (GtkWidget * widget)
 {
-    GtkuImagePane * self = GTKU_IMAGE_PANE (widget);
-    GtkuImagePanePrivate * priv = GTKU_IMAGE_PANE_GET_PRIVATE (self);
-
     /* chain up */
     GTK_WIDGET_CLASS (gtku_image_pane_parent_class)->unrealize (widget);
 }
