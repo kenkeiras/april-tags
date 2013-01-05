@@ -29,7 +29,33 @@ static vx_object_t * vx_mat_create()
     return vo;
 }
 
-vx_object_t * vx_mat_translate(double x, double y, double z)
+
+vx_object_t * vx_mat_scale1(double s)
+{
+    return vx_mat_scale3(s,s,s);
+}
+
+vx_object_t * vx_mat_scale2(double sx, double sy)
+{
+    return vx_mat_scale3(sx,sy,1.0);
+}
+
+vx_object_t * vx_mat_scale3(double sx, double sy, double sz)
+{
+    vx_object_t * obj = vx_mat_create();
+    double * mat44 = obj->impl;
+    mat44[0*4 + 0] = sx;
+    mat44[1*4 + 1] = sy;
+    mat44[2*4 + 2] = sz;
+    return obj;
+}
+
+vx_object_t * vx_mat_translate2(double x, double y)
+{
+    return vx_mat_translate3(x,y,0);
+}
+
+vx_object_t * vx_mat_translate3(double x, double y, double z)
 {
     vx_object_t * obj = vx_mat_create();
     double * mat44 = obj->impl;

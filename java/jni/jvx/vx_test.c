@@ -9,6 +9,7 @@
 #include "vx_points.h"
 #include "vx_lines.h"
 #include "vx_chain.h"
+#include "vx_mat.h"
 
 #include "vxp.h"
 
@@ -119,11 +120,8 @@ int main(int argc, char ** args)
     vx_object_t * o2 = make_tex(img);
     vx_object_t * o3 = vxp_image(vx_resc_copyub(img->buf, img->width*img->height*3),  img->width, img->height, GL_RGB);
 
-    vx_object_inc_ref(o2);
-    vx_object_inc_ref(o3); // XXX debug
-
-    vx_object_t * vchain = vx_chain(o2,o3);
-    vx_chain_add(vchain, o1);
+    vx_object_t * vchain = vx_chain(o2, o1);
+    vx_chain_add(vchain, vx_mat_translate3(.5, .5, .5), vx_mat_scale1(.5/img->width),  o3);
     vx_buffer_stage(vx_world_get_buffer(world, "tex"), vchain);
     vx_buffer_commit(vx_world_get_buffer(world, "tex"));
 
