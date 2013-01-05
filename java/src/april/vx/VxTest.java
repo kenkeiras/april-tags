@@ -184,9 +184,9 @@ public class VxTest
             // progs2.add(vpts);
 
             // XXX This breaks totally
-            vw.getBuffer("points").stage(vpts);
+            vw.getBuffer("points").addBack(vpts);
             vw.getBuffer("points").setDrawOrder(10);
-            vw.getBuffer("points").commit();
+            vw.getBuffer("points").swap();
         }
 
 
@@ -216,22 +216,22 @@ public class VxTest
             switch(type) {
                 case 0:
                     for (VxObject vp : progs1)
-                        vw.getBuffer("first-buffer").stage(vp);
+                        vw.getBuffer("first-buffer").addBack(vp);
                     break;
                 case 1:
                 case 3:
                     for (VxObject vp : progs2)
-                        vw.getBuffer("second-buffer").stage(vp);
+                        vw.getBuffer("second-buffer").addBack(vp);
                     for (VxObject vp : progs1)
-                        vw.getBuffer("first-buffer").stage(vp);
+                        vw.getBuffer("first-buffer").addBack(vp);
                     break;
                 case 2:
                     for (VxObject vp : progs2)
-                        vw.getBuffer("second-buffer").stage(vp);
+                        vw.getBuffer("second-buffer").addBack(vp);
                     break;
             }
-            vw.getBuffer("first-buffer").commit();
-            vw.getBuffer("second-buffer").commit();
+            vw.getBuffer("first-buffer").swap();
+            vw.getBuffer("second-buffer").swap();
 
             TimeUtil.sleep(500);
         }

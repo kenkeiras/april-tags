@@ -79,13 +79,13 @@ void vx_buffer_set_draw_order(vx_buffer_t * buffer, int draw_order)
     buffer->draw_order = draw_order;
 }
 
-void vx_buffer_stage(vx_buffer_t * buffer, vx_object_t * obj)
+void vx_buffer_add_back(vx_buffer_t * buffer, vx_object_t * obj)
 {
     varray_add(buffer->objs, obj);
     vx_object_inc_ref(obj);
 }
 
-void vx_buffer_commit(vx_buffer_t * buffer)
+void vx_buffer_swap(vx_buffer_t * buffer)
 {
     varray_t * cobjs = buffer->objs;
     buffer->objs = varray_create();

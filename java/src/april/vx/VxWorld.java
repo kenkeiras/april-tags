@@ -38,7 +38,7 @@ public class VxWorld
         String name;
         int drawOrder = 0;
 
-        public synchronized void stage(VxObject ... vxp)
+        public synchronized void addBack(VxObject ... vxp)
         {
             for (VxObject o :  vxp)
                 objs.add(o);
@@ -54,7 +54,7 @@ public class VxWorld
             this.drawOrder = drawOrder;
         }
 
-        public void commit()
+        public void swap()
         {
             ArrayList<VxObject> cobjs = null;
             synchronized(this)

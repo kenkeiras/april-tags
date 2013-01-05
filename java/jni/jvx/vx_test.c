@@ -122,8 +122,8 @@ int main(int argc, char ** args)
 
     vx_object_t * vchain = vx_chain(o2, o1);
     vx_chain_add(vchain, vx_mat_translate3(.5, .5, .5), vx_mat_scale1(.5/img->width),  o3);
-    vx_buffer_stage(vx_world_get_buffer(world, "tex"), vchain);
-    vx_buffer_commit(vx_world_get_buffer(world, "tex"));
+    vx_buffer_add_back(vx_world_get_buffer(world, "tex"), vchain);
+    vx_buffer_swap(vx_world_get_buffer(world, "tex"));
 
 
     srand(9L);
@@ -143,14 +143,14 @@ int main(int argc, char ** args)
     }
 
     vx_buffer_set_draw_order(vx_world_get_buffer(world, "points"), 10);
-    vx_buffer_stage(vx_world_get_buffer(world, "points"),
+    vx_buffer_add_back(vx_world_get_buffer(world, "points"),
                     vxp_multi_colored(nrp, vx_resc_copyf(rand_points, nrp*3), vx_resc_copyf(rand_colors, nrp*3), 6.0, GL_POINTS));
-    vx_buffer_commit(vx_world_get_buffer(world, "points"));
+    vx_buffer_swap(vx_world_get_buffer(world, "points"));
 
     vx_buffer_set_draw_order(vx_world_get_buffer(world, "lines"), 8);
-    vx_buffer_stage(vx_world_get_buffer(world, "lines"),
+    vx_buffer_add_back(vx_world_get_buffer(world, "lines"),
                     vxp_single_color(nrp, vx_resc_copyf(rand_points, nrp*3), red, 3.0, GL_LINES));
-    vx_buffer_commit(vx_world_get_buffer(world, "lines"));
+    vx_buffer_swap(vx_world_get_buffer(world, "lines"));
 
 
     g_thread_init (NULL);
