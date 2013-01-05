@@ -152,6 +152,7 @@ int main(int argc, char ** args)
 
     }
 
+    vx_buffer_set_draw_order(vx_world_get_buffer(world, "points"), 10);
     vx_buffer_stage(vx_world_get_buffer(world, "points"),
                     /* vx_points_single_color4(vx_resc_copyf(rand_points, nrp*3), red, nrp)); */
                     vx_points_multi_colored(vx_resc_copyf(rand_points, nrp*3), vx_resc_copyf(rand_colors, nrp*3), nrp));

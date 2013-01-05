@@ -74,6 +74,10 @@ vx_buffer_t * vx_world_get_buffer(vx_world_t * world, char * name)
     return buffer;
 }
 
+void vx_buffer_set_draw_order(vx_buffer_t * buffer, int draw_order)
+{
+    buffer->draw_order = draw_order;
+}
 
 void vx_buffer_stage(vx_buffer_t * buffer, vx_object_t * obj)
 {
