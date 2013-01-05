@@ -133,7 +133,7 @@ public class VxTCPServer extends Thread
 
                     int len = ins.readInt();
                     byte buf[] = new byte[len];
-                    ins.read(buf);
+                    ins.readFully(buf);
 
                     VxCodeInputStream cins = new VxCodeInputStream(buf);
                     switch(code) {
