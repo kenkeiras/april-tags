@@ -2,17 +2,6 @@
 #include "GL/gl.h"
 #include "vx_program.h"
 
-struct {
-    vx_resc_t * points;
-    int dim;
-
-    float size;
-    float color[4];
-
-    vx_resc_t * colors;
-
-} vx_points_t;
-
 vx_object_t * vx_points_single_color4(vx_resc_t * points, float * color4, int npoints)
 {
     int pdim = points->count / npoints;

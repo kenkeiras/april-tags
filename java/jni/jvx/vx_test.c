@@ -7,6 +7,8 @@
 #include "vx_world.h"
 #include "vx_program.h"
 #include "vx_points.h"
+#include "vx_lines.h"
+#include "vxp.h"
 
 #include "vx_local_renderer.h"
 #include "image_u8.h"
@@ -155,8 +157,14 @@ int main(int argc, char ** args)
     vx_buffer_set_draw_order(vx_world_get_buffer(world, "points"), 10);
     vx_buffer_stage(vx_world_get_buffer(world, "points"),
                     /* vx_points_single_color4(vx_resc_copyf(rand_points, nrp*3), red, nrp)); */
-                    vx_points_multi_colored(vx_resc_copyf(rand_points, nrp*3), vx_resc_copyf(rand_colors, nrp*3), nrp));
+                    vxp_multi_colored(nrp, vx_resc_copyf(rand_points, nrp*3), vx_resc_copyf(rand_colors, nrp*3), 1.0, GL_POINTS));
     vx_buffer_commit(vx_world_get_buffer(world, "points"));
+
+    vx_buffer_set_draw_order(vx_world_get_buffer(world, "lines"), 8);
+    vx_buffer_stage(vx_world_get_buffer(world, "lines"),
+                    vxp_single_color(nrp, vx_resc_copyf(rand_points, nrp*3), red, 1.0, GL_LINES));
+                    /* vx_lines_single_color4(vx_resc_copyf(rand_points, nrp*3), red, nrp)); */
+    vx_buffer_commit(vx_world_get_buffer(world, "lines"));
 
 
     g_thread_init (NULL);
@@ -169,6 +177,7 @@ int main(int argc, char ** args)
 
     GtkWidget * window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
     GtkWidget * canvas = vx_canvas_get_gtk_widget(vc);
+    gtk_window_set_default_size (GTK_WINDOW (window), 400, 400);
     gtk_container_add(GTK_CONTAINER(window), canvas);
     gtk_widget_show (window);
     gtk_widget_show (canvas); // XXX Show all causes errors!
