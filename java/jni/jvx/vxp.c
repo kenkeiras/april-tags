@@ -1,5 +1,6 @@
 #include "vxp.h"
 #include "vx_program.h"
+#include <stdio.h>
 
 vx_object_t * vxp_single_color(int npoints, vx_resc_t * points, float * color4, float pt_size, int type)
 {
@@ -27,9 +28,8 @@ vx_object_t * vxp_multi_colored(int npoints, vx_resc_t * points, vx_resc_t * col
 }
 
 
-vx_object_t * vxp_single_color_indexed(vx_resc_t * indices, vx_resc_t * points, float * color4, float pt_size, int type)
+vx_object_t * vxp_single_color_indexed(int npoints, vx_resc_t * points, float * color4, float pt_size, int type, vx_resc_t * indices)
 {
-    int npoints = indices->count;
     int pdim = points->count / npoints;
 
     vx_program_t * prog = vx_program_load_library("single-color");
@@ -40,9 +40,8 @@ vx_object_t * vxp_single_color_indexed(vx_resc_t * indices, vx_resc_t * points, 
     return prog->super;
 }
 
-vx_object_t * vxp_multi_colored_indexed(vx_resc_t * indices, vx_resc_t * points, vx_resc_t * colors, float pt_size, int type)
+vx_object_t * vxp_multi_colored_indexed(int npoints, vx_resc_t * points, vx_resc_t * colors, float pt_size, int type, vx_resc_t * indices)
 {
-    int npoints = indices->count;
     int pdim = points->count / npoints;
     int cdim = colors->count / npoints;
 

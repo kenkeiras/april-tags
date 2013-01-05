@@ -50,10 +50,6 @@ vx_program_t * make_square()
                       -1.0f, 0.0f,
                       -1.0f, -1.0f,
                       0.0f, -1.0f};
-    /* float data1[] = { 1.0f, 1.0f, */
-    /*                   0.0f, 1.0f, */
-    /*                   0.0f, 0.0f, */
-    /*                   1.0f, 0.0f}; */
 
     float colors1[] = { 1.0f, 0.0f, 0.0f,
                         1.0f, 0.0f, 1.0f,
@@ -64,16 +60,7 @@ vx_program_t * make_square()
     uint32_t idxs_tri[] = {0,1,2,
                            2,3,0};
 
-    /* vx_program_t * program = vx_program_create(vx_resc_load("../../shaders/multi-colored.vert"), */
-    /*                                            vx_resc_load("../../shaders/multi-colored.frag")); */
-
-    /* vx_program_set_vertex_attrib(program, "position", , 2); */
-    /* vx_program_set_vertex_attrib(program, "color", , 3); */
-    /* /\* vx_program_set_uniform4fv(program,"color", colors1); // just use the first one *\/ */
-    /* /\* vx_program_set_draw_array(program, 6, GL_TRIANGLES); *\/ */
-    /* vx_program_set_element_array(program, vx_resc_copyui(idxs_tri, nidxs), GL_TRIANGLES); */
-
-    return vxp_multi_colored_indexed(vx_resc_copyui(idxs_tri, nidxs), vx_resc_copyf(data1, npoints*2), vx_resc_copyf(colors1, npoints*3), 1.0, GL_TRIANGLES);
+    return vxp_multi_colored_indexed(npoints, vx_resc_copyf(data1, npoints*2), vx_resc_copyf(colors1, npoints*3), 1.0, GL_TRIANGLES, vx_resc_copyui(idxs_tri, nidxs));
 }
 
 static vx_program_t * make_tex(image_u8_t * img)

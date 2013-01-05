@@ -36,4 +36,4 @@ vx_test: vx_test.o image_u8.o $(LIB_GTK)
 	gcc -o $@ $^ libvx.a libvxgtk.a -lX11 -lGL -lGLEW  -lpthread $(LDFLAGS_GTK)
 
 clean:
-	rm -rf  $(LIBGTK_OBJS) vx_test $(DESTLIB_GTK)
+	rm -rf  $(LIBVX_GTK_OBJS) vx_test vx_test.o image_u8.o $(DESTLIB_GTK)
