@@ -15,12 +15,19 @@ struct vx_canvas
 
 void* vx_canvas_run(void *arg); // forward ref
 
-
 static gboolean
 on_key (GtkWidget *widget, GdkEventKey *event, gpointer release)
 {
-    printf("Canvas Key was %s\n",event->string);
+    printf("Canvas Key was %s %ld\n",event->string, (long) release);
 
+    return TRUE;
+}
+
+
+static gboolean
+on_map (GtkWidget *widget, GdkEvent *event, gpointer foo)
+{
+    printf("on_map\n");
     return TRUE;
 }
 
@@ -33,6 +40,7 @@ vx_canvas_t * vx_canvas_create(vx_local_renderer_t * lrend)
     // Connect signals:
     g_signal_connect (G_OBJECT (vc->imagePane), "key_press_event", G_CALLBACK (on_key), NULL);
     g_signal_connect (G_OBJECT (vc->imagePane), "key_release_event", G_CALLBACK (on_key), (gpointer)1);
+    g_signal_connect (G_OBJECT (vc->imagePane), "map-event", G_CALLBACK (on_map), (gpointer)1);
 
 
     vc->target_frame_rate = 5;

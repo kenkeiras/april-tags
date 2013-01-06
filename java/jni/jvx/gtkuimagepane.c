@@ -15,6 +15,9 @@ static void gtku_image_pane_unrealize (GtkWidget * widget);
 static void gtku_image_pane_size_allocate (GtkWidget * widget,
         GtkAllocation * allocation);
 
+static gboolean gtku_image_pane_enter_notify_event (GtkWidget * widget,
+                                                    GdkEventCrossing * allocation);
+
 G_DEFINE_TYPE (GtkuImagePane, gtku_image_pane, GTK_TYPE_DRAWING_AREA);
 
 static void
@@ -27,9 +30,11 @@ gtku_image_pane_class_init (GtkuImagePaneClass * klass)
     widget_class->realize = gtku_image_pane_realize;
     widget_class->unrealize = gtku_image_pane_unrealize;
     widget_class->size_allocate = gtku_image_pane_size_allocate;
+    widget_class->enter_notify_event = gtku_image_pane_enter_notify_event;
 
     g_type_class_add_private (gobject_class, sizeof (GtkuImagePanePrivate));
 }
+
 
 static void
 gtku_image_pane_init (GtkuImagePane *self)
@@ -40,9 +45,10 @@ gtku_image_pane_init (GtkuImagePane *self)
     priv->pixMap = NULL;
     priv->pixBuf = NULL;
 
+    gtk_widget_set_can_focus (GTK_WIDGET(self), TRUE);
     gtk_widget_add_events(GTK_WIDGET(self), GDK_ALL_EVENTS_MASK);
+    /* check_mask(GTK_WIDGET(self)); */
 }
-
 
 GtkWidget *
 gtku_image_pane_new ()
@@ -195,3 +201,12 @@ int gtku_image_pane_get_height (GtkuImagePane * imgPane)
 {
     return GTKU_IMAGE_PANE_GET_PRIVATE(imgPane)->height;
 }
+
+static gboolean gtku_image_pane_enter_notify_event (GtkWidget * widget,
+                                                    GdkEventCrossing * allocation)
+{
+    // Grab focus whenever the mouse enters the window
+    gtk_widget_grab_focus (widget);
+    return TRUE;
+}
+

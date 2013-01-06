@@ -96,15 +96,6 @@ static double runif()
 
 void* vx_canvas_run(void *arg); // forward ref
 
-
-/* static gboolean */
-/* on_key (GtkWidget *widget, GdkEventKey *event, gpointer release) */
-/* { */
-/*     printf("Key was %s\n",event->string); */
-
-/*     return TRUE; */
-/* } */
-
 // C version of the test code
 int main(int argc, char ** args)
 {
@@ -178,11 +169,6 @@ int main(int argc, char ** args)
     gtk_container_add(GTK_CONTAINER(window), canvas);
     gtk_widget_show (window);
     gtk_widget_show (canvas); // XXX Show all causes errors!
-
-
-    // Connect signals:
-    /* g_signal_connect (G_OBJECT (window), "key_press_event", G_CALLBACK (on_key), NULL); */
-    /* g_signal_connect (G_OBJECT (window), "key_release_event", G_CALLBACK (on_key), (gpointer)1); */
 
     g_signal_connect_swapped(G_OBJECT(window), "destroy",
                              G_CALLBACK(gtk_main_quit), NULL);
