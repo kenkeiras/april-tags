@@ -15,19 +15,48 @@ struct vx_canvas
 
 void* vx_canvas_run(void *arg); // forward ref
 
+// GTK event handlers
 static gboolean
-on_key (GtkWidget *widget, GdkEventKey *event, gpointer release)
+gtk_key_press (GtkWidget *widget, GdkEventKey *event, gpointer user)
 {
-    printf("Canvas Key was %s %ld\n",event->string, (long) release);
+    printf("key pressed %s\n",event->string);
 
     return TRUE;
 }
 
+static gboolean
+gtk_key_release (GtkWidget *widget, GdkEventKey *event, gpointer user)
+{
+    printf("key release %s\n",event->string);
+
+    return TRUE;
+}
 
 static gboolean
-on_map (GtkWidget *widget, GdkEvent *event, gpointer foo)
+gtk_motion (GtkWidget *widget, GdkEventMotion *event, gpointer user)
 {
-    printf("on_map\n");
+    printf("motion\n");
+    return TRUE;
+}
+
+static gboolean
+gtk_button_press (GtkWidget *widget, GdkEventButton *event, gpointer user)
+{
+    printf("button press\n");
+    return TRUE;
+}
+
+static gboolean
+gtk_button_release (GtkWidget *widget, GdkEventButton *event, gpointer user)
+{
+    printf("button release\n");
+    return TRUE;
+}
+
+static gboolean
+gtk_scroll (GtkWidget *widget, GdkEventScroll *event, gpointer user)
+{
+    printf("scroll\n");
     return TRUE;
 }
 
@@ -38,15 +67,17 @@ vx_canvas_t * vx_canvas_create(vx_local_renderer_t * lrend)
     vc->lrend = lrend;
 
     // Connect signals:
-    g_signal_connect (G_OBJECT (vc->imagePane), "key_press_event", G_CALLBACK (on_key), NULL);
-    g_signal_connect (G_OBJECT (vc->imagePane), "key_release_event", G_CALLBACK (on_key), (gpointer)1);
-    g_signal_connect (G_OBJECT (vc->imagePane), "map-event", G_CALLBACK (on_map), (gpointer)1);
+    g_signal_connect (G_OBJECT (vc->imagePane), "key_release_event",   G_CALLBACK (gtk_key_release),  vc);
+    g_signal_connect (G_OBJECT (vc->imagePane), "key_press_event",     G_CALLBACK (gtk_key_press),    vc);
+    g_signal_connect (G_OBJECT (vc->imagePane), "motion-notify-event", G_CALLBACK (gtk_motion),       vc);
 
-
-    vc->target_frame_rate = 5;
-    pthread_create(&vc->thread, NULL, vx_canvas_run, vc);
+    g_signal_connect (G_OBJECT (vc->imagePane), "button-press-event",  G_CALLBACK (gtk_button_press),   vc);
+    g_signal_connect (G_OBJECT (vc->imagePane), "button-release-event",G_CALLBACK (gtk_button_release), vc);
+    g_signal_connect (G_OBJECT (vc->imagePane), "scroll-event",        G_CALLBACK (gtk_scroll),         vc);
 
     // start rendering thread
+    vc->target_frame_rate = 5;
+    pthread_create(&vc->thread, NULL, vx_canvas_run, vc);
 
     return vc;
 }
