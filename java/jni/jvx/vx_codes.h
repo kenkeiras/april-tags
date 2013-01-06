@@ -20,6 +20,20 @@
 #define VX_BYTE_ARRAY   1
 #define VX_INT_ARRAY    2
 
+// Events
+#define VX_MOUSE_MOVED   1
+#define VX_MOUSE_BUTTON  2
+#define VX_KEY_DOWN   1
+#define VX_KEY_UP  2
+
+#define VX_SHIFT_MASK    1
+#define VX_CTRL_MASK     2
+#define VX_WIN_MASK      4
+#define VX_ALT_MASK      8
+#define VX_CAPS_MASK    16
+#define VX_NUM_MASK     32
+
+
 // XXX should these GL types be defined here??? or included from GL.h?
 // OpenGL Es 2.0 Types:
 // GL_POINTS, GL_LINE_STRIP, GL_LINE_LOOP, GL_LINES,

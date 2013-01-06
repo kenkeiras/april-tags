@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include "gtkuimagepane.h"
 #include "GL/gl.h"
+#include "vx_event.h"
 
 struct vx_canvas
 {
@@ -10,10 +11,32 @@ struct vx_canvas
     vx_local_renderer_t * lrend;
     int target_frame_rate;
     pthread_t thread;
+
+    varray_t * layers; // XXX todo
+
+    // for event handling:
+    int button_mask;
 };
 
 
 void* vx_canvas_run(void *arg); // forward ref
+void vx_canvas_dispatch_mouse(vx_canvas_t* vc, vx_mouse_event_t * event);
+void vx_canvas_dispatch_key(vx_canvas_t* vc, vx_key_event_t * event);
+void vx_canvas_update_button_states(vx_canvas_t* vc, int button_id, int value);
+
+/* static int gtk_to_vx_modifiers(int state) */
+/* { */
+/*     int modifiers = 0; */
+
+/*     // old, new */
+/*     int remap_bit[][] = {{0,0}, */
+/*                          {1,4}, */
+/*                          {2,1}, */
+/*                          {6,2}, */
+/*                          {3,3}, */
+/*                          {4,5}}; */
+/* } */
+
 
 // GTK event handlers
 static gboolean
@@ -35,28 +58,79 @@ gtk_key_release (GtkWidget *widget, GdkEventKey *event, gpointer user)
 static gboolean
 gtk_motion (GtkWidget *widget, GdkEventMotion *event, gpointer user)
 {
-    printf("motion\n");
+    vx_canvas_t * vc = (vx_canvas_t*)user;
+    vx_mouse_event_t vxe; // Allocate on stack
+    vxe.xy[0] = event->x;
+    vxe.xy[1] = event->y;
+    vxe.button_mask = vc->button_mask;
+    vxe.scroll_amt = 0;
+    vxe.modifiers = event->state;
+
+    vx_canvas_dispatch_mouse(vc, &vxe);
+
     return TRUE;
 }
 
 static gboolean
 gtk_button_press (GtkWidget *widget, GdkEventButton *event, gpointer user)
 {
-    printf("button press\n");
+    vx_canvas_t * vc = (vx_canvas_t*)user;
+    vx_canvas_update_button_states(vc, event->button, 1);
+
+    vx_mouse_event_t vxe; // Allocate on stack
+    vxe.xy[0] = event->x;
+    vxe.xy[1] = event->y;
+    vxe.button_mask = vc->button_mask;
+    vxe.scroll_amt = 0;
+    vxe.modifiers = event->state;
+
+    vx_canvas_dispatch_mouse(vc, &vxe);
+
     return TRUE;
 }
 
 static gboolean
 gtk_button_release (GtkWidget *widget, GdkEventButton *event, gpointer user)
 {
-    printf("button release\n");
+    vx_canvas_t * vc = (vx_canvas_t*)user;
+    vx_canvas_update_button_states(vc, event->button, 0);
+
+    vx_mouse_event_t vxe; // Allocate on stack
+    vxe.xy[0] = event->x;
+    vxe.xy[1] = event->y;
+    vxe.button_mask = vc->button_mask;
+    vxe.scroll_amt = 0;
+    vxe.modifiers = event->state;
+
+    vx_canvas_dispatch_mouse(vc, &vxe);
+
     return TRUE;
 }
 
 static gboolean
 gtk_scroll (GtkWidget *widget, GdkEventScroll *event, gpointer user)
 {
-    printf("scroll\n");
+    vx_canvas_t * vc = (vx_canvas_t*)user;
+
+    vx_mouse_event_t vxe; // Allocate on stack
+    vxe.xy[0] = event->x;
+    vxe.xy[1] = event->y;
+    vxe.button_mask = vc->button_mask;
+    switch(event->direction) {
+        case GDK_SCROLL_UP:
+        case GDK_SCROLL_LEFT:
+            vxe.scroll_amt = -1;
+            break;
+        case GDK_SCROLL_DOWN:
+        case GDK_SCROLL_RIGHT: // mapping right scrolling -- kind of hacky. could ignore?
+            vxe.scroll_amt = 1;
+            break;
+    }
+    vxe.modifiers = event->state;
+
+    vx_canvas_dispatch_mouse(vc, &vxe);
+
+
     return TRUE;
 }
 
@@ -109,4 +183,22 @@ void* vx_canvas_run(void * arg)
         gtku_image_pane_set_buffer(vc->imagePane, pixbuf);
     }
     pthread_exit(NULL);
+}
+
+void vx_canvas_dispatch_mouse(vx_canvas_t* vc, vx_mouse_event_t * event)
+{
+    printf("mouse_event (%f,%f) buttons = %x scroll = %d modifiers = %x type = %d\n",
+           event->xy[0],event->xy[1], event->button_mask, event->scroll_amt, event->modifiers, event->type);
+}
+void vx_canvas_dispatch_key(vx_canvas_t* vc, vx_key_event_t * event)
+{
+
+}
+
+void vx_canvas_update_button_states(vx_canvas_t* vc, int button_id, int value)
+{
+    if (value) // button is down
+        vc->button_mask |= 1 << button_id;
+    else // button is up
+        vc->button_mask &= ~(1 << button_id);
 }
