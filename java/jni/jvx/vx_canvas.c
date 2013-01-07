@@ -4,7 +4,21 @@
 #include "gtkuimagepane.h"
 #include "GL/gl.h"
 #include "vx_event.h"
+#include "vhash.h"
+#include "varray.h"
 
+typedef struct
+{
+    double pos[3];
+} vx_camera_pos_t; // XXX get's it's own file?
+
+typedef struct
+{
+    varray_t * layers;
+    vhash_t * layer_viewports; //<int, int *>
+    vhash_t * camera_positions; //<int, vx_camera_pos_t>
+
+} render_info_t;
 struct vx_canvas
 {
     GtkuImagePane * imagePane;
@@ -16,6 +30,9 @@ struct vx_canvas
 
     // for event handling:
     int button_mask;
+
+    // From the last render event
+    render_info_t * last_render_info;
 };
 
 
@@ -77,8 +94,8 @@ gtk_key_release (GtkWidget *widget, GdkEventKey *event, gpointer user)
     key.modifiers = gtk_to_vx_modifiers(event->state);
     key.key_code = gtk_to_vx_keycode(event->keyval);
     key.released = 1;
-    vx_canvas_dispatch_key(vc, &key);
 
+    vx_canvas_dispatch_key(vc, &key);
     return TRUE;
 }
 
@@ -94,7 +111,6 @@ gtk_motion (GtkWidget *widget, GdkEventMotion *event, gpointer user)
     vxe.modifiers = gtk_to_vx_modifiers(event->state);
 
     vx_canvas_dispatch_mouse(vc, &vxe);
-
     return TRUE;
 }
 
@@ -112,7 +128,6 @@ gtk_button_press (GtkWidget *widget, GdkEventButton *event, gpointer user)
     vxe.modifiers = gtk_to_vx_modifiers(event->state);
 
     vx_canvas_dispatch_mouse(vc, &vxe);
-
     return TRUE;
 }
 
@@ -130,7 +145,6 @@ gtk_button_release (GtkWidget *widget, GdkEventButton *event, gpointer user)
     vxe.modifiers = gtk_to_vx_modifiers(event->state);
 
     vx_canvas_dispatch_mouse(vc, &vxe);
-
     return TRUE;
 }
 
@@ -156,9 +170,43 @@ gtk_scroll (GtkWidget *widget, GdkEventScroll *event, gpointer user)
     vxe.modifiers = gtk_to_vx_modifiers(event->state);
 
     vx_canvas_dispatch_mouse(vc, &vxe);
-
-
     return TRUE;
+}
+
+
+static vx_camera_pos_t * vx_camera_pos_create()
+{
+    vx_camera_pos_t * pos = calloc(1, sizeof(vx_camera_pos_t));
+    // XXX
+    return pos;
+}
+
+static void vx_camera_pos_destroy(vx_camera_pos_t * cpos)
+{
+    // XXX
+    return free(cpos);
+}
+
+
+static  render_info_t * render_info_create()
+{
+    render_info_t * rinfo = calloc(1, sizeof(render_info_t));
+    rinfo-> layers = varray_create();
+    rinfo-> layer_viewports = vhash_create(vhash_uint32_hash, vhash_uint32_equals);
+    rinfo-> camera_positions = vhash_create(vhash_uint32_hash, vhash_uint32_equals);
+    return rinfo;
+}
+
+static void  render_info_destroy(render_info_t * rinfo)
+{
+    // XXX Layer memory management
+    // layers are stored elsewhere, so we don't need to free them;
+    varray_destroy(rinfo->layers);
+    vhash_map2(rinfo->layer_viewports, NULL, free); // Free the viewport arrays
+    vhash_destroy(rinfo->layer_viewports);
+    vhash_map2(rinfo->camera_positions, NULL, vx_camera_pos_destroy);
+    vhash_destroy(rinfo->camera_positions);
+    free(rinfo);
 }
 
 vx_canvas_t * vx_canvas_create(vx_local_renderer_t * lrend)
@@ -201,6 +249,14 @@ void* vx_canvas_run(void * arg)
 
         uint8_t data[width*height*3];
 
+        // process all the layers
+        render_info_t * old = vc->last_render_info;
+        vc->last_render_info = render_info_create();
+
+        // XXX placeholer
+        vx_camera_pos_t *pos = vx_camera_pos_create();
+        vx_camera_pos_destroy(pos);
+
         vc->lrend->render(vc->lrend, width, height, data, GL_RGB);
 
         GdkPixbuf * pixbuf = gdk_pixbuf_new_from_data(data, GDK_COLORSPACE_RGB, FALSE, 8, width, height, width*3, NULL, NULL);
@@ -208,10 +264,15 @@ void* vx_canvas_run(void * arg)
 
         // pixbuf is now managed by image pane
         gtku_image_pane_set_buffer(vc->imagePane, pixbuf);
+
+        if (old)
+            render_info_destroy(old); // XXX Threading?
     }
     pthread_exit(NULL);
 }
 
+
+/*
 static void print_modifiers(uint32_t modifiers)
 {
     if (modifiers & VX_SHIFT_MASK)
@@ -227,19 +288,23 @@ static void print_modifiers(uint32_t modifiers)
     if (modifiers & VX_NUM_MASK)
         printf("NUM\n");
 }
+*/
 
 void vx_canvas_dispatch_mouse(vx_canvas_t* vc, vx_mouse_event_t * event)
 {
-    printf("mouse_event (%f,%f) buttons = %x scroll = %d modifiers = %x\n",
-           event->xy[0],event->xy[1], event->button_mask, event->scroll_amt, event->modifiers);
-    print_modifiers(event->modifiers);
+    /* printf("mouse_event (%f,%f) buttons = %x scroll = %d modifiers = %x\n", */
+    /*        event->xy[0],event->xy[1], event->button_mask, event->scroll_amt, event->modifiers); */
+
+    /* int ex = (int)(event->xy[0]); */
+    /* int ey = (int)(event->xy[1]); */
 }
 
 void vx_canvas_dispatch_key(vx_canvas_t* vc, vx_key_event_t * event)
 {
-    printf("key_event modifiers = %x key_code = %d released = %d\n",
-           event->modifiers, event->key_code, event->released);
-    print_modifiers(event->modifiers);
+    /* printf("key_event modifiers = %x key_code = %d released = %d\n", */
+    /*        event->modifiers, event->key_code, event->released); */
+
+
 }
 
 
@@ -250,3 +315,5 @@ void vx_canvas_update_button_states(vx_canvas_t* vc, int button_id, int value)
     else // button is up
         vc->button_mask &= ~(1 << button_id);
 }
+
+
