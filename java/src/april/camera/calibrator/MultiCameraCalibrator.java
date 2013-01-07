@@ -74,7 +74,9 @@ public class MultiCameraCalibrator implements ParameterListener
         pg = new ParameterGUI();
         pg.addCheckBoxes("screenshots","Automatically save screenshots to /tmp", false);
         pg.addButtons("captureOnce","Capture once",
-                      "print", "Print calibration block");
+                      "print", "Print calibration block",
+                      "savecalibration","Save calibration",
+                      "saveall","Save calibration and images");
         pg.addListener(this);
 
         vwImages = new VisWorld();
@@ -148,6 +150,12 @@ public class MultiCameraCalibrator implements ParameterListener
 
         if (name.equals("print"))
             calibrator.printCalibrationBlock();
+
+        if (name.equals("savecalibration"))
+            calibrator.saveCalibration();
+
+        if (name.equals("saveall"))
+            calibrator.saveCalibrationAndImages();
     }
 
     class AcquisitionThread extends Thread

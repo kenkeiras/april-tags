@@ -2,7 +2,9 @@ package april.camera.calibrator;
 
 import java.awt.image.*;
 import java.awt.Color;
+import java.io.*;
 import java.util.*;
+import javax.imageio.*;
 
 import april.camera.*;
 import april.graph.*;
@@ -602,7 +604,7 @@ public class RobustCameraCalibrator
             if (cam.cal != null)
                 str += cam.cal.getCalibrationString();
             else
-                str += "        // intrinsics not initialized\n";
+                str += "        // Error: intrinsics not initialized\n";
 
             // RootToCamera
             double state[] = LinAlg.xyzrpyInverse(cam.CameraToRootXyzrpy);
@@ -625,11 +627,115 @@ public class RobustCameraCalibrator
         return str;
     }
 
+    /** Save the calibration to a file.
+      */
+    public synchronized void saveCalibration()
+    {
+        saveCalibration("/tmp/cameraCalibration");
+    }
+
+    /** Save the calibration to a file.
+      */
+    public synchronized void saveCalibration(String basepath)
+    {
+        // find unused name
+        int calNum = -1;
+        String calName = null;
+        File outputConfigFile = null;
+        do {
+            calNum++;
+            calName = String.format("%s/calibration%04d.config/", basepath, calNum);
+            outputConfigFile = new File(calName);
+        } while (outputConfigFile.exists());
+
+        try {
+            BufferedWriter outs = new BufferedWriter(new FileWriter(outputConfigFile));
+            outs.write(getCalibrationBlockString());
+            outs.flush();
+            outs.close();
+        } catch (Exception ex) {
+            System.err.printf("RobustCameraCalibrator: Failed to output calibration to '%s'\n", calName);
+            return;
+        }
+    }
+
     /** Save the calibration to a file and all images.
       */
-    public void saveCalibrationAndImages(String basepath)
+    public synchronized void saveCalibrationAndImages()
     {
-        // to be implemented...
-        assert(false);
+        saveCalibrationAndImages("/tmp/cameraCalibration");
+    }
+
+    /** Save the calibration to a file and all images.
+      */
+    public synchronized void saveCalibrationAndImages(String basepath)
+    {
+        // create directory for image dump
+        int dirNum = -1;
+        String dirName = null;
+        File dir = null;
+        do {
+            dirNum++;
+            dirName = String.format("%s/imageSet%d/", basepath, dirNum);
+            dir = new File(dirName);
+        } while (dir.exists());
+
+        if (dir.mkdirs() != true) {
+            System.err.printf("RobustCameraCalibrator: Failure to create directory '%s'\n", dirName);
+            return;
+        }
+
+        String configpath = String.format("%s/calibration.config", dirName);
+        try {
+            BufferedWriter outs = new BufferedWriter(new FileWriter(new File(configpath)));
+            outs.write(getCalibrationBlockString());
+            outs.flush();
+            outs.close();
+        } catch (Exception ex) {
+            System.err.printf("RobustCameraCalibrator: Failed to output calibration to '%s'\n", configpath);
+            return;
+        }
+
+        // save images
+        List<List<BufferedImage>> imageSets = this.cal.getAllImageSets();
+        for (int cameraIndex = 0; cameraIndex < this.initializers.size(); cameraIndex++) {
+
+            String subDirName = dirName;
+
+            // make a subdirectory if we have multiple cameras
+            if (this.initializers.size() > 1) {
+                subDirName = String.format("%scamera%d/", dirName, cameraIndex);
+                File subDir = new File(subDirName);
+
+                if (subDir.mkdirs() != true) {
+                    System.err.printf("RobustCameraCalibrator: Failure to create subdirectory '%s'\n", subDirName);
+                    return;
+                }
+            }
+
+            for (int imageSetIndex = 0; imageSetIndex < imageSets.size(); imageSetIndex++) {
+
+                List<BufferedImage> images = imageSets.get(imageSetIndex);
+                BufferedImage im = images.get(cameraIndex);
+
+                String fileName = String.format("%simage%04d.png", subDirName, imageSetIndex);
+                File imageFile = new File(fileName);
+
+                System.out.printf("Filename '%s'\n", fileName);
+
+                try {
+                    ImageIO.write(im, "png", imageFile);
+
+                } catch (IllegalArgumentException ex) {
+                    System.err.printf("RobustCameraCalibrator: Failed to output images to '%s'\n", subDirName);
+                    return;
+                } catch (IOException ex) {
+                    System.err.printf("RobustCameraCalibrator: Failed to output images to '%s'\n", subDirName);
+                    return;
+                }
+            }
+        }
+
+        System.out.printf("Successfully saved calibration and images to '%s'\n", dirName);
     }
 }
