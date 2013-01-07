@@ -94,6 +94,11 @@ static double runif()
     return (double)rand() / (double)RAND_MAX;
 }
 
+static void prinfoo(char * str)
+{
+    printf("%s\n",str);
+}
+
 void* vx_canvas_run(void *arg); // forward ref
 
 // C version of the test code
@@ -185,7 +190,12 @@ int main(int argc, char ** args)
 
     // Foo testing:
     varray_t * foo = varray_create_varargs("foo", "bar", "what", NULL);
+    varray_map(foo, prinfoo);
+
+    varray_t * bar = varray_copy(foo);
+    varray_map(bar, prinfoo);
     varray_destroy(foo);
+    varray_destroy(bar);
 
     return 0;
 }

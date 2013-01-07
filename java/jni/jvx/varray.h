@@ -16,6 +16,8 @@ void varray_destroy(varray_t *va);
 int varray_size(varray_t *va);
 void varray_add(varray_t *va, void *p);
 
+varray_t * varray_copy(varray_t * va);
+
 // Correct usage:
 // void * prev_value = NULL;
 // varray_instert(array, next_value, 5, &prev_value);

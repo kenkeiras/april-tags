@@ -239,6 +239,7 @@ vx_canvas_t * vx_canvas_create(vx_local_renderer_t * lrend)
     vx_canvas_t * vc = calloc(1, sizeof(vx_canvas_t));
     vc->imagePane = GTKU_IMAGE_PANE(gtku_image_pane_new());
     vc->lrend = lrend;
+    vc->layers = varray_create();
 
     // Connect signals:
     g_signal_connect (G_OBJECT (vc->imagePane), "key_release_event",   G_CALLBACK (gtk_key_release),  vc);

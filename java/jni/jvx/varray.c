@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <stdarg.h>
+#include <string.h>
 
 #define MIN_ALLOC 16
 
@@ -31,6 +32,17 @@ varray_t *varray_create_varargs(void * first, ...)
     va_end(vargs);
     return va;
 }
+
+varray_t * varray_copy(varray_t * va)
+{
+    varray_t * other = varray_create();
+    other->alloc = va->alloc;
+    other->size = va->size;
+    other->data = realloc(other->data, sizeof(void*)*other->alloc);
+    memcpy(other->data, va->data, sizeof(void*)*other->size);
+    return other;
+}
+
 
 void varray_destroy(varray_t *va)
 {

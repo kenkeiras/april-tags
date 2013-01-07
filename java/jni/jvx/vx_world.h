@@ -4,6 +4,8 @@
 #include "vx_renderer.h"
 #include "vx_object.h"
 
+// NOTE: unlike vx_object and vx_resc, you must manually manage the lifetime of vx_world, vx_layer, vx_canvas and vx_renderer
+
 typedef struct vx_world vx_world_t;// forward reference
 typedef struct vx_buffer vx_buffer_t;// forward reference
 
