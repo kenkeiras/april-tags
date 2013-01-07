@@ -209,6 +209,31 @@ static void  render_info_destroy(render_info_t * rinfo)
     free(rinfo);
 }
 
+static void _add_layers_real(vx_canvas_t * vc, vx_layer_t * first, va_list va)
+{
+    for (vx_layer_t * vl = first; vl != NULL; vl = va_arg(va, vx_layer_t *))
+        varray_add(vc->layers, vl);
+}
+
+void vx_canvas_add_layers(vx_canvas_t * vc, vx_layer_t * first, ...)
+{
+    va_list va;
+    va_start(va, first);
+    _add_layers_real(vc, first, va);
+    va_end(va);
+
+}
+
+vx_canvas_t * vx_canvas_create_varargs(vx_local_renderer_t * lrend, vx_layer_t * first, ...)
+{
+    vx_canvas_t * vc =  vx_canvas_create(lrend);
+    va_list va;
+    va_start(va, first);
+    _add_layers_real(vc, first, va);
+    va_end(va);
+    return vc;
+}
+
 vx_canvas_t * vx_canvas_create(vx_local_renderer_t * lrend)
 {
     vx_canvas_t * vc = calloc(1, sizeof(vx_canvas_t));

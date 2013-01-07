@@ -8,6 +8,10 @@ extern "C" {
 typedef struct varray varray_t;
 
 varray_t *varray_create();
+
+// Note: This function requires the use of a NULL sentinel as the last argument
+varray_t *varray_create_varargs(void * first, ...) __attribute__((sentinel));
+
 void varray_destroy(varray_t *va);
 int varray_size(varray_t *va);
 void varray_add(varray_t *va, void *p);

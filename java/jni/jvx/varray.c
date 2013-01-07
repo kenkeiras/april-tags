@@ -2,6 +2,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <stdarg.h>
 
 #define MIN_ALLOC 16
 
@@ -15,6 +16,19 @@ struct varray
 varray_t *varray_create()
 {
     varray_t *va = calloc(1, sizeof(varray_t));
+    return va;
+}
+
+varray_t *varray_create_varargs(void * first, ...)
+{
+    varray_t *va = varray_create();
+
+    va_list vargs;
+    va_start(vargs, first);
+    for (void * vo = first; vo != NULL; vo = va_arg(vargs, void *))
+        varray_add(va, vo);
+
+    va_end(vargs);
     return va;
 }
 

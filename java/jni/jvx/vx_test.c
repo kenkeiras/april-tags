@@ -182,5 +182,10 @@ int main(int argc, char ** args)
     vx_layer_destroy(layer);
     image_u8_destroy(img);
 
+
+    // Foo testing:
+    varray_t * foo = varray_create_varargs("foo", "bar", "what", NULL);
+    varray_destroy(foo);
+
     return 0;
 }

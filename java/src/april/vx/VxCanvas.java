@@ -50,7 +50,7 @@ public class VxCanvas extends JComponent
     public static class RenderInfo
     {
         // The layers, in the order that they were rendered.
-        public ArrayList<VxLayer> layers = new ArrayList();
+        public ArrayList<VxLayer> layers = new ArrayList(); // XXX Need to sort these by order?
 
         // The position of the layers when they were rendered.
         public HashMap<VxLayer, int[]> layerPositions = new HashMap();
