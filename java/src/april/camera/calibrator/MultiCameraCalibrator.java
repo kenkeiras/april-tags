@@ -16,6 +16,8 @@ import april.vis.*;
 
 public class MultiCameraCalibrator implements ParameterListener
 {
+    public boolean verbose = false; // don't make static
+
     JFrame          jf;
     JSplitPane      canvasPane;
     ParameterGUI    pg;
@@ -42,8 +44,10 @@ public class MultiCameraCalibrator implements ParameterListener
     long start_utime;
     int imageCounter = 0;
 
-    public MultiCameraCalibrator(List<CalibrationInitializer> initializers, String urls[], double metersPerTag)
+    public MultiCameraCalibrator(List<CalibrationInitializer> initializers, String urls[],
+                                 double metersPerTag, boolean verbose)
     {
+        this.verbose = verbose;
         this.tf = new Tag36h11();
         this.td = new TagDetector(tf);
         this.initializers = initializers;
@@ -57,7 +61,7 @@ public class MultiCameraCalibrator implements ParameterListener
         this.start_utime = TimeUtil.utime();
 
         // Calibrator setup
-        calibrator = new RobustCameraCalibrator(initializers, tf, metersPerTag, true);
+        calibrator = new RobustCameraCalibrator(initializers, tf, metersPerTag, true, verbose);
 
         // silence!
         CameraCalibrator.verbose = false;
@@ -213,7 +217,8 @@ public class MultiCameraCalibrator implements ParameterListener
                         BufferedImage im = ImageConvert.convertToImage(frmd);
                         imageSet.add(im);
                     }
-                    System.out.printf("TIMING: %12.6f seconds to get image set\n", tic.toctic());
+                    if (verbose)
+                        System.out.printf("TIMING: %12.6f seconds to get image set\n", tic.toctic());
 
                     List<List<TagDetection>> detectionSet = new ArrayList<List<TagDetection>>();
                     for (int i = 0; i < urls.length; i++) {
@@ -221,10 +226,12 @@ public class MultiCameraCalibrator implements ParameterListener
                         List<TagDetection> detections = td.process(im, new double[] {im.getWidth()/2.0, im.getHeight()/2.0});
                         detectionSet.add(detections);
                     }
-                    System.out.printf("TIMING: %12.6f seconds to detect tags\n", tic.toctic());
+                    if (verbose)
+                        System.out.printf("TIMING: %12.6f seconds to detect tags\n", tic.toctic());
 
                     drawSet(imageSet, detectionSet);
-                    System.out.printf("TIMING: %12.6f seconds to draw set\n", tic.toctic());
+                    if (verbose)
+                        System.out.printf("TIMING: %12.6f seconds to draw set\n", tic.toctic());
 
                     if (pg.gb("screenshots")) {
                         String path = String.format("/tmp/MultiCameraCalibrator-ScreenShot-%d-CameraPane%04d.png",
@@ -233,7 +240,8 @@ public class MultiCameraCalibrator implements ParameterListener
                     }
 
                     processSet(imageSet, detectionSet);
-                    System.out.printf("TIMING: %12.6f seconds to process set\n", tic.toctic());
+                    if (verbose)
+                        System.out.printf("TIMING: %12.6f seconds to process set\n", tic.toctic());
 
                     if (pg.gb("screenshots")) {
                         String path = String.format("/tmp/MultiCameraCalibrator-ScreenShot-%d-CalibratorPane%04d.png",
@@ -363,15 +371,18 @@ public class MultiCameraCalibrator implements ParameterListener
             calibrator.iterateUntilConvergenceWithReinitalization(1.0, 0.01, 3, 50);
 
         calibrator.draw();
-        calibrator.printCalibrationBlock();
+        if (verbose)
+            calibrator.printCalibrationBlock();
 
-        for (RobustCameraCalibrator.GraphStats s : stats) {
-            if (s == null) {
-                System.out.printf("Graph is null\n");
-                continue;
+        if (verbose) {
+            for (RobustCameraCalibrator.GraphStats s : stats) {
+                if (s == null) {
+                    System.out.printf("Graph is null\n");
+                    continue;
+                }
+                System.out.printf("Graph with %d observations, MRE %12.6f pixels, MSE %12.6f pixels, SPD Error: %s\n",
+                                  s.numObs, s.MRE, s.MSE, s.SPDError ? "true" : "false");
             }
-            System.out.printf("Graph with %d observations, MRE %12.6f pixels, MSE %12.6f pixels, SPD Error: %s\n",
-                              s.numObs, s.MRE, s.MSE, s.SPDError ? "true" : "false");
         }
     }
 
@@ -380,6 +391,7 @@ public class MultiCameraCalibrator implements ParameterListener
         GetOpt opts  = new GetOpt();
 
         opts.addBoolean('h',"help",false,"See this help screen");
+        opts.addBoolean('v',"verbose",false,"Enable verbosity");
         opts.addString('u',"urls","","Camera URLs separated by semicolons");
         opts.addString('c',"class","april.camera.models.SimpleKannalaBrandtInitializer","Calibration model initializer class name");
         opts.addDouble('m',"spacing",0.0381,"Spacing between tags (meters)");
@@ -388,6 +400,7 @@ public class MultiCameraCalibrator implements ParameterListener
             System.out.println("Option error: "+opts.getReason());
 	    }
 
+        boolean verbose = opts.getBoolean("verbose");
         String urllist = opts.getString("urls");
         String initclass = opts.getString("class");
         double spacing = opts.getDouble("spacing");
@@ -410,7 +423,7 @@ public class MultiCameraCalibrator implements ParameterListener
             initializers.add(initializer);
         }
 
-        new MultiCameraCalibrator(initializers, urls, spacing);
+        new MultiCameraCalibrator(initializers, urls, spacing, verbose);
     }
 }
 

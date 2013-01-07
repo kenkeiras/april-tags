@@ -15,7 +15,7 @@ import april.vis.*;
 
 public class RobustCameraCalibrator
 {
-    public static boolean verbose = true;
+    public boolean verbose = false; // don't make static
 
     List<CalibrationInitializer> initializers;
     CameraCalibrationSystem cal;
@@ -26,17 +26,19 @@ public class RobustCameraCalibrator
     double metersPerTag;
 
     public RobustCameraCalibrator(List<CalibrationInitializer> initializers,
-                                  TagFamily tf, double metersPerTag, boolean gui)
+                                  TagFamily tf, double metersPerTag,
+                                  boolean gui, boolean verbose)
     {
+        this.verbose = verbose;
         this.initializers = initializers;
         this.tf = tf;
         this.tm = new TagMosaic(tf, metersPerTag);
         this.metersPerTag = metersPerTag;
 
-        cal = new CameraCalibrationSystem(initializers, tf, metersPerTag);
+        cal = new CameraCalibrationSystem(initializers, tf, metersPerTag, verbose);
 
         if (gui)
-            renderer = new CalibrationRenderer(cal, this.tf, this.metersPerTag);
+            renderer = new CalibrationRenderer(cal, this.tf, this.metersPerTag, verbose);
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -193,16 +195,18 @@ public class RobustCameraCalibrator
         // is it acceptable?
         if (!origError && origJointMRE < reinitMREThreshold) {
             this.updateFromGraphs(origGraphWrappers, origStats);
-            System.out.printf("ITERATE WITH REINIT: Skipped reinitialization, using original (orig %b/%8.3f)\n",
-                              origError, origJointMRE);
+            if (verbose)
+                System.out.printf("Skipped reinitialization, using original (orig %b/%8.3f)\n",
+                                  origError, origJointMRE);
             return origStats;
         }
 
         // build and optimize the new system
-        CameraCalibrationSystem copy = this.cal.copyWithBatchReinitialization();
-        List<GraphWrapper> newGraphWrappers = this.buildCalibrationGraphs(copy);
+        CameraCalibrationSystem copy = this.cal.copyWithBatchReinitialization(false); // XXX
+        List<GraphWrapper> newGraphWrappers = this.buildCalibrationGraphs(copy, false); // XXX
         List<GraphStats> newStats = this.iterateUntilConvergence(newGraphWrappers, improvementThreshold,
                                                                  minConvergedIterations, maxIterations);
+        copy.verbose = this.verbose; // quiet during initialization
 
         boolean newError = false;
         double newJointMRE = 0;
@@ -227,16 +231,18 @@ public class RobustCameraCalibrator
 
         if (!useNew) {
             this.updateFromGraphs(origGraphWrappers, origStats);
-            System.out.printf("ITERATE WITH REINIT: Attempted reinitialization, using original (orig %b/%8.3f new %b/%8.3f)\n",
-                              origError, origJointMRE, newError, newJointMRE);
+            if (verbose)
+                System.out.printf("Attempted reinitialization, using original (orig %b/%8.3f new %b/%8.3f)\n",
+                                  origError, origJointMRE, newError, newJointMRE);
             return origStats;
         }
 
         this.updateFromGraphs(newGraphWrappers, newStats);
         this.cal = copy;
         this.renderer.replaceCalibrationSystem(copy);
-        System.out.printf("ITERATE WITH REINIT: Attempted reinitialization, using new (orig %b/%8.3f new %b/%8.3f)\n",
-                          origError, origJointMRE, newError, newJointMRE);
+        if (verbose)
+            System.out.printf("Attempted reinitialization, using new (orig %b/%8.3f new %b/%8.3f)\n",
+                              origError, origJointMRE, newError, newJointMRE);
         return newStats;
     }
 
@@ -246,10 +252,10 @@ public class RobustCameraCalibrator
       */
     public List<GraphWrapper> buildCalibrationGraphs()
     {
-        return buildCalibrationGraphs(this.cal);
+        return buildCalibrationGraphs(this.cal, this.verbose);
     }
 
-    public static List<GraphWrapper> buildCalibrationGraphs(CameraCalibrationSystem cal)
+    public static List<GraphWrapper> buildCalibrationGraphs(CameraCalibrationSystem cal, boolean verbose)
     {
         List<CameraCalibrationSystem.CameraWrapper> cameras = cal.getCameras();
         List<CameraCalibrationSystem.MosaicWrapper> mosaics = cal.getMosaics();
@@ -260,7 +266,7 @@ public class RobustCameraCalibrator
 
         List<GraphWrapper> graphWrappers = new ArrayList<GraphWrapper>();
         for (int root : uniqueRoots)
-            graphWrappers.add(buildCalibrationGraph(cal, root));
+            graphWrappers.add(buildCalibrationGraph(cal, root, verbose));
 
         return graphWrappers;
     }
@@ -273,7 +279,8 @@ public class RobustCameraCalibrator
       * underlying CameraCalibrationSystem. See updateFromGraph() and related
       * methods
       */
-    public static GraphWrapper buildCalibrationGraph(CameraCalibrationSystem cal, int rootNumber)
+    public static GraphWrapper buildCalibrationGraph(CameraCalibrationSystem cal, int rootNumber,
+                                                     boolean verbose)
     {
         List<CameraCalibrationSystem.CameraWrapper> cameras = cal.getCameras();
         List<CameraCalibrationSystem.MosaicWrapper> mosaics = cal.getMosaics();

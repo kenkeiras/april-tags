@@ -11,6 +11,8 @@ import april.vis.*;
 
 public class CalibrationRenderer
 {
+    public boolean verbose = false;
+
     CameraCalibrationSystem cal;
 
     VisWorld worlds[];
@@ -31,8 +33,9 @@ public class CalibrationRenderer
                                        {  0,  0,  0,  1 } };
 
     public CalibrationRenderer(CameraCalibrationSystem cal,
-                               TagFamily tf, double metersPerTag)
+                               TagFamily tf, double metersPerTag, boolean verbose)
     {
+        this.verbose = verbose;
         this.tf = tf;
         this.tm = new TagMosaic(tf, metersPerTag);
         this.metersPerTag = metersPerTag;

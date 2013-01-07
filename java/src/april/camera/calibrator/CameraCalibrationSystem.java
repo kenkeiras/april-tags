@@ -48,7 +48,7 @@ import april.tag.*;
 public class CameraCalibrationSystem
 {
     public int REQUIRED_TAGS_PER_IMAGE = 8;   // number of constraints needed per image
-    public static boolean verbose = true;
+    public boolean verbose = false; // don't make static
 
     ////////////////////////////////////////////////////////////////////////////////
     // Data
@@ -95,8 +95,9 @@ public class CameraCalibrationSystem
     ////////////////////////////////////////////////////////////////////////////////
     // Methods
     public CameraCalibrationSystem(List<CalibrationInitializer> initializers,
-                                   TagFamily tf, double metersPerTag)
+                                   TagFamily tf, double metersPerTag, boolean verbose)
     {
+        this.verbose = verbose;
         this.tf = tf;
         this.tm = new TagMosaic(tf, metersPerTag);
         this.metersPerTag = metersPerTag;
@@ -562,7 +563,8 @@ public class CameraCalibrationSystem
     public CameraCalibrationSystem copy()
     {
         CameraCalibrationSystem sub = new CameraCalibrationSystem(this.getInitializers(),
-                                                                  this.tf, this.metersPerTag);
+                                                                  this.tf, this.metersPerTag,
+                                                                  this.verbose);
         sub.REQUIRED_TAGS_PER_IMAGE = this.REQUIRED_TAGS_PER_IMAGE;
         copyCameras(this, sub);
         copyMosaics(this, sub);
@@ -632,9 +634,18 @@ public class CameraCalibrationSystem
       */
     public CameraCalibrationSystem copyWithBatchReinitialization()
     {
+        return copyWithBatchReinitialization(this.verbose);
+    }
+
+    /** Create a new camera system with batch initialization from the observations
+      * in this camera system.
+      */
+    public CameraCalibrationSystem copyWithBatchReinitialization(boolean verbose)
+    {
         // Copy the system (but not the mosaics)
         CameraCalibrationSystem sub = new CameraCalibrationSystem(this.getInitializers(),
-                                                                  this.tf, this.metersPerTag);
+                                                                  this.tf, this.metersPerTag,
+                                                                  verbose);
         sub.REQUIRED_TAGS_PER_IMAGE = this.REQUIRED_TAGS_PER_IMAGE;
 
         // copy camera data but skip fields set by adding images
