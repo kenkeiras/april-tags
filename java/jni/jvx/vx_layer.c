@@ -1,6 +1,7 @@
 #include "vx_layer.h"
 #include <stdlib.h>
 #include "default_camera_mgr.h"
+#include "default_event_handler.h"
 
 struct vx_layer
 {
@@ -11,6 +12,7 @@ struct vx_layer
     float viewport_rel[4];
 
     vx_camera_mgr_t * camera_mgr;
+    varray_t * event_handlers;
 };
 
 static int xxxAtomicID = 1;
@@ -20,6 +22,11 @@ static void update(vx_layer_t * vl)
     vl->rend->update_layer(vl->rend, vl->layer_id,
                            vx_world_get_id(vl->world),
                            vl->draw_order, vl->viewport_rel);
+}
+
+static void vx_event_handler_destroy(vx_event_handler_t * eh)
+{
+    eh->destroy(eh);
 }
 
 vx_layer_t * vx_layer_create(vx_renderer_t * rend, vx_world_t * world)
@@ -36,7 +43,9 @@ vx_layer_t * vx_layer_create(vx_renderer_t * rend, vx_world_t * world)
 
     // XXXX Event handling
     vl->camera_mgr = vx_camera_mgr_default_create();
+    vl->event_handlers = varray_create();
 
+    varray_add(vl->event_handlers, default_event_handler_create());
     update(vl);
 
     return vl;
@@ -45,7 +54,8 @@ vx_layer_t * vx_layer_create(vx_renderer_t * rend, vx_world_t * world)
 void vx_layer_destroy(vx_layer_t * layer)
 {
     layer->camera_mgr->destroy(layer->camera_mgr);
-
+    varray_map(layer->event_handlers, vx_event_handler_destroy);
+    varray_destroy(layer->event_handlers); // XXX Memory leak -- event handlers will be leaked!
     free(layer);
 }
 

@@ -4,10 +4,10 @@
 #include <stdint.h>
 
 #include "vx_codes.h"
+#include "vx_camera_mgr.h"
 
 typedef struct vx_key_event vx_key_event_t;
 typedef struct vx_mouse_event vx_mouse_event_t;
-typedef struct vx_event_handler vx_event_handler_t;
 
 struct vx_key_event
 {
@@ -23,5 +23,4 @@ struct vx_mouse_event
     uint32_t scroll_amt; // negative if away(up/left) , positive if towards(down/right)
     uint32_t modifiers;
 };
-
 #endif

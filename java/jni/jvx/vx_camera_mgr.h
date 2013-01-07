@@ -4,12 +4,12 @@
 #include "ray3.h"
 #include "vx_event.h"
 
-typedef struct
+typedef struct vx_camera_pos vx_camera_pos_t; // XXX get's it's own file?
+struct vx_camera_pos
 {
     double pos[3];
     int viewport[4];
-} vx_camera_pos_t; // XXX get's it's own file?
-
+};
 
 typedef struct vx_camera_mgr vx_camera_mgr_t;
 struct vx_camera_mgr {
@@ -20,6 +20,8 @@ struct vx_camera_mgr {
     void * impl;
 
 };
+
+typedef struct vx_mouse_event vx_mouse_event_t;
 
 vx_camera_pos_t * vx_camera_pos_create();
 void vx_camera_pos_destroy(vx_camera_pos_t * pos);
