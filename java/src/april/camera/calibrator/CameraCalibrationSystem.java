@@ -513,6 +513,17 @@ public class CameraCalibrationSystem
         return cameras;
     }
 
+    /** Return a list of all CalibrationInitializer objects.
+      */
+    public List<CalibrationInitializer> getInitializers()
+    {
+        List<CalibrationInitializer> initializers = new ArrayList();
+        for (CameraWrapper cam : this.cameras)
+            initializers.add(cam.initializer);
+
+        return initializers;
+    }
+
     /** Return reference to list of mosaics in use by this class instance.
       * The user is only allowed to read images/tag detections or change the
       * values of entries in the MosaicToRootXyzrpys hashmap. The user is *not*
@@ -542,6 +553,105 @@ public class CameraCalibrationSystem
             allDetectionSets.add(mosaic.detectionSet);
 
         return allDetectionSets;
+    }
+
+    /** Return a copy of this CameraCalibrationSystem. All references except
+      * camera initializers, mosaic image sets, and mosaic detection sets point
+      * to new objects.
+      */
+    public CameraCalibrationSystem copy()
+    {
+        CameraCalibrationSystem sub = new CameraCalibrationSystem(this.getInitializers(),
+                                                                  this.tf, this.metersPerTag);
+        sub.REQUIRED_TAGS_PER_IMAGE = this.REQUIRED_TAGS_PER_IMAGE;
+        copyCameras(this, sub);
+        copyMosaics(this, sub);
+
+        return sub;
+    }
+
+    /** Copy cameras from input system to output system. Only the calibration
+      * initializer reference is reused.
+      */
+    public void copyCameras(CameraCalibrationSystem from, CameraCalibrationSystem to)
+    {
+        to.cameras = new ArrayList();
+        for (int i = 0; i < from.cameras.size(); i++)
+        {
+            CameraWrapper cam = from.cameras.get(i);
+            assert(cam.cameraNumber == i);
+
+            CameraWrapper copy = new CameraWrapper();
+            copy.cameraNumber = cam.cameraNumber;
+            copy.name = new String(cam.name);
+            copy.initializer = cam.initializer; // reference copy
+
+            copy.width = cam.width;
+            copy.height = cam.height;
+
+            if (cam.cal != null)
+                copy.cal = copy.initializer.initializeWithParameters(copy.width, copy.height,
+                                                                     cam.cal.getParameterization());
+
+            copy.CameraToRootXyzrpy = LinAlg.copy(cam.CameraToRootXyzrpy);
+            copy.rootNumber = cam.rootNumber;
+
+            to.cameras.add(copy);
+        }
+    }
+
+    /** Copy mosaics from an input system to an output system. Only the image
+      * and detection set references are reused.
+      */
+    public void copyMosaics(CameraCalibrationSystem from, CameraCalibrationSystem to)
+    {
+        to.mosaics = new ArrayList();
+        for (MosaicWrapper mosaic : from.mosaics)
+        {
+            MosaicWrapper copy = new MosaicWrapper();
+            copy.imageSet = mosaic.imageSet; // reference copy
+            copy.detectionSet = mosaic.detectionSet; // reference copy
+
+            copy.MosaicToRootXyzrpys = new HashMap();
+
+            Set<Map.Entry<Integer,double[]>> xyzrpys = mosaic.MosaicToRootXyzrpys.entrySet();
+            for (Map.Entry<Integer,double[]> xyzrpy : xyzrpys)
+            {
+                Integer key = new Integer(xyzrpy.getKey());
+                double value[] = LinAlg.copy(xyzrpy.getValue());
+
+                copy.MosaicToRootXyzrpys.put(key, value);
+            }
+
+            to.mosaics.add(copy);
+        }
+    }
+
+    /** Create a new camera system with batch initialization from the observations
+      * in this camera system.
+      */
+    public CameraCalibrationSystem copyWithBatchReinitialization()
+    {
+        // Copy the system (but not the mosaics)
+        CameraCalibrationSystem sub = new CameraCalibrationSystem(this.getInitializers(),
+                                                                  this.tf, this.metersPerTag);
+        sub.REQUIRED_TAGS_PER_IMAGE = this.REQUIRED_TAGS_PER_IMAGE;
+
+        // copy camera data but skip fields set by adding images
+        for (int i = 0; i < this.cameras.size(); i++)
+        {
+            CameraWrapper cam = this.cameras.get(i);
+            CameraWrapper copy = sub.cameras.get(i);
+
+            assert(copy.cameraNumber == cam.cameraNumber);
+            copy.name = new String(cam.name);
+        }
+
+        // add all of the images in a batch operation
+        sub.addMultipleImageSets(this.getAllImageSets(),
+                                 this.getAllDetectionSets());
+
+        return sub;
     }
 }
 

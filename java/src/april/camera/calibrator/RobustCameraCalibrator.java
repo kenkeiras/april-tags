@@ -52,7 +52,7 @@ public class RobustCameraCalibrator
     ////////////////////////////////////////////////////////////////////////////////
     // graph optimization
 
-    public class GraphStats
+    public static class GraphStats
     {
         public int numObs;       // number of tags used
         public double MRE;       // mean reprojection error
@@ -60,7 +60,7 @@ public class RobustCameraCalibrator
         public boolean SPDError; // did we catch an SPD error from the graph solver?
     }
 
-    public class GraphWrapper
+    public static class GraphWrapper
     {
         // The graph that was created (all graph state can be changed without affecting the camera system)
         public Graph g;
@@ -133,6 +133,7 @@ public class RobustCameraCalibrator
             return null;
 
         GraphSolver solver = new CholeskySolver(gw.g, new MinimumDegreeOrdering());
+        CholeskySolver.verbose = false;
 
         GraphStats lastStats = getGraphStats(gw.g);
         int convergedCount = 0;
@@ -165,13 +166,76 @@ public class RobustCameraCalibrator
         return lastStats;
     }
 
-    public List<GraphStats> iterateUntilConvergenceWithReinitalization(double improvementThreshold,
-                                                                       int minConvergedIterations,
-                                                                       int maxIterations)
+    public List<GraphStats> iterateUntilConvergenceWithReinitalization(double reinitMREThreshold, double improvementThreshold,
+                                                                       int minConvergedIterations, int maxIterations)
     {
-        // to be implemented...
-        assert(false);
-        return null;
+        // iterate the usual way
+        List<GraphWrapper> origGraphWrappers = this.buildCalibrationGraphs();
+        List<GraphStats> origStats = this.iterateUntilConvergence(origGraphWrappers, improvementThreshold,
+                                                                  minConvergedIterations, maxIterations);
+
+        boolean origError = false;
+        double origJointMRE = 0;
+        int origJointNumObs = 0;
+        for (GraphStats s : origStats) {
+            if (s == null || s.SPDError == true) {
+                origError = true;
+                continue;
+            }
+
+            origJointMRE += s.MRE*s.numObs;
+            origJointNumObs += s.numObs;
+        }
+        origJointMRE = origJointMRE / origJointNumObs;
+
+        // is it acceptable?
+        if (!origError && origJointMRE < reinitMREThreshold) {
+            this.updateFromGraphs(origGraphWrappers, origStats);
+            System.out.printf("ITERATE WITH REINIT: Skipped reinitialization, using original (orig %b/%8.3f)\n",
+                              origError, origJointMRE);
+            return origStats;
+        }
+
+        // build and optimize the new system
+        CameraCalibrationSystem copy = this.cal.copyWithBatchReinitialization();
+        List<GraphWrapper> newGraphWrappers = this.buildCalibrationGraphs(copy);
+        List<GraphStats> newStats = this.iterateUntilConvergence(newGraphWrappers, improvementThreshold,
+                                                                 minConvergedIterations, maxIterations);
+
+        boolean newError = false;
+        double newJointMRE = 0;
+        int newJointNumObs = 0;
+        for (GraphStats s : newStats) {
+            if (s == null || s.SPDError == true) {
+                newError = true;
+                continue;
+            }
+
+            newJointMRE += s.MRE*s.numObs;
+            newJointNumObs += s.numObs;
+        }
+        newJointMRE = newJointMRE / newJointNumObs;
+
+        // decide which system to use
+        boolean useNew = false;
+        if (!origError && !newError && (newJointMRE + 0.001 < origJointMRE)) // both are good but new has lower error
+            useNew = true;
+        else if (origError)
+            useNew = true;
+
+        if (!useNew) {
+            this.updateFromGraphs(origGraphWrappers, origStats);
+            System.out.printf("ITERATE WITH REINIT: Attempted reinitialization, using original (orig %b/%8.3f new %b/%8.3f)\n",
+                              origError, origJointMRE, newError, newJointMRE);
+            return origStats;
+        }
+
+        this.updateFromGraphs(newGraphWrappers, newStats);
+        this.cal = copy;
+        this.renderer.replaceCalibrationSystem(copy);
+        System.out.printf("ITERATE WITH REINIT: Attempted reinitialization, using new (orig %b/%8.3f new %b/%8.3f)\n",
+                          origError, origJointMRE, newError, newJointMRE);
+        return newStats;
     }
 
     /** Convenience method to build graphs for all connected subsystems. Finds
@@ -179,6 +243,11 @@ public class RobustCameraCalibrator
       * to build a graph for each subsystem. See buildCalibrationGraph() for details.
       */
     public List<GraphWrapper> buildCalibrationGraphs()
+    {
+        return buildCalibrationGraphs(this.cal);
+    }
+
+    public static List<GraphWrapper> buildCalibrationGraphs(CameraCalibrationSystem cal)
     {
         List<CameraCalibrationSystem.CameraWrapper> cameras = cal.getCameras();
         List<CameraCalibrationSystem.MosaicWrapper> mosaics = cal.getMosaics();
@@ -189,7 +258,7 @@ public class RobustCameraCalibrator
 
         List<GraphWrapper> graphWrappers = new ArrayList<GraphWrapper>();
         for (int root : uniqueRoots)
-            graphWrappers.add(buildCalibrationGraph(root));
+            graphWrappers.add(buildCalibrationGraph(cal, root));
 
         return graphWrappers;
     }
@@ -202,7 +271,7 @@ public class RobustCameraCalibrator
       * underlying CameraCalibrationSystem. See updateFromGraph() and related
       * methods
       */
-    public GraphWrapper buildCalibrationGraph(int rootNumber)
+    public static GraphWrapper buildCalibrationGraph(CameraCalibrationSystem cal, int rootNumber)
     {
         List<CameraCalibrationSystem.CameraWrapper> cameras = cal.getCameras();
         List<CameraCalibrationSystem.MosaicWrapper> mosaics = cal.getMosaics();
@@ -295,7 +364,7 @@ public class RobustCameraCalibrator
 
                 for (TagDetection d : detections) {
                     xys_px.add(LinAlg.copy(d.cxy));
-                    xyzs_m.add(LinAlg.copy(tm.getPositionMeters(d.id)));
+                    xyzs_m.add(LinAlg.copy(cal.tm.getPositionMeters(d.id)));
                 }
 
                 // get the intrinsics and extrinsics indices for this camera

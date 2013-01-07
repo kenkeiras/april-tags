@@ -94,6 +94,12 @@ public class CalibrationRenderer
         }
     }
 
+    public void replaceCalibrationSystem(CameraCalibrationSystem newcal)
+    {
+        assert(this.cal.getCameras().size() == newcal.getCameras().size());
+        this.cal = newcal;
+    }
+
     ////////////////////////////////////////////////////////////////////////////////
     // rendering code
 
