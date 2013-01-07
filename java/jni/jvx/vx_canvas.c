@@ -24,33 +24,60 @@ void vx_canvas_dispatch_mouse(vx_canvas_t* vc, vx_mouse_event_t * event);
 void vx_canvas_dispatch_key(vx_canvas_t* vc, vx_key_event_t * event);
 void vx_canvas_update_button_states(vx_canvas_t* vc, int button_id, int value);
 
-/* static int gtk_to_vx_modifiers(int state) */
-/* { */
-/*     int modifiers = 0; */
+// Convert GTK modifiers to VX modifiers
+static int gtk_to_vx_modifiers(int state)
+{
+    int modifiers = 0;
 
-/*     // old, new */
-/*     int remap_bit[][] = {{0,0}, */
-/*                          {1,4}, */
-/*                          {2,1}, */
-/*                          {6,2}, */
-/*                          {3,3}, */
-/*                          {4,5}}; */
-/* } */
+    // old, new
+    int remap_bit[7][2] = {{0,0},
+                           {1,4},
+                           {2,1},
+                           {3,3},
+                           {4,5},
+                           {5,-1},
+                           {6,2}};
+
+    for (int i = 0; i < 7; i++) {
+        int outi = remap_bit[i][1];
+
+        if (outi >= 0 && state >> i & 1)
+            modifiers |= 1 << outi;
+    }
+    return modifiers;
+}
+
+// Convert GTK modifiers to VX key codes
+static int gtk_to_vx_keycode(int gtk_code)
+{
+    // XXX These codes need to be fixed/converted
+    return gtk_code;
+}
 
 
 // GTK event handlers
 static gboolean
 gtk_key_press (GtkWidget *widget, GdkEventKey *event, gpointer user)
 {
-    printf("key pressed %s\n",event->string);
+    vx_canvas_t * vc = (vx_canvas_t*)user;
+    vx_key_event_t key;
+    key.modifiers = gtk_to_vx_modifiers(event->state);
+    key.key_code = gtk_to_vx_keycode(event->keyval);
+    key.released = 0;
 
+    vx_canvas_dispatch_key(vc, &key);
     return TRUE;
 }
 
 static gboolean
 gtk_key_release (GtkWidget *widget, GdkEventKey *event, gpointer user)
 {
-    printf("key release %s\n",event->string);
+    vx_canvas_t * vc = (vx_canvas_t*)user;
+    vx_key_event_t key;
+    key.modifiers = gtk_to_vx_modifiers(event->state);
+    key.key_code = gtk_to_vx_keycode(event->keyval);
+    key.released = 1;
+    vx_canvas_dispatch_key(vc, &key);
 
     return TRUE;
 }
@@ -64,7 +91,7 @@ gtk_motion (GtkWidget *widget, GdkEventMotion *event, gpointer user)
     vxe.xy[1] = event->y;
     vxe.button_mask = vc->button_mask;
     vxe.scroll_amt = 0;
-    vxe.modifiers = event->state;
+    vxe.modifiers = gtk_to_vx_modifiers(event->state);
 
     vx_canvas_dispatch_mouse(vc, &vxe);
 
@@ -82,7 +109,7 @@ gtk_button_press (GtkWidget *widget, GdkEventButton *event, gpointer user)
     vxe.xy[1] = event->y;
     vxe.button_mask = vc->button_mask;
     vxe.scroll_amt = 0;
-    vxe.modifiers = event->state;
+    vxe.modifiers = gtk_to_vx_modifiers(event->state);
 
     vx_canvas_dispatch_mouse(vc, &vxe);
 
@@ -100,7 +127,7 @@ gtk_button_release (GtkWidget *widget, GdkEventButton *event, gpointer user)
     vxe.xy[1] = event->y;
     vxe.button_mask = vc->button_mask;
     vxe.scroll_amt = 0;
-    vxe.modifiers = event->state;
+    vxe.modifiers = gtk_to_vx_modifiers(event->state);
 
     vx_canvas_dispatch_mouse(vc, &vxe);
 
@@ -126,7 +153,7 @@ gtk_scroll (GtkWidget *widget, GdkEventScroll *event, gpointer user)
             vxe.scroll_amt = 1;
             break;
     }
-    vxe.modifiers = event->state;
+    vxe.modifiers = gtk_to_vx_modifiers(event->state);
 
     vx_canvas_dispatch_mouse(vc, &vxe);
 
@@ -185,15 +212,36 @@ void* vx_canvas_run(void * arg)
     pthread_exit(NULL);
 }
 
+static void print_modifiers(uint32_t modifiers)
+{
+    if (modifiers & VX_SHIFT_MASK)
+        printf("SHIFT\n");
+    if (modifiers & VX_CTRL_MASK)
+        printf("CTRL\n");
+    if (modifiers & VX_WIN_MASK)
+        printf("WIN\n");
+    if (modifiers & VX_ALT_MASK)
+        printf("ALT\n");
+    if (modifiers & VX_CAPS_MASK)
+        printf("CAPS\n");
+    if (modifiers & VX_NUM_MASK)
+        printf("NUM\n");
+}
+
 void vx_canvas_dispatch_mouse(vx_canvas_t* vc, vx_mouse_event_t * event)
 {
-    printf("mouse_event (%f,%f) buttons = %x scroll = %d modifiers = %x type = %d\n",
-           event->xy[0],event->xy[1], event->button_mask, event->scroll_amt, event->modifiers, event->type);
+    printf("mouse_event (%f,%f) buttons = %x scroll = %d modifiers = %x\n",
+           event->xy[0],event->xy[1], event->button_mask, event->scroll_amt, event->modifiers);
+    print_modifiers(event->modifiers);
 }
+
 void vx_canvas_dispatch_key(vx_canvas_t* vc, vx_key_event_t * event)
 {
-
+    printf("key_event modifiers = %x key_code = %d released = %d\n",
+           event->modifiers, event->key_code, event->released);
+    print_modifiers(event->modifiers);
 }
+
 
 void vx_canvas_update_button_states(vx_canvas_t* vc, int button_id, int value)
 {

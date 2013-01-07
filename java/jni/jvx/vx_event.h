@@ -10,7 +10,6 @@ struct vx_key_event
 {
     uint32_t modifiers;
     uint32_t key_code;
-    uint32_t type; // see vx_codes.h
     uint32_t released; // 1 if key is released, 0 if pressed
 };
 
@@ -20,7 +19,6 @@ struct vx_mouse_event
     uint32_t button_mask; // which mouse buttons were down?
     uint32_t scroll_amt; // negative if away(up/left) , positive if towards(down/right)
     uint32_t modifiers;
-    uint32_t type; // see vx_codes.h
 };
 
 #endif

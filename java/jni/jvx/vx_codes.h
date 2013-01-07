@@ -21,10 +21,6 @@
 #define VX_INT_ARRAY    2
 
 // Events
-#define VX_MOUSE_MOVED   1
-#define VX_MOUSE_BUTTON  2
-#define VX_KEY_DOWN   1
-#define VX_KEY_UP  2
 
 #define VX_SHIFT_MASK    1
 #define VX_CTRL_MASK     2
