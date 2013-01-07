@@ -7,6 +7,7 @@
 
 typedef struct vx_key_event vx_key_event_t;
 typedef struct vx_mouse_event vx_mouse_event_t;
+typedef struct vx_event_handler vx_event_handler_t;
 
 struct vx_key_event
 {

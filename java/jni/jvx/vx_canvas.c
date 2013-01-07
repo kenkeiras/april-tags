@@ -37,8 +37,8 @@ struct vx_canvas
 
 
 void* vx_canvas_run(void *arg); // forward ref
-void vx_canvas_dispatch_mouse(vx_canvas_t* vc, vx_mouse_event_t * event);
-void vx_canvas_dispatch_key(vx_canvas_t* vc, vx_key_event_t * event);
+int vx_canvas_dispatch_mouse(vx_canvas_t* vc, vx_mouse_event_t * event);
+int vx_canvas_dispatch_key(vx_canvas_t* vc, vx_key_event_t * event);
 void vx_canvas_update_button_states(vx_canvas_t* vc, int button_id, int value);
 
 // Convert GTK modifiers to VX modifiers
@@ -82,8 +82,7 @@ gtk_key_press (GtkWidget *widget, GdkEventKey *event, gpointer user)
     key.key_code = gtk_to_vx_keycode(event->keyval);
     key.released = 0;
 
-    vx_canvas_dispatch_key(vc, &key);
-    return TRUE;
+    return vx_canvas_dispatch_key(vc, &key);
 }
 
 static gboolean
@@ -95,8 +94,7 @@ gtk_key_release (GtkWidget *widget, GdkEventKey *event, gpointer user)
     key.key_code = gtk_to_vx_keycode(event->keyval);
     key.released = 1;
 
-    vx_canvas_dispatch_key(vc, &key);
-    return TRUE;
+    return vx_canvas_dispatch_key(vc, &key);
 }
 
 static gboolean
@@ -110,8 +108,7 @@ gtk_motion (GtkWidget *widget, GdkEventMotion *event, gpointer user)
     vxe.scroll_amt = 0;
     vxe.modifiers = gtk_to_vx_modifiers(event->state);
 
-    vx_canvas_dispatch_mouse(vc, &vxe);
-    return TRUE;
+    return vx_canvas_dispatch_mouse(vc, &vxe);
 }
 
 static gboolean
@@ -127,8 +124,7 @@ gtk_button_press (GtkWidget *widget, GdkEventButton *event, gpointer user)
     vxe.scroll_amt = 0;
     vxe.modifiers = gtk_to_vx_modifiers(event->state);
 
-    vx_canvas_dispatch_mouse(vc, &vxe);
-    return TRUE;
+    return vx_canvas_dispatch_mouse(vc, &vxe);
 }
 
 static gboolean
@@ -144,8 +140,7 @@ gtk_button_release (GtkWidget *widget, GdkEventButton *event, gpointer user)
     vxe.scroll_amt = 0;
     vxe.modifiers = gtk_to_vx_modifiers(event->state);
 
-    vx_canvas_dispatch_mouse(vc, &vxe);
-    return TRUE;
+    return vx_canvas_dispatch_mouse(vc, &vxe);
 }
 
 static gboolean
@@ -169,8 +164,7 @@ gtk_scroll (GtkWidget *widget, GdkEventScroll *event, gpointer user)
     }
     vxe.modifiers = gtk_to_vx_modifiers(event->state);
 
-    vx_canvas_dispatch_mouse(vc, &vxe);
-    return TRUE;
+    return vx_canvas_dispatch_mouse(vc, &vxe);
 }
 
 
@@ -315,47 +309,107 @@ static void print_modifiers(uint32_t modifiers)
 }
 */
 
-void vx_canvas_dispatch_mouse_to_layer(vx_layer_t * vl, vx_camera_pos_t * pos, vx_mouse_event_t * mouse)
+static int check_viewport_bounds(double * xy, int * viewport)
 {
-
+    return (xy[0] >= viewport[0] &&
+            xy[1] >= viewport[1] &&
+            xy[0] < viewport[0] + viewport[2] &&
+            xy[1] < viewport[1] + viewport[3]);
 }
 
-void vx_canvas_dispatch_mouse(vx_canvas_t* vc, vx_mouse_event_t * event)
+int vx_canvas_dispatch_mouse(vx_canvas_t* vc, vx_mouse_event_t * event)
 {
     /* printf("mouse_event (%f,%f) buttons = %x scroll = %d modifiers = %x\n", */
     /*        event->xy[0],event->xy[1], event->button_mask, event->scroll_amt, event->modifiers); */
-
+    int handled = 0;
     render_info_t * rinfo = vc->last_render_info; // XXX This reference is not safe (threading)
+    if (rinfo == NULL)
+        return handled;
 
+    {// Make a copy of the event, whose memory we will manage
+        vx_mouse_event_t * tmp = event;
+        event  = malloc(sizeof(vx_mouse_event_t));
+        memcpy(event, tmp, sizeof(vx_mouse_event_t));
+    }
 
-    vx_mouse_event_t * last_event = vc->last_mouse_event;
+    vx_mouse_event_t * last_event = vc->last_mouse_event; // XXX Memory management!!! (stack allocated in other function)
     vc->last_mouse_event = event;
     if (!last_event) //XXX what to do here? (first time)
-        return;
+        return handled;
 
-    event->xy[1] = rinfo->height - event->xy[1]; // compensate for flip??? XXX GTK?
+    event->xy[1] = rinfo->height - event->xy[1]; // compensate for flip??? XXX GTK? XXX Make sure this gets stored in last_mouse
 
     // check whether the mouse is dragging, or was released. These go to the last layer that got a mouse even
     uint32_t bdiff = event->button_mask ^ last_event->button_mask;
+
+    // done with last event, lets free:
+    free(last_event);
 
     // Either mouse motion while moving and buttons are down
     // or release event, where diff&buttons is all zeros
     // (i.e. the locations where buttons changed resulted in 0 in the new event buttons)
     if (event->button_mask || (bdiff && !(bdiff & event->button_mask) )) { // Check if there was a change, and if so, ensure it was
-        vx_camera_pos_t * pos = vhash_get(rinfo->camera_positions, (void *)vx_layer_id(vc->mouse_pressed_layer));
-        vx_canvas_dispatch_mouse_to_layer(vc->mouse_pressed_layer, pos, event);
-        vx_camera_pos_destroy(pos);
-        return;
+        if (vc->mouse_pressed_layer != NULL) {
+            vx_camera_pos_t * pos = vhash_get(rinfo->camera_positions, (void *)vx_layer_id(vc->mouse_pressed_layer));
+            if (pos) {
+                handled = vx_layer_dispatch_mouse(vc->mouse_pressed_layer, pos, event);
+                vx_camera_pos_destroy(pos);
+            }
+        }
+        return handled; // guarantees that layers will get a mouse down before a drag, or mouse up
     }
 
+    // Otherwise, we need to find a layer for this event
+    for (int lidx = varray_size(rinfo->layers) -1; lidx >= 0; lidx--) {
+        vx_layer_t * vl = varray_get(rinfo->layers, lidx);
+
+        vx_camera_pos_t * pos =  vhash_get(rinfo->camera_positions, (void *)vx_layer_id(vl));
+
+        // bounds check
+        if (check_viewport_bounds(event->xy, pos->viewport)) {
+            int handled  = vx_layer_dispatch_mouse(vl, pos, event);
+
+            // On Mouse down, store which layer got the mouse down event
+            if (bdiff && (bdiff & event->button_mask))
+                vc->mouse_pressed_layer = handled ? vl : NULL;
+
+            if (handled)
+                return handled;
+        }
+    }
+    return handled;
 }
 
-void vx_canvas_dispatch_key(vx_canvas_t* vc, vx_key_event_t * event)
+int vx_canvas_dispatch_key(vx_canvas_t* vc, vx_key_event_t * event)
 {
-    /* printf("key_event modifiers = %x key_code = %d released = %d\n", */
-    /*        event->modifiers, event->key_code, event->released); */
+    render_info_t * rinfo = vc->last_render_info; // XXX This reference is not safe (threading)
+    int handled = 0;
 
+    if (rinfo == NULL)
+        return handled;
 
+    double last_xy[2]  = {0.0, 0.0};
+
+    vx_mouse_event_t * mouse = vc->last_mouse_event;
+    if (mouse != NULL) {
+        last_xy[0] = mouse->xy[0];
+        last_xy[1] = mouse->xy[1];
+    }
+
+    // Otherwise, we need to find a layer for this event
+    for (int lidx = varray_size(rinfo->layers) -1; lidx >= 0; lidx--) {
+        vx_layer_t * vl = varray_get(rinfo->layers, lidx);
+        vx_camera_pos_t * pos =  vhash_get(rinfo->camera_positions, (void *)vx_layer_id(vl));
+
+        if (check_viewport_bounds(last_xy, pos->viewport)) {
+            handled  = vx_layer_dispatch_key(vl, event);
+
+            if (handled)
+                return 1;
+        }
+    }
+
+    return 0;
 }
 
 

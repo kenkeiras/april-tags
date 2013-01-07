@@ -73,3 +73,14 @@ int vx_layer_comparator(const void * a, const void * b)
 {
     return    ((vx_layer_t*)a)->draw_order - ((vx_layer_t*)b)->draw_order;
 }
+
+
+int vx_layer_dispatch_mouse(vx_layer_t * vl, vx_camera_pos_t * pos, vx_mouse_event_t * mouse)
+{
+    return 0;
+}
+
+int vx_layer_dispatch_key(vx_layer_t * vl, vx_key_event_t * mouse)
+{
+    return 0;
+}
