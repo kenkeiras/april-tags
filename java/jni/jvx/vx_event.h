@@ -1,6 +1,8 @@
 #ifndef VX_EVENT_H
 #define VX_EVENT_H
 
+#include <stdint.h>
+
 #include "vx_codes.h"
 
 typedef struct vx_key_event vx_key_event_t;

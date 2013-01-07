@@ -12,10 +12,11 @@
 typedef struct
 {
     varray_t * layers;
-    vhash_t * layer_viewports; //<int, int *>
     vhash_t * camera_positions; //<int, vx_camera_pos_t>
 
+    int width, height;
 } render_info_t;
+
 struct vx_canvas
 {
     GtkuImagePane * imagePane;
@@ -30,6 +31,8 @@ struct vx_canvas
 
     // From the last render event
     render_info_t * last_render_info;
+    vx_mouse_event_t * last_mouse_event;
+    vx_layer_t * mouse_pressed_layer;
 };
 
 
@@ -177,7 +180,6 @@ static  render_info_t * render_info_create()
 {
     render_info_t * rinfo = calloc(1, sizeof(render_info_t));
     rinfo-> layers = varray_create();
-    rinfo-> layer_viewports = vhash_create(vhash_uint32_hash, vhash_uint32_equals);
     rinfo-> camera_positions = vhash_create(vhash_uint32_hash, vhash_uint32_equals);
     return rinfo;
 }
@@ -187,8 +189,6 @@ static void  render_info_destroy(render_info_t * rinfo)
     // XXX Layer memory management
     // layers are stored elsewhere, so we don't need to free them;
     varray_destroy(rinfo->layers);
-    vhash_map2(rinfo->layer_viewports, NULL, free); // Free the viewport arrays
-    vhash_destroy(rinfo->layer_viewports);
     vhash_map2(rinfo->camera_positions, NULL, vx_camera_pos_destroy);
     vhash_destroy(rinfo->camera_positions);
     free(rinfo);
@@ -261,6 +261,8 @@ void* vx_canvas_run(void * arg)
 
         // process all the layers
         render_info_t * rinfo = render_info_create();
+        rinfo->width = width;
+        rinfo->height = height;
         varray_add_all(rinfo->layers, vc->layers);
         // Now sort the layers based on draw order
         varray_sort(rinfo->layers, vx_layer_comparator);
@@ -268,14 +270,13 @@ void* vx_canvas_run(void * arg)
         for (int i = 0; i < varray_size(rinfo->layers); i++){
             vx_layer_t * vl = varray_get(rinfo->layers, i);
             vx_camera_mgr_t * mgr = vx_layer_camera_mgr(vl);
-            // store viewport
-            uint64_t prev_id = -1; // XXX vhash bug
-            void* prev_p = NULL;
-            vhash_put(rinfo->layer_viewports, (void *)vx_layer_id(vl), vx_layer_viewport_abs(vl, width, height), &prev_id, &prev_p);
-            assert(prev_p == NULL);
 
+            uint64_t prev_id = -1; // XXX vhash bug
+            void * prev_p = NULL;
+            int * viewport = vx_layer_viewport_abs(vl, width, height);
             // store camera position, we need to eventually free the position
-            vhash_put(rinfo->camera_positions, (void *)vx_layer_id(vl), mgr->get_camera_pos(mgr), &prev_id, &prev_p);
+            uint64_t mtime = 0; // XXX
+            vhash_put(rinfo->camera_positions, (void *)vx_layer_id(vl), mgr->get_camera_pos(mgr, viewport, mtime), &prev_id, &prev_p);
             assert(prev_p == NULL);
         }
 
@@ -314,13 +315,39 @@ static void print_modifiers(uint32_t modifiers)
 }
 */
 
+void vx_canvas_dispatch_mouse_to_layer(vx_layer_t * vl, vx_camera_pos_t * pos, vx_mouse_event_t * mouse)
+{
+
+}
+
 void vx_canvas_dispatch_mouse(vx_canvas_t* vc, vx_mouse_event_t * event)
 {
     /* printf("mouse_event (%f,%f) buttons = %x scroll = %d modifiers = %x\n", */
     /*        event->xy[0],event->xy[1], event->button_mask, event->scroll_amt, event->modifiers); */
 
-    /* int ex = (int)(event->xy[0]); */
-    /* int ey = (int)(event->xy[1]); */
+    render_info_t * rinfo = vc->last_render_info; // XXX This reference is not safe (threading)
+
+
+    vx_mouse_event_t * last_event = vc->last_mouse_event;
+    vc->last_mouse_event = event;
+    if (!last_event) //XXX what to do here? (first time)
+        return;
+
+    event->xy[1] = rinfo->height - event->xy[1]; // compensate for flip??? XXX GTK?
+
+    // check whether the mouse is dragging, or was released. These go to the last layer that got a mouse even
+    uint32_t bdiff = event->button_mask ^ last_event->button_mask;
+
+    // Either mouse motion while moving and buttons are down
+    // or release event, where diff&buttons is all zeros
+    // (i.e. the locations where buttons changed resulted in 0 in the new event buttons)
+    if (event->button_mask || (bdiff && !(bdiff & event->button_mask) )) { // Check if there was a change, and if so, ensure it was
+        vx_camera_pos_t * pos = vhash_get(rinfo->camera_positions, (void *)vx_layer_id(vc->mouse_pressed_layer));
+        vx_canvas_dispatch_mouse_to_layer(vc->mouse_pressed_layer, pos, event);
+        vx_camera_pos_destroy(pos);
+        return;
+    }
+
 }
 
 void vx_canvas_dispatch_key(vx_canvas_t* vc, vx_key_event_t * event)
