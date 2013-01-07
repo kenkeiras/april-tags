@@ -15,6 +15,11 @@ void vx_layer_destroy(vx_layer_t * layer);
 
 int vx_layer_comparator(const void * a, const void * b);
 
+// compute the absolute viewport size, in pixels. Caller is responsible for
+// freeing the int array, length = 4
+int * vx_layer_viewport_abs(vx_layer_t * vl, int width, int height);
+int  vx_layer_id(vx_layer_t * vl);
+
 
 vx_camera_mgr_t * vx_layer_camera_mgr(vx_layer_t * vl);
 #endif

@@ -171,18 +171,6 @@ gtk_scroll (GtkWidget *widget, GdkEventScroll *event, gpointer user)
 }
 
 
-static vx_camera_pos_t * vx_camera_pos_create()
-{
-    vx_camera_pos_t * pos = calloc(1, sizeof(vx_camera_pos_t));
-    // XXX
-    return pos;
-}
-
-static void vx_camera_pos_destroy(vx_camera_pos_t * cpos)
-{
-    // XXX
-    return free(cpos);
-}
 
 
 static  render_info_t * render_info_create()
@@ -278,13 +266,18 @@ void* vx_canvas_run(void * arg)
         varray_sort(rinfo->layers, vx_layer_comparator);
         // iterate through each layer, compute absolute viewports and get camera positions
         for (int i = 0; i < varray_size(rinfo->layers); i++){
-            /* vx_layer_t * vl = varray_get(rinfo->layers, i); */
+            vx_layer_t * vl = varray_get(rinfo->layers, i);
+            vx_camera_mgr_t * mgr = vx_layer_camera_mgr(vl);
+            // store viewport
+            uint64_t prev_id = -1; // XXX vhash bug
+            void* prev_p = NULL;
+            vhash_put(rinfo->layer_viewports, (void *)vx_layer_id(vl), vx_layer_viewport_abs(vl, width, height), &prev_id, &prev_p);
+            assert(prev_p == NULL);
 
-
-
+            // store camera position, we need to eventually free the position
+            vhash_put(rinfo->camera_positions, (void *)vx_layer_id(vl), mgr->get_camera_pos(mgr), &prev_id, &prev_p);
+            assert(prev_p == NULL);
         }
-        vx_camera_pos_t *pos = vx_camera_pos_create();
-        vx_camera_pos_destroy(pos);
 
         vc->lrend->render(vc->lrend, width, height, data, GL_RGB);
 
