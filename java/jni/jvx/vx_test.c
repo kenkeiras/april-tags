@@ -192,7 +192,8 @@ int main(int argc, char ** args)
     varray_t * foo = varray_create_varargs("foo", "bar", "what", NULL);
     varray_map(foo, prinfoo);
 
-    varray_t * bar = varray_copy(foo);
+    varray_t * bar = varray_create();
+    varray_add_all(bar, foo);
     varray_map(bar, prinfoo);
     varray_destroy(foo);
     varray_destroy(bar);

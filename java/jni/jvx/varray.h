@@ -15,6 +15,8 @@ varray_t *varray_create_varargs(void * first, ...) __attribute__((sentinel));
 void varray_destroy(varray_t *va);
 int varray_size(varray_t *va);
 void varray_add(varray_t *va, void *p);
+// add all the elements of other to va
+void varray_add_all(varray_t *va, varray_t *other);
 
 varray_t * varray_copy(varray_t * va);
 

@@ -6,11 +6,8 @@
 #include "vx_event.h"
 #include "vhash.h"
 #include "varray.h"
+#include "sort_util.h"
 
-typedef struct
-{
-    double pos[3];
-} vx_camera_pos_t; // XXX get's it's own file?
 
 typedef struct
 {
@@ -262,7 +259,6 @@ GtkWidget * vx_canvas_get_gtk_widget(vx_canvas_t * vc)
     return GTK_WIDGET(vc->imagePane);
 }
 
-
 void* vx_canvas_run(void * arg)
 {
     vx_canvas_t * vc = arg;
@@ -276,10 +272,17 @@ void* vx_canvas_run(void * arg)
         uint8_t data[width*height*3];
 
         // process all the layers
-        render_info_t * old = vc->last_render_info;
-        vc->last_render_info = render_info_create();
+        render_info_t * rinfo = render_info_create();
+        varray_add_all(rinfo->layers, vc->layers);
+        // Now sort the layers based on draw order
+        varray_sort(rinfo->layers, vx_layer_comparator);
+        // iterate through each layer, compute absolute viewports and get camera positions
+        for (int i = 0; i < varray_size(rinfo->layers); i++){
+            /* vx_layer_t * vl = varray_get(rinfo->layers, i); */
 
-        // XXX placeholer
+
+
+        }
         vx_camera_pos_t *pos = vx_camera_pos_create();
         vx_camera_pos_destroy(pos);
 
@@ -287,10 +290,12 @@ void* vx_canvas_run(void * arg)
 
         GdkPixbuf * pixbuf = gdk_pixbuf_new_from_data(data, GDK_COLORSPACE_RGB, FALSE, 8, width, height, width*3, NULL, NULL);
 
-
         // pixbuf is now managed by image pane
         gtku_image_pane_set_buffer(vc->imagePane, pixbuf);
 
+
+        render_info_t * old = vc->last_render_info;
+        vc->last_render_info = rinfo;
         if (old)
             render_info_destroy(old); // XXX Threading?
     }
