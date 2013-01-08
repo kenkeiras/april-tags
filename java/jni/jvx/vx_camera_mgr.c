@@ -7,6 +7,8 @@
 
 #include "vx_util.h"
 #include "matd.h"
+#include "varray.h"
+
 vx_camera_pos_t * vx_camera_pos_create()
 {
     vx_camera_pos_t * pos = calloc(1, sizeof(vx_camera_pos_t));
@@ -80,6 +82,7 @@ static inline double linalg_dist_vec(double * v1, double *v2, int len)
 
 void vx_camera_pos_projection_matrix(vx_camera_pos_t * pos, double * out44)
 {
+    varray_t * fp = varray_create();
 
     int width = pos->viewport[2];
     int height = pos->viewport[3];
@@ -91,5 +94,27 @@ void vx_camera_pos_projection_matrix(vx_camera_pos_t * pos, double * out44)
 
     printf("%f %f\n", aspect, dist);//placehold
 
-    assert(0);
+    matd_t *pM = matd_create(4,4);  varray_add(fp, pM);
+    matd_t *oM = matd_create(4,4);  varray_add(fp, oM);
+
+    vx_util_glu_perspective(pos->perspective_fovy_degrees, aspect, pos->zclip_near, pos->zclip_far, pM->data);
+    vx_util_gl_ortho(-dist*aspect/2, -dist*aspect/2, -dist/2, dist/2, -pos->zclip_far, pos->zclip_far, oM->data);
+
+    // Virtually all of the visual difference between
+    // perspective and orthographic mode occurs when
+    // perspectiveness is near zero. As a result, linear
+    // interpolation is not very smooth. We rescale the scale
+    // factor here to provide a more aesthetically pleasing
+    // interpolation.
+    double perspectiveness_scaled = pow(pos->perspectiveness, 3);
+
+    matd_t * sp = matd_create_scalar(perspectiveness_scaled);            varray_add(fp, sp);
+    matd_t * sp_inv = matd_create_scalar(1.0 - perspectiveness_scaled);  varray_add(fp, sp_inv);
+
+    matd_t * M = matd_op("M*M + M*M", pM, sp, oM, sp_inv); varray_add(fp, M);
+    memcpy(out44, M->data, 16*sizeof(double));
+
+    // cleanup
+    varray_map(fp, matd_destroy);
+    varray_destroy(fp);
 }

@@ -12,6 +12,7 @@ typedef struct
 
 matd_t *matd_create(int rows, int cols);
 matd_t *matd_create_data(int rows, int cols, const double *data);
+matd_t *matd_create_scalar(double v);
 
 matd_t *matd_copy(const matd_t *m);
 
