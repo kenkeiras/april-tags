@@ -46,6 +46,8 @@ vx_layer_t * vx_layer_create(vx_renderer_t * rend, vx_world_t * world)
     vl->event_handlers = varray_create();
 
     varray_add(vl->event_handlers, default_event_handler_create());
+
+    varray_add(vl->event_handlers, default_event_handler_create());
     update(vl);
 
     return vl;
@@ -87,10 +89,22 @@ int vx_layer_comparator(const void * a, const void * b)
 
 int vx_layer_dispatch_mouse(vx_layer_t * vl, vx_camera_pos_t * pos, vx_mouse_event_t * mouse)
 {
+    for (int i = 0; i < varray_size(vl->event_handlers); i++) {
+        vx_event_handler_t * handler = varray_get(vl->event_handlers, i);
+        int handled = handler->mouse_event(handler, vl, pos, mouse);
+        if (handled)
+            return handled;
+    }
     return 0;
 }
 
-int vx_layer_dispatch_key(vx_layer_t * vl, vx_key_event_t * mouse)
+int vx_layer_dispatch_key(vx_layer_t * vl, vx_key_event_t * key)
 {
+    for (int i = 0; i < varray_size(vl->event_handlers); i++) {
+        vx_event_handler_t * handler = varray_get(vl->event_handlers, i);
+        int handled = handler->key_event(handler, vl, key);
+        if (handled)
+            return handled;
+    }
     return 0;
 }

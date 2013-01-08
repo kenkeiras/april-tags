@@ -164,7 +164,7 @@ int main(int argc, char ** args)
     gdk_threads_enter();
     gtk_init (&argc, &args);
 
-    vx_canvas_t * vc = vx_canvas_create(lrend);
+    vx_canvas_t * vc = vx_canvas_create_varargs(lrend, layer, NULL);
 
 
     GtkWidget * window = gtk_window_new (GTK_WINDOW_TOPLEVEL);

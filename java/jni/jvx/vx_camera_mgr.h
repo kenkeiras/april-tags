@@ -7,8 +7,16 @@
 typedef struct vx_camera_pos vx_camera_pos_t; // XXX get's it's own file?
 struct vx_camera_pos
 {
-    double pos[3];
+    double eye[3];
+    double lookat[3];
+    double up[3];
+
     int viewport[4];
+
+    double perspectiveness;
+    double perspective_fovy_degrees;
+    double zclip_near;
+    double zclip_far;
 };
 
 typedef struct vx_camera_mgr vx_camera_mgr_t;

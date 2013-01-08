@@ -4,4 +4,6 @@
 
 uint64_t vx_alloc_id();
 
+uint64_t vx_mtime(); // returns the current time in milliseconds
+
 #endif
