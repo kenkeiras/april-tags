@@ -16,7 +16,7 @@ public class VxProgram implements VxObject
     final HashMap<String, float[]> uniformVectorfvMap = new HashMap();
     final HashMap<String, VxTexture> textureMap = new HashMap();
 
-    VxIndexData vxid = null;
+    VxResource vxid = null;
 
     float size = 1.0f;
 
@@ -44,9 +44,10 @@ public class VxProgram implements VxObject
         this.vxid_type = type;
     }
 
-    public void setElementArray(VxIndexData vxid, int type)
+    public void setElementArray(VxResource vxid, int type)
     {
         assert(vxid_count == -1);
+        assert(vxid.type == Vx.GL_UNSIGNED_INT);
         this.vxid = vxid;
         this.vxid_type = type;
     }
@@ -164,7 +165,7 @@ public class VxProgram implements VxObject
             codes.writeInt(Vx.OP_ELEMENT_ARRAY);
             codes.writeLong(vxid.id);
             codes.writeInt(vxid_type);
-            resources.add(new VxResource(Vx.GL_UNSIGNED_INT, vxid.data, vxid.data.length, 4, vxid.id));
+            resources.add(vxid);
         } else {
             codes.writeInt(Vx.OP_DRAW_ARRAY);
             codes.writeInt(vxid_count);

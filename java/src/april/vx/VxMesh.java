@@ -12,7 +12,7 @@ public class VxMesh implements VxObject
     VxProgram vp;
 
     // XXX Normals, lighting
-    public VxMesh(VxVertexAttrib points, VxIndexData indices, Color c)
+    public VxMesh(VxVertexAttrib points, VxResource indices, Color c)
     {
         vp = VxProgram.make("single-color");
 
@@ -23,7 +23,7 @@ public class VxMesh implements VxObject
         vp.setElementArray(indices, Vx.GL_TRIANGLES);
     }
 
-    public VxMesh(VxVertexAttrib points, VxIndexData indices, VxVertexAttrib colors)
+    public VxMesh(VxVertexAttrib points, VxResource indices, VxVertexAttrib colors)
     {
         vp = VxProgram.make("multi-colored");
 

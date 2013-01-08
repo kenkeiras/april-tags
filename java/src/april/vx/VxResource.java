@@ -25,6 +25,11 @@ public class VxResource
         this(Vx.GL_FLOAT, buf, buf.length, 4, VxUtil.allocateID());
     }
 
+    public VxResource(int buf[]) // XXX Int is hardcoded for unsigned int (element indices)
+    {
+        this(Vx.GL_UNSIGNED_INT, buf, buf.length, 4, VxUtil.allocateID());
+    }
+
     @Override
     public int hashCode()
     {

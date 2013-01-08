@@ -103,8 +103,8 @@ public class VxTest
         }
 
 
-        VxIndexData index = new VxIndexData(new int[]{0,1,2,
-                                                      2,3,0});
+        VxResource index = new VxResource(new int[]{0,1,2,
+                                                    2,3,0});
 
         // Now do Texture:
         ArrayList<VxObject> progs1 = new ArrayList();
