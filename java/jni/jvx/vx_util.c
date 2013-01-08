@@ -3,6 +3,7 @@
 #include <sys/time.h>
 #include "matd.h"
 #include "varray.h"
+#include <assert.h>
 
 uint64_t xxxAtomicLong = 1; //XX XX
 
@@ -25,16 +26,24 @@ void vx_util_unproject(double * winxyz, double * model_matrix, double * projecti
 {
     varray_t * fp = varray_create();
 
-    matd_t * mm = varray_add(fp, matd_create_data(4, 4, model_matrix));
-    matd_t * pm = varray_add(fp, matd_create_data(4, 4, projection_matrix));
-    matd_t *invpm = varray_add(fp, matd_op("(MM)^-1", mm, pm));
+    matd_t * mm = matd_create_data(4, 4, model_matrix);
+    varray_add(fp,mm);
+    matd_t * pm = matd_create_data(4, 4, projection_matrix);
+    varray_add(fp, pm);
+
+    matd_t *invpm = matd_op("(MM)^-1", mm, pm);
+    varray_add(fp, invpm);
 
     double v[4] = { 2*(winxyz[0]-viewport[0]) / viewport[2] - 1,
                     2*(winxyz[1]-viewport[1]) / viewport[3] - 1,
                     2*winxyz[2] - 1,
                     1 };
-    matd_t * vm = varray_add(fp, matd_create_data(4, 1, v));
-    matd_t * objxyzh = varray_add(fp,matd_op("MM", invpm, vm));
+    matd_t * vm = matd_create_data(4, 1, v);
+    varray_add(fp, vm);
+
+    matd_t * objxyzh = matd_op("MM", invpm, vm);
+    varray_add(fp,objxyzh);
+
     vec3_out[0] = objxyzh->data[0] / objxyzh->data[3];
     vec3_out[1] = objxyzh->data[1] / objxyzh->data[3];
     vec3_out[2] = objxyzh->data[2] / objxyzh->data[3];
@@ -42,4 +51,20 @@ void vx_util_unproject(double * winxyz, double * model_matrix, double * projecti
     // cleanup
     varray_map(fp, matd_destroy);
     varray_destroy(fp);
+}
+
+
+void vx_util_glu_perspective(double fovy_degrees, double aspect, double znear, double zfar, double * out44)
+{
+    assert(0);
+}
+
+void vx_util_glu_ortho(double left, double right, double bottom, double top, double znear, double zfar, double * out44)
+{
+    assert(0);
+}
+
+void vx_util_lookat(double * eye, double * lookat, double * up, double * out44)
+{
+    assert(0);
 }

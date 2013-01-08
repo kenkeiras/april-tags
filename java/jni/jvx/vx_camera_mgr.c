@@ -1,8 +1,9 @@
 #include "vx_camera_mgr.h"
 #include <stdlib.h>
 #include <string.h>
-
+#include <math.h>
 #include <assert.h>
+#include <stdio.h>
 
 #include "vx_util.h"
 #include "matd.h"
@@ -52,4 +53,43 @@ ray3_t * vx_camera_pos_compute_ray(vx_camera_pos_t * pos, vx_mouse_event_t * mou
     matd_destroy(dir);
 
     return ray;
+}
+
+
+void vx_camera_pos_model_matrix(vx_camera_pos_t * pos, double * out44)
+{
+    // XXX No scaling implemented as in april.vis
+
+    vx_util_lookat(pos->eye, pos->lookat, pos->up, out44);
+}
+
+static inline double sq(double v)
+{
+    return v*v;
+}
+
+static inline double linalg_dist_vec(double * v1, double *v2, int len)
+{
+    double mag = 0.0;
+    for (int i = 0; i < len; i++) {
+        mag += sq(v1[i] - v2[i]);
+    }
+
+    return sqrt(mag);
+}
+
+void vx_camera_pos_projection_matrix(vx_camera_pos_t * pos, double * out44)
+{
+
+    int width = pos->viewport[2];
+    int height = pos->viewport[3];
+
+    double aspect = ((double) width) / height;
+    double dist = linalg_dist_vec(pos->eye, pos->lookat, 3);
+
+    /* vx_util_glu_perspective(); */
+
+    printf("%f %f\n", aspect, dist);//placehold
+
+    assert(0);
 }
