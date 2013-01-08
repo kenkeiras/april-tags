@@ -4,6 +4,7 @@
 #include "matd.h"
 #include "varray.h"
 #include <assert.h>
+#include <math.h>
 
 uint64_t xxxAtomicLong = 1; //XX XX
 
@@ -54,14 +55,27 @@ void vx_util_unproject(double * winxyz, double * model_matrix, double * projecti
 }
 
 
-void vx_util_glu_perspective(double fovy_degrees, double aspect, double znear, double zfar, double * out44)
+void vx_util_glu_perspective(double fovy_degrees, double aspect, double znear, double zfar, double * M)
 {
-    assert(0);
+    double fovy_rad = fovy_degrees * M_PI / 180.0;
+    double f = 1.0 / tan(fovy_rad/2);
+
+    M[0*4 + 0] = f/aspect;
+    M[1*4 + 1] = f;
+    M[2*4 + 2] = (zfar+znear)/(znear-zfar);
+    M[2*4 + 3] = 2*zfar*znear / (znear-zfar);
+    M[3*4 + 2] = -1;
 }
 
-void vx_util_glu_ortho(double left, double right, double bottom, double top, double znear, double zfar, double * out44)
+void vx_util_glu_ortho(double left, double right, double bottom, double top, double znear, double zfar, double * M)
 {
-    assert(0);
+    M[0*4 + 0] = 2 / (right - left);
+    M[0*4 + 3] = -(right+left)/(right-left);
+    M[1*4 + 1] = 2 / (top-bottom);
+    M[1*4 + 3] = -(top+bottom)/(top-bottom);
+    M[2*4 + 2] = -2 / (zfar - znear);
+    M[2*4 + 3] = -(zfar+znear)/(zfar-znear);
+    M[3*4 + 3] = 1;
 }
 
 void vx_util_lookat(double * eye, double * lookat, double * up, double * out44)

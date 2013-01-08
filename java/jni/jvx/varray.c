@@ -62,7 +62,7 @@ int varray_size(varray_t *va)
     return va->size;
 }
 
-void * varray_add(varray_t *va, void *p)
+void varray_add(varray_t *va, void *p)
 {
     if (va->size == va->alloc) {
         int newalloc = va->alloc*2;
@@ -74,8 +74,6 @@ void * varray_add(varray_t *va, void *p)
 
     va->data[va->size] = p;
     va->size++;
-
-    return p; // for convenience
 }
 
 void varray_insert(varray_t *va, void *p, int idx, void *last_value)

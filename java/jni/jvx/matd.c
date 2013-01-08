@@ -521,3 +521,58 @@ matd_t *matd_op(const char *expr, ...)
 
     return res;
 }
+
+// So far, no reason to distinguish between row vectors and column vectors
+static inline int is_vector(const matd_t * a)
+{
+    return a->ncols == 1 || a->nrows == 1;
+}
+
+static inline int is_vector_len(const matd_t * a, int len)
+{
+    return (a->ncols == 1 && a->nrows == len) || (a->ncols == len && a->nrows == 1);
+}
+
+static inline double sq(double v)
+{
+    return v*v;
+}
+
+
+double matd_vec_mag(const matd_t *a)
+{
+    assert(is_vector(a));
+
+    double mag = 0.0;
+    int len = a->nrows*a->ncols;
+    for (int i = 0; i < len; i++)
+        mag += sq(a->data[i]);
+    return mag;
+}
+
+matd_t *matd_vec_normalize(const matd_t *a)
+{
+    double mag = matd_vec_mag(a);
+
+    matd_t *b = matd_create(a->nrows, a->ncols);
+
+    int len = a->nrows*a->ncols;
+    for(int i = 0; i < len; i++)
+        b->data[i] = a->data[i] / mag;
+
+    return b;
+}
+
+
+matd_t *matd_crossproduct(const matd_t *a, const matd_t *b)
+{ // only defined for vecs (col or row) of length 3
+    assert(is_vector_len(a, 3) && is_vector_len(b, 3));
+
+    matd_t * r = matd_create(a->nrows, a->ncols);
+
+    r->data[0] = a->data[1] * b->data[2] - a->data[2] * b->data[1];
+    r->data[1] = a->data[2] * b->data[0] - a->data[0] * b->data[2];
+    r->data[2] = a->data[0] * b->data[1] - a->data[1] * b->data[0];
+
+    return r;
+}

@@ -27,6 +27,11 @@ matd_t *matd_multiply(const matd_t *a, const matd_t *b);
 matd_t *matd_transpose(const matd_t *a);
 matd_t *matd_inverse(const matd_t *a);
 
+
+double matd_vec_mag(const matd_t *a);
+matd_t *matd_vec_normalize(const matd_t *a);
+matd_t *matd_crossproduct(const matd_t *a, const matd_t *b); // only defined for vecs (col or row) of length 3
+
 matd_t *matd_op(const char *expr, ...);
 
 void matd_destroy(matd_t *m);
