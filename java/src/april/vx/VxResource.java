@@ -20,6 +20,11 @@ public class VxResource
         this.id = id;
     }
 
+    public VxResource(float buf[])
+    {
+        this(Vx.GL_FLOAT, buf, buf.length, 4, VxUtil.allocateID());
+    }
+
     @Override
     public int hashCode()
     {

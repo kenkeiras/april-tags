@@ -51,63 +51,55 @@ public class VxTest
         vl.set_viewport(new float[]{0,0,.5f,.5f});
         vl.cameraManager.uiLookAt(new double[]{0,0,10}, new double[3], new double[]{0,1,0}, true);
 
-        ArrayList<VxVertexAttrib> point_attribs = new ArrayList();
+        ArrayList<List<float[]>> point_attribs = new ArrayList();
         {
             // bottom right
-            point_attribs.add(new VxVertexAttrib(new float[]{1.0f, 1.0f,
-                                                             0.0f, 1.0f,
-                                                             0.0f, 0.0f,
-                                                             1.0f, 0.0f},
-                                                 2));
+            point_attribs.add(Arrays.asList(new float[]{1.0f, 1.0f},
+                                            new float[]{0.0f, 1.0f},
+                                            new float[]{0.0f, 0.0f},
+                                            new float[]{1.0f, 0.0f}));
 
             // bottom left
-            point_attribs.add(new VxVertexAttrib(new float[]{-1.0f, 0.0f,
-                                                             0.0f, 0.0f,
-                                                             0.0f, 1.0f,
-                                                             -1.0f, 1.0f},
-                                                 2));
+            point_attribs.add(Arrays.asList(new float[]{-1.0f, 0.0f},
+                                            new float[]{ 0.0f, 0.0f},
+                                            new float[]{ 0.0f, 1.0f},
+                                            new float[]{-1.0f, 1.0f}));
 
-            // top left
-            point_attribs.add(new VxVertexAttrib(new float[]{0.0f, 0.0f,
-                                                             -1.0f, 0.0f,
-                                                             -1.0f, -1.0f,
-                                                             0.0f, -1.0f},
-                                                 2));
+            // // top left
+            point_attribs.add(Arrays.asList(new float[]{0.0f, 0.0f},
+                                            new float[]{-1.0f, 0.0f},
+                                            new float[]{-1.0f, -1.0f},
+                                            new float[]{0.0f, -1.0f}));
 
-            // top right
-            point_attribs.add(new VxVertexAttrib(new float[]{ 0.0f, -1.0f,
-                                                              1.0f, -1.0f,
-                                                              1.0f, 0.0f,
-                                                              0.0f, 0.0f},
-                                                 2));
+            // // top right
+            point_attribs.add(Arrays.asList(new float[]{ 0.0f, -1.0f},
+                                            new float[]{ 1.0f, -1.0f},
+                                            new float[]{ 1.0f, 0.0f},
+                                            new float[]{ 0.0f, 0.0f}));
         }
 
-        ArrayList<VxVertexAttrib> color_attribs = new ArrayList();
+        ArrayList<List<float[]>> color_attribs = new ArrayList();
         {
 
-            color_attribs.add(new VxVertexAttrib(new float[] { 1.0f, 0.0f, 0.0f,
-                                                               1.0f, 0.0f, 1.0f,
-                                                               0.0f, 1.0f, 0.0f,
-                                                               1.0f, 1.0f, 0.0f},
-                                                 3));
+            color_attribs.add(Arrays.asList(new float[] { 1.0f, 0.0f, 0.0f},
+                                            new float[] { 1.0f, 0.0f, 1.0f},
+                                            new float[] { 0.0f, 1.0f, 0.0f},
+                                            new float[] { 1.0f, 1.0f, 0.0f}));
 
-            color_attribs.add(new VxVertexAttrib(new float []{0.0f, .3f, 1.0f,
-                                                              0.5f, 0.3f, 1.0f,
-                                                              0.0f, 1.0f, 1.0f,
-                                                              0.0f, 1.0f, 1.0f},
-                                                 3));
+            color_attribs.add(Arrays.asList(new float[] {0.0f, .3f, 1.0f},
+                                            new float[] { 0.5f, 0.3f, 1.0f},
+                                            new float[] { 0.0f, 1.0f, 1.0f},
+                                            new float[] { 0.0f, 1.0f, 1.0f}));
 
-            color_attribs.add(new VxVertexAttrib(new float []{0.0f, 1.0f, 1.0f,
-                                                              0.5f, 0.3f, 1.0f,
-                                                              0.0f, 1.0f, 1.0f,
-                                                              1.0f, 1.0f, 1.0f},
-                                                 3));
+            color_attribs.add(Arrays.asList(new float[] {0.0f, 1.0f, 1.0f},
+                                            new float[] { 0.5f, 0.3f, 1.0f},
+                                            new float[] { 0.0f, 1.0f, 1.0f},
+                                            new float[] { 1.0f, 1.0f, 1.0f}));
 
-            color_attribs.add(new VxVertexAttrib(new float []{0.0f, 1.0f, 0.7f,
-                                                              0.0f, 1.0f, 1.0f,
-                                                              1.0f, .1f, .1f,
-                                                              0.5f, 0.3f, 1.0f},
-                                                 3));
+            color_attribs.add(Arrays.asList(new float[] {0.0f, 1.0f, 0.7f},
+                                            new float[] { 0.0f, 1.0f, 1.0f},
+                                            new float[] { 1.0f, .1f, .1f},
+                                            new float[] { 0.5f, 0.3f, 1.0f}));
         }
 
 
@@ -121,16 +113,18 @@ public class VxTest
             VxTexture vtex = new VxTexture(img);
 
             VxProgram vp = VxProgram.make("texture");
-            vp.setVertexAttrib("position", point_attribs.get(2));
+            vp.setVertexAttrib("position", new VxVertexAttrib(point_attribs.get(2)));
             vp.setTexture("texture", vtex); //XXX Error!
 
-            float texcoords[] = {
-                0.0f, 0.0f,
-                1.0f, 0.0f,
-                1.0f, 1.0f,
-                0.0f, 1.0f};
+            VxResource texcoords = new VxResource(
+                new float[]{
+                    0.0f, 0.0f,
+                    1.0f, 0.0f,
+                    1.0f, 1.0f,
+                    0.0f, 1.0f});
 
-            vp.setVertexAttrib("texIn", new VxVertexAttrib(texcoords,2));
+
+            vp.setVertexAttrib("texIn", new VxVertexAttrib(texcoords, 2));
             vp.setElementArray(index, Vx.GL_TRIANGLES);
 
             progs1.add(new VxChain(LinAlg.translate(-1,-1), vp));
@@ -141,9 +135,9 @@ public class VxTest
 
         for (int i = 0; i < 4; i+=2) {
             VxProgram vp = VxProgram.make("multi-colored");//new VxProgram(vertRx,fragRx);
-            vp.setVertexAttrib("position", point_attribs.get(i));
+            vp.setVertexAttrib("position", new VxVertexAttrib(point_attribs.get(i)));
 
-            vp.setVertexAttrib("color", color_attribs.get(i));
+            vp.setVertexAttrib("color", new VxVertexAttrib(color_attribs.get(i)));
 
             vp.setElementArray(index, Vx.GL_TRIANGLES);
 
@@ -153,9 +147,9 @@ public class VxTest
         ArrayList<VxObject> progs2 = new ArrayList();
         for (int i = 1; i < 4; i+=2) { // XXX Only render 1
             VxProgram vp = VxProgram.make("multi-colored");
-            vp.setVertexAttrib("position", point_attribs.get(i));
+            vp.setVertexAttrib("position", new VxVertexAttrib(point_attribs.get(i)));
 
-            vp.setVertexAttrib("color", color_attribs.get(i));
+            vp.setVertexAttrib("color", new VxVertexAttrib(color_attribs.get(i)));
 
             vp.setElementArray(index, Vx.GL_TRIANGLES);
 
@@ -172,7 +166,7 @@ public class VxTest
                                      10 - 20*r.nextDouble()});
 
             VxVertexAttrib points = new VxVertexAttrib(pts);
-            VxPoints vpts = new VxPoints(points, java.awt.Color.red);
+            VxPoints vpts = new VxPoints(points, java.awt.Color.red); // XXX VxPoints.Style?
 
             vw.getBuffer("points").addBack(vpts);
             vw.getBuffer("points").setDrawOrder(10);

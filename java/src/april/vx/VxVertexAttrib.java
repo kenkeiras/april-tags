@@ -4,16 +4,17 @@ import java.util.*;
 
 public class VxVertexAttrib
 {
-    final long id = VxUtil.allocateID();
+    // final long id = VxUtil.allocateID();
 
-    final float fdata[];
+    // final float fdata[];
+    final VxResource vr;
     final int dim;
 
     // XXX Also add integers, bytes
 
-    public VxVertexAttrib(float fdata[], int dim)
+    public VxVertexAttrib(VxResource vr, int dim)
     {
-        this.fdata = fdata;
+        this.vr = vr;
         this.dim  = dim;
     }
 
@@ -22,7 +23,7 @@ public class VxVertexAttrib
     {
         this.dim  = java.lang.reflect.Array.getLength(points.get(0));
 
-        this.fdata = new float[points.size()*dim];
+        float fdata[] = new float[points.size()*dim];
 
         if(double[].class == points.get(0).getClass()) {
             for (int i = 0; i < points.size(); i++) {
@@ -40,14 +41,13 @@ public class VxVertexAttrib
             // In theory we could also handle automatically casting ints to floats this way
             throw new IllegalArgumentException("VxVertexAttrib() only accepts arraylists of double[] or float[]");
         }
-    }
 
+        vr = new VxResource(Vx.GL_FLOAT, fdata, fdata.length, 4, VxUtil.allocateID());
+    }
 
     public int size()
     {
-        return fdata.length;
+        return vr.count / dim;
     }
-
-
 
 }

@@ -27,6 +27,8 @@ public class VxLocalRenderer extends VxRenderer
 
     public VxLocalRenderer(String url)
     {
+        this();
+
         if (!url.startsWith("java://"))
             throw new IllegalArgumentException("VxLocalRenderer only accepts java:// urls");
 
@@ -45,6 +47,10 @@ public class VxLocalRenderer extends VxRenderer
             }
         }
 
+    }
+
+    public VxLocalRenderer()
+    {
         instanceID = vx_create_local_renderer(width, height);
 
         manager = new VxResourceManager(this);

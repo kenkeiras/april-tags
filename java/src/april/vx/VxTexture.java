@@ -4,11 +4,8 @@ import java.awt.image.*;
 
 public class VxTexture
 {
-    final long id = VxUtil.allocateID();
-
-
+    final VxResource vr;
     final int width, height;
-    final byte[] bbuf;
 
     final int format; // internal format and format must be the same
 
@@ -18,19 +15,15 @@ public class VxTexture
         // XXX Transparency, but GL_RGBA requires  swapping lots of stuff to get from 4BYTE_ABGR
         BufferedImage bim = VxUtil.convertAndCopyImage(bim_in, BufferedImage.TYPE_3BYTE_BGR);
 
-
-
-
-        bbuf = ((DataBufferByte) (bim.getRaster().getDataBuffer())).getData();
         width = bim.getWidth();
         height = bim.getHeight();
+        format = Vx.GL_RGB;
 
+        byte bbuf[] = ((DataBufferByte) (bim.getRaster().getDataBuffer())).getData();
         //Fix color inversion
         swapRB_RGB(bbuf, width, height);
-
-        format = Vx.GL_RGB;
+        vr = new VxResource(Vx.GL_UNSIGNED_BYTE, bbuf, bbuf.length, 1, VxUtil.allocateID());
     }
-
 
     public static void swapRB_RGB(byte buf[], int width, int height)
     {

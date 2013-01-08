@@ -51,6 +51,11 @@ public class VxProgram implements VxObject
         this.vxid_type = type;
     }
 
+    public void setVertexAttrib(String name, VxResource vr, int dim)
+    {
+        setVertexAttrib(name, new VxVertexAttrib(vr, dim));
+    }
+
     public void setVertexAttrib(String name, VxVertexAttrib vva)
     {
         attribMap.put(name, vva);
@@ -99,11 +104,11 @@ public class VxProgram implements VxObject
         for (String name :  attribMap.keySet()) {
             VxVertexAttrib vva = attribMap.get(name);
             codes.writeInt(Vx.OP_VERT_ATTRIB);
-            codes.writeLong(vva.id);
+            codes.writeLong(vva.vr.id);
             codes.writeInt(vva.dim);
             codes.writeStringZ(name);
 
-            resources.add(new VxResource(Vx.GL_FLOAT, vva.fdata, vva.fdata.length, 4, vva.id));
+            resources.add(vva.vr);
         }
 
         // Float matrix uniforms
@@ -143,13 +148,13 @@ public class VxProgram implements VxObject
             VxTexture vtex = textureMap.get(name);
             codes.writeInt(Vx.OP_TEXTURE);
             codes.writeStringZ(name);
-            codes.writeLong(vtex.id);
+            codes.writeLong(vtex.vr.id);
 
             codes.writeInt(vtex.width);
             codes.writeInt(vtex.height);
             codes.writeInt(vtex.format);
 
-            resources.add(new VxResource(Vx.GL_UNSIGNED_BYTE, vtex.bbuf, vtex.bbuf.length, 1, vtex.id));
+            resources.add(vtex.vr);
         }
 
         codes.writeInt(Vx.OP_LINE_WIDTH);
