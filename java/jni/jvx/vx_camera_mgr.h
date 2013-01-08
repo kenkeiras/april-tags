@@ -35,4 +35,7 @@ vx_camera_pos_t * vx_camera_pos_create();
 void vx_camera_pos_destroy(vx_camera_pos_t * pos);
 ray3_t * vx_camera_pos_compute_ray(vx_camera_pos_t * pos, vx_mouse_event_t * mouse);
 
+void vx_camera_pos_model_matrix(vx_camera_pos_t * pos, double * out44);
+void vx_camera_pos_projection_matrix(vx_camera_pos_t * pos, double * out44);
+
 #endif

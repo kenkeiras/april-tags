@@ -29,6 +29,9 @@
 #define VX_CAPS_MASK    16
 #define VX_NUM_MASK     32
 
+#define VX_BUTTON1_MASK    0
+#define VX_BUTTON2_MASK    1
+#define VX_BUTTON3_MASK    2
 
 // XXX should these GL types be defined here??? or included from GL.h?
 // OpenGL Es 2.0 Types:
