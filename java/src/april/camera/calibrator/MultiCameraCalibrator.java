@@ -64,7 +64,6 @@ public class MultiCameraCalibrator implements ParameterListener
         calibrator = new RobustCameraCalibrator(initializers, tf, metersPerTag, true, verbose);
 
         // silence!
-        CameraCalibrator.verbose = false;
         IntrinsicsEstimator.verbose = false;
         april.camera.models.SimpleKannalaBrandtInitializer.verbose = false;
         april.camera.models.KannalaBrandtInitializer.verbose = false;

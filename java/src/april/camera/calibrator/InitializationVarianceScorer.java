@@ -10,7 +10,7 @@ public class InitializationVarianceScorer implements FrameScorer
 {
     public static int NSAMPLES = 10;
 
-    CameraCalibrator currentCal;
+    RobustCameraCalibrator currentCal;
     int imwidth, imheight;
 
     List<CalibrationInitializer> initializers;
@@ -18,13 +18,13 @@ public class InitializationVarianceScorer implements FrameScorer
 
     Random r = new Random();
 
-    public InitializationVarianceScorer(CameraCalibrator cal, int width, int height)
+    public InitializationVarianceScorer(RobustCameraCalibrator cal, int width, int height)
     {
         this.currentCal = cal;
         this.imwidth = width;
         this.imheight = height;
 
-        initializers = cal.getInitializers();
+        initializers = cal.getCalRef().getInitializers();
         assert(initializers.size() == 1); // only support single-camera mode
 
         tm = cal.getTagMosaic();

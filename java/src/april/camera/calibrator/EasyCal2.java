@@ -37,7 +37,6 @@ public class EasyCal2
     // debug gui
     VisLayer vl2 = null;
 
-
     // Debug state
     ArrayList<SuggestedImage> ranked;
 
@@ -46,7 +45,7 @@ public class EasyCal2
     ImageSource     isrc;
     BlockingSingleQueue<FrameData> imageQueue = new BlockingSingleQueue<FrameData>();
 
-    CameraCalibrator calibrator;
+    RobustCameraCalibrator calibrator;
     Rasterizer rasterizer;
     double clickWidthFraction = 0.25, clickHeightFraction = 0.25;
 
@@ -142,7 +141,6 @@ public class EasyCal2
         this.stoppingAccuracy = stoppingAccuracy;
 
         // silence!
-        CameraCalibrator.verbose = false;
         IntrinsicsEstimator.verbose = false;
         april.camera.models.SimpleKannalaBrandtInitializer.verbose = false;
         april.camera.models.KannalaBrandtInitializer.verbose = false;
@@ -196,15 +194,12 @@ public class EasyCal2
         ////////////////////////////////////////
         // Calibrator setup
 
-        if (debugGUI) {
-            System.out.println("Making debug gui");
-            VisWorld vw2 = new VisWorld();
-            vl2 = new VisLayer(vw2);
-            VisCanvas vc2 = new VisCanvas(vl2);
+        calibrator = new RobustCameraCalibrator(Arrays.asList(initializer), tf, tagSpacingMeters, debugGUI, false);
 
+        if (debugGUI) {
             JFrame jf2 = new JFrame("Debug");
             jf2.setLayout(new BorderLayout());
-            jf2.add(vc2, BorderLayout.CENTER);
+            jf2.add(calibrator.getVisCanvas(), BorderLayout.CENTER);
             jf2.setSize(720, 480);
             jf2.setLocation(1200,0);
             jf2.setVisible(true);
@@ -212,8 +207,6 @@ public class EasyCal2
 
             new DebugEasyCal(this);
         }
-
-        calibrator = new CameraCalibrator(Arrays.asList(initializer), tf, tagSpacingMeters, vl2, vl2 != null);
 
         if (debugSeedImages != null && debugSeedImages.size() > 0 ) {
             for (BufferedImage im : debugSeedImages)
@@ -425,9 +418,10 @@ public class EasyCal2
                 return;
             }
 
-            ParameterizableCalibration cal = null;
+            ParameterizableCalibration curcal = null, cal = null;
             double params[] = null;
-            if (calibrator != null) params = calibrator.getCalibrationParameters(0);
+            if (calibrator != null) curcal = calibrator.getCalRef().getCameras().get(0).cal;
+            if (curcal != null)     params = curcal.getParameterization();
             if (params != null)     cal    = initializer.initializeWithParameters(imwidth, imheight, params);
 
             if (cal == null) {
@@ -535,11 +529,8 @@ public class EasyCal2
 
                 System.out.printf("Reinitialized with score %12.6f\n", score);
 
-                calibrator = new CameraCalibrator(Arrays.asList(initializer),
-                                                  tf, tagSpacingMeters,
-                                                  vl2, vl2 != null);
-
-                calibrator.addImages(Arrays.asList(im), Arrays.asList(detections));
+                calibrator.resetCalibrationSystem();
+                calibrator.addOneImageSet(Arrays.asList(im), Arrays.asList(detections));
                 calibrator.draw();
             }
 
@@ -640,7 +631,7 @@ public class EasyCal2
                 return;
 
             FrameScorer fs = null;
-            if (calibrator.getNumImages() < 3)
+            if (calibrator.getCalRef().getAllImageSets().size() < 3)
                 fs = new InitializationVarianceScorer(calibrator, imwidth, imheight);
             else
                 fs = new PixErrScorer(calibrator, imwidth, imheight);
@@ -689,7 +680,7 @@ public class EasyCal2
                         double params[] = LinAlg.fitLine(nv);
                         double pred = intercept(params, 1.0);
 
-                        remaining = pred - calibrator.getNumImages();
+                        remaining = pred - calibrator.getCalRef().getAllImageSets().size();
                     }
                 }
 
@@ -946,7 +937,7 @@ public class EasyCal2
                         draw(bestSI.im, bestSI.detections);
 
                     // Compute the frame score for this image
-                    if (calibrator.getNumImages() >= 3) {
+                    if (calibrator.getCalRef().getAllImageSets().size() >= 3) {
                         FrameScorer fs = new PixErrScorer(calibrator, imwidth, imheight);
                         double score = fs.scoreFrame(detections);
 
@@ -969,8 +960,8 @@ public class EasyCal2
                             vb.swap();
                         }
 
-                        selectedScores.add(new double[]{calibrator.getNumImages()+1,score}); // Keep the history
-
+                        int nimages = calibrator.getCalRef().getAllImageSets().size();
+                        selectedScores.add(new double[]{ nimages+1, score }); // Keep the history
 
                         System.out.printf("Chose image with score %f compared to best in dictionary %f \n",
                                           score,
@@ -1034,9 +1025,10 @@ public class EasyCal2
         vb = vw.getBuffer("Rectified outline");
         vb.setDrawOrder(1000);
 
-        ParameterizableCalibration cal = null;
+        ParameterizableCalibration curcal = null, cal = null;
         double params[] = null;
-        if (calibrator != null) params = calibrator.getCalibrationParameters(0);
+        if (calibrator != null) curcal = calibrator.getCalRef().getCameras().get(0).cal;
+        if (curcal != null)     params = curcal.getParameterization();
         if (params != null)     cal    = initializer.initializeWithParameters(imwidth, imheight, params);
 
         if (cal != null) {
@@ -1258,93 +1250,13 @@ public class EasyCal2
 
     private void addImage(BufferedImage im, List<TagDetection> detections)
     {
-        // add the initialization frame before adding the specified frame
-        /* // disable this to make a more generous initialization
-        if (imagesSet.size() == 0) {
-            imagesSet.add(Arrays.asList(bestInitImage));
-            detsSet.add(Arrays.asList(bestInitDetections));
-        }
-        */
+        calibrator.addOneImageSet(Arrays.asList(im),
+                                  Arrays.asList(detections));
 
-        double origMRE = -1, newMRE = -1;
-        boolean origSPD = true, newSPD = true;
-
-        imagesSet.add(Arrays.asList(im));
-        detsSet.add(Arrays.asList(detections));
-
-        calibrator.addImages(imagesSet.get(imagesSet.size()-1), detsSet.get(detsSet.size()-1));
-
-        try {
-            calibrator.iterateUntilConvergence(0.01, 3, 50);
-            origMRE = calibrator.getMRE();
-        } catch (Exception ex) {
-            origSPD = false;
-        }
-
-        if (origSPD == false || origMRE > 1.0)
-        { // Try to reinitialize, check MRE, take the better one:
-            CameraCalibrator cal = new CameraCalibrator(Arrays.asList(initializer), tf,
-                                                        tagSpacingMeters, vl2, vl2 != null);
-            cal.addImageSet(imagesSet, detsSet, Collections.<double[]>nCopies(imagesSet.size(),null));
-
-            try {
-                cal.iterateUntilConvergence(0.01, 3, 50);
-                newMRE = cal.getMRE();
-            } catch (Exception ex) {
-                newSPD = false;
-            }
-
-            if (origSPD && newSPD) {
-                double MREimprovement = origMRE - newMRE;
-                if (MREimprovement > 0.001)
-                    calibrator = cal;
-
-                System.out.printf("[%3d] [Using %s] Original MRE: %12.6f Re-init MRE: %12.6f\n",
-                                  imagesSet.size(), (calibrator == cal) ? "new " : "orig", origMRE, newMRE);
-
-            } else if (origSPD && !newSPD) {
-                // keep current calibrator
-
-                System.out.printf("[%3d] [Using orig] Original MRE: %12.6f Re-init %17s\n",
-                                  imagesSet.size(), origMRE, "not SPD");
-
-            } else if (!origSPD && newSPD) {
-                // use new calibrator
-                calibrator = cal;
-
-                System.out.printf("[%3d] [Using new ] Original %17s Re-init MRE: %12.6f\n",
-                                  imagesSet.size(), "not SPD", newMRE);
-
-            } else {
-                // oh boy.
-
-                System.out.printf("[%3d] [Using orig] Original %17s Re-init %17s\n",
-                                  imagesSet.size(), "not SPD", "not SPD");
-
-            }
-        }
-        else {
-            System.out.printf("[%3d] [Using orig] Original MRE: %12.6f\n",
-                              imagesSet.size(), origMRE);
-        }
-
-        // if both graphs failed, we'll reinitialize and *not* iterate.
-        // this will get us something reasonable to render to the user
-        if (!origSPD && !newSPD) {
-            CameraCalibrator cal = new CameraCalibrator(Arrays.asList(initializer), tf,
-                                                        tagSpacingMeters, vl2, vl2 != null);
-            cal.addImageSet(imagesSet, detsSet, Collections.<double[]>nCopies(imagesSet.size(),null));
-            calibrator = cal;
-        }
+        List<RobustCameraCalibrator.GraphStats> stats =
+            calibrator.iterateUntilConvergenceWithReinitalization(1.0, 0.01, 3, 50);
 
         calibrator.draw();
-
-        if (false) {
-            april.graph.Graph.ErrorStats es = calibrator.getGraphCopy().getErrorStats();
-            System.out.printf("Graph chi2 %f \n", es.chi2);
-            System.out.printf("Graph chi2 norm %f \n", es.chi2normalized);
-            System.out.printf("Graph dof %d \n", es.degreesOfFreedom);
-        }
     }
 
     private double[][] getPlottingTransformation(BufferedImage im, boolean mirror)
@@ -1394,8 +1306,6 @@ public class EasyCal2
     {
         return (intercept - line_params[1])/line_params[0];
     }
-
-
 
     private void updateMosaic(List<TagDetection> detections)
     {
@@ -1459,12 +1369,11 @@ public class EasyCal2
 
     private void generateNextSuggestion()
     {
-        ParameterizableCalibration cal = null;
+        ParameterizableCalibration curcal = null, cal = null;
         double params[] = null;
-        if (calibrator != null)
-            params = calibrator.getCalibrationParameters(0);
-        if (params != null)
-            cal = initializer.initializeWithParameters(imwidth, imheight, params);
+        if (calibrator != null) curcal = calibrator.getCalRef().getCameras().get(0).cal;
+        if (curcal != null)     params = curcal.getParameterization();
+        if (params != null)     cal    = initializer.initializeWithParameters(imwidth, imheight, params);
 
         if (cal == null)
             return;
@@ -1475,7 +1384,7 @@ public class EasyCal2
         SuggestedImage newSuggestion = null;
 
         FrameScorer fs = null;
-        if (calibrator.getNumImages() < 3)
+        if (calibrator.getCalRef().getAllImageSets().size() < 3)
             fs = new InitializationVarianceScorer(calibrator, imwidth, imheight);
         else
             fs = new PixErrScorer(calibrator, imwidth, imheight);

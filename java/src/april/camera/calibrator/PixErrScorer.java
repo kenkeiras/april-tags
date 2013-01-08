@@ -17,12 +17,12 @@ public class PixErrScorer implements FrameScorer
     public static int seed = 14;
     public static int nsamples = 50;
 
-    final CameraCalibrator currentCal;
+    final RobustCameraCalibrator currentCal;
 
     final int width, height;
     BufferedImage fakeIm;
 
-    public PixErrScorer(CameraCalibrator _currentCal, int _width, int _height)
+    public PixErrScorer(RobustCameraCalibrator _currentCal, int _width, int _height)
     {
         currentCal = _currentCal;
 
@@ -31,44 +31,87 @@ public class PixErrScorer implements FrameScorer
         fakeIm = new BufferedImage(width,height, BufferedImage.TYPE_BYTE_BINARY); // cheapest
     }
 
-
     public double scoreFrame(List<TagDetection> dets)
     {
-        CameraCalibrator cal = currentCal.copy();
+        RobustCameraCalibrator cal = currentCal.copy();
 
         // XXX Passing null here
-        cal.addImages(Arrays.asList(fakeIm), Arrays.asList(dets));
-        try {
-            int itrs = cal.iterateUntilConvergence(.01, 2, 1000);
-        } catch(RuntimeException e) {
-            return Double.NaN;
-        }
+        cal.addOneImageSet(Arrays.asList(fakeIm), Arrays.asList(dets));
 
-        return scoreCal(cal, width, height);
+        // build graphs
+        List<RobustCameraCalibrator.GraphWrapper> graphWrappers = cal.buildCalibrationGraphs();
+        assert(graphWrappers.size() == 1);
+
+        // optimize
+        List<RobustCameraCalibrator.GraphStats> stats =
+            cal.iterateUntilConvergence(graphWrappers, 0.01, 2, 1000);
+        assert(stats.size() == 1);
+
+        // update
+        cal.updateFromGraphs(graphWrappers, stats);
+
+        // there should only be one camera, so get its graph objects
+        RobustCameraCalibrator.GraphWrapper gw = graphWrappers.get(0);
+        RobustCameraCalibrator.GraphStats s = stats.get(0);
+        assert(gw != null);
+        assert(s != null);
+
+        // get the node index for the camera intrinsics
+        List<CameraCalibrationSystem.CameraWrapper> cameras = cal.getCalRef().getCameras();
+        assert(cameras.size() == 1);
+        Integer cameraIntrinsicsIndex = gw.cameraToIntrinsicsNodeIndex.get(cameras.get(0));
+        assert(cameraIntrinsicsIndex != null);
+
+        // return result on error
+        if (s.SPDError)
+            return Double.NaN;
+
+        return scoreCal(cal.getCalRef().getInitializers(),
+                        gw.g, cameraIntrinsicsIndex, width, height);
     }
 
-    public static double scoreCal(CameraCalibrator cal, int width, int height)
+    public static double scoreCal(RobustCameraCalibrator cal, int width, int height)
     {
-        // Compute mean, covariance from which we will sample
+        // build graphs
+        List<RobustCameraCalibrator.GraphWrapper> graphWrappers = cal.buildCalibrationGraphs();
+        assert(graphWrappers.size() == 1);
+
+        RobustCameraCalibrator.GraphWrapper gw = graphWrappers.get(0);
+        assert(gw != null);
+
+        // get the node index for the camera intrinsics
+        List<CameraCalibrationSystem.CameraWrapper> cameras = cal.getCalRef().getCameras();
+        assert(cameras.size() == 1);
+        Integer cameraIntrinsicsIndex = gw.cameraToIntrinsicsNodeIndex.get(cameras.get(0));
+        assert(cameraIntrinsicsIndex != null);
+
+        return scoreCal(cal.getCalRef().getInitializers(),
+                        gw.g, cameraIntrinsicsIndex, width, height);
+    }
+
+    public static double scoreCal(List<CalibrationInitializer> initializers,
+                                  Graph gorig, int nodeIndex, int width, int height)
+    {
+        Graph g = gorig.copy();
         MultiGaussian mg = null;
+
+        // Compute mean, covariance from which we will sample
         try {
-            Graph g = cal.getGraphCopy();
-            double mu[] = LinAlg.copy(g.nodes.get(0).state);
+            double mu[] = LinAlg.copy(g.nodes.get(nodeIndex).state);
             double P[][] = (useMarginal?
-                            GraphUtil.getMarginalCovariance(g, 0).copyArray() :
-                            GraphUtil.getConditionalCovariance(g, 0).copyArray());
+                            GraphUtil.getMarginalCovariance(g, nodeIndex).copyArray() :
+                            GraphUtil.getConditionalCovariance(g, nodeIndex).copyArray());
 
             mg = new MultiGaussian(P, mu);
+
         } catch(RuntimeException e){
             return Double.NaN;
         }
 
         ArrayList<double[]> samples = mg.sampleMany(new Random(seed), nsamples);
 
-
-
         double errMeanVar[] = computeMaxErrorDist(mg.getMean(), samples, 5,
-                                                  cal.getInitializers().get(0), width, height);
+                                                  initializers.get(0), width, height);
 
         return errMeanVar[0];
     }

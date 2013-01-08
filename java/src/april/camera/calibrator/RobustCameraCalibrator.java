@@ -53,6 +53,14 @@ public class RobustCameraCalibrator
             renderer.updateMosaicDimensions(newDetections);
     }
 
+    public void resetCalibrationSystem()
+    {
+        cal = new CameraCalibrationSystem(initializers, tf, metersPerTag, verbose);
+
+        if (renderer != null)
+            renderer.replaceCalibrationSystem(cal);
+    }
+
     ////////////////////////////////////////////////////////////////////////////////
     // graph optimization
 
@@ -202,8 +210,8 @@ public class RobustCameraCalibrator
         }
 
         // build and optimize the new system
-        CameraCalibrationSystem copy = this.cal.copyWithBatchReinitialization(false); // XXX
-        List<GraphWrapper> newGraphWrappers = this.buildCalibrationGraphs(copy, false); // XXX
+        CameraCalibrationSystem copy = this.cal.copyWithBatchReinitialization(false);
+        List<GraphWrapper> newGraphWrappers = this.buildCalibrationGraphs(copy, false);
         List<GraphStats> newStats = this.iterateUntilConvergence(newGraphWrappers, improvementThreshold,
                                                                  minConvergedIterations, maxIterations);
         copy.verbose = this.verbose; // quiet during initialization
@@ -239,7 +247,8 @@ public class RobustCameraCalibrator
 
         this.updateFromGraphs(newGraphWrappers, newStats);
         this.cal = copy;
-        this.renderer.replaceCalibrationSystem(copy);
+        if (this.renderer != null)
+            this.renderer.replaceCalibrationSystem(copy);
         if (verbose)
             System.out.printf("Attempted reinitialization, using new (orig %b/%8.3f new %b/%8.3f)\n",
                               origError, origJointMRE, newError, newJointMRE);
@@ -744,5 +753,37 @@ public class RobustCameraCalibrator
         }
 
         System.out.printf("Successfully saved calibration and images to '%s'\n", dirName);
+    }
+
+    /** Use at your own risk! Returns a reference to the CameraCalibrationSystem in use.
+      */
+    public CameraCalibrationSystem getCalRef()
+    {
+        return cal;
+    }
+
+    public TagMosaic getTagMosaic()
+    {
+        return tm;
+    }
+
+    public RobustCameraCalibrator copy()
+    {
+        boolean hasgui = (this.renderer != null);
+        return copy(hasgui);
+    }
+
+    public RobustCameraCalibrator copy(boolean gui)
+    {
+        RobustCameraCalibrator rocal = new RobustCameraCalibrator(this.initializers,
+                                                                  this.tf,
+                                                                  this.metersPerTag,
+                                                                  gui,
+                                                                  this.verbose);
+        rocal.cal = this.cal.copy();
+        if (rocal.renderer != null)
+            rocal.renderer.replaceCalibrationSystem(rocal.cal);
+
+        return rocal;
     }
 }
