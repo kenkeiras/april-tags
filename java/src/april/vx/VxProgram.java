@@ -36,6 +36,11 @@ public class VxProgram implements VxObject
         this.fragResc = fragmentShader;
     }
 
+    public void setLineWidth(double width)
+    {
+        size = (float)width;
+    }
+
     // Call only setDrawArray or setElement array, but not both!
     public void setDrawArray(int count, int type)
     {

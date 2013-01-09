@@ -116,8 +116,8 @@ public class VxTest
                 pointsY.add(new double[]{0, i*.01});
                 pointsX.add(new double[]{i*.01, 0});
             }
-            vw.getBuffer("dir").addBack(new VxPoints(new VxVertexAttrib(pointsY), Color.green));
-            vw.getBuffer("dir").addBack(new VxPoints(new VxVertexAttrib(pointsX), Color.blue));
+            vw.getBuffer("dir").addBack(new VxPoints(new VxVertexAttrib(pointsY), Color.green, 1));
+            vw.getBuffer("dir").addBack(new VxPoints(new VxVertexAttrib(pointsX), Color.blue, 1));
             vw.getBuffer("dir").swap();
             vw.getBuffer("dir").setDrawOrder(100);
         }
@@ -144,6 +144,11 @@ public class VxTest
             progs1.add(vp);
         }
 
+        {
+            vw.getBuffer("box").addBack(new VxRectangle(2,3, Color.white, 3, null));
+            vw.getBuffer("box").swap();
+        }
+
         ArrayList<VxObject> progs2 = new ArrayList();
         for (int i = 1; i < 4; i+=2) { // XXX Only render 1
             VxProgram vp = VxProgram.make("multi-colored");
@@ -166,7 +171,7 @@ public class VxTest
                                      10 - 20*r.nextDouble()});
 
             VxVertexAttrib points = new VxVertexAttrib(pts);
-            VxPoints vpts = new VxPoints(points, java.awt.Color.red); // XXX VxPoints.Style?
+            VxPoints vpts = new VxPoints(points, java.awt.Color.red, 1); // XXX VxPoints.Style?
 
             vw.getBuffer("points").addBack(vpts);
             vw.getBuffer("points").setDrawOrder(10);

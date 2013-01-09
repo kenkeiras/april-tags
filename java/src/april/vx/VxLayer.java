@@ -19,7 +19,8 @@ public class VxLayer
     VxWorld vw;
 
     // Managers. Note that they only work when connected to a local rendering context. (VxCanvas will poll)
-    VxCameraManager cameraManager = new DefaultCameraManager();
+    public VxCameraManager cameraManager = new DefaultCameraManager();
+
     boolean enabled = true;
     ArrayList<VxEventHandler> eventHandlers = new ArrayList();
     VxManipulationManager manipulationManager = new DefaultManipulationManager();

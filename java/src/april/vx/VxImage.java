@@ -14,7 +14,6 @@ public class VxImage implements VxObject
 
     public VxImage(VxTexture tex, int flags)
     {
-        System.out.printf("w/h %d/%d\n",tex.width, tex.height);
         // Each image will have a different dimension, so different position is called for:
         float position[] = new float[]{ 0.0f, 0.0f,
                                         tex.width, 0.0f,

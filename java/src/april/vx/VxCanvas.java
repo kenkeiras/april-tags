@@ -20,7 +20,7 @@ public class VxCanvas extends JComponent
     BufferedImage im;
     RenderInfo lastRenderInfo;
 
-    int targetFrameRate = 5; // draw really slow for now
+    int targetFrameRate = 30; // draw really slow for now
 
     HashMap<Integer, VxLayer> layerMap = new HashMap();
 
@@ -80,6 +80,9 @@ public class VxCanvas extends JComponent
 
                     int width = VxCanvas.this.getWidth();
                     int height = VxCanvas.this.getHeight();
+
+                    if (width==0 || height==0 ) // Not really sure why "visible" but size is still 0,0...
+                        continue;
 
                     BufferedImage canvas = new BufferedImage(width,height, BufferedImage.TYPE_3BYTE_BGR);
 

@@ -543,6 +543,10 @@ int render_program(vx_local_state_t * state, vx_layer_info_t *layer, vx_code_inp
             vx_resc_t * vertResc = lphash_get(state->resource_map, vertId);
             vx_resc_t * fragResc = lphash_get(state->resource_map, fragId);
 
+            if (verbose) {
+                printf("Vert id %ld frag id %ld \n", vertId, fragId);
+            }
+
             // shouldn't fail, if resources are uploaded first
             assert(vertResc != NULL);
             assert(fragResc != NULL);
@@ -624,6 +628,8 @@ int render_program(vx_local_state_t * state, vx_layer_info_t *layer, vx_code_inp
         uint32_t dim = codes->read_uint32(codes);
         char * name = codes->read_str(codes); //Not a copy!
 
+        if (verbose) printf("vertex attrib %s %ld \n", name, attribId);
+
         // This should never fail!
         vx_resc_t * vr  = lphash_get(state->resource_map, attribId);
         assert(vr != NULL);
@@ -638,7 +644,6 @@ int render_program(vx_local_state_t * state, vx_layer_info_t *layer, vx_code_inp
             vbo_id = vbo_allocate(state, GL_ARRAY_BUFFER, vr);
 
         if (verbose > 1) {
-            printf("vertex attrib %ld \n", attribId);
             for (int i = 0; i < vr->count; i++) {
                 printf("%f,",((float*)vr->res)[i]);
                 if ((i + 1) % dim == 0)
