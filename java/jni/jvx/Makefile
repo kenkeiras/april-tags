@@ -1,5 +1,5 @@
-COMMON_INCLUDES=-I../../../src/
-LDFLAGS_COMMON=../../../lib/libcommon.a
+#COMMON_INCLUDES=-I../../../src/
+#LDFLAGS_COMMON=../../../lib/libcommon.a
 
 # gtk
 CFLAGS_GTK   :=`pkg-config --cflags gtk+-2.0`
@@ -67,7 +67,7 @@ LIB_JNI_OBJS += vx_jni.o
 
 
 $(LIB_JNI) : april_vx_VxLocalRenderer.h $(LIB_JNI_OBJS) $(LIB)
-	$(LD)  $(LDFLAGS_COMMON) $(LIB_JNI_OBJS)  $(LDFLAGS) -L./ -lvx  -o $@
+	$(LD) $(LIB_JNI_OBJS)  $(LDFLAGS) -L./ -lvx  -o $@
 
 $(LIB):  $(LIBVX_OBJS)
 	ar rc $@ $(LIBVX_OBJS)
@@ -77,7 +77,7 @@ $(LIB):  $(LIBVX_OBJS)
 
 #############################################################
 %.o: %.c
-	$(CC) $(CCFLAGS) -c $(JNI_INCLUDES) $(COMMON_INCLUDES) $<
+	$(CC) $(CCFLAGS) -c $(JNI_INCLUDES) $<
 
 april_vx_VxLocalRenderer.h: ../../src/april/vx/VxLocalRenderer.java
 	@echo "NOTICE: Rebuilding JNI headers. Ensure java file has been recently built."
