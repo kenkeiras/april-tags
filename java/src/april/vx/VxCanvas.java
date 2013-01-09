@@ -118,7 +118,6 @@ public class VxCanvas extends JComponent
         }
     }
 
-
     // implement draw methods, frame rate, camera controls, etc
     public void paintComponent(Graphics _g)
     {

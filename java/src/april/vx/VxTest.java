@@ -4,6 +4,7 @@ import java.util.*;
 import java.io.*;
 import javax.swing.*;
 import java.awt.image.*;
+import java.awt.Color;
 import javax.imageio.*;
 
 import april.jmat.*;
@@ -106,29 +107,28 @@ public class VxTest
         VxResource index = new VxResource(new int[]{0,1,2,
                                                     2,3,0});
 
+        // Debugging
+        {
+
+            ArrayList<double[]> pointsY = new ArrayList();
+            ArrayList<double[]> pointsX = new ArrayList();
+            for (int i  = 0; i < 100; i ++) {
+                pointsY.add(new double[]{0, i*.01});
+                pointsX.add(new double[]{i*.01, 0});
+            }
+            vw.getBuffer("dir").addBack(new VxPoints(new VxVertexAttrib(pointsY), Color.green));
+            vw.getBuffer("dir").addBack(new VxPoints(new VxVertexAttrib(pointsX), Color.blue));
+            vw.getBuffer("dir").swap();
+            vw.getBuffer("dir").setDrawOrder(100);
+        }
+
         // Now do Texture:
         ArrayList<VxObject> progs1 = new ArrayList();
         try {
             BufferedImage img = ImageUtil.convertImage(ImageIO.read(new File(opts.getString("img-path"))), BufferedImage.TYPE_3BYTE_BGR);
-            VxTexture vtex = new VxTexture(img);
-
-            VxProgram vp = VxProgram.make("texture");
-            vp.setVertexAttrib("position", new VxVertexAttrib(point_attribs.get(2)));
-            vp.setTexture("texture", vtex); //XXX Error!
-
-            VxResource texcoords = new VxResource(
-                new float[]{
-                    0.0f, 0.0f,
-                    1.0f, 0.0f,
-                    1.0f, 1.0f,
-                    0.0f, 1.0f});
-
-
-            vp.setVertexAttrib("texIn", new VxVertexAttrib(texcoords, 2));
-            vp.setElementArray(index, Vx.GL_TRIANGLES);
-
-            progs1.add(new VxChain(LinAlg.translate(-1,-1), vp));
-
+            progs1.add(new VxChain(LinAlg.translate(-2,-2),
+                                   LinAlg.scale(1.0 / img.getWidth(),1.0 / img.getHeight(), 1.0),
+                                   new VxImage(new VxTexture(img), VxImage.FLIP)));
         } catch(IOException e) {
             System.out.println("Texture Ex: "+e);
         }
