@@ -85,6 +85,7 @@ public class DebugEasyCal extends Thread implements VisConsole.Listener
         ranked = new ArrayList(ranked); // Thread saf(er)
         // Draw each ranked image on a separate buffer
         BufferedImage sampleIm = ec.calibrator.getCalRef().getAllImageSets().get(0).get(0);
+        CalibrationInitializer initializer = ec.calibrator.getCalRef().getInitializers().get(0);
         double PixelsToVis[][] = getPlottingTransformation(sampleIm, true);
 
         for (int i = 0; i < ranked.size(); i++) {
@@ -108,9 +109,12 @@ public class DebugEasyCal extends Thread implements VisConsole.Listener
 
         ParameterizableCalibration curcal = null, cal = null;
         double params[] = null;
-        if (calibrator != null) curcal = ec.calibrator.getCalRef().getCameras().get(0).cal;
-        if (curcal != null)     params = curcal.getParameterization();
-        if (params != null)     cal    = initializer.initializeWithParameters(imwidth, imheight, params);
+        if (ec.calibrator != null)
+            curcal = ec.calibrator.getCalRef().getCameras().get(0).cal;
+        if (curcal != null)
+            params = curcal.getParameterization();
+        if (params != null)
+            cal = initializer.initializeWithParameters(sampleIm.getWidth(), sampleIm.getHeight(), params);
 
         if (cal == null)
             return;
