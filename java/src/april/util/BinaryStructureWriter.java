@@ -13,9 +13,9 @@ public class BinaryStructureWriter implements StructureWriter
 
     static boolean warned = false;
 
-    public BinaryStructureWriter(DataOutputStream outs)
+    public BinaryStructureWriter(BufferedOutputStream bos)
     {
-        this.outs = outs;
+        this.outs = new DataOutputStream(bos);
     }
 
     public void writeComment(String s) throws IOException

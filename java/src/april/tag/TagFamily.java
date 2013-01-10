@@ -225,7 +225,7 @@ public class TagFamily
         }
     }
 
-    public void writeAllImagesMosaic(String filepath) throws IOException
+    public BufferedImage getAllImagesMosaic()
     {
         ArrayList<BufferedImage> ims = new ArrayList<BufferedImage>();
 
@@ -253,6 +253,13 @@ public class TagFamily
                 g.drawImage(ims.get(id), x*dim, y*dim, null);
             }
         }
+
+        return im;
+    }
+
+    public void writeAllImagesMosaic(String filepath) throws IOException
+    {
+        BufferedImage im = getAllImagesMosaic();
 
         ImageIO.write(im, "png", new File(filepath));
     }

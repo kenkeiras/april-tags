@@ -1613,6 +1613,14 @@ public final class LinAlg
                                       1};
             }
             assert(false);
+
+        } else if (T.length == 3) {
+            if (p.length==2) {
+                return new double[] { T[0][0]*p[0] + T[0][1]*p[1] + T[0][2],
+                                      T[1][0]*p[0] + T[1][1]*p[1] + T[1][2],
+                                      T[2][0]*p[0] + T[2][1]*p[1] + T[2][2] };
+            }
+            assert(false);
         }
 
         assert(false);

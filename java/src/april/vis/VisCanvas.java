@@ -30,8 +30,8 @@ public class VisCanvas extends JComponent implements VisSerializable
 
     // protected by synchronizing on 'layers'
     ArrayList<VisLayer> layers = new ArrayList<VisLayer>();
-    VisWorld privateWorld;
-    VisLayer privateLayer;
+    public VisWorld privateWorld;
+    public VisLayer privateLayer;
 
     EventHandler eh = new EventHandler();
 
@@ -52,6 +52,7 @@ public class VisCanvas extends JComponent implements VisSerializable
     LayerBufferPanel layerBufferPanel;
 
     boolean showFPS = false;
+    public boolean showSizeChanges = true;
 
     ArrayList<Listener> listeners = new ArrayList<Listener>();
 
@@ -222,17 +223,17 @@ public class VisCanvas extends JComponent implements VisSerializable
         public void componentResized(ComponentEvent e)
         {
             VisWorld.Buffer vb = privateWorld.getBuffer("VisCanvas dimensions");
-
             vb.removeTemporary(lastResizeObject);
+            if (showSizeChanges) {
+                lastResizeObject = new VisPixCoords(VisPixCoords.ORIGIN.CENTER_ROUND,
+                                                    new VisDepthTest(false,
+                                                                     new VzText(VzText.ANCHOR.CENTER_ROUND,
+                                                                                "<<sansserif-12>>"+
+                                                                                String.format("%d x %d", getWidth(), getHeight()))));
+                vb.addTemporary(lastResizeObject, 0.750);
 
-            lastResizeObject = new VisPixCoords(VisPixCoords.ORIGIN.CENTER_ROUND,
-                                                       new VisDepthTest(false,
-                                                                        new VzText(VzText.ANCHOR.CENTER_ROUND,
-                                                                                    "<<sansserif-12>>"+
-                                                                                    String.format("%d x %d", getWidth(), getHeight()))));
-            vb.addTemporary(lastResizeObject, 0.750);
-
-            draw();
+                draw();
+            }
         }
 
         public void componentShown(ComponentEvent e)
