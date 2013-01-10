@@ -46,8 +46,7 @@ public class Zoo
                 new VzText(VzText.ANCHOR.CENTER, "<<sansserif-10,scale=.1,dropshadow=false>>Hi!"),
                 new VzRectangle(1.6,1.0,lineStyle, meshStyle),
                 new VzTriangle(lineStyle, meshStyle),
-                new VzEllipse(new double[2], new double[][] { { 5, 3 }, { 3, 2 } }, true, lineStyle, meshStyle),
-                new VzEllipse(new double[2], new double[][] { { 5, 3 }, { 3, 2 } }, false, lineStyle, meshStyle),
+                new VzEllipse(new double[2], new double[][] { { 5, 3 }, { 3, 2 } }, lineStyle, meshStyle),
                 }));
 
         try {

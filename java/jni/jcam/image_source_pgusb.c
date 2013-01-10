@@ -370,7 +370,7 @@ static int do_write(libusb_device_handle *handle, uint64_t address, uint32_t *qu
         return -1;
 
     if (debug)
-        printf("DO_WRITE %08x := %08x\n", address, quads[0]);
+        printf("DO_WRITE %08" PRIx64 " := %08x\n", address, quads[0]);
 
     unsigned char buf[num_quads*4];
 

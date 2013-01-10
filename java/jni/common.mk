@@ -3,7 +3,7 @@
 ifeq "$(shell uname)" "Linux"
 
 CC = gcc -c
-CCFLAGS = -Wall -g -std=gnu99 -fno-omit-frame-pointer -fno-stack-protector -D_REENTRANT -fPIC -shared -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -Wno-unused-parameter -Wno-format-zero-length -O4
+CCFLAGS = -Wall -g -std=gnu99 -fno-omit-frame-pointer -fno-stack-protector -D_REENTRANT -fPIC -shared -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -Wno-unused-parameter -Wno-unused-variable -Wno-format-zero-length
 LD = ld
 LDFLAGS = --shared
 SHARED_EXT = so
