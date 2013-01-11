@@ -1,5 +1,5 @@
 ############################################################
-# 
+#
 # This file should only contain CFLAGS_XXX and LDFLAGS_XXX directives.
 # CFLAGS and LDFLAGS themselves should NOT be set: that is the job
 # for the actual Makefiles (which will combine the flags given here)
@@ -21,6 +21,8 @@ CONFIG_DIR   := $(shell pwd)/../../config
 
 CC           := gcc
 LD           := gcc
+
+.SILENT:
 
 # dynamic libraries
 ifeq "$(shell uname -s)" "Darwin"
@@ -86,7 +88,7 @@ CFLAGS_LCMTYPES  := -I$(SRC_PATH)
 LDFLAGS_LCMTYPES := $(LIB_PATH)/liblcmtypes.a
 
 # Open GL
-CFLAGS_GL    := 
+CFLAGS_GL    :=
 LDFLAGS_GL   := -lGLU -lGLU -lglut
 
 # our gl util library
@@ -112,7 +114,7 @@ ifeq ($(ENABLE_DC1394),1)
 ifeq "$(shell uname -s)" "Darwin"
 LDFLAGS_DC1394:=-ldc1394 -L/usr/local/lib
 else
-LDFLAGS_DC1394:=-ldc1394 
+LDFLAGS_DC1394:=-ldc1394
 endif
 endif
 
@@ -150,11 +152,11 @@ LDFLAGS_LIBCAM:=$(LIB_PATH)/libcam.a \
 
 %.o: %.c %.h
 	@echo "    [$@]"
-	$(CC) $(CFLAGS) -c $< 
+	$(CC) $(CFLAGS) -c $<
 
 %.o: %.c
 	@echo "    [$@]"
-	$(CC) $(CFLAGS) -c $< 
+	$(CC) $(CFLAGS) -c $<
 
 %.o: %.cpp
 	@echo "    [$@]"

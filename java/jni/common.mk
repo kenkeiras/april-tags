@@ -1,11 +1,13 @@
+.SILENT:
+
 #############################################################
 # Linux
 ifeq "$(shell uname)" "Linux"
 
 CC = gcc -c
-CCFLAGS = -Wall -g -std=gnu99 -fno-omit-frame-pointer -fno-stack-protector -D_REENTRANT -fPIC -shared -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -Wno-unused-parameter -Wno-unused-variable -Wno-format-zero-length
+CCFLAGS = -Wall -g -std=gnu99 -fno-omit-frame-pointer -fno-stack-protector -D_REENTRANT -fPIC -shared -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -Wno-unused-parameter -Wno-unused-variable -Wno-format-zero-length -I../../../src/
 LD = ld
-LDFLAGS = --shared
+LDFLAGS = --shared -L../../../lib
 SHARED_EXT = so
 
 # parse last line of update-alternatives --display to find out where the currently selected jvm lives, then make include path

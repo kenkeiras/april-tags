@@ -27,6 +27,10 @@ image_source_t *image_source_open(const char *url)
         isrc = image_source_islog_open(urlp);
     } else if (!strcmp(protocol, "pgusb://")) {
         isrc = image_source_pgusb_open(urlp);
+    }  else if (!strcmp(protocol, "file://")) {
+        isrc = image_source_filedir_open(urlp);
+    }  else if (!strcmp(protocol, "dir://")) {
+        isrc = image_source_filedir_open(urlp);
     }
 
     // handle parameters
