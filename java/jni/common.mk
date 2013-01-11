@@ -8,8 +8,9 @@ LD = ld
 LDFLAGS = --shared
 SHARED_EXT = so
 
-JNI_INCLUDES = -I/usr/lib/jvm/java-6-sun/include/ -I/usr/lib/jvm/java-6-sun/include/linux -I/usr/lib/jvm/java-6-openjdk/include/ -I/usr/lib/jvm/java-7-openjdk-amd64/include/
-
+# parse last line of update-alternatives --display to find out where the currently selected jvm lives, then make include path
+JNI_INCLUDES = -I$(shell update-alternatives --display java | grep current | sed "s:.*\(/usr/.*\)/jre/bin/java.*$$:\1/include:")
+#JNI_INCLUDES = -I/usr/lib/jvm/java-6-sun/include/ -I/usr/lib/jvm/java-6-sun/include/linux -I/usr/lib/jvm/java-6-openjdk/include/
 endif
 
 #############################################################

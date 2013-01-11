@@ -7,4 +7,3 @@ public class MX64Servo extends MXSeriesServo
         super(bus, id);
     }
 }
-

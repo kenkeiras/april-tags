@@ -1338,12 +1338,12 @@ static int simple_value_set_absolute_value(image_source_t *isrc, struct feature 
     impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
     uint32_t iv = float_to_uint32((float) v);
 
-    int res = do_write(impl->handle, CONFIG_ROM_BASE + f->absolute_csr + 8, &iv, 1);
-    assert (res == 1);
-
     uint32_t d = (1 << 25) | (1 << 30); // manual control with absolute
     if (do_write(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr + 0x300, &d, 1) != 1)
         return -1;
+
+    int res = do_write(impl->handle, CONFIG_ROM_BASE + f->absolute_csr + 8, &iv, 1);
+    assert (res == 1);
 
     return 0;
 }
@@ -1478,7 +1478,7 @@ void add_simple_feature(image_source_t *isrc, const char *name, uint32_t addr)
         }
     }
 
-    printf("FEATURE %-15s: %08x [%s] [%s] [%s] [%s] [%s] [%s] [%s]\n",
+    printf("FEATURE %-15s: %08x [%11s] [%6s] [%11s] [%10s] [%9s] [%7s] [%9s]\n",
            name, d,
            (d & (1<<31)) ? "present" : "not present",
            (d & (1<<30)) ? "abs": "no abs",
@@ -1494,6 +1494,653 @@ void add_simple_feature(image_source_t *isrc, const char *name, uint32_t addr)
     return;
 }
 
+/////////////////////////////////////////////////////////
+// trigger
+//
+// BEWARE: IIDC 1.31 documentation has bit positions in wrong place
+// register 0x530:          register 0x830
+// 31: presence             31: presence
+// 30: abs_control          30: abs_control
+// 29:                      29-26:
+// 28:                      25: onoff
+// 27: read-out             24: polarity
+// 26: on/off               23-21: source
+// 25: polarity             20: raw signal value
+// 24: value-read           19-16: mode
+// 23: src 0 available      15-12:
+// 22: src 1 available      11-0: parameter
+// 21: src 2 available
+// 20: src 3 available
+// 19-17:
+// 16: src sw available
+// 15: mode  0 available
+// 14: mode  1 available
+// 13: mode  2 available
+// 12: mode  3 available
+// 11: mode  4 available
+// 10: mode  5 available
+// 9-2:
+//  1: mode 14 available
+//  0: mode 15 available
+
+// trigger enabled
+static int trigger_enabled_is_available(image_source_t *isrc, struct feature *f)
+{
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    uint32_t d;
+    if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr, &d, 1) != 1)
+        return 0;
+
+    // feature not present
+    if ((d & (1<<31)) == 0)
+        return 0;
+
+    // absolute mode supported (never observed/tested)
+    if ((d & (1<<30)) == 1)
+        return 0;
+
+    int readout = (d & (1<<27)) ? 1 : 0;
+    int onoff = (d & (1<<26)) ? 1 : 0;
+    int polarity = (d & (1<<25)) ? 1 : 0;
+
+    // we require readout, onoff and polarity for convenience
+    if (readout && onoff && polarity)
+        return 1;
+
+    return 0;
+}
+
+static char *trigger_enabled_get_type(image_source_t *isrc, struct feature *f)
+{
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    uint32_t d;
+    if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr, &d, 1) != 1)
+        return NULL;
+
+    // feature not present.
+    if ((d & (1<<31)) == 0)
+        return NULL;
+
+    // absolute mode supported (never observed/tested)
+    if ((d & (1<<30)) == 1)
+        return NULL;
+
+    int readout = (d & (1<<27)) ? 1 : 0;
+    int onoff = (d & (1<<26)) ? 1 : 0;
+    int polarity = (d & (1<<25)) ? 1 : 0;
+
+    // we require readout, onoff and polarity for convenience
+    if ((readout == 0) || (onoff == 0) || (polarity == 0))
+        return NULL;
+
+    char buf[1024];
+    sprintf(buf, "c,0=off,1=on (active low),2=on (active high)");
+
+    return strdup(buf);
+}
+
+static double trigger_enabled_get_value(image_source_t *isrc, struct feature *f)
+{
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    uint32_t d;
+    if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr + 0x300, &d, 1) != 1)
+        return 0;
+
+    int absolute = (d & (1<<30)) ? 1 : 0;
+    int onoff    = (d & (1<<25)) ? 1 : 0;
+    int polarity = (d & (1<<24)) ? 1 : 0;
+
+    if (absolute)
+        return 0;
+    // we require onoff and polarity for convenience
+    if (!onoff)
+        return 0; // off
+    if (!polarity)
+        return 1; // on, low
+    return 2; // on, high
+}
+
+static int trigger_enabled_set_value(image_source_t *isrc, struct feature *f, double _v)
+{
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    int v = (int) _v;
+
+    uint32_t d;
+    if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr + 0x300, &d, 1) != 1)
+        return 0;
+
+    if (v == 0) {
+        // off
+        d &= ~(1<<25); // unset off
+    } else if (v == 1) {
+        // low
+        d |=  (1<<25); // set on
+        d &= ~(1<<24); // unset polarity
+    } else if (v == 2) {
+        // high
+        d |= (1<<25); // set on
+        d |= (1<<24); // set polarity
+    } else
+        return -1;
+
+    if (do_write(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr + 0x300, &d, 1) != 1)
+        return 0;
+
+    return 0;
+}
+
+// trigger source
+static int trigger_source_is_available(image_source_t *isrc, struct feature *f)
+{
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    uint32_t d;
+    if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr, &d, 1) != 1)
+        return 0;
+
+    // feature not present
+    if ((d & (1<<31)) == 0)
+        return 0;
+
+    // absolute mode supported (never observed/tested)
+    if ((d & (1<<30)) == 1)
+        return 0;
+
+    int readout = (d & (1<<27)) ? 1 : 0;
+    int onoff = (d & (1<<26)) ? 1 : 0;
+    int polarity = (d & (1<<25)) ? 1 : 0;
+
+    // we require readout, onoff and polarity for convenience
+    if (readout && onoff && polarity)
+        return 1;
+
+    return 0;
+}
+
+static char *trigger_source_get_type(image_source_t *isrc, struct feature *f)
+{
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    uint32_t d;
+    if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr, &d, 1) != 1)
+        return NULL;
+
+    // feature not present.
+    if ((d & (1<<31)) == 0)
+        return NULL;
+
+    // absolute mode supported (never observed/tested)
+    if ((d & (1<<30)) == 1)
+        return NULL;
+
+    int readout = (d & (1<<27)) ? 1 : 0;
+    int onoff = (d & (1<<26)) ? 1 : 0;
+    int polarity = (d & (1<<25)) ? 1 : 0;
+
+    // we require readout, onoff and polarity for convenience
+    if ((readout == 0) || (onoff == 0) || (polarity == 0))
+        return NULL;
+
+    char buf[1024];
+    sprintf(buf, "c,%s%s%s%s",
+            (d & (1<<23)) ? "0=gpio0," : "",
+            (d & (1<<22)) ? "1=gpio1," : "",
+            (d & (1<<21)) ? "2=gpio2," : "",
+            (d & (1<<20)) ? "3=gpio3," : "",
+            (d & (1<<16)) ? "4=software-only," : "");
+
+    return strdup(buf);
+}
+
+static double trigger_source_get_value(image_source_t *isrc, struct feature *f)
+{
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    uint32_t d;
+    if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr + 0x300, &d, 1) != 1)
+        return 0;
+
+    int source = 0;
+    source |= ((d >> 23) & 0x1) << 2;
+    source |= ((d >> 22) & 0x1) << 1;
+    source |= ((d >> 21) & 0x1) << 0;
+
+    return source;
+}
+
+static int trigger_source_set_value(image_source_t *isrc, struct feature *f, double _v)
+{
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    int v = (int) _v;
+
+    uint32_t d;
+    if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr + 0x300, &d, 1) != 1)
+        return 0;
+
+    // clear current source
+    d &= ~(1<<23);
+    d &= ~(1<<22);
+    d &= ~(1<<21);
+
+    // set source
+    if (v >= 0 && v < 4) {
+       d |= ((v >> 2) & 0x1) << 23;
+       d |= ((v >> 1) & 0x1) << 22;
+       d |= ((v >> 0) & 0x1) << 21;
+
+    } else
+        return -1;
+
+    if (do_write(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr + 0x300, &d, 1) != 1)
+        return 0;
+
+    return 0;
+}
+
+// trigger mode
+static int trigger_mode_is_available(image_source_t *isrc, struct feature *f)
+{
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    uint32_t d;
+    if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr, &d, 1) != 1)
+        return 0;
+
+    // feature not present
+    if ((d & (1<<31)) == 0)
+        return 0;
+
+    // absolute mode supported (never observed/tested)
+    if ((d & (1<<30)) == 1)
+        return 0;
+
+    int readout = (d & (1<<27)) ? 1 : 0;
+    int onoff = (d & (1<<26)) ? 1 : 0;
+    int polarity = (d & (1<<25)) ? 1 : 0;
+
+    // we require readout, onoff and polarity for convenience
+    if (readout && onoff && polarity)
+        return 1;
+
+    return 0;
+}
+
+static char *trigger_mode_get_type(image_source_t *isrc, struct feature *f)
+{
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    uint32_t d;
+    if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr, &d, 1) != 1)
+        return NULL;
+
+    // feature not present.
+    if ((d & (1<<31)) == 0)
+        return NULL;
+
+    // absolute mode supported (never observed/tested)
+    if ((d & (1<<30)) == 1)
+        return NULL;
+
+    int readout = (d & (1<<27)) ? 1 : 0;
+    int onoff = (d & (1<<26)) ? 1 : 0;
+    int polarity = (d & (1<<25)) ? 1 : 0;
+
+    // we require readout, onoff and polarity for convenience
+    if ((readout == 0) || (onoff == 0) || (polarity == 0))
+        return NULL;
+
+    char buf[1024];
+    sprintf(buf, "c,%s%s%s%s%s%s%s%s",
+            (d & (1<<15)) ? "0=standard," : "",
+            (d & (1<<14)) ? "1=bulb shutter," : "",
+            (d & (1<<13)) ? "2=multi-pulse trigger," : "",
+            (d & (1<<12)) ? "3=skip frames," : "",
+            (d & (1<<11)) ? "4=multiple exposure preset," : "",
+            (d & (1<<10)) ? "5=multiple exposure pulse width," : "",
+            (d & (1<< 1)) ? "14=overlapped exposure," : "",
+            (d & (1<< 0)) ? "15=multi-shot trigger," : "");
+
+    return strdup(buf);
+}
+
+static double trigger_mode_get_value(image_source_t *isrc, struct feature *f)
+{
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    uint32_t d;
+    if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr + 0x300, &d, 1) != 1)
+        return 0;
+
+    int mode = 0;
+    mode |= ((d >> 19) & 0x1) << 3;
+    mode |= ((d >> 18) & 0x1) << 2;
+    mode |= ((d >> 17) & 0x1) << 1;
+    mode |= ((d >> 16) & 0x1) << 0;
+
+    return mode;
+}
+
+static int trigger_mode_set_value(image_source_t *isrc, struct feature *f, double _v)
+{
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    int v = (int) _v;
+
+    uint32_t d;
+    if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr + 0x300, &d, 1) != 1)
+        return 0;
+
+    // clear current mode
+    d &= ~(1<<19);
+    d &= ~(1<<18);
+    d &= ~(1<<17);
+    d &= ~(1<<16);
+
+    // set mode
+    if (v >= 0 && v < 16) {
+       d |= ((v >> 3) & 0x1) << 19;
+       d |= ((v >> 2) & 0x1) << 18;
+       d |= ((v >> 1) & 0x1) << 17;
+       d |= ((v >> 0) & 0x1) << 16;
+
+    } else
+        return -1;
+
+    if (do_write(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr + 0x300, &d, 1) != 1)
+        return 0;
+
+    return 0;
+}
+
+// software trigger
+static int trigger_software_is_available(image_source_t *isrc, struct feature *f)
+{
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    uint32_t d;
+    if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr, &d, 1) != 1)
+        return 0;
+
+    // feature not present
+    if ((d & (1<<31)) == 0)
+        return 0;
+
+    // absolute mode supported (never observed/tested)
+    if ((d & (1<<30)) == 1)
+        return 0;
+
+    if (d & (1<<16))
+        return 1;
+
+    return 0;
+}
+
+static char *trigger_software_get_type(image_source_t *isrc, struct feature *f)
+{
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    uint32_t d;
+    if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr, &d, 1) != 1)
+        return NULL;
+
+    // feature not present.
+    if ((d & (1<<31)) == 0)
+        return NULL;
+
+    // absolute mode supported (never observed/tested)
+    if ((d & (1<<30)) == 1)
+        return NULL;
+
+    // sw trigger not supported
+    if ((d & (1<<16)) == 0)
+        return NULL;
+
+    char buf[1024];
+    sprintf(buf, "b");
+
+    return strdup(buf);
+}
+
+static double trigger_software_get_value(image_source_t *isrc, struct feature *f)
+{
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    uint32_t d;
+    if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->absolute_csr, &d, 1) != 1)
+        return 0;
+
+    // ready
+    if ((d & (1<<0)) == 0)
+        return 0;
+    // busy
+    if ((d & (1<<31)) == 1)
+        return 1;
+
+    return 0;
+}
+
+static int trigger_software_set_value(image_source_t *isrc, struct feature *f, double _v)
+{
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    int v = (int) _v;
+
+    uint32_t d;
+    if (v == 0)
+        d = 0;
+    else if (v == 1)
+        d = (1<<31);
+    else
+        return -1;
+
+    if (do_write(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->absolute_csr, &d, 1) != 1)
+        return 0;
+
+    return 0;
+}
+
+// addr should be 0x530.
+void add_trigger_feature(image_source_t *isrc, const char *name, uint32_t addr, uint32_t sw_addr)
+{
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    uint32_t d;
+    if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + addr, &d, 1) != 1)
+        return;
+
+    // feature not present.
+    if ((d & (1<<31)) == 0)
+        return;
+
+    // absolute mode supported (never observed/tested)
+    if ((d & (1<<30)) == 1)
+        return;
+
+    // can't switch on/off
+    if ((d & (1<<26)) == 0)
+        return;
+
+    // can't change polarity
+    if ((d & (1<<25)) == 0)
+        return;
+
+    // create a feature to control the mode AND polarity
+    if (1) {
+        struct feature f;
+        char buf[128];
+        sprintf(buf, "%s-enabled", name);
+        f.name = strdup(buf);
+        f.user_addr = addr;
+        f.is_available = trigger_enabled_is_available;
+        f.get_type = trigger_enabled_get_type;
+        f.get_value = trigger_enabled_get_value;
+        f.set_value = trigger_enabled_set_value;
+        append_feature(impl, f);
+    }
+
+    // create a feature to control source
+    if (1) {
+        struct feature f;
+        char buf[128];
+        sprintf(buf, "%s-source", name);
+        f.name = strdup(buf);
+        f.user_addr = addr;
+        f.is_available = trigger_source_is_available;
+        f.get_value = trigger_source_get_value;
+        f.set_value = trigger_source_set_value;
+        f.get_type = trigger_source_get_type;
+        append_feature(impl, f);
+    }
+
+    // create a feature to control mode
+    if (1) {
+        struct feature f;
+        char buf[128];
+        sprintf(buf, "%s-mode", name);
+        f.name = strdup(buf);
+        f.user_addr = addr;
+        f.is_available = trigger_mode_is_available;
+        f.get_value = trigger_mode_get_value;
+        f.set_value = trigger_mode_set_value;
+        f.get_type = trigger_mode_get_type;
+        append_feature(impl, f);
+    }
+
+    // create a feature for software triggering
+    if (1) {
+        struct feature f;
+        char buf[128];
+        sprintf(buf, "%s-software", name);
+        f.name = strdup(buf);
+        f.user_addr = addr;
+        f.is_available = trigger_software_is_available;
+        f.get_value = trigger_software_get_value;
+        f.set_value = trigger_software_set_value;
+        f.get_type = trigger_software_get_type;
+        f.absolute_csr = sw_addr; // XXX maybe make a new feature variable?
+        append_feature(impl, f);
+    }
+
+    printf("FEATURE %-15s: %08x\n", name, d);
+
+    return;
+}
+
+/////////////////////////////////////////////////////////
+// frame info
+//
+// BEWARE: IIDC 1.31 documentation has bit positions in wrong place
+// register 0x12F8
+// 31: presence
+// 30-10:
+//  9: ROI position
+//  8: gpio pin state
+//  7: strobe pattern
+//  6: frame counter
+//  5: white balance
+//  4: exposure
+//  3: brightness
+//  2: shutter
+//  1: gain
+//  0: timestamp
+
+static int bit_field_is_available(image_source_t *isrc, struct feature *f)
+{
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    uint32_t d;
+    if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr, &d, 1) != 1)
+        return 0;
+
+    // feature not present
+    if ((d & (1<<31)) == 0)
+        return 0;
+
+    return 1;
+}
+
+static char *bit_field_get_type(image_source_t *isrc, struct feature *f)
+{
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    uint32_t d;
+    if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr, &d, 1) != 1)
+        return NULL;
+
+    // feature not present.
+    if ((d & (1<<31)) == 0)
+        return NULL;
+
+    char buf[1024];
+    sprintf(buf, "b");
+
+    return strdup(buf);
+}
+
+static double bit_field_get_value(image_source_t *isrc, struct feature *f)
+{
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    uint32_t d;
+    if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr, &d, 1) != 1)
+        return 0;
+
+    if ((d & (1<<31)) == 0)
+        return 0;
+
+    uint32_t position = f->value_lsb;
+    if ((d & (1<<position)) != 0)
+        return 1;
+
+    return 0;
+}
+
+static int bit_field_set_value(image_source_t *isrc, struct feature *f, double _v)
+{
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    int v = (int) _v;
+
+    if (v != 0 && v != 1)
+        return -1;
+
+    uint32_t d;
+    if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr, &d, 1) != 1)
+        return 0;
+
+    uint32_t position = f->value_lsb;
+
+    if (v == 0)
+        d &= ~(1<<position);
+    else
+        d |=  (1<<position);
+
+    if (do_write(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + f->user_addr, &d, 1) != 1)
+        return 0;
+
+    return 0;
+}
+
+// addr should be 0x12F8
+void add_bit_field_feature(image_source_t *isrc, const char *name, uint32_t addr, uint32_t position)
+{
+    impl_pgusb_t *impl = (impl_pgusb_t*) isrc->impl;
+    uint32_t d;
+    if (do_read(impl->handle, CONFIG_ROM_BASE + impl->command_regs_base + addr, &d, 1) != 1)
+        return;
+
+    // feature not present.
+    if ((d & (1<<31)) == 0)
+        return;
+
+    // create a feature to control all embedded frame info
+    if (1) {
+        struct feature f;
+        char buf[128];
+        sprintf(buf, "%s", name);
+        f.name = strdup(buf);
+        f.user_addr = addr;
+        f.is_available = bit_field_is_available;
+        f.get_type = bit_field_get_type;
+        f.get_value = bit_field_get_value;
+        f.set_value = bit_field_set_value;
+        f.value_lsb = position;
+        f.value_size = 1;
+        append_feature(impl, f);
+    }
+
+    printf("FEATURE %-15s: %08x: %s\n",
+           name, d,
+           (d & (1<<position)) ? "enabled" : "disabled");
+
+    return;
+}
+
+////////////////////////////////////////////////////////////
 static const char* get_feature_name(image_source_t *isrc, int idx)
 {
     assert(isrc->impl_type == IMPL_TYPE);
@@ -1750,25 +2397,37 @@ image_source_t *image_source_pgusb_open(url_parser_t *urlp)
 
     impl->nfeatures = 0;
     impl->features = NULL;
-    add_simple_feature(isrc, "brightness", 0x500);
-    add_simple_feature(isrc, "exposure", 0x504);
-    add_simple_feature(isrc, "sharpness", 0x508);
-    add_simple_feature(isrc, "white balance", 0x50c);
-    add_simple_feature(isrc, "hue", 0x510);
-    add_simple_feature(isrc, "saturation", 0x514);
-    add_simple_feature(isrc, "gamma", 0x518);
-    add_simple_feature(isrc, "shutter", 0x51c);
-    add_simple_feature(isrc, "gain", 0x520);
-    add_simple_feature(isrc, "iris", 0x524);
-    add_simple_feature(isrc, "focus", 0x528);
-    add_simple_feature(isrc, "frame rate", 0x53c);
-    add_simple_feature(isrc, "zoom", 0x580);
-    add_simple_feature(isrc, "pan", 0x584);
-    add_simple_feature(isrc, "tilt", 0x588);
-    add_simple_feature(isrc, "optical filter", 0x58c);
-    add_simple_feature(isrc, "capture size", 0x5c0);
-    add_simple_feature(isrc, "capture quality", 0x5c4);
-//    add_simple_feature(isrc, "trigger", 0x530);
+    add_simple_feature(isrc, "brightness",      0x500);
+    add_simple_feature(isrc, "exposure",        0x504);
+    add_simple_feature(isrc, "sharpness",       0x508);
+    add_simple_feature(isrc, "white-balance",   0x50c);
+    add_simple_feature(isrc, "hue",             0x510);
+    add_simple_feature(isrc, "saturation",      0x514);
+    add_simple_feature(isrc, "gamma",           0x518);
+    add_simple_feature(isrc, "shutter",         0x51c);
+    add_simple_feature(isrc, "gain",            0x520);
+    add_simple_feature(isrc, "iris",            0x524);
+    add_simple_feature(isrc, "focus",           0x528);
+    add_simple_feature(isrc, "frame-rate",      0x53c);
+    add_simple_feature(isrc, "zoom",            0x580);
+    add_simple_feature(isrc, "pan",             0x584);
+    add_simple_feature(isrc, "tilt",            0x588);
+    add_simple_feature(isrc, "optical-filter",  0x58c);
+    add_simple_feature(isrc, "capture-size",    0x5c0);
+    add_simple_feature(isrc, "capture-quality", 0x5c4);
+
+    add_trigger_feature(isrc, "trigger",        0x530, 0x62C); // XXX
+
+    add_bit_field_feature(isrc, "embed-timestamp",      0x12F8, 0);
+    add_bit_field_feature(isrc, "embed-gain",           0x12F8, 1);
+    add_bit_field_feature(isrc, "embed-shutter",        0x12F8, 2);
+    add_bit_field_feature(isrc, "embed-brightness",     0x12F8, 3);
+    add_bit_field_feature(isrc, "embed-exposure",       0x12F8, 4);
+    add_bit_field_feature(isrc, "embed-white-balance",  0x12F8, 5);
+    add_bit_field_feature(isrc, "embed-frame-counter",  0x12F8, 6);
+    add_bit_field_feature(isrc, "embed-strobe-pattern", 0x12F8, 7);
+    add_bit_field_feature(isrc, "embed-gpio-pin-state", 0x12F8, 8);
+    add_bit_field_feature(isrc, "embed-roi-position",   0x12F8, 9);
 
 
     isrc->num_formats = num_formats;

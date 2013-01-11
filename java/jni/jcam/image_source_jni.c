@@ -293,7 +293,8 @@ JNIEXPORT jstring JNICALL Java_april_jcam_ImageSourceNative_image_1source_1get_1
     image_source_t *isrc = isrcs[srcid];
 
     char *type = isrc->get_feature_type(isrc, idx);
-    jstring sobj = (*jenv)->NewStringUTF(jenv, isrc->get_feature_type(isrc, idx));
+    assert(type != NULL);
+    jstring sobj = (*jenv)->NewStringUTF(jenv, type);
     free(type);
 
     return sobj;

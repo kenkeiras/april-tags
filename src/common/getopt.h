@@ -1,7 +1,8 @@
 #ifndef _GETOPT_H
 #define _GETOPT_H
 
-#include <glib.h>
+#include "vhash.h"
+#include "varray.h"
 
 typedef struct getopt_option getopt_option_t;
 
@@ -13,7 +14,7 @@ struct getopt_option
 
 	char *help;
 	int type;
-	
+
 	int spacer;
 };
 
@@ -21,10 +22,10 @@ typedef struct getopt getopt_t;
 
 struct getopt
 {
-    GHashTable  *lopts;
-    GHashTable  *sopts;
-    GPtrArray   *extraargs;
-    GPtrArray   *options;
+    vhash_t  *lopts;
+    vhash_t  *sopts;
+    varray_t   *extraargs;
+    varray_t   *options;
 };
 
 getopt_t *getopt_create();

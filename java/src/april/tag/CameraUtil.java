@@ -17,7 +17,7 @@ public class CameraUtil
      * projects points from the tag's local coordinate system to the
      * camera's coordinate frame).
      *
-     * [ h00 h01 h02 h03] = [ fx   0     cx 0 ] [ R00 R01 R02 TX ]
+    * [ h00 h01 h02 h03] = [ fx   0     cx 0 ] [ R00 R01 R02 TX ]
      * [ h10 h11 h12 h13] = [ 0    fy    cy 0 ] [ R10 R11 R12 TY ]
      * [ h20 h21 h22 h23] = [ 0    0      s 0 ] [ R20 R21 R22 TZ ]
      *                                          [ 0   0   0   1  ]

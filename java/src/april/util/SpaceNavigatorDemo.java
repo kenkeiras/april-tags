@@ -93,8 +93,8 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
         vb.swap();
 
 
-        String str = String.format("Last Event:\n<<mono-normal>>" +
-                                   "%4d :x\n%4d :y\n%4d :z\n%4d :r\n%4d :p\n%4d :t",
+        String str = String.format("Last Event:\n<<monospaced-24>>" +
+                                   "%4d :x\n%4d :y\n%4d :z\n%4d :r\n%4d :p\n%4d :y",
                                    me.x, me.y, me.z, me.roll, me.pitch, me.yaw);
         vb = vw.getBuffer("MOTION_EVENT");
         vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.TOP_RIGHT,
@@ -121,22 +121,18 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
 
         //vis2  SpaceNavigatorDemo needs to be reimplemented as custom CameraManager
         DefaultCameraManager dcm = (DefaultCameraManager)vl.cameraManager;
-
-        // get positions of camera and focus point
-        // double eye[]    = LinAlg.copy(dcm.eye1);
-        // double lookAt[] = LinAlg.copy(dcm.lookat1);
-        // double up[]     = LinAlg.copy(dcm.up1);
+        dcm.interfaceMode = 3.0;
 
         double eye[]    = null;
         double lookAt[] = null;
         double up[]     = null;
 
-        //vis2: Not sure why there are two immediately consecutive calls to lookAt()?
-        vl.cameraManager.uiLookAt(eye,
-                                  lookAt,
-                                  up, false);
+        VisCameraManager.CameraPosition position = dcm.getCameraTarget();
+        eye     = position.eye;
+        lookAt  = position.lookat;
+        up      = position.up;
 
-        // compute view_0
+        // compute view_0 = lookAt - eye
         double view0[] = LinAlg.subtract(lookAt, eye);
 
         // compute unit vectors for in-view coordinate frame
@@ -161,15 +157,17 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
 
         double B[][] = LinAlg.matrixAB(A, LinAlg.select(R, 0, 2, 0, 2));
 
+        B = limitRotation(B);
+
         // update lookAt and up
-        double Bt[][] = LinAlg.transpose(B);
-        double view1[] = Bt[0];
-        double up1[] = Bt[2];
+        double Bt[][]   = LinAlg.transpose(B);
+        double view1[]  = Bt[0];
+        double up1[]    = Bt[2];
 
         double lookAt1[] = LinAlg.add(eye1, view1);
 
         // set view parameters
-        vl.cameraManager.uiLookAt(eye1, lookAt1, up1,false);
+        vl.cameraManager.uiLookAt(eye1, lookAt1, up1, false);
 
         // draw lookat sphere
 
@@ -179,8 +177,30 @@ public class SpaceNavigatorDemo implements SpaceNavigator.Listener
         if (me.right)
             colorset++;
 
-
         redraw();
+    }
+
+    double[][] limitRotation(double[][] _B)
+    {
+        double B[][] = new double[4][4];
+        for (int r=0; r < 3; r++) {
+            for (int c=0; c < 3; c++) {
+                B[r][c] = _B[r][c];
+            }
+        }
+        B[3][3] = 1;
+
+        double xyzrpy[] = LinAlg.matrixToXyzrpy(B);
+
+        // no roll
+        xyzrpy[3] = 0;
+
+        // limit pitch
+        double maxpitch = Math.PI/3;
+        xyzrpy[4] = Math.min(Math.max(xyzrpy[4], -maxpitch), maxpitch);
+
+        B = LinAlg.xyzrpyToMatrix(xyzrpy);
+        return LinAlg.select(B, 0, 2, 0, 2);
     }
 
     public void redraw()

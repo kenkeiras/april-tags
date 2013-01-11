@@ -363,7 +363,7 @@ int main(int argc, char *argv[])
     getopt_add_bool(state->gopt, '\0',"time-test", 0, "Measure clock drift");
 
     if (!getopt_parse(state->gopt, argc, argv, 1) || getopt_get_bool(state->gopt,"help")
-        || state->gopt->extraargs->len!=0) {
+        || varray_size(state->gopt->extraargs) != 0) {
 
         printf("Usage: %s [options]\n\n", argv[0]);
         getopt_do_usage(state->gopt);
