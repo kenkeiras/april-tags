@@ -196,7 +196,6 @@ public class JCamView
 
     class InfoPanel extends JPanel
     {
-        JButton printButton = new JButton("Print details");
         JButton printURLButton = new JButton("Print camera URL");
         JButton histogramButton = new JButton("Show image histogram");
 
@@ -204,14 +203,8 @@ public class JCamView
         {
             setLayout(new VFlowLayout());
 
-            add(printButton);
             add(printURLButton);
             add(histogramButton);
-
-            printButton.addActionListener(new ActionListener() {
-                public void actionPerformed(ActionEvent e) {
-                    isrc.printInfo();
-                }});
 
             printURLButton.addActionListener(new ActionListener() {
                 public void actionPerformed(ActionEvent e) {
@@ -228,7 +221,7 @@ public class JCamView
                             url = String.format("%s&%s=%.0f", url,
                                                 key, value);
                         else
-                            url = String.format("%s&%s=%.2f", url,
+                            url = String.format("%s&%s=%.3f", url,
                                                 key, value);
                     }
 
@@ -261,6 +254,7 @@ public class JCamView
 
     private synchronized void drawHist(BufferedImage image)
     {
+        image = ImageConvert.convertImage(image, BufferedImage.TYPE_INT_RGB);
         BufferedImage histim = new BufferedImage(256*2, 200, BufferedImage.TYPE_INT_RGB);
         int h[] = ((DataBufferInt) (histim.getRaster().getDataBuffer())).getData();
 
@@ -286,7 +280,7 @@ public class JCamView
             }
         }
 
-        int max = 0;
+        int max = 1; // avoid div zero
         for (int i=5; i < 250; i++) {
             max = Math.max(max, rhist[i]);
             max = Math.max(max, ghist[i]);
@@ -551,6 +545,7 @@ public class JCamView
 
                 choices.clear();
 
+                System.out.printf("%-20s: ", name);
                 for (int idx = 1; idx < tt.length; idx++) {
                     String toks[] = tt[idx].split("=");
                     if (toks.length==2) {
@@ -563,9 +558,10 @@ public class JCamView
 
                         choices.add(choice);
 
-                        System.out.println(toks[1]);
+                        System.out.printf("%s, ", toks[1]);
                     }
                 }
+                System.out.println();
 
                 jcombo = new JComboBox(choices.toArray(new FeatureChoice[0]));
 
@@ -629,6 +625,10 @@ public class JCamView
                 slider.setMinimum(min);
                 slider.setMaximum(max);
                 slider.setActualValue(isrc.getFeatureValue(idx));
+            }
+
+            if (jcb != null) {
+                jcb.setSelected(((int) isrc.getFeatureValue(idx)) == 1);
             }
 
 /*            if (jcombo != null) {

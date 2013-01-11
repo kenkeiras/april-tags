@@ -67,6 +67,8 @@ public class SimBus extends AbstractBus
                     return id;
                 case 4:
                     return 1; // baud
+                case 6:
+                    return 1; // rotation mode (0 = continuous, else wheel)
                 case 36: // position
                 case 37:
                     tmp = (int) (radiansQuant * radiansState / radiansRange);

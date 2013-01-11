@@ -135,6 +135,11 @@ public class ISLog
         raf.close();
     }
 
+    public synchronized long write(FrameData frmd) throws IOException
+    {
+        return write(frmd.ifmt, frmd.utime, frmd.data);
+    }
+
     public synchronized long write(ImageSourceFormat ifmt, byte imbuf[]) throws IOException
     {
         return write(ifmt, TimeUtil.utime(), imbuf);
