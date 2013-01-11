@@ -55,6 +55,8 @@ struct image_source
     // "i"  integer
     // "i,min,max"
     // "i,min,max,increment"
+    // "f,min,max"
+    // "f,min,max,increment"
     // "c,0=apple,3=banana,5=orange,"    <-- note: should be robust to extra commas
     char* (*get_feature_type)(image_source_t *isrc, int idx);
 

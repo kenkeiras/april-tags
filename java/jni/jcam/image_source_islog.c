@@ -210,7 +210,7 @@ static char *get_feature_type(image_source_t *isrc, int idx)
 {
     switch (idx) {
     case 0:
-        return strdup("b");
+        return strdup("f,0.1,100");
     case 1:
         return strdup("b");
     }
@@ -240,10 +240,12 @@ static int set_feature_value(image_source_t *isrc, int idx, double v)
     switch (idx)  {
     case 0:
         if (v != 0)
-            v = fmax(0.5, v);
+            v = fmax(0.1, v);
         impl->fps = v;
+        break;
     case 1:
         impl->loop = (int) v;
+        break;
     default:
         return 0;
     }
@@ -274,6 +276,7 @@ static int get_frame(image_source_t *isrc, frame_data_t * frmd)
             if (res)
                 return res;
         } else {
+            usleep(10000); // prevent a get_frame spin.
             return res;
         }
     }
@@ -381,6 +384,7 @@ image_source_t *image_source_islog_open(url_parser_t *urlp)
     isrc->print_info = print_info;
 
     impl->loop = 1;
+    impl->fps = 10;
 
     impl->f = fopen(location, "rb");
     if (impl->f == NULL)
