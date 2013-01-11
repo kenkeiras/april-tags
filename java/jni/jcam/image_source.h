@@ -23,7 +23,7 @@ struct frame_data
 {
     image_source_format_t *ifmt;
     uint64_t utime;
-    void * data;
+    void *data;
     int  datalen;
 
     void *priv;
@@ -74,6 +74,7 @@ image_source_t *image_source_v4l2_open(const char *path);
 image_source_t *image_source_dc1394_open(url_parser_t *urlp);
 image_source_t *image_source_islog_open(url_parser_t *urlp);
 image_source_t *image_source_pgusb_open(url_parser_t *urlp);
+image_source_t *image_source_filedir_open(url_parser_t *urlp);
 
 char** image_source_enumerate();
 void image_source_enumerate_free(char **b);

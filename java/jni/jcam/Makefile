@@ -1,6 +1,6 @@
 include ../common.mk
 
-LIBIMAGESOURCE_OBJS = image_source.o image_source_v4l2.o image_source_jni.o image_source_dc1394.o url_parser.o image_source_islog.o image_source_pgusb.o
+LIBIMAGESOURCE_OBJS = image_source.o image_source_v4l2.o image_source_jni.o image_source_dc1394.o url_parser.o image_source_islog.o image_source_pgusb.o image_source_filedir.o
 
 LIB=libimagesource.so
 DESTLIB=../../../lib/$(LIB)
@@ -32,7 +32,7 @@ $(DESTLIB): $(LIB)
 	cp $(LIB) $(DESTLIB)
 
 libimagesource.so: april_jcam_ImageSourceNative.h $(LIBIMAGESOURCE_OBJS)
-	$(LD) $(LDFLAGS) $(LIBIMAGESOURCE_OBJS) -o libimagesource.so -ldc1394 -lc
+	$(LD) $(LDFLAGS) $(LIBIMAGESOURCE_OBJS) -o libimagesource.so -ldc1394 -lc -lcommon
 
 april_jcam_ImageSourceNative.h:
 	echo "Rebuilding JNI headers. Ensure java file has been recently built."

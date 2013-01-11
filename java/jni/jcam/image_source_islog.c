@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <math.h>
 
+#include "common/string_util.h"
+
 /** File format: just a list of records that look like this:
     (big endian)
 

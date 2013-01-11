@@ -17,6 +17,8 @@
 #include <dc1394/control.h>
 #include <dc1394/vendor/avt.h>
 
+#include "common/string_util.h"
+
 #define IMAGE_SOURCE_UTILS
 #include "image_source.h"
 
@@ -55,40 +57,6 @@ struct format_priv
 };
 
 static int strobe_warned = 0;
-
-#define MIN_PRINTF_ALLOC 16
-
-/** Allocate a string and call sprintf, resizing if necessary and calling
- *  sprintf again.  Returns a char* that must be freed by the caller.
- */
-static char *sprintf_alloc(const char *fmt, ...)
-{
-    int size = MIN_PRINTF_ALLOC;
-    char *buf = malloc(size * sizeof(char));
-
-    int returnsize;
-    va_list args;
-
-    va_start(args,fmt);
-    returnsize = vsnprintf(buf, size, fmt, args);
-    va_end(args);
-
-    // it was successful
-    if (returnsize < size) {
-        return buf;
-    }
-
-    // otherwise, we should try again
-    free(buf);
-    size = returnsize + 1;
-    buf = malloc(size * sizeof(char));
-
-    va_start(args,fmt);
-    returnsize = vsnprintf(buf, size, fmt, args);
-    va_end(args);
-
-    return buf;
-}
 
 static void print_strobe_warning()
 {
@@ -714,12 +682,12 @@ static char* get_feature_type(image_source_t *isrc, int idx)
         return strdup("b");
     case 8: // shutter
         return sprintf_alloc("i,%d,%d",
-                             find_feature(isrc, DC1394_FEATURE_SHUTTER)->min * 1e3,
-                             find_feature(isrc, DC1394_FEATURE_SHUTTER)->max * 1e3);
+                             find_feature(isrc, DC1394_FEATURE_SHUTTER)->min * 1000,
+                             find_feature(isrc, DC1394_FEATURE_SHUTTER)->max * 1000);
     case 9: // gain-manual
         return strdup("b");
     case 10: // gain
-        return sprintf_alloc("i,%d,%d",
+        return sprintf_alloc("f,%f,%f",
                              find_feature(isrc, DC1394_FEATURE_GAIN)->abs_min,
                              find_feature(isrc, DC1394_FEATURE_GAIN)->abs_max);
     case 11: // gamma-manual
@@ -733,7 +701,7 @@ static char* get_feature_type(image_source_t *isrc, int idx)
     case 14: // frame-rate-mode
         return strdup("b");
     case 15: // frame-rate
-        return sprintf_alloc("i,%d,%d",
+        return sprintf_alloc("f,%f,%f",
                              find_feature(isrc, DC1394_FEATURE_FRAME_RATE)->abs_min,
                              find_feature(isrc, DC1394_FEATURE_FRAME_RATE)->abs_max);
     case 16: // timestamps-enable
@@ -745,11 +713,11 @@ static char* get_feature_type(image_source_t *isrc, int idx)
     case 19: // strobe-0-polarity
         return strdup("b");
     case 20: // strobe-0-delay
-        return sprintf_alloc("i,%d,%d",
+        return sprintf_alloc("f,%f,%f",
                              get_strobe_min(isrc, 0),
                              get_strobe_max(isrc, 0));
     case 21: // strobe-0-duration
-        return sprintf_alloc("i,%d,%d",
+        return sprintf_alloc("f,%f,%f",
                              get_strobe_min(isrc, 0),
                              get_strobe_max(isrc, 0));
     case 22: // strobe-1-manual
@@ -757,11 +725,11 @@ static char* get_feature_type(image_source_t *isrc, int idx)
     case 23: // strobe-1-polarity
         return strdup("b");
     case 24: // strobe-1-delay
-        return sprintf_alloc("i,%d,%d",
+        return sprintf_alloc("f,%f,%f",
                              get_strobe_min(isrc, 1),
                              get_strobe_max(isrc, 1));
     case 25: // strobe-1-duration
-        return sprintf_alloc("i,%d,%d",
+        return sprintf_alloc("f,%f,%f",
                              get_strobe_min(isrc, 1),
                              get_strobe_max(isrc, 1));
     case 26: // strobe-2-manual
@@ -769,11 +737,11 @@ static char* get_feature_type(image_source_t *isrc, int idx)
     case 27: // strobe-2-polarity
         return strdup("b");
     case 28: // strobe-2-delay
-        return sprintf_alloc("i,%d,%d",
+        return sprintf_alloc("f,%f,%f",
                              get_strobe_min(isrc, 2),
                              get_strobe_max(isrc, 2));
     case 29: // strobe-2-duration
-        return sprintf_alloc("i,%d,%d",
+        return sprintf_alloc("f,%f,%f",
                              get_strobe_min(isrc, 2),
                              get_strobe_max(isrc, 2));
     case 30: // strobe-3-manual
@@ -781,11 +749,11 @@ static char* get_feature_type(image_source_t *isrc, int idx)
     case 31: // strobe-3-polarity
         return strdup("b");
     case 32: // strobe-3-delay
-        return sprintf_alloc("i,%d,%d",
+        return sprintf_alloc("f,%f,%f",
                              get_strobe_min(isrc, 3),
                              get_strobe_max(isrc, 3));
     case 33: // strobe-3-duration
-        return sprintf_alloc("i,%d,%d",
+        return sprintf_alloc("f,%f,%f",
                              get_strobe_min(isrc, 3),
                              get_strobe_max(isrc, 3));
     case 34: // external-trigger-manual
