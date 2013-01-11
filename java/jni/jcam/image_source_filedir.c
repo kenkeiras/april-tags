@@ -218,16 +218,9 @@ static int get_frame_png(image_source_t *isrc, frame_data_t *frmd, const char *f
     if (setjmp(png_jmpbuf(png_ptr)))
         abort_("[read_png_file] Error during read_image");
 
-/*
-    row_pointers = (png_bytep*) malloc(sizeof(png_bytep) * height);
-    for (int y = 0; y < height; y++)
-        row_pointers[y] = (png_byte*) malloc(png_get_rowbytes(png_ptr,info_ptr));
+    assert(bit_depth == 8);
 
-    png_read_image(png_ptr, row_pointers);
-
-*/
     if (png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_GRAY) {
-        assert(bit_depth == 8);
 
         frmd->ifmt = calloc(1, sizeof(image_source_format_t));
         frmd->ifmt->width = width;
@@ -249,27 +242,51 @@ static int get_frame_png(image_source_t *isrc, frame_data_t *frmd, const char *f
         goto finish;
     }
 
-    if (png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_RGB)
-        abort_("[process_file] input file is PNG_COLOR_TYPE_RGB but must be PNG_COLOR_TYPE_RGBA "
-               "(lacks the alpha channel)");
+    if (png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_RGBA) {
 
-    if (png_get_color_type(png_ptr, info_ptr) != PNG_COLOR_TYPE_RGBA)
-        abort_("[process_file] color_type of input file must be PNG_COLOR_TYPE_RGBA (%d) (is %d)",
-               PNG_COLOR_TYPE_RGBA, png_get_color_type(png_ptr, info_ptr));
-/*
-    for (y=0; y<height; y++) {
-        png_byte* row = row_pointers[y];
-        for (x=0; x<width; x++) {
-            png_byte* ptr = &(row[x*4]);
-            printf("Pixel at position [ %d - %d ] has RGBA values: %d - %d - %d - %d\n",
-                   x, y, ptr[0], ptr[1], ptr[2], ptr[3]);
+        frmd->ifmt = calloc(1, sizeof(image_source_format_t));
+        frmd->ifmt->width = width;
+        frmd->ifmt->height = height;
+        frmd->ifmt->format = strdup("RGBA");
 
-                   // set red value to 0 and green value to the blue one
-            ptr[0] = 0;
-            ptr[1] = ptr[2];
-        }
+        frmd->datalen = width * height * 4;
+        frmd->data = malloc(frmd->datalen);
+        frmd->utime = 0;
+        frmd->priv = NULL;
+
+        row_pointers = malloc(sizeof(png_bytep) * height);
+        for (int y = 0; y < height; y++)
+            row_pointers[y] = &((uint8_t*) frmd->data)[y*width * 4];
+
+        png_read_image(png_ptr, row_pointers);
+
+        res = 0;
+        goto finish;
     }
-*/
+
+    if (png_get_color_type(png_ptr, info_ptr) == PNG_COLOR_TYPE_RGB) {
+
+        frmd->ifmt = calloc(1, sizeof(image_source_format_t));
+        frmd->ifmt->width = width;
+        frmd->ifmt->height = height;
+        frmd->ifmt->format = strdup("RGB");
+
+        frmd->datalen = width * height * 3;
+        frmd->data = malloc(frmd->datalen);
+        frmd->utime = 0;
+        frmd->priv = NULL;
+
+        row_pointers = malloc(sizeof(png_bytep) * height);
+        for (int y = 0; y < height; y++)
+            row_pointers[y] = &((uint8_t*) frmd->data)[y*width * 3];
+
+        png_read_image(png_ptr, row_pointers);
+
+        res = 0;
+        goto finish;
+    }
+
+    printf("image_source_filedir: Unknown PNG image format.\n");
 
 finish:
 
@@ -412,6 +429,11 @@ image_source_t *image_source_filedir_open(url_parser_t *urlp)
 
     if (!strcmp(url_parser_get_protocol(urlp), "dir://")) {
         DIR *dir = opendir(url_parser_get_location(urlp));
+
+        if (dir == NULL) {
+            printf("image_source_filedir: Directory not found: %s\n", url_parser_get_location(urlp));
+            return NULL;
+        }
 
         while (1) {
             struct dirent *entry = readdir(dir);
