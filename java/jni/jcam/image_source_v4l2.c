@@ -365,7 +365,7 @@ int my_close(image_source_t *isrc)
     return close(impl->fd);
 }
 
-static void printInfo(image_source_t *isrc)
+static void print_info(image_source_t *isrc)
 {
     impl_v4l2_t *impl = (impl_v4l2_t*) isrc->impl;
 
@@ -409,7 +409,7 @@ image_source_t *image_source_v4l2_open(const char *path)
     isrc->stop = stop;
     isrc->close = my_close;
 
-    isrc->printInfo = printInfo;
+    isrc->print_info = print_info;
 
     impl->path = strdup(path);
 

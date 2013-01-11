@@ -1491,7 +1491,7 @@ static int my_close(image_source_t *isrc)
     return close(impl->fd);
 }
 
-static void printInfo(image_source_t *isrc)
+static void print_info(image_source_t *isrc)
 {
     impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
 
@@ -1730,7 +1730,7 @@ image_source_t *image_source_dc1394_open(url_parser_t *urlp)
     isrc->stop = stop;
     isrc->close = my_close;
 
-    isrc->printInfo = printInfo;
+    isrc->print_info = print_info;
 
     impl->num_buffers = 2;
 

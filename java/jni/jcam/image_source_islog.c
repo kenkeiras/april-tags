@@ -338,7 +338,7 @@ static int my_close(image_source_t *isrc)
     return 0;
 }
 
-static void printInfo(image_source_t *isrc)
+static void print_info(image_source_t *isrc)
 {
     impl_islog_t *impl = (impl_islog_t *) isrc->impl;
 
@@ -378,7 +378,7 @@ image_source_t *image_source_islog_open(url_parser_t *urlp)
     isrc->stop = stop;
     isrc->close = my_close;
 
-    isrc->printInfo = printInfo;
+    isrc->print_info = print_info;
 
     impl->loop = 1;
 

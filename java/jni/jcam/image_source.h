@@ -62,7 +62,7 @@ struct image_source
     // returns non-zero on error
     int (*set_feature_value)(image_source_t *isrc, int idx, double v);
 
-    void (*printInfo)(image_source_t *isrc);
+    void (*print_info)(image_source_t *isrc);
 
     int (*close)(image_source_t *isrc);
 };
