@@ -89,7 +89,7 @@
     </exec>
   </target>
 
-  <target name="build-jni">
+  <target name="build-jni" depends="make-src">
     <exec executable="make" dir="${basedir}/jni" failonerror="true">
       <arg line="-f Makefile" />
     </exec>
