@@ -29,6 +29,25 @@ public class Config
         this.root = this;
     }
 
+    /** A config object built from provided hashmaps.
+      */
+    public Config(HashMap<String,String[]> inputKeys,
+                  HashMap<String,String[]> inputAbstractKeys)
+    {
+        this.prefix = "";
+        this.basePath = "";
+        this.root = this;
+
+        Set<Map.Entry<String,String[]>> entries = inputKeys.entrySet();
+        Set<Map.Entry<String,String[]>> abstractEntries = inputAbstractKeys.entrySet();
+
+        for (Map.Entry<String,String[]> entry : entries)
+            this.keys.put(entry.getKey(), entry.getValue());
+
+        for (Map.Entry<String,String[]> entry : abstractEntries)
+            this.abstractKeys.put(entry.getKey(), entry.getValue());
+    }
+
     class VerboseHashMap<K,V> extends HashMap<K,V>
     {
         public V get(Object k)
