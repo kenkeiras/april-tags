@@ -16,6 +16,7 @@
 #include <pthread.h>
 #include <assert.h>
 
+#include "common/string_util.h"
 /*
 http://www.1394ta.org/press/WhitePapers/Firewire%20Reference%20Tutorial.pdf
 http://damien.douxchamps.net/ieee1394/libdc1394/iidc/IIDC_1.31.pdf
@@ -1679,15 +1680,12 @@ static char *trigger_source_get_type(image_source_t *isrc, struct feature *f)
     if ((readout == 0) || (onoff == 0) || (polarity == 0))
         return NULL;
 
-    char buf[1024];
-    sprintf(buf, "c,%s%s%s%s",
-            (d & (1<<23)) ? "0=gpio0," : "",
-            (d & (1<<22)) ? "1=gpio1," : "",
-            (d & (1<<21)) ? "2=gpio2," : "",
-            (d & (1<<20)) ? "3=gpio3," : "",
-            (d & (1<<16)) ? "4=software-only," : "");
-
-    return strdup(buf);
+    return sprintf_alloc("c,%s%s%s%s%s",
+                         (d & (1<<23)) ? "0=gpio0," : "",
+                         (d & (1<<22)) ? "1=gpio1," : "",
+                         (d & (1<<21)) ? "2=gpio2," : "",
+                         (d & (1<<20)) ? "3=gpio3," : "",
+                         (d & (1<<16)) ? "4=software-only," : "");
 }
 
 static double trigger_source_get_value(image_source_t *isrc, struct feature *f)

@@ -27,6 +27,10 @@ image_source_t *image_source_open(const char *url)
         isrc = image_source_islog_open(urlp);
     } else if (!strcmp(protocol, "pgusb://")) {
         isrc = image_source_pgusb_open(urlp);
+    }  else if (!strcmp(protocol, "file://")) {
+        isrc = image_source_filedir_open(urlp);
+    }  else if (!strcmp(protocol, "dir://")) {
+        isrc = image_source_filedir_open(urlp);
     }
 
     // handle parameters
@@ -100,7 +104,7 @@ char** image_source_enumerate()
     char **urls = calloc(1, sizeof(char*));
 
     urls = image_source_enumerate_v4l2(urls);
-//    urls = image_source_enumerate_dc1394(urls);
+    urls = image_source_enumerate_dc1394(urls);
     urls = image_source_enumerate_pgusb(urls);
 
     return urls;

@@ -23,7 +23,7 @@ struct frame_data
 {
     image_source_format_t *ifmt;
     uint64_t utime;
-    void * data;
+    void *data;
     int  datalen;
 
     void *priv;
@@ -55,6 +55,8 @@ struct image_source
     // "i"  integer
     // "i,min,max"
     // "i,min,max,increment"
+    // "f,min,max"
+    // "f,min,max,increment"
     // "c,0=apple,3=banana,5=orange,"    <-- note: should be robust to extra commas
     char* (*get_feature_type)(image_source_t *isrc, int idx);
 
@@ -62,7 +64,7 @@ struct image_source
     // returns non-zero on error
     int (*set_feature_value)(image_source_t *isrc, int idx, double v);
 
-    void (*printInfo)(image_source_t *isrc);
+    void (*print_info)(image_source_t *isrc);
 
     int (*close)(image_source_t *isrc);
 };
@@ -72,6 +74,7 @@ image_source_t *image_source_v4l2_open(const char *path);
 image_source_t *image_source_dc1394_open(url_parser_t *urlp);
 image_source_t *image_source_islog_open(url_parser_t *urlp);
 image_source_t *image_source_pgusb_open(url_parser_t *urlp);
+image_source_t *image_source_filedir_open(url_parser_t *urlp);
 
 char** image_source_enumerate();
 void image_source_enumerate_free(char **b);
