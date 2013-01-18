@@ -199,6 +199,12 @@ public class VisConsole
         listeners.add(listener);
     }
 
+    // Allow printing to screen, even if not as a result of a user command
+    public synchronized void print(String s)
+    {
+        output(OUTPUT_STYLE + s);
+    }
+
     synchronized void output(String s)
     {
         Line line = new Line();
