@@ -350,7 +350,67 @@ public class DefaultCameraManager implements VisCameraManager, VisSerializable
 
             jmi.addActionListener(new ActionListener() {
                     public void actionPerformed(ActionEvent e) {
-                        perspectiveness1 = 1 - perspectiveness1;
+                        perspectiveness1 = 0;
+                        mtime1 = System.currentTimeMillis() + UI_ANIMATE_MS;
+                    }
+                });
+
+            jmenu.add(jmi);
+        }
+
+        if (true) {
+            JCheckBoxMenuItem jmi = new JCheckBoxMenuItem("Perspectiveness = 0.25");
+            if (perspectiveness1 == 0.25)
+                jmi.setSelected(true);
+
+            jmi.addActionListener(new ActionListener() {
+                    public void actionPerformed(ActionEvent e) {
+                        perspectiveness1 = 0.25;
+                        mtime1 = System.currentTimeMillis() + UI_ANIMATE_MS;
+                    }
+                });
+
+            jmenu.add(jmi);
+        }
+
+        if (true) {
+            JCheckBoxMenuItem jmi = new JCheckBoxMenuItem("Perspectiveness = 0.5");
+            if (perspectiveness1 == 0.5)
+                jmi.setSelected(true);
+
+            jmi.addActionListener(new ActionListener() {
+                    public void actionPerformed(ActionEvent e) {
+                        perspectiveness1 = 0.5;
+                        mtime1 = System.currentTimeMillis() + UI_ANIMATE_MS;
+                    }
+                });
+
+            jmenu.add(jmi);
+        }
+
+        if (true) {
+            JCheckBoxMenuItem jmi = new JCheckBoxMenuItem("Perspectiveness = 0.75");
+            if (perspectiveness1 == 0.75)
+                jmi.setSelected(true);
+
+            jmi.addActionListener(new ActionListener() {
+                    public void actionPerformed(ActionEvent e) {
+                        perspectiveness1 = 0.75;
+                        mtime1 = System.currentTimeMillis() + UI_ANIMATE_MS;
+                    }
+                });
+
+            jmenu.add(jmi);
+        }
+
+        if (true) {
+            JCheckBoxMenuItem jmi = new JCheckBoxMenuItem("Perspective projection");
+            if (perspectiveness1 == 1)
+                jmi.setSelected(true);
+
+            jmi.addActionListener(new ActionListener() {
+                    public void actionPerformed(ActionEvent e) {
+                        perspectiveness1 = 1;
                         mtime1 = System.currentTimeMillis() + UI_ANIMATE_MS;
                     }
                 });
