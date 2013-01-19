@@ -289,8 +289,6 @@ public class DefaultEventHandler implements VisEventHandler, VisSerializable
         boolean shift = (mods & MouseEvent.SHIFT_DOWN_MASK)>0;
         boolean ctrl = (mods & MouseEvent.CTRL_DOWN_MASK)>0;
 
-        double mp[] = vl.manipulationManager.pickManipulationPoint(vc, vl, rinfo, ray);
-
         VisCameraManager.CameraPosition cameraPosition = rinfo.cameraPositions.get(vl);
 
         double factor = 1.0;
@@ -310,14 +308,19 @@ public class DefaultEventHandler implements VisEventHandler, VisSerializable
   newdist = Math.min(cameraPosition.zclip_far / 5.0, newdist);
   newdist = Math.max(cameraPosition.zclip_near * 5.0, newdist);
 */
+
+        double mp0[] = vl.manipulationManager.pickManipulationPoint(vc, vl, rinfo, ray);
+
         cameraPosition.eye = LinAlg.subtract(cameraPosition.lookat, LinAlg.scale(lookdir, newdist));
 
-        double mv[] = windowSpacePanTo(mp, ex, ey, vl.cameraManager.preserveZWhenTranslating(),
-                                       cameraPosition.getProjectionMatrix(), cameraPosition.getViewport(),
-                                       cameraPosition.eye, cameraPosition.lookat, cameraPosition.up);
+        double mp1[] = vl.manipulationManager.pickManipulationPoint(vc, vl, rinfo, cameraPosition.computeRay(ex, ey));
+        double dmp[] = LinAlg.subtract(mp1, mp0);
 
-        vl.cameraManager.uiLookAt(LinAlg.add(mv, cameraPosition.eye),
-                                  LinAlg.add(mv, cameraPosition.lookat),
+        cameraPosition.eye    = LinAlg.subtract(cameraPosition.eye, dmp);
+        cameraPosition.lookat = LinAlg.subtract(cameraPosition.lookat, dmp);
+
+        vl.cameraManager.uiLookAt(cameraPosition.eye,
+                                  cameraPosition.lookat,
                                   cameraPosition.up,
                                   false);
 
