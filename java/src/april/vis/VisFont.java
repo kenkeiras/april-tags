@@ -34,7 +34,7 @@ public class VisFont
     /** Use the factory method VisFont.getFont(), which will recycle
      * VisFont objects.
      **/
-    protected VisFont(Font f)
+    protected VisFont(Font f, boolean export)
     {
         this.f = f;
         BufferedImage tmp = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
@@ -100,6 +100,42 @@ public class VisFont
 
         g.dispose();
         tmpg.dispose();
+
+        if (export) {
+            try {
+                String style = "";
+                if ((f.getStyle() & Font.BOLD) > 0)
+                    style += "B";
+                if ((f.getStyle() & Font.ITALIC) > 0)
+                    style += "I";
+
+                String basename = f.getName()+"_"+style+"_"+f.getSize();
+                basename = basename.replace(" ", "-");
+
+                ImageIO.write(tiles, "png", new File("/tmp/"+basename+".png"));
+                BufferedWriter outs = new BufferedWriter(new FileWriter("/tmp/"+basename+".param"));
+                outs.write(String.format("ascii_min %d\n", ASCII_MIN));
+                outs.write(String.format("ascii_max %d\n", ASCII_MAX));
+                outs.write(String.format("tile_width %d\n", tile_width));
+                outs.write(String.format("tile_height %d\n", tile_height));
+                outs.write(String.format("tile_dim %d\n", tile_dim));
+                outs.write(String.format("height %d\n", height));
+                outs.write(String.format("width %d\n", width));
+                outs.write(String.format("widths "));
+                for (int i = 0; i < widths.length; i++)
+                    outs.write(String.format("%d ", (int) widths[i]));
+                outs.write("\n");
+
+                outs.write(String.format("advances "));
+                for (int i = 0; i < advances.length; i++)
+                    outs.write(String.format("%d ", (int) advances[i]));
+                outs.write("\n");
+
+                outs.close();
+            } catch (IOException ex) {
+                assert(false);
+            }
+        }
     }
 
     public static VisFont getFont(Font f)
@@ -112,7 +148,7 @@ public class VisFont
                 return vf;
         }
 
-        VisFont vf = new VisFont(f);
+        VisFont vf = new VisFont(f, false);
         fonts.add(vf);
         return vf;
     }
@@ -229,6 +265,20 @@ public class VisFont
             gl.gldUnbind(GL.VBO_TYPE_TEX_COORD, texCoordsID);
 
             VisFont.this.texture.unbind(gl);
+        }
+    }
+
+    public static void main(String args[])
+    {
+        int sizes[] = new int[] { 12, 24, 48, 128 };
+        int styles[] = new int[] { Font.PLAIN, Font.BOLD, Font.ITALIC };
+
+        for (int style : styles) {
+            for (int size : sizes) {
+                new VisFont(new Font("Serif", style, size), true);
+                new VisFont(new Font("SansSerif", style, size), true);
+                new VisFont(new Font("Monospaced", style, size), true);
+            }
         }
     }
 }
