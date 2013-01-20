@@ -122,6 +122,8 @@ public interface VisCameraManager
     /** Should only be called by VisCanvas **/
     public CameraPosition getCameraPosition(VisCanvas vc, int viewport[], int layerViewport[], VisLayer vl, long mtime);
 
+    boolean preserveZWhenTranslating();
+
     /** called in response to user interface actions that want to
      * change the camera position, for example DefaultEventHandler, to
      * handle pans. This is an "absolute" command, in that the camera

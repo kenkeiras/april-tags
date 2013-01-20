@@ -34,7 +34,7 @@ public class DefaultEventHandler implements VisEventHandler, VisSerializable
 
         winx, winy are in opengl screen coordinates (0,0) in bottom left
     **/
-    double[] windowSpacePanTo(double xyz[], double winx, double winy,
+    double[] windowSpacePanTo(double xyz[], double winx, double winy, boolean preserveZ,
                               double P[][], int viewport[],
                               double eye[], double lookat[], double up[])
     {
@@ -57,9 +57,10 @@ public class DefaultEventHandler implements VisEventHandler, VisSerializable
 
             double J[][] = computePanJacobian(xyz, P, viewport, eye, lookat, up,
                                               dir1, dir2);
-
-            dir1[2] = 0;
-            dir2[2] = 0;
+            if (preserveZ) {
+                dir1[2] = 0;
+                dir2[2] = 0;
+            }
 
             double weights[] = LinAlg.matrixAB(LinAlg.inverse(J), err);
             double dx[] = LinAlg.add(LinAlg.scale(dir1, weights[0]),
@@ -74,7 +75,6 @@ public class DefaultEventHandler implements VisEventHandler, VisSerializable
 
         return mv;
     }
-
 
     // How does the projected (opengl window coordinate) position of 3D point
     // xyz change with respect to moving the eye and lookat positions
@@ -104,7 +104,6 @@ public class DefaultEventHandler implements VisEventHandler, VisSerializable
 
         return new double[][] { { (w1[0] - w0[0]) / eps, (w2[0] - w0[0]) / eps },
                                 { (w1[1] - w0[1]) / eps, (w2[1] - w0[1]) / eps } };
-
     }
 
     /** Return true if you've consumed the event. **/
@@ -161,7 +160,7 @@ public class DefaultEventHandler implements VisEventHandler, VisSerializable
             if (manipulationPoint == null)
                 return false;
 
-            double mv[] = windowSpacePanTo(manipulationPoint, ex, ey,
+            double mv[] = windowSpacePanTo(manipulationPoint, ex, ey, vl.cameraManager.preserveZWhenTranslating(),
                                            cameraPosition.getProjectionMatrix(), cameraPosition.getViewport(),
                                            cameraPosition.eye, cameraPosition.lookat, cameraPosition.up);
 
@@ -311,16 +310,14 @@ public class DefaultEventHandler implements VisEventHandler, VisSerializable
   newdist = Math.min(cameraPosition.zclip_far / 5.0, newdist);
   newdist = Math.max(cameraPosition.zclip_near * 5.0, newdist);
 */
-        double eye[] = LinAlg.subtract(cameraPosition.lookat, LinAlg.scale(lookdir, newdist));
-        double lookat[] = cameraPosition.lookat;
-        double up[] = cameraPosition.up;
+        cameraPosition.eye = LinAlg.subtract(cameraPosition.lookat, LinAlg.scale(lookdir, newdist));
 
-        double mv[] = windowSpacePanTo(mp, ex, ey,
+        double mv[] = windowSpacePanTo(mp, ex, ey, vl.cameraManager.preserveZWhenTranslating(),
                                        cameraPosition.getProjectionMatrix(), cameraPosition.getViewport(),
-                                       eye, lookat, up);
+                                       cameraPosition.eye, cameraPosition.lookat, cameraPosition.up);
 
-        vl.cameraManager.uiLookAt(LinAlg.add(mv, eye),
-                                  LinAlg.add(mv, lookat),
+        vl.cameraManager.uiLookAt(LinAlg.add(mv, cameraPosition.eye),
+                                  LinAlg.add(mv, cameraPosition.lookat),
                                   cameraPosition.up,
                                   false);
 
