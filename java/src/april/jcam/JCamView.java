@@ -211,7 +211,7 @@ public class JCamView
 
                     String camera = urls.get(cameraList.getSelectedIndex());
 
-                    String url = String.format("%s?fidx=%d", camera, isrc.getCurrentFormatIndex());
+                    String url = String.format("%s?fidx=%d", camera.split("\\?")[0], isrc.getCurrentFormatIndex());
 
                     for (int i=0; i < isrc.getNumFeatures(); i++) {
                         String key = isrc.getFeatureName(i);
