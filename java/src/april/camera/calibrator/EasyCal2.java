@@ -761,8 +761,8 @@ public class EasyCal2
                                             new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
                                             new VzText(VzText.ANCHOR.CENTER,
                                                        "<<dropshadow=#AA000000>>"+
-                                                       "<<monospaced-20-bold,red>>"+
-                                                       "Error"))));
+                                                       "<<monospaced-20-bold,green>>"+
+                                                       "Move target closer to center of image"))));
                 vb.swap();
                 return;
             }
