@@ -339,7 +339,10 @@ public class Config
 
     public void setDoubles(String key, double v[])
     {
-        assert(false);
+        String vs[] = new String[v.length];
+        for (int i = 0; i < vs.length; i++)
+            vs[i] = ""+v[i];
+        keys.put(prefix+key, vs);
     }
 
     ////////////////////////////
