@@ -2,6 +2,8 @@ package april.dynamixel;
 
 import java.io.*;
 
+import april.jmat.MathUtil;
+
 // Some of the methods below (e.g. setBaud) should really be split
 // into servo-specific implementations from a "style" perspective, but
 // the servos implement compatible commands. We'll split them when we
@@ -11,6 +13,7 @@ public abstract class AbstractServo
 {
     protected AbstractBus      bus;
     protected int              id;
+    protected Boolean rotationMode = false;
 
     public static final int ERROR_INSTRUCTION = (1 << 6);
     public static final int ERROR_OVERLOAD    = (1 << 5);
@@ -41,13 +44,19 @@ public abstract class AbstractServo
         /** Temperature (Deg celsius) **/
         public double temperature;
 
+        /** Continuous rotation mode (true = wheel; false = joint) **/
+        public boolean continuous;
+
         /** Error flags--- see ERROR constants. **/
         public int    errorFlags;
 
         public String toString()
         {
-            return String.format("pos=%6.3f, speed=%6.3f, load=%6.3f, voltage=%4.1f, temp=%4.1f, err=%s",
-                                 positionRadians, speed, load, voltage, temperature, getErrorString(errorFlags, "OK"));
+            return String.format("pos=%6.3f, speed=%6.3f, load=%6.3f, volts=%4.1f, "+
+                                 "temp=%4.1f, mode=%s, err=%s",
+                                 positionRadians, speed, load, voltage, temperature,
+                                 continuous ? "wheel" : "joint",
+                                 getErrorString(errorFlags, "OK"));
         }
 
         public static String getErrorString(int error, String defaultString)
@@ -75,6 +84,10 @@ public abstract class AbstractServo
         this.id = id;
 
         assert(id >= 0 && id < 254); // note 254 = broadcast address.
+
+        rotationMode = readRotationMode();
+        if (rotationMode)   // notify user of continuous servos (e.g. cable management)
+            System.out.printf("NFO: Servo #%d initialized as continuous\n", id);
     }
 
 
@@ -154,11 +167,96 @@ public abstract class AbstractServo
      * @param radians
      *            [-pi, pi]
      * @param speedfrac
+     *            [0, 1]  in joint mode
+     *            [-1, 1] in wheel mode (must call setContinuousMode(true) first)
+     * @param torquefrac
+     *            [0, 1]
+     **/
+    public void setGoal(double radians, double speedfrac, double torquefrac)
+    {
+        if (rotationMode) {
+            setContinuousGoal(speedfrac, torquefrac);
+        } else {
+            setJointGoal(radians, speedfrac, torquefrac);
+        }
+    }
+
+    /** Set goal in joint mode
+     *
+     * @param radians
+     *            [-pi, pi]
+     * @param speedfrac
      *            [0, 1]
      * @param torquefrac
      *            [0, 1]
      **/
-    public abstract void setGoal(double radians, double speedfrac, double torquefrac);
+    public abstract void setJointGoal(double radians, double speedfrac, double torquefrac);
+
+    protected void setJointGoal(int pmask,
+                                double radians, double speedfrac, double torquefrac)
+    {
+        assert(!rotationMode && (pmask == 0xfff || pmask == 0x3ff));
+
+        // ensure proper ranges
+        radians = mod2pi(radians);  // do not use MathUtil.mod2pi
+        speedfrac = Math.max(0, Math.min(1, Math.abs(speedfrac)));
+        torquefrac = Math.max(0, Math.min(1, torquefrac));
+
+        double min = getMinimumPositionRadians();
+        double max = getMaximumPositionRadians();
+        radians = Math.max(min, Math.min(max, radians));
+
+        boolean stop = speedfrac < (1.0/0x3ff);
+
+        int posv = ((int) Math.round((radians - min) / (max - min) * pmask)) & pmask;
+        // in joint-mode, speed == 0 --> maxspeed
+        int speedv = stop ? 0x1 : (int)(speedfrac * 0x3ff);
+        int torquev = (int) (torquefrac * 0x3ff);
+
+        writeToRAM(new byte[] { 0x1e,
+                                (byte) (posv & 0xff), (byte) (posv >> 8),
+                                (byte) (speedv & 0xff), (byte) (speedv >> 8),
+                                (byte) (torquev & 0xff), (byte) (torquev >> 8) }, true);
+
+        // handle speed = 0 case (after slowing down, above) by relay current position back
+        //                  to servo; do not set torque = 0, b/c that is possibly not desired
+        if (stop) {
+            byte resp[] = bus.sendCommand(id,
+                                          AbstractBus.INST_READ_DATA,
+                                          new byte[] { 0x24, 2 },
+                                          true);
+            if (resp != null) {
+                posv = (resp[1] & 0xff) + ((resp[2] & 0xff) << 8);
+                writeToRAM(new byte[] { 0x1e,
+                                        (byte) (posv & 0xff), (byte) (posv >> 8) }, true);
+            }
+
+        }
+    }
+
+    /**
+     * @param speedfrac
+     *            [-1, 1] pos for CCW, neg for CW
+     * @param torquefrac
+     *            [0, 1]
+     **/
+    public void setContinuousGoal(double speedfrac, double torquefrac)
+    {
+        assert(rotationMode);
+
+        // ensure proper ranges
+        speedfrac = Math.max(-1, Math.min(1, speedfrac));
+        torquefrac = Math.max(0, Math.min(1, torquefrac));
+
+        int speedv = (int)Math.abs(speedfrac * 0x3ff);
+        if (speedfrac < 0)
+            speedv |= 0x400;  // CW direction
+        int torquev = (int) (0x3ff * torquefrac);
+
+        writeToRAM(new byte[] { 0x20,
+                                (byte) (speedv & 0xff), (byte) (speedv >> 8),
+                                (byte) (torquev & 0xff), (byte) (torquev >> 8) }, true);
+    }
 
     public void idle()
     {
@@ -252,4 +350,59 @@ public abstract class AbstractServo
      * returns true if address is EEPROM address
      **/
     protected abstract boolean isAddressEEPROM(int address);
+
+    /** returns true if servo in continuous mode (no angle limits) **/
+    public boolean getRotationMode()
+    {
+        return rotationMode;
+    }
+
+    /** read (and set) rotation mode from servo **/
+    public boolean readRotationMode()
+    {
+        boolean mode = true;
+        synchronized(rotationMode) {
+            byte limits[] = read(new byte[]{0x06, 4}, true);
+
+            if (limits == null || limits.length != 6) {
+                System.out.println("WRN: Invalid read of continous state: " +
+                                   ((limits == null) ? "null" : "len=" + limits.length));
+                return rotationMode;   // best guess
+            }
+            for (int i = 1; i < 5; i++)
+                if (limits[i] != 0) {
+                    mode = false;
+                    break;
+                }
+            rotationMode = mode;
+        }
+        return mode;
+    }
+
+    /** Set Rotation Mode
+     * true = wheel (continuous)
+     * false = joint
+     **/
+    protected abstract void setRotationMode(boolean mode);
+
+    public void setContinuousMode(boolean mode)
+    {
+        System.out.printf("NFO: Setting rotation mode for servo %d to %b (%s)\n", id, mode,
+                          (mode ? "wheel" : "joint"));
+
+        synchronized(rotationMode) {
+            setRotationMode(mode);
+            rotationMode = mode;
+        }
+    }
+
+    /** Ensure that v is [-PI, PI] **/
+    double mod2pi(double radians)
+    {
+        while(radians < -Math.PI)
+            radians += 2*Math.PI;
+        while(radians > Math.PI)
+            radians -= 2*Math.PI;
+        return radians;
+    }
 }

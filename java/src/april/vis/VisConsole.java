@@ -32,11 +32,11 @@ public class VisConsole
     // how long to display stuff
     public int DISPLAY_MS = 5000;
 
-    static final String INPUT_STYLE = "<<blue, monospaced-14, left>>";
-    static final String INPUT_CURSOR_STYLE = "<<#ff3333, monospaced-14>>";
-    static final String OLD_INPUT_STYLE = "<<gray, monospaced-14,left>>";
-    static final String OUTPUT_STYLE = "<<black, monospaced-14>>";
-    static final String COMPLETION_STYLE = "<<#000077, monospaced-14>>";
+    static final String INPUT_STYLE = "<<#ff4699d6, dropshadow=#ff191919, monospaced-14, left>>";
+    static final String INPUT_CURSOR_STYLE = "<<#ff3333, dropshadow=#ff191919, monospaced-14>>";
+    static final String OLD_INPUT_STYLE = "<<#ffaaaaaa, dropshadow=#ff191919, monospaced-14,left>>";
+    static final String OUTPUT_STYLE = "<<#fffff200, dropshadow=#ff191919, monospaced-14>>";
+    static final String COMPLETION_STYLE = "<<#ffffffff, dropshadow=#ff191919, monospaced-14>>";
 
     public static class Shortcut
     {
@@ -199,6 +199,12 @@ public class VisConsole
         listeners.add(listener);
     }
 
+    // Allow printing to screen, even if not as a result of a user command
+    public synchronized void print(String s)
+    {
+        output(OUTPUT_STYLE + s);
+    }
+
     synchronized void output(String s)
     {
         Line line = new Line();
@@ -256,8 +262,9 @@ public class VisConsole
 
         VisWorld.Buffer vb = vw.getBuffer("command output");
         vb.setDrawOrder(drawOrder);
-        vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT,
-                                           new VzText(buffer)));
+        vb.addBack(new VisLighting(false,
+                                   new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT,
+                                                    new VzText(buffer))));
         vb.swap();
     }
 

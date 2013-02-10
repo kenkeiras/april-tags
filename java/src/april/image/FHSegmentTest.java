@@ -80,6 +80,8 @@ public class FHSegmentTest implements ParameterListener
         vl.cameraManager.fit2D(new double[] {0,0}, new double[] { 752, 480}, true);
         new RunThread().start();
 
+        jf.add(new LayerBufferPanel(vc), BorderLayout.EAST);
+
         pg.addListener(this);
     }
 

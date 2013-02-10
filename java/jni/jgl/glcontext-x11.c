@@ -16,7 +16,7 @@ glcontext_t *glcontext_X11_create()
 
     Window root = DefaultRootWindow(dpy);
     // These GL settings are unimportant; see glcontext.c for the allocation of the FBO.
-    GLint att[] = { GLX_RGBA, GLX_DEPTH_SIZE, 24, GLX_DOUBLEBUFFER, None };
+    GLint att[] = { GLX_RGBA, GLX_DEPTH_SIZE, 16, GLX_DOUBLEBUFFER, None };
     XVisualInfo *vi = glXChooseVisual(dpy, 0, att);
     Colormap cmap = XCreateColormap(dpy, root, vi->visual, AllocNone);
 

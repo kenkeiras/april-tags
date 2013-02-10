@@ -128,8 +128,7 @@ JNIEXPORT jintArray JNICALL Java_april_vis_GL_gl_1read_1pixels
 */
 static int warned_is_copy = 0;
 
-/*
-JNIEXPORT jint JNICALL Java_april_vis_GL_gl_1read_1pixels2
+JNIEXPORT jint JNICALL Java_april_vis_GL_gl_1read_1pixels2__II_3I
   (JNIEnv *jenv, jclass jcls, jint width, jint height, jintArray jdata)
 {
     glFlush();
@@ -143,15 +142,15 @@ JNIEXPORT jint JNICALL Java_april_vis_GL_gl_1read_1pixels2
     }
 
     printf("*2*\n");
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
 //    glReadPixels(0, 0, width, height, GL_BGR, GL_UNSIGNED_INT_8_8_8_8_REV, data);
     glReadPixels(0, 0, width, height, GL_BGR, GL_UNSIGNED_BYTE, data);
 
     (*jenv)->ReleasePrimitiveArrayCritical(jenv, jdata, data, 0);
     return 0;
 }
-*/
 
-JNIEXPORT jint JNICALL Java_april_vis_GL_gl_1read_1pixels2
+JNIEXPORT jint JNICALL Java_april_vis_GL_gl_1read_1pixels2__II_3B
   (JNIEnv *jenv, jclass jcls, jint width, jint height, jbyteArray jdata)
 {
     glFlush();

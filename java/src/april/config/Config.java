@@ -11,7 +11,6 @@ import april.util.*;
 public class Config
 {
     HashMap<String, String[]> keys = new VerboseHashMap<String, String[]>();
-    HashMap<String, String[]> abstractKeys = new VerboseHashMap<String, String[]>();
 
     String       prefix; // either empty or has a trailing "." so that
                          // prefix+key is always well-formed
@@ -27,6 +26,20 @@ public class Config
         this.prefix = "";
         this.basePath = "";
         this.root = this;
+    }
+
+    /** A config object built from provided hashmaps.
+      */
+    public Config(HashMap<String,String[]> inputKeys)
+    {
+        this.prefix = "";
+        this.basePath = "";
+        this.root = this;
+
+        Set<Map.Entry<String,String[]>> entries = inputKeys.entrySet();
+
+        for (Map.Entry<String,String[]> entry : entries)
+            this.keys.put(entry.getKey(), entry.getValue());
     }
 
     class VerboseHashMap<K,V> extends HashMap<K,V>
@@ -79,21 +92,6 @@ public class Config
         ArrayList<String> subkeys = new ArrayList<String>();
 
         for (String key : keys.keySet()) {
-            if (key.length() <= prefix.length())
-                continue;
-            if (key.startsWith(prefix))
-                subkeys.add(key.substring(prefix.length()));
-        }
-
-        return subkeys.toArray(new String[subkeys.size()]);
-    }
-
-    // Returns keys beginning with ':', which are normally hidden
-    public String[] getAbstractKeys()
-    {
-        ArrayList<String> subkeys = new ArrayList<String>();
-
-        for (String key : abstractKeys.keySet()) {
             if (key.length() <= prefix.length())
                 continue;
             if (key.startsWith(prefix))
@@ -240,17 +238,6 @@ public class Config
         assert(false);
     }
 
-    //For now, we can access Abstract keys individually:
-    public String[] getAbstractStrings(String abstractKey)
-    {
-        return abstractKeys.get(prefix + abstractKey);
-    }
-
-    public String getAbstractString(String abstractKey)
-    {
-        return getAbstractStrings(abstractKey)[0];
-    }
-
     ////////////////////////////
     // boolean
     public boolean[] getBooleans(String key, boolean defaults[])
@@ -352,7 +339,10 @@ public class Config
 
     public void setDoubles(String key, double v[])
     {
-        assert(false);
+        String vs[] = new String[v.length];
+        for (int i = 0; i < vs.length; i++)
+            vs[i] = ""+v[i];
+        keys.put(prefix+key, vs);
     }
 
     ////////////////////////////

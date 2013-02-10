@@ -909,6 +909,11 @@ public class VisCanvas extends JComponent implements VisSerializable
         }
     }
 
+    public int getTargetFPS()
+    {
+        return targetFrameRate;
+    }
+
     public void setTargetFPS(double fps)
     {
         targetFrameRate = (int) fps;
