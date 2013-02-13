@@ -6,11 +6,11 @@ import april.camera.*;
 import april.jmat.*;
 import april.tag.*;
 
-public class Caltech4Initializer implements CalibrationInitializer
+public class Caltech4thOrderInitializer implements CalibrationInitializer
 {
     public static boolean verbose = true;
 
-    public Caltech4Initializer()
+    public Caltech4thOrderInitializer()
     {
     }
 
@@ -76,7 +76,7 @@ public class Caltech4Initializer implements CalibrationInitializer
         double kc[] = new double[] {  0, 0, 0, 0 };
         double skew = 0;
 
-        return new Caltech4Calibration(fc, cc, kc, skew, width, height);
+        return new Caltech4thOrderCalibration(fc, cc, kc, skew, width, height);
     }
 
     /** Initialize the calibration using the provided parameters. Essentially,
@@ -87,6 +87,6 @@ public class Caltech4Initializer implements CalibrationInitializer
     public ParameterizableCalibration initializeWithParameters(int width, int height,
                                                                double params[])
     {
-        return new Caltech4Calibration(params, width, height);
+        return new Caltech4thOrderCalibration(params, width, height);
     }
 }

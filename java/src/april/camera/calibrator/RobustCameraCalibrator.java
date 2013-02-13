@@ -654,6 +654,15 @@ public class RobustCameraCalibrator
       */
     public synchronized void saveCalibration(String basepath)
     {
+        File dir = new File(basepath);
+        if (!dir.exists()) {
+            boolean success = dir.mkdirs();
+            if (!success) {
+                System.err.printf("RobustCameraCalibrator: Failure to create directory '%s'\n", basepath);
+                return;
+            }
+        }
+
         // find unused name
         int calNum = -1;
         String calName = null;

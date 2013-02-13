@@ -146,6 +146,7 @@ public class EasyCal2
         april.camera.models.KannalaBrandtInitializer.verbose = false;
         april.camera.models.DistortionFreeInitializer.verbose = false;
         april.camera.models.CaltechInitializer.verbose = false;
+        april.camera.models.Caltech4thOrderInitializer.verbose = false;
         april.camera.models.Radial4thOrderCaltechInitializer.verbose = false;
         april.camera.models.Radial6thOrderCaltechInitializer.verbose = false;
         april.camera.models.Radial8thOrderCaltechInitializer.verbose = false;
