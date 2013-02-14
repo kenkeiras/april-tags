@@ -130,7 +130,7 @@ public class EasyCal2
     }
 
     public EasyCal2(CalibrationInitializer initializer, String url, double tagSpacingMeters, double stoppingAccuracy,
-                    boolean debugGUI, ArrayList<BufferedImage> debugSeedImages)
+                    boolean debugGUI, boolean dictionaryGUI, ArrayList<BufferedImage> debugSeedImages)
     {
         this.tf = new Tag36h11();
         this.tm = new TagMosaic(tf, tagSpacingMeters);
@@ -205,9 +205,10 @@ public class EasyCal2
             jf2.setLocation(1200,0);
             jf2.setVisible(true);
             jf2.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
-            new DebugEasyCal(this);
         }
+
+        if (dictionaryGUI)
+            new DebugEasyCal(this);
 
         if (debugSeedImages != null && debugSeedImages.size() > 0 ) {
             for (BufferedImage im : debugSeedImages)
@@ -1473,6 +1474,7 @@ public class EasyCal2
         opts.addDouble('\0',"stopping-accuracy",1.0,"Termination accuracy (px) which flags \"finished\"");
         opts.addString('\0',"debug-seed-images","","Optional parameter listing starting images for debugging");
         opts.addBoolean('\0',"debug-gui",false,"Display additional debugging information");
+        opts.addBoolean('\0',"dictionary-gui",false,"Display image dictionary");
 
         if (!opts.parse(args)) {
             System.out.println("Option error: "+opts.getReason());
@@ -1506,7 +1508,7 @@ public class EasyCal2
         }
 
         new EasyCal2(initializer, url, spacing,  opts.getDouble("stopping-accuracy"),
-                     opts.getBoolean("debug-gui"), debugSeedImages);
+                     opts.getBoolean("debug-gui"), opts.getBoolean("dictionary-gui"), debugSeedImages);
     }
 }
 
