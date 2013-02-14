@@ -580,15 +580,15 @@ public class RobustCameraCalibrator
     /** Print the camera calibration string to the terminal. Uses the
       * getCalibrationBlockString() method.
       */
-    public void printCalibrationBlock()
+    public void printCalibrationBlock(String[] commentLines)
     {
-        System.out.printf(getCalibrationBlockString());
+        System.out.printf(getCalibrationBlockString(commentLines));
     }
 
     /** Get the camera calibration string. Intrinsics that aren't initialized
       * result in a comment (thus an invalid calibration block).
       */
-    public String getCalibrationBlockString()
+    public String getCalibrationBlockString(String[] commentLines)
     {
         List<CameraCalibrationSystem.CameraWrapper> cameras = cal.getCameras();
 
@@ -598,14 +598,12 @@ public class RobustCameraCalibrator
         str += "aprilCameraCalibration {\n";
         str += "\n";
 
-        // Comment about MRE, MSE for this calibration
-        /*
-        if (true) {
-            str += String.format("    // MRE: %.5f\n",getMRE());
-            str += String.format("    // MSE: %.5f\n",getMSE());
+        // add all comment lines
+        if (commentLines != null) {
+            for (String line : commentLines)
+                str += String.format("    // %s\n", line.trim().replace("\n",""));
             str += "\n";
         }
-        */
 
         // print name list
         String names = "    names = [";
@@ -653,7 +651,7 @@ public class RobustCameraCalibrator
 
     /** Save the calibration to a file.
       */
-    public synchronized void saveCalibration(String basepath)
+    public synchronized void saveCalibration(String basepath, String[] commentLines)
     {
         File dir = new File(basepath);
         if (!dir.exists()) {
@@ -676,7 +674,7 @@ public class RobustCameraCalibrator
 
         try {
             BufferedWriter outs = new BufferedWriter(new FileWriter(outputConfigFile));
-            outs.write(getCalibrationBlockString());
+            outs.write(getCalibrationBlockString(commentLines));
             outs.flush();
             outs.close();
         } catch (Exception ex) {
@@ -687,7 +685,7 @@ public class RobustCameraCalibrator
 
     /** Save the calibration to a file and all images.
       */
-    public synchronized void saveCalibrationAndImages(String basepath)
+    public synchronized void saveCalibrationAndImages(String basepath, String[] commentLines)
     {
         // create directory for image dump
         int dirNum = -1;
@@ -707,7 +705,7 @@ public class RobustCameraCalibrator
         String configpath = String.format("%s/calibration.config", dirName);
         try {
             BufferedWriter outs = new BufferedWriter(new FileWriter(new File(configpath)));
-            outs.write(getCalibrationBlockString());
+            outs.write(getCalibrationBlockString(commentLines));
             outs.flush();
             outs.close();
         } catch (Exception ex) {

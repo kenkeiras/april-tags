@@ -46,6 +46,7 @@ public class EasyCal2
     BlockingSingleQueue<FrameData> imageQueue = new BlockingSingleQueue<FrameData>();
 
     RobustCameraCalibrator calibrator;
+    List<RobustCameraCalibrator.GraphStats> lastGraphStats;
     Rasterizer rasterizer;
     double clickWidthFraction = 0.25, clickHeightFraction = 0.25;
 
@@ -221,6 +222,21 @@ public class EasyCal2
         new ProcessingThread().start();
     }
 
+    private String[] getConfigCommentLines()
+    {
+        if (lastGraphStats == null)
+            return null;
+
+        ArrayList<String> lines = new ArrayList();
+
+        for (RobustCameraCalibrator.GraphStats gs : lastGraphStats)
+            lines.add(String.format("MRE: %10s MSE %10s",
+                                    (gs == null) ? "n/a" : String.format("%7.3f px", gs.MRE),
+                                    (gs == null) ? "n/a" : String.format("%7.3f px", gs.MSE)));
+
+        return lines.toArray(new String[0]);
+    }
+
     class VisHandler extends VisEventAdapter implements VisConsole.Listener
     {
         /** Return true if the command was valid. **/
@@ -228,24 +244,24 @@ public class EasyCal2
         {
             String toks[] = command.split("\\s+");
             if (toks.length == 1 && toks[0].equals("print-calibration")) {
-                calibrator.printCalibrationBlock();
+                calibrator.printCalibrationBlock(getConfigCommentLines());
                 return true;
             }
 
             if (toks[0].equals("save-calibration")) {
                 if (toks.length == 2)
-                    calibrator.saveCalibration(toks[1]);
+                    calibrator.saveCalibration(toks[1], getConfigCommentLines());
                 else
-                    calibrator.saveCalibration("/tmp/cameraCalibration");
+                    calibrator.saveCalibration("/tmp/cameraCalibration", getConfigCommentLines());
 
                 return true;
             }
 
             if (toks[0].equals("save-calibration-images")) {
                 if (toks.length == 2)
-                    calibrator.saveCalibrationAndImages(toks[1]);
+                    calibrator.saveCalibrationAndImages(toks[1], getConfigCommentLines());
                 else
-                    calibrator.saveCalibrationAndImages("/tmp/cameraCalibration");
+                    calibrator.saveCalibrationAndImages("/tmp/cameraCalibration", getConfigCommentLines());
 
                 return true;
             }
@@ -1259,6 +1275,8 @@ public class EasyCal2
             calibrator.iterateUntilConvergenceWithReinitalization(1.0, 0.01, 3, 50);
 
         calibrator.draw(stats);
+
+        lastGraphStats = stats;
     }
 
     private double[][] getPlottingTransformation(BufferedImage im, boolean mirror)
