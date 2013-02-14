@@ -574,21 +574,47 @@ public class SingularValueDecomposition
 
             int m = r.nextInt(20)+2;
             int n = r.nextInt(20)+2;
-            System.out.println(m+" "+n);
-            Matrix A = Matrix.random(m, n);
-            SingularValueDecomposition svd = new SingularValueDecomposition(A);
 
-            Matrix U = svd.getU();
-            Matrix S = svd.getS();
-            Matrix VT = svd.getV().transpose();
+            if (true) {
+                System.out.println(m+" "+n);
+                Matrix A = Matrix.random(m, n);
+                SingularValueDecomposition svd = new SingularValueDecomposition(A);
 
-            System.out.printf("%3d x %3d\n", U.getRowDimension(), U.getColumnDimension());
-            System.out.printf("%3d x %3d\n", S.getRowDimension(), S.getColumnDimension());
-            System.out.printf("%3d x %3d\n", VT.getRowDimension(), VT.getColumnDimension());
+                Matrix U = svd.getU();
+                Matrix S = svd.getS();
+                Matrix VT = svd.getV().transpose();
 
-            Matrix A0 = U.times(S).times(VT);
+                System.out.printf("%3d x %3d\n", U.getRowDimension(), U.getColumnDimension());
+                System.out.printf("%3d x %3d\n", S.getRowDimension(), S.getColumnDimension());
+                System.out.printf("%3d x %3d\n", VT.getRowDimension(), VT.getColumnDimension());
 
-            assert(A.equals(A0));
+                Matrix A0 = U.times(S).times(VT);
+
+                assert(A.equals(A0));
+            }
+
+            if (true) {
+                int t = m;
+                m = n;
+                n = t;
+
+                System.out.println(m+" "+n);
+                Matrix A = Matrix.random(m, n);
+                SingularValueDecomposition svd = new SingularValueDecomposition(A);
+
+                Matrix U = svd.getU();
+                Matrix S = svd.getS();
+                Matrix VT = svd.getV().transpose();
+
+                System.out.printf("%3d x %3d\n", U.getRowDimension(), U.getColumnDimension());
+                System.out.printf("%3d x %3d\n", S.getRowDimension(), S.getColumnDimension());
+                System.out.printf("%3d x %3d\n", VT.getRowDimension(), VT.getColumnDimension());
+
+                Matrix A0 = U.times(S).times(VT);
+
+                assert(A.equals(A0));
+            }
+
         }
 
     }

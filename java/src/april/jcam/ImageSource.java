@@ -8,8 +8,8 @@ public abstract class ImageSource
 {
     public static ImageSource make(String url) throws IOException
     {
-        if (url.startsWith("file:") || url.startsWith("dir:"))
-            return new ImageSourceFile(url);
+//        if (url.startsWith("file:") || url.startsWith("dir:"))
+//            return new ImageSourceFile(url);
 
         if (url.startsWith("islog-lcm:"))
             return new ImageSourceISLogLCM(url);
@@ -57,6 +57,9 @@ public abstract class ImageSource
         return getFormat(getCurrentFormatIndex());
     }
 
+    public abstract boolean isFeatureAvailable(int idx);
+    public abstract String getFeatureType(int idx);
+
     public int getNumFeatures()
     {
         return 0;
@@ -69,11 +72,13 @@ public abstract class ImageSource
 
     public double getFeatureMin(int idx)
     {
+        assert(false); //deprecated
         return 0;
     }
 
     public double getFeatureMax(int idx)
     {
+        assert(false); //deprecated
         return 0;
     }
 

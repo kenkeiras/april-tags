@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "image_source.h"
 
@@ -39,8 +40,6 @@ int main(int argc, char *argv[])
         image_source_format_t *ifmt = isrc->get_format(isrc, i);
         printf("%3d: %4d x %4d (%s)\n", i, ifmt->width, ifmt->height, ifmt->format);
     }
-
-    isrc->set_format(isrc, 0);
 
     if (1) {
         int res = isrc->start(isrc);

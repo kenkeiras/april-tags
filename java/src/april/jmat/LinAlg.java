@@ -989,10 +989,9 @@ public final class LinAlg
         double T = R.get(0,0) + R.get(1,1) + R.get(2,2) + 1;
         double S;
 
-        double m0  = R.get(0,0), m1 = R.get(1,0), m2 = R.get(2,0), m3 = R.get(3,0);
-        double m4  = R.get(0,1), m5 = R.get(1,1), m6 = R.get(2,1), m7 = R.get(3,1);
-        double m8  = R.get(0,2), m9 = R.get(1,2), m10 = R.get(2,2), m11 = R.get(3,2);
-        double m12 = R.get(0,3), m13 = R.get(1,3), m14 = R.get(2,3), m15 = R.get(3,3);
+        double m0  = R.get(0,0), m1 = R.get(1,0), m2 = R.get(2,0);
+        double m4  = R.get(0,1), m5 = R.get(1,1), m6 = R.get(2,1);
+        double m8  = R.get(0,2), m9 = R.get(1,2), m10 = R.get(2,2);
 
         double q[] = new double[4];
 
@@ -1612,6 +1611,14 @@ public final class LinAlg
                                       T[1][0]*p[0] + T[1][1]*p[1] + T[1][2]*p[2] + T[1][3],
                                       T[2][0]*p[0] + T[2][1]*p[1] + T[2][2]*p[2] + T[2][3],
                                       1};
+            }
+            assert(false);
+
+        } else if (T.length == 3) {
+            if (p.length==2) {
+                return new double[] { T[0][0]*p[0] + T[0][1]*p[1] + T[0][2],
+                                      T[1][0]*p[0] + T[1][1]*p[1] + T[1][2],
+                                      T[2][0]*p[0] + T[2][1]*p[1] + T[2][2] };
             }
             assert(false);
         }

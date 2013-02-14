@@ -20,7 +20,7 @@ public class GL
     private static native int gl_fbo_destroy(int fboid);
     private static native int gl_fbo_bind(int fboid);
 //    private static native int[] gl_read_pixels(int width, int height);
-//    private static native int gl_read_pixels2(int width, int height, int data[]);
+    private static native int gl_read_pixels2(int width, int height, int data[]);
     private static native int gl_read_pixels2(int width, int height, byte data[]);
     private static native int gl_ops(double toks[], int toklen);
 
@@ -103,7 +103,7 @@ public class GL
 
     public static final int GL_POINTS = 0x0000, GL_LINES = 0x0001, GL_LINE_LOOP = 0x0002, GL_LINE_STRIP = 0x0003, GL_TRIANGLES = 0x0004, GL_TRIANGLE_STRIP = 0x0005, GL_TRIANGLE_FAN = 0x0006, GL_QUADS=0x0007, GL_QUAD_STRIP = 0x0008, GL_POLYGON = 0x0009;
 
-    public static final int GL_RGBA8 = 0x8058, GL_ALPHA8=0x803c, GL_LUMINANCE8 = 0x8040, GL_BGRA = 0x80e1, GL_UNSIGNED_INT_8_8_8_8_REV = 0x8367, GL_ABGR_EXT = 0x8000, GL_RGB8=0x8051, GL_LUMINANCE = 0x1909, GL_ALPHA = 0x1906, GL_UNSIGNED_BYTE = 0x1401;
+    public static final int GL_RGBA8 = 0x8058, GL_ALPHA8=0x803c, GL_LUMINANCE8 = 0x8040, GL_BGRA = 0x80e1, GL_UNSIGNED_INT_8_8_8_8_REV = 0x8367, GL_UNSIGNED_INT_8_8_8_8 = 0x8035, GL_ABGR_EXT = 0x8000, GL_RGB8=0x8051, GL_LUMINANCE = 0x1909, GL_ALPHA = 0x1906, GL_UNSIGNED_BYTE = 0x1401;
 
     public static final int GL_ALPHA_TEST = 0x0BC0;
     public static final int GL_GREATER = 0x0204, GL_GEQUAL = 0x0206, GL_ALWAYS = 0x0207;
@@ -166,14 +166,25 @@ public class GL
 
         int wh[] = frameBufferSizes.get(currentFrameBufferId);
 
-        if (im == null || im.getWidth() != wh[0] || im.getHeight() != wh[1])
-            im = new BufferedImage(wh[0], wh[1], BufferedImage.TYPE_3BYTE_BGR);
-//            im = new BufferedImage(wh[0], wh[1], BufferedImage.TYPE_INT_ARGB_PRE);
+        boolean use3byte = true; // false does not work
 
-//        int data[] = ((DataBufferInt) (im.getRaster().getDataBuffer())).getData();
-        byte data[] = ((DataBufferByte) (im.getRaster().getDataBuffer())).getData();
+        if (im == null || im.getWidth() != wh[0] || im.getHeight() != wh[1]) {
+            if (use3byte)
+                im = new BufferedImage(wh[0], wh[1], BufferedImage.TYPE_3BYTE_BGR);
+            else
+                im = new BufferedImage(wh[0], wh[1], BufferedImage.TYPE_INT_RGB);
+        }
 
-        gl_read_pixels2(wh[0], wh[1], data);
+        if (im.getType() == BufferedImage.TYPE_3BYTE_BGR) {
+
+            byte data[] = ((DataBufferByte) (im.getRaster().getDataBuffer())).getData();
+            gl_read_pixels2(wh[0], wh[1], data);
+
+        } else if (im.getType() == BufferedImage.TYPE_INT_RGB) {
+            // this code path does NOT work properly.
+            int data[] = ((DataBufferInt) (im.getRaster().getDataBuffer())).getData();
+            gl_read_pixels2(wh[0], wh[1], data);
+        }
 
         return im;
     }
@@ -602,4 +613,6 @@ public class GL
         flush();
         gldata_tex_unbind(id);
     }
+
+
 }

@@ -17,7 +17,7 @@ public class VisTexture implements VisSerializable
     int width, height;
     int bytes_per_pixel;
 
-    static boolean warnedSlowConversion;
+    static boolean warnedSlowConversion[] = {false,false};
 
     boolean alphaMask;
 
@@ -46,6 +46,9 @@ public class VisTexture implements VisSerializable
 
         BufferedImage im = null;
 
+        this.width = input.getWidth();
+        this.height = input.getHeight();
+
         if (alphaMask) {
             im = VisUtil.coerceImage(input, BufferedImage.TYPE_BYTE_GRAY);
             glinternal = GL.GL_ALPHA8;
@@ -55,54 +58,56 @@ public class VisTexture implements VisSerializable
 
         } else {
 
-            switch (input.getType()) {
-                case BufferedImage.TYPE_INT_ARGB: {
-                    im = input;
-                    glinternal = GL.GL_RGBA8;
-                    glformat = GL.GL_BGRA;
-                    gltype = GL.GL_UNSIGNED_INT_8_8_8_8_REV;
-                    bytes_per_pixel = 4;
-                    break;
-                }
-                case BufferedImage.TYPE_BYTE_GRAY: {
-                    im = input;
-                    glinternal = GL.GL_LUMINANCE8;
-                    glformat = GL.GL_LUMINANCE;
-                    gltype = GL.GL_UNSIGNED_BYTE;
-                    bytes_per_pixel = 1;
-                    break;
-                }
-                case BufferedImage.TYPE_4BYTE_ABGR: {
-                    im = input;
-                    glinternal = GL.GL_RGBA8;
-                    glformat = GL.GL_ABGR_EXT;
-                    gltype = GL.GL_UNSIGNED_INT_8_8_8_8_REV;
-                    bytes_per_pixel = 4;
-                    break;
-                }
-                case BufferedImage.TYPE_INT_RGB: {
-                    im = input;
-                    glinternal = GL.GL_RGB8;
-                    glformat = GL.GL_BGRA;
-                    gltype = GL.GL_UNSIGNED_INT_8_8_8_8_REV;
-                    bytes_per_pixel = 4;
-                    break;
-                }
-                default: {
-                    // coerce texture format to a type we know.
-                    im = VisUtil.coerceImage(input, BufferedImage.TYPE_INT_ARGB);
+            int imtype = input.getType();
 
-                    glinternal = GL.GL_RGBA8;
-                    glformat = GL.GL_BGRA;
-                    gltype = GL.GL_UNSIGNED_INT_8_8_8_8_REV;
-                    bytes_per_pixel = 4;
-                    break;
+            if (imtype == BufferedImage.TYPE_INT_ARGB) {
+                im = input;
+                glinternal = GL.GL_RGBA8;
+                glformat = GL.GL_BGRA;
+                gltype = GL.GL_UNSIGNED_INT_8_8_8_8_REV;
+                bytes_per_pixel = 4;
+            } else if (imtype ==  BufferedImage.TYPE_BYTE_GRAY && width % 4 == 0) {
+                im = input;
+                glinternal = GL.GL_LUMINANCE8;
+                glformat = GL.GL_LUMINANCE;
+                gltype = GL.GL_UNSIGNED_BYTE;
+                bytes_per_pixel = 1;
+/* GL_ABGR_EXT isn't portable (fails on ed's ATI hardware.) Let this fall through to default.
+            } else if (imtype ==  BufferedImage.TYPE_4BYTE_ABGR) {
+                im = input;
+                glinternal = GL.GL_RGBA8;
+                glformat = GL.GL_ABGR_EXT;
+                gltype = GL.GL_UNSIGNED_INT_8_8_8_8_REV;
+                bytes_per_pixel = 4;
+*/
+            } else if (imtype ==  BufferedImage.TYPE_INT_RGB) {
+                im = input;
+                glinternal = GL.GL_RGB8;
+                glformat = GL.GL_BGRA;
+                gltype = GL.GL_UNSIGNED_INT_8_8_8_8_REV;
+                bytes_per_pixel = 4;
+            } else {
+                if (imtype == BufferedImage.TYPE_BYTE_GRAY && !warnedSlowConversion[0]) {
+                    System.out.println("Warning(once): VisTexture using slow image conversion due to bad stride in BYTE_GRAY image");
+                    warnedSlowConversion[0] = true;
                 }
+
+                if (imtype == BufferedImage.TYPE_4BYTE_ABGR && !warnedSlowConversion[1]) {
+                    System.out.println("Warning(once): VisTexture using slow image conversion due to lacking ATI support for 4BYTE_ABGR");
+                    warnedSlowConversion[1] = true;
+                }
+
+
+                // coerce texture format to a type we know.
+                im = VisUtil.coerceImage(input, BufferedImage.TYPE_INT_ARGB);
+
+                glinternal = GL.GL_RGBA8;
+                glformat = GL.GL_BGRA;
+                gltype = GL.GL_UNSIGNED_INT_8_8_8_8_REV;
+                bytes_per_pixel = 4;
             }
         }
 
-        this.width = input.getWidth();
-        this.height = input.getHeight();
 
         if (im.getRaster().getDataBuffer() instanceof DataBufferInt)
             this.idata = ((DataBufferInt) (im.getRaster().getDataBuffer())).getData();

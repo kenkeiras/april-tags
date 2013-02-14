@@ -5,9 +5,17 @@ import java.util.*;
 
 /** This class implements a basic lexer that compiles regular
  * expressions programmatically (i.e., does not use an external .yy
- * file. **/
+ * file.
+ *
+ * \$ represents the EOF marker. Every grammar should check for this.
+ **/
 public class GenericTokenizer<T>
 {
+    // Enabling this can output good debugging information and should
+    // be done when developing your grammar. But it produces spurious
+    // warnings for syntax errors...
+    public boolean showDeadEnds = false;
+
     public static class Token<T>
     {
         public T      type;    // the type specified by the user.
@@ -20,11 +28,19 @@ public class GenericTokenizer<T>
         {
             this.type = type;
             this.token = token;
+            this.line = line;
+            this.column = column;
+        }
+
+        public String toString()
+        {
+            return String.format("token \"%s\" of type %s at line %d, column %d\n", token, type, line, column-1);
         }
     }
 
     static final char MIN_CHAR=0;
-    static final char MAX_CHAR='~';
+    static final char EOF_CHAR=127;
+    static final char MAX_CHAR=EOF_CHAR;
 
     ///////////////////////////////////////////////////////
     // NFS classes
@@ -34,12 +50,19 @@ public class GenericTokenizer<T>
     {
         // if a terminal node, the type of token (as given by the user).
         T      type;
+
         // Priority of this production; lower numbers get named
         // preferentially. E.g., "function" might match both SYMBOL
         // and KEYWORDS; if KEYWORDS is declared before SYMBOL, then
         // "function" will be labeled as a KEYWORD, even though it
         // matches both.
         int    priority;
+
+        // If this state is reached and it's terminal (there are no
+        // transitions away from this state), an output token would
+        // ordinarily be generated. But if ignore is true, this token
+        // is discarded instead.
+        boolean ignore;
 
         // set of out-going edges
         ArrayList<NEdge> out = new ArrayList<NEdge>();
@@ -58,8 +81,27 @@ public class GenericTokenizer<T>
 
         public String toString()
         {
+            if (ignore)
+                return String.format("(state %d IGNORE)", id);
             return String.format("(state %d "+type+")", id);
         }
+    }
+
+    static String charToString(char c)
+    {
+        if (c == ' ')
+            return "' '";
+        if (c > ' ' && c < 127)
+            return "'"+c+"'";
+        if (c=='\r')
+            return "'\\r'";
+        if (c=='\n')
+            return "'\\n'";
+        if (c == 0)
+            return "'\\0'";
+        if (c==EOF_CHAR)
+            return "'\\$'";
+        return String.format("'\\%03d'", (int) c);
     }
 
     class NEdge
@@ -89,7 +131,8 @@ public class GenericTokenizer<T>
             if (epsilon)
                 return String.format("(edge <epsilon> to %d)", destination.id);
 
-            return String.format("(edge [%c-%c] to %d)", c0, c1, destination.id);
+            return String.format("(edge [%s-%s] to %d)",
+                                 charToString(c0), charToString(c1), destination.id);
         }
     }
 
@@ -103,10 +146,15 @@ public class GenericTokenizer<T>
         int id = nextDStateId++;
         ArrayList<DEdge> out = new ArrayList<DEdge>();
         T t;
+        boolean ignore;
 
         public String toString()
         {
-            return String.format("(state %d "+t+")", id);
+            String s = String.format("(state %d "+t+" "+ignore+": nstates ", id);
+            for (NState ns : nstatesClosure)
+                s = s + String.format("%d ", ns.id);
+            s = s + ")";
+            return s;
         }
     }
 
@@ -123,7 +171,8 @@ public class GenericTokenizer<T>
 
         public String toString()
         {
-            return String.format("(edge [%c-%c] to %d)", c0, c1, destination.id);
+            return String.format("(edge [%s-%s] to %d)",
+                                 charToString(c0), charToString(c1), destination.id);
         }
     }
 
@@ -133,7 +182,8 @@ public class GenericTokenizer<T>
     {
         String s;
         int pos;
-        int line, col;
+        int line = 0, col = 0; // these are the position of the LAST returned character
+        char lastc = '\n';
 
         StringFeeder(String s)
         {
@@ -147,15 +197,15 @@ public class GenericTokenizer<T>
 
         char next()
         {
-            char c = s.charAt(pos++);
-            if (c=='\n') {
+            if (lastc == '\n') {
                 line++;
-                col=0;
+                col = 1;
             } else {
                 col++;
             }
 
-            return c;
+            lastc = s.charAt(pos++);
+            return lastc;
         }
 
         char peek()
@@ -172,8 +222,11 @@ public class GenericTokenizer<T>
     ArrayList<DState> dstates = new ArrayList<DState>();
     boolean compiled = false;
 
-    public GenericTokenizer()
+    T errorType;
+
+    public GenericTokenizer(T errorType)
     {
+        this.errorType = errorType;
         nroot = new NState();
     }
 
@@ -192,6 +245,7 @@ public class GenericTokenizer<T>
                 case ')':
                 case '^':
                 case '.':
+                case '$':
                 case '|':
                 case '\\':
                 case '+':
@@ -220,11 +274,16 @@ public class GenericTokenizer<T>
      * which productions are added determins their priority: a
      * production added earlier takes precedence over a later
      * production. **/
-    public void add(T t, String regex)
+    public void add(T t, String regex, boolean ignore)
     {
         assert(!compiled);
 
+        if (!ignore)
+            assert(t != null);
+
         NState terminalNState = new NState(t);
+        terminalNState.ignore = ignore;
+
         NState initialNState = new NState();
         NEdge  e = new NEdge();
         e.destination = initialNState;
@@ -233,11 +292,37 @@ public class GenericTokenizer<T>
         createNStates(new StringFeeder(regex), initialNState, initialNState, terminalNState);
     }
 
+    public void add(T t, String regex)
+    {
+        add(t, regex, false);
+    }
+
+    public void addIgnore(String regex)
+    {
+        add(null, regex, true);
+    }
 
     // Parse a regular expression, connecting states between initial and terminal.
     void createNStates(StringFeeder sf, NState initialState,
                        NState s0, NState exitState)
     {
+
+        // Provide a dummy link to insulate this sub-expression from
+        // the previous sub-expression.  Consider the regex:
+        // "A+B|AC". Without this insulation, both OR branches will
+        // have a common root, and the epsilon transition resulting
+        // from the "+" will go back to this common root. As a
+        // consequence, the regular expression would erroneously match
+        // "AAAAAC".  We provide a similar extra link when handling
+        // "|" below.
+        if (true) {
+            NState s = new NState();
+            NEdge e = new NEdge();
+            e.destination = s;
+            s0.out.add(e);
+            s0 = s;
+        }
+
         //    previous    new                exit
         //     state     edge                state
         //
@@ -262,7 +347,12 @@ public class GenericTokenizer<T>
                 e.destination = exitState;
                 s0.out.add(e);
 
-                s0 = initialState;
+                // insulate the new OR clause from the previous clause.
+                NState s = new NState();
+                NEdge e2 = new NEdge();
+                e2.destination = s;
+                initialState.out.add(e2);
+                s0 = s;
                 continue;
             }
 
@@ -276,7 +366,7 @@ public class GenericTokenizer<T>
 
             } else if (c=='.') {
 
-                NEdge e = new NEdge(MIN_CHAR, MAX_CHAR);
+                NEdge e = new NEdge(MIN_CHAR, (char) (EOF_CHAR-1));
                 e.destination = s1;
                 s0.out.add(e);
 
@@ -400,6 +490,8 @@ public class GenericTokenizer<T>
             accepts[(int) '\n'] = true;
             accepts[(int) '\r'] = true;
             accepts[(int) '\t'] = true;
+        } else if (c=='$') {
+            accepts[EOF_CHAR] = true;
         } else {
             accepts[(int) c] = true;
         }
@@ -420,6 +512,97 @@ public class GenericTokenizer<T>
         queue.push(droot);
 
         compile(queue, new HashSet<DState>());
+
+        for (DState dstate : dstates) {
+            if (dstate.t == null && !dstate.ignore) {
+
+                if (showDeadEnds) {
+                    // is it really a dead-end state? Compute the set of
+                    // edges that transition out. It might be exhaustive!
+                    boolean accepts[] = new boolean[MAX_CHAR+1];
+                    for (DEdge de : dstate.out) {
+                        for (char c = de.c0; c <= de.c1; c++)
+                            accepts[(int) c] = true;
+                    }
+
+                    boolean deadEnd = false;
+                    for (int i = 0; i < accepts.length; i++)
+                        if (!accepts[i])
+                            deadEnd = true;
+
+                    if (!deadEnd)
+                        continue;
+
+                    System.out.printf("Dead-end dstate: "+dstate+"\n");
+                    String seq = findDeadStateInputSequence(dstate.id);
+                    if (seq != null) {
+                        System.out.printf("  A sequence that produces it: "+seq);
+                        System.out.printf("[ ");
+
+
+                        int i0 = 0;
+                        boolean some = false;
+                        while (i0 < accepts.length) {
+                            if (accepts[i0]) {
+                                i0++;
+                                continue;
+                            }
+
+                            int i1 = i0;
+                            while (i1+1 < accepts.length && !accepts[i1+1])
+                                i1++;
+                            if (i0 == i1) {
+                                System.out.printf("%s ", escape((char) i0));
+                            } else if (i1 == EOF_CHAR) {
+                                if (i0 == (i1-1))
+                                    System.out.printf("%s %s ", escape((char) i0), escape(EOF_CHAR));
+                                else
+                                    System.out.printf("%s-%s %s ", escape((char) i0), escape((char) (EOF_CHAR-1)), escape(EOF_CHAR));
+                            } else {
+                                System.out.printf("%s-%s ",escape((char) i0), escape((char) i1));
+                            }
+
+                            i0 = i1+1;
+                        }
+
+                        System.out.printf("]\n\n");
+                    } else {
+                        System.out.printf("  Sorry, couldn't find a sequence that produces this dstate. (Try a larger depth limit?)\n\n");
+                    }
+                }
+            }
+        }
+    }
+
+    static String escape(String s)
+    {
+        StringBuffer sb = new StringBuffer();
+        for (int i = 0; i < s.length(); i++)
+            sb.append(escape(s.charAt(i)));
+        return sb.toString();
+    }
+
+    static String escape(char c)
+    {
+        if (c==0)
+            return "\\0";
+        if (c=='.')
+            return "\\.";
+        if (c=='\n')
+            return "\\n";
+        if (c=='\r')
+            return "\\r";
+        if (c=='\t')
+            return "\\t";
+        if (c=='-')
+            return "\\-";
+        if (c=='\\')
+            return "\\\\";
+        if (c==EOF_CHAR)
+            return "\\$";
+        if (c<' ')
+            return String.format("\\%d", (int) c);
+        return ""+c;
     }
 
     // We will visit DStates, following edges, until we have visited
@@ -439,10 +622,11 @@ public class GenericTokenizer<T>
             if (visited.contains(s))
                 continue;
 
-            // This is a new DState. Process its outgoing edges.
             visited.add(s);
 
-            // Make a list of all the edges that leave this set of
+            // This is a new DState. Process its outgoing edges.
+
+            // Make a list of ALL the edges that leave this set of
             // NStates.
             ArrayList<NEdge> edges = new ArrayList<NEdge>();
             for (NState st : s.nstatesClosure) {
@@ -481,6 +665,8 @@ public class GenericTokenizer<T>
 
                 // add to the last edge if we can.
                 if (lastDestinations!=null && destinations.equals(lastDestinations)) {
+                    assert(lastDEdge.c1 == (i-1));
+                    assert(lastDEdge.destination == getDState(destinations));
                     lastDEdge.c1 = i;
                     continue;
                 }
@@ -530,8 +716,11 @@ public class GenericTokenizer<T>
         // the NState's type.
         int priority = Integer.MAX_VALUE;
         for (NState nstate : closure) {
-            if (nstate.type != null && nstate.priority < priority)
+            if ((nstate.type != null || nstate.ignore) && nstate.priority < priority) {
                 ds.t = nstate.type;
+                ds.ignore = nstate.ignore;
+                priority = nstate.priority;
+            }
         }
 
         dstates.add(ds);
@@ -585,6 +774,9 @@ public class GenericTokenizer<T>
     // Traverse the DFS tree, dumping its contents.
     public void dumpDroot()
     {
+        if (!compiled)
+            compile();
+
         Stack<DState> queue = new Stack<DState>();
 
         queue.push(droot);
@@ -658,6 +850,8 @@ public class GenericTokenizer<T>
      * not possible to add additional expressions. **/
     public ArrayList<Token<T>> tokenize(String s)
     {
+        s = s + ((char) EOF_CHAR);
+
         if (!compiled)
             compile();
 
@@ -687,10 +881,19 @@ public class GenericTokenizer<T>
 
             // there IS an edge, follow it.
             if (consumed) {
+
                 sb.append(c);
                 if (!sf.hasNext()) {
-                    if (state.t != null)
-                        tokens.add(new Token<T>(state.t, sb.toString(), sf.line, sf.col));
+                    if (state.t != null || state.ignore) {
+                        if (!state.ignore)
+                            tokens.add(new Token<T>(state.t, sb.toString(), sf.line, sf.col));
+                    } else {
+                        // incomplete token means that we ran out of input
+                        // but have not arrived in a state that produces a
+                        // token. In other words, more input is needed to
+                        // complete a token.
+                        System.out.println("incomplete token in state "+state+" "+sb+" ");
+                    }
                     return tokens;
                 }
                 c = sf.next();
@@ -709,9 +912,17 @@ public class GenericTokenizer<T>
                 //   good error reporting should add a production for
                 //   a single mismatched character.
                 //
-                // tokens.add(new Token(null, sb.toString(), sf.line, sf.col));
+                if (showDeadEnds) {
+                    System.out.println("GenericTokenizer: Got caught in a dead-end dstate!");
+                    System.out.println("  dstate: "+state);
+                    System.out.println("  input : "+escape(sb.toString()));
+                }
+
+                tokens.add(new Token(errorType, sb.toString(), sf.line, sf.col));
+
                 if (!sf.hasNext())
                     return tokens;
+
                 c = sf.next();
                 sb = new StringBuilder();
                 continue;
@@ -719,18 +930,55 @@ public class GenericTokenizer<T>
 
             // We're not in the initial state; produce a token and
             // restart parsing from the root node.
-            if (state.t != null)
+            if (state.t != null && !state.ignore)
                 tokens.add(new Token(state.t, sb.toString(), sf.line, sf.col));
+
             sb = new StringBuilder();
             state = droot;
         }
+    }
+
+    String findDeadStateInputSequence(int terminaldstate)
+    {
+        for (int depthlimit = 1; depthlimit < 10; depthlimit++) {
+            String s = findDeadStateInputSequenceDLS(0, terminaldstate, depthlimit, 0);
+
+            if (s != null)
+                return s;
+        }
+
+        // couldn't find one
+        return null;
+    }
+
+    // depth limited recursive search
+    String findDeadStateInputSequenceDLS(int dstate, int terminaldstate, int depthlimit, int depth)
+    {
+        DState ds = dstates.get(dstate);
+        if (ds.id == terminaldstate)
+            return ""; // return non-null. we found it! We'll start building up the string
+
+        if (depth > depthlimit)
+            return null;
+
+        for (DEdge de : ds.out) {
+            String s = findDeadStateInputSequenceDLS(de.destination.id, terminaldstate, depthlimit, depth+1);
+            if (s != null) {
+                if (de.c0 == de.c1)
+                    return escape(de.c0)+s;
+                else
+                    return String.format("[%s-%s]%s", escape(de.c0), escape(de.c1), s);
+            }
+        }
+
+        return null;
     }
 
     //////////////////////////////////////////////////////////
     // Test/example code.
     public static void main(String args[])
     {
-        GenericTokenizer<String> gt = new GenericTokenizer<String>();
+        GenericTokenizer<String> gt = new GenericTokenizer<String>("ERROR");
         /*	gt.add(" +", " +");
             gt.add("ab+", "ab+");
             gt.add("abc", "abc");
@@ -742,11 +990,15 @@ public class GenericTokenizer<T>
         //	gt.add("(j)k","(j)k");
 
         gt.add("WHITE", "\\s+");
+        gt.addIgnore("\\$");
 
         // do NOT add unary minus, it interferes with subtraction
-        gt.add("NUMBER", "[\\.0-9]+((e|E)\\-?[0-9]+)?");
+        gt.add("NUMBER", "\\.[0-9]+((e|E)\\-?[0-9]+)?");
+        gt.add("NUMBER", "[0-9]+[\\.0-9]*((e|E)\\-?[0-9]+)?");
         gt.add("SYMBOL", "[_A-Za-z][_A-Za-z0-9]*");
         gt.addEscape("OP", "++ -- <= == >= += -= *= /= && || << >> <<= >>= <<< >>> .* ./ .^ + - / * \\ ' [ ] ( ) { } ; < > , ^");
+
+        gt.add("ERROR", ".");
 
         gt.dumpNroot();
         System.out.println("*****************");

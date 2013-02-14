@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <math.h>
 
+#include "common/string_util.h"
+
 /** File format: just a list of records that look like this:
     (big endian)
 
@@ -202,33 +204,19 @@ static const char* get_feature_name(image_source_t *isrc, int idx)
         return "loop";
     }
 
+    assert(0);
     return NULL;
 }
 
-static double get_feature_min(image_source_t *isrc, int idx)
+static char *get_feature_type(image_source_t *isrc, int idx)
 {
-    switch (idx)  {
-
+    switch (idx) {
     case 0:
-        return 0;
+        return strdup("f,0.1,100");
     case 1:
-        return 0;
-    default:
-        return 0;
+        return strdup("b");
     }
-}
-
-static double get_feature_max(image_source_t *isrc, int idx)
-{
-    switch (idx)  {
-
-    case 0:
-        return 100;
-    case 1:
-        return 1;
-    default:
-        return 0;
-    }
+    return NULL;
 }
 
 static double get_feature_value(image_source_t *isrc, int idx)
@@ -254,10 +242,12 @@ static int set_feature_value(image_source_t *isrc, int idx, double v)
     switch (idx)  {
     case 0:
         if (v != 0)
-            v = fmax(0.5, v);
+            v = fmax(0.1, v);
         impl->fps = v;
+        break;
     case 1:
         impl->loop = (int) v;
+        break;
     default:
         return 0;
     }
@@ -288,6 +278,7 @@ static int get_frame(image_source_t *isrc, frame_data_t * frmd)
             if (res)
                 return res;
         } else {
+            usleep(10000); // prevent a get_frame spin.
             return res;
         }
     }
@@ -352,7 +343,7 @@ static int my_close(image_source_t *isrc)
     return 0;
 }
 
-static void printInfo(image_source_t *isrc)
+static void print_info(image_source_t *isrc)
 {
     impl_islog_t *impl = (impl_islog_t *) isrc->impl;
 
@@ -383,8 +374,7 @@ image_source_t *image_source_islog_open(url_parser_t *urlp)
     isrc->set_named_format = set_named_format;
     isrc->num_features = num_features;
     isrc->get_feature_name = get_feature_name;
-    isrc->get_feature_min = get_feature_min;
-    isrc->get_feature_max = get_feature_max;
+    isrc->get_feature_type = get_feature_type;
     isrc->get_feature_value = get_feature_value;
     isrc->set_feature_value = set_feature_value;
     isrc->start = start;
@@ -393,9 +383,10 @@ image_source_t *image_source_islog_open(url_parser_t *urlp)
     isrc->stop = stop;
     isrc->close = my_close;
 
-    isrc->printInfo = printInfo;
+    isrc->print_info = print_info;
 
     impl->loop = 1;
+    impl->fps = 10;
 
     impl->f = fopen(location, "rb");
     if (impl->f == NULL)

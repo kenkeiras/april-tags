@@ -23,7 +23,7 @@ public class ConstNode implements Node
 
     public String toString()
     {
-        return TypeUtil.debug(v);
+        return "ConstNode "+TypeUtil.debug(v);
     }
 
     public int emit(Emit e)

@@ -128,8 +128,7 @@ JNIEXPORT jintArray JNICALL Java_april_vis_GL_gl_1read_1pixels
 */
 static int warned_is_copy = 0;
 
-/*
-JNIEXPORT jint JNICALL Java_april_vis_GL_gl_1read_1pixels2
+JNIEXPORT jint JNICALL Java_april_vis_GL_gl_1read_1pixels2__II_3I
   (JNIEnv *jenv, jclass jcls, jint width, jint height, jintArray jdata)
 {
     glFlush();
@@ -143,15 +142,15 @@ JNIEXPORT jint JNICALL Java_april_vis_GL_gl_1read_1pixels2
     }
 
     printf("*2*\n");
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
 //    glReadPixels(0, 0, width, height, GL_BGR, GL_UNSIGNED_INT_8_8_8_8_REV, data);
     glReadPixels(0, 0, width, height, GL_BGR, GL_UNSIGNED_BYTE, data);
 
     (*jenv)->ReleasePrimitiveArrayCritical(jenv, jdata, data, 0);
     return 0;
 }
-*/
 
-JNIEXPORT jint JNICALL Java_april_vis_GL_gl_1read_1pixels2
+JNIEXPORT jint JNICALL Java_april_vis_GL_gl_1read_1pixels2__II_3B
   (JNIEnv *jenv, jclass jcls, jint width, jint height, jbyteArray jdata)
 {
     glFlush();
@@ -359,7 +358,7 @@ JNIEXPORT jint JNICALL Java_april_vis_GL_gl_1ops
             break;
         case april_vis_GL_OP_ROTATED:
             glRotated(buf[pos], buf[pos+1], buf[pos+2], buf[pos+3]);
-            buf+=4;
+            pos+=4;
             break;
         case april_vis_GL_OP_DRAWRANGEELEMENTS:
             glDrawRangeElements((int) buf[pos], (int) buf[pos+1], (int) buf[pos+2], (int) buf[pos+3], GL_UNSIGNED_INT, (GLvoid*) ((int) buf[pos+4]));
@@ -678,3 +677,5 @@ JNIEXPORT jint JNICALL Java_april_vis_GL_gl_1get_1double_1v
     (*jenv)->ReleasePrimitiveArrayCritical(jenv, jdata, data, 0);
     return 0;
 }
+
+

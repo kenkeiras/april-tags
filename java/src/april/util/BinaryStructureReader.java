@@ -7,9 +7,9 @@ public class BinaryStructureReader implements StructureReader
 {
     DataInputStream ins;
 
-    public BinaryStructureReader(DataInputStream ins)
+    public BinaryStructureReader(BufferedInputStream bis)
     {
-        this.ins = ins;
+        this.ins = new DataInputStream(bis);
     }
 
     public int readInt() throws IOException

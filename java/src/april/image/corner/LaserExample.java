@@ -44,6 +44,7 @@ public class LaserExample implements LCMSubscriber
         jf.add(vc, BorderLayout.CENTER);
 
         jf.setSize(800,600);
+        jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         jf.setVisible(true);
         lcm=new LCM();
         lcm.subscribe(laserName, this);

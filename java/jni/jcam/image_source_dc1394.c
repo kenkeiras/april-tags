@@ -12,9 +12,12 @@
 #include <errno.h>
 #include <stdint.h>
 #include <sys/types.h>
+#include <stdarg.h>
 
 #include <dc1394/control.h>
 #include <dc1394/vendor/avt.h>
+
+#include "common/string_util.h"
 
 #define IMAGE_SOURCE_UTILS
 #include "image_source.h"
@@ -141,6 +144,9 @@ static const char *toformat(dc1394color_coding_t color, dc1394color_filter_t fil
             return "RGB";
         case DC1394_COLOR_CODING_MONO16:
             return "GRAY16";
+
+            // XXX it's not clear from IIDC_1.31.pdf that any of these are big endian
+
         case DC1394_COLOR_CODING_RGB16:
             return "BE_RGB16";
         case DC1394_COLOR_CODING_MONO16S:
@@ -148,7 +154,18 @@ static const char *toformat(dc1394color_coding_t color, dc1394color_filter_t fil
         case DC1394_COLOR_CODING_RGB16S:
             return "BE_SIGNED_RGB16";
         case DC1394_COLOR_CODING_RAW16:
-            return "BE_GRAY16";
+            switch (filter) {
+                case DC1394_COLOR_FILTER_RGGB:
+                    return "BAYER_RGGB16";
+                case DC1394_COLOR_FILTER_GBRG:
+                    return "BAYER_GBRG16";
+                case DC1394_COLOR_FILTER_GRBG:
+                    return "BAYER_GRBG16";
+                case DC1394_COLOR_FILTER_BGGR:
+                    return "BAYER_BGGR16";
+                default:
+                    return "GRAY16";
+            }
     }
     return "UNKNOWN";
 }
@@ -638,175 +655,121 @@ static dc1394error_t set_strobe_duration(image_source_t *isrc, uint32_t strobe, 
     return dc1394_set_strobe_register(impl->cam, offset, value);
 }
 
-static double get_feature_min(image_source_t *isrc, int idx)
+static char* get_feature_type(image_source_t *isrc, int idx)
 {
     switch(idx)
     {
     case 0: // white-balance-manual
-        return 0;
+        return strdup("b");
     case 1: // white-balance-red
     case 2: // white-balance-blue
-        return find_feature(isrc, DC1394_FEATURE_WHITE_BALANCE)->min;
+        return sprintf_alloc("i,%d,%d",
+                             find_feature(isrc, DC1394_FEATURE_WHITE_BALANCE)->min,
+                             find_feature(isrc, DC1394_FEATURE_WHITE_BALANCE)->max);
     case 3: // exposure-manual
-        return 0;
+        return strdup("b");
     case 4: // exposure
-        return find_feature(isrc, DC1394_FEATURE_EXPOSURE)->min;
+        return sprintf_alloc("i,%d,%d",
+                             find_feature(isrc, DC1394_FEATURE_EXPOSURE)->min,
+                             find_feature(isrc, DC1394_FEATURE_EXPOSURE)->max);
     case 5: // brightness-manual
-        return 0;
+        return strdup("b");
     case 6: // brightness
-        return find_feature(isrc, DC1394_FEATURE_BRIGHTNESS)->min;
+        return sprintf_alloc("i,%d,%d",
+                             find_feature(isrc, DC1394_FEATURE_BRIGHTNESS)->min,
+                             find_feature(isrc, DC1394_FEATURE_BRIGHTNESS)->max);
     case 7: // shutter-manual
-        return 0;
+        return strdup("b");
     case 8: // shutter
-        return find_feature(isrc, DC1394_FEATURE_SHUTTER)->abs_min*1e3;
+        return sprintf_alloc("i,%d,%d",
+                             find_feature(isrc, DC1394_FEATURE_SHUTTER)->min * 1000,
+                             find_feature(isrc, DC1394_FEATURE_SHUTTER)->max * 1000);
     case 9: // gain-manual
-        return 0;
+        return strdup("b");
     case 10: // gain
-        return find_feature(isrc, DC1394_FEATURE_GAIN)->abs_min;
+        return sprintf_alloc("f,%f,%f",
+                             find_feature(isrc, DC1394_FEATURE_GAIN)->abs_min,
+                             find_feature(isrc, DC1394_FEATURE_GAIN)->abs_max);
     case 11: // gamma-manual
-        return 0;
+        return strdup("b");
     case 12: // gamma
-        return find_feature(isrc, DC1394_FEATURE_GAMMA)->min;
+        return sprintf_alloc("i,%d,%d",
+                             find_feature(isrc, DC1394_FEATURE_GAMMA)->min,
+                             find_feature(isrc, DC1394_FEATURE_GAMMA)->max);
     case 13: // hdr
-        return 0;
+        return strdup("b");
     case 14: // frame-rate-mode
-        return 0;
+        return strdup("b");
     case 15: // frame-rate
-        return find_feature(isrc, DC1394_FEATURE_FRAME_RATE)->abs_min;
+        return sprintf_alloc("f,%f,%f",
+                             find_feature(isrc, DC1394_FEATURE_FRAME_RATE)->abs_min,
+                             find_feature(isrc, DC1394_FEATURE_FRAME_RATE)->abs_max);
     case 16: // timestamps-enable
-        return 0;
+        return strdup("b");
     case 17: // frame-counter-enable
-        return 0;
+        return strdup("b");
     case 18: // strobe-0-manual
-        return 0;
+        return strdup("b");
     case 19: // strobe-0-polarity
-        return 0;
+        return strdup("b");
     case 20: // strobe-0-delay
-        return get_strobe_min(isrc, 0);
+        return sprintf_alloc("f,%f,%f",
+                             get_strobe_min(isrc, 0),
+                             get_strobe_max(isrc, 0));
     case 21: // strobe-0-duration
-        return get_strobe_min(isrc, 0);
+        return sprintf_alloc("f,%f,%f",
+                             get_strobe_min(isrc, 0),
+                             get_strobe_max(isrc, 0));
     case 22: // strobe-1-manual
-        return 0;
+        return strdup("b");
     case 23: // strobe-1-polarity
-        return 0;
+        return strdup("b");
     case 24: // strobe-1-delay
-        return get_strobe_min(isrc, 1);
+        return sprintf_alloc("f,%f,%f",
+                             get_strobe_min(isrc, 1),
+                             get_strobe_max(isrc, 1));
     case 25: // strobe-1-duration
-        return get_strobe_min(isrc, 1);
+        return sprintf_alloc("f,%f,%f",
+                             get_strobe_min(isrc, 1),
+                             get_strobe_max(isrc, 1));
     case 26: // strobe-2-manual
-        return 0;
+        return strdup("b");
     case 27: // strobe-2-polarity
-        return 0;
+        return strdup("b");
     case 28: // strobe-2-delay
-        return get_strobe_min(isrc, 2);
+        return sprintf_alloc("f,%f,%f",
+                             get_strobe_min(isrc, 2),
+                             get_strobe_max(isrc, 2));
     case 29: // strobe-2-duration
-        return get_strobe_min(isrc, 2);
+        return sprintf_alloc("f,%f,%f",
+                             get_strobe_min(isrc, 2),
+                             get_strobe_max(isrc, 2));
     case 30: // strobe-3-manual
-        return 0;
+        return strdup("b");
     case 31: // strobe-3-polarity
-        return 0;
+        return strdup("b");
     case 32: // strobe-3-delay
-        return get_strobe_min(isrc, 3);
+        return sprintf_alloc("f,%f,%f",
+                             get_strobe_min(isrc, 3),
+                             get_strobe_max(isrc, 3));
     case 33: // strobe-3-duration
-        return get_strobe_min(isrc, 3);
+        return sprintf_alloc("f,%f,%f",
+                             get_strobe_min(isrc, 3),
+                             get_strobe_max(isrc, 3));
     case 34: // external-trigger-manual
-        return 0;
+        return strdup("b");
     case 35: // external-trigger-mode
-        return 0;
+        return strdup("b");
     case 36: // external-trigger-polarity
-        return 0;
+        return strdup("b");
     case 37: // external-trigger-source
-        return DC1394_TRIGGER_SOURCE_MIN;
+        return sprintf_alloc("i,%d,%d",
+                             DC1394_TRIGGER_SOURCE_MIN,
+                             DC1394_TRIGGER_SOURCE_MAX);
     case 38:
-        return 0;
+        return strdup("b");
     default:
-        return 0;
-    }
-}
-
-static double get_feature_max(image_source_t *isrc, int idx)
-{
-    switch(idx)
-    {
-    case 0: // white-balance-manual
-        return 1;
-    case 1: // white-balance-red
-    case 2: // white-balance-blue
-        return find_feature(isrc, DC1394_FEATURE_WHITE_BALANCE)->max;
-    case 3: // exposure-manual
-        return 1;
-    case 4: // exposure
-        return find_feature(isrc, DC1394_FEATURE_EXPOSURE)->max;
-    case 5: // brightness-manual
-        return 1;
-    case 6: // brightness
-        return find_feature(isrc, DC1394_FEATURE_BRIGHTNESS)->max;
-    case 7: // shutter-manual
-        return 1;
-    case 8: // shutter
-        return find_feature(isrc, DC1394_FEATURE_SHUTTER)->abs_max*1e3;
-    case 9: // gain-manual
-        return 1;
-    case 10: // gain
-        return find_feature(isrc, DC1394_FEATURE_GAIN)->abs_max;
-    case 11: // gamma-manual
-        return 1;
-    case 12: // gamma
-        return find_feature(isrc, DC1394_FEATURE_GAMMA)->max;
-    case 13: // hdr
-        return 1;
-    case 14: // frame-rate-mode
-        return 1;
-    case 15: // frame-rate
-        return find_feature(isrc, DC1394_FEATURE_FRAME_RATE)->abs_max;
-    case 16: // timestamps-enable
-        return 1;
-    case 17: // frame-counter-enable
-        return 1;
-    case 18: // strobe-0-manual
-        return 1;
-    case 19: // strobe-0-polarity
-        return 1;
-    case 20: // strobe-0-delay
-        return get_strobe_max(isrc, 0);
-    case 21: // strobe-0-duration
-        return get_strobe_max(isrc, 0);
-    case 22: // strobe-1-manual
-        return 1;
-    case 23: // strobe-1-polarity
-        return 1;
-    case 24: // strobe-1-delay
-        return get_strobe_max(isrc, 1);
-    case 25: // strobe-1-duration
-        return get_strobe_max(isrc, 1);
-    case 26: // strobe-2-manual
-        return 1;
-    case 27: // strobe-2-polarity
-        return 1;
-    case 28: // strobe-2-delay
-        return get_strobe_max(isrc, 2);
-    case 29: // strobe-2-duration
-        return get_strobe_max(isrc, 2);
-    case 30: // strobe-3-manual
-        return 1;
-    case 31: // strobe-3-polarity
-        return 1;
-    case 32: // strobe-3-delay
-        return get_strobe_max(isrc, 3);
-    case 33: // strobe-3-duration
-        return get_strobe_max(isrc, 3);
-    case 34: // external-trigger-manual
-        return 1;
-    case 35: // external-trigger-mode
-        return DC1394_TRIGGER_MODE_MAX - DC1394_TRIGGER_MODE_MIN;
-    case 36: // external-trigger-polarity
-        return 1;
-    case 37: // external-trigger-source
-        return DC1394_TRIGGER_SOURCE_MAX;
-    case 38:
-        return 1;
-    default:
-        return 0;
+        assert(0);
     }
 }
 
@@ -1370,9 +1333,17 @@ restart:
     uint32_t psize_unit, psize_max;
     dc1394_format7_get_packet_parameters(impl->cam, format_priv->dc1394_mode, &psize_unit, &psize_max);
 
-    // XXX There may be some reason to be more clever with this value later, but we don't
-    // see it now (and the code that was here was buggy)
-    impl->packet_size = psize_max; //4096;
+    if (impl->packet_size == 0) {
+        impl->packet_size = psize_max; //4096;
+    } else {
+        impl->packet_size = psize_unit * (impl->packet_size / psize_unit);
+        if (impl->packet_size > psize_max)
+            impl->packet_size = psize_max;
+        if (impl->packet_size < psize_unit)
+            impl->packet_size = psize_unit;
+    }
+
+    printf("psize_unit: %d, psize_max: %d, packet_size: %d\n", psize_unit, psize_max, impl->packet_size);
 
     dc1394_format7_set_packet_size(impl->cam, format_priv->dc1394_mode, impl->packet_size);
     uint64_t bytes_per_frame;
@@ -1488,7 +1459,7 @@ static int my_close(image_source_t *isrc)
     return close(impl->fd);
 }
 
-static void printInfo(image_source_t *isrc)
+static void print_info(image_source_t *isrc)
 {
     impl_dc1394_t *impl = (impl_dc1394_t*) isrc->impl;
 
@@ -1677,7 +1648,7 @@ static void printInfo(image_source_t *isrc)
 /** Open the given guid, or if -1, open the first camera available. **/
 image_source_t *image_source_dc1394_open(url_parser_t *urlp)
 {
-    const char *protocol = url_parser_get_protocol(urlp);
+//    const char *protocol = url_parser_get_protocol(urlp);
     const char *location = url_parser_get_location(urlp);
 
     int64_t guid = 0;
@@ -1718,8 +1689,7 @@ image_source_t *image_source_dc1394_open(url_parser_t *urlp)
     isrc->set_named_format = set_named_format;
     isrc->num_features = num_features;
     isrc->get_feature_name = get_feature_name;
-    isrc->get_feature_min = get_feature_min;
-    isrc->get_feature_max = get_feature_max;
+    isrc->get_feature_type = get_feature_type;
     isrc->get_feature_value = get_feature_value;
     isrc->set_feature_value = set_feature_value;
     isrc->start = start;
@@ -1728,7 +1698,7 @@ image_source_t *image_source_dc1394_open(url_parser_t *urlp)
     isrc->stop = stop;
     isrc->close = my_close;
 
-    isrc->printInfo = printInfo;
+    isrc->print_info = print_info;
 
     impl->num_buffers = 2;
 
@@ -1781,10 +1751,12 @@ image_source_t *image_source_dc1394_open(url_parser_t *urlp)
         for (int i = 0; i < DC1394_FEATURE_NUM; i++) {
             dc1394feature_info_t *f = &impl->features.feature[i];
             if (f->available && f->absolute_capable && !f->abs_control) {
+
                 printf("image_source_dc1394.c: automatically enabled absolute mode for dc1394 feature '%s'\n",
                        dc1394_feature_id_to_string(f->id));
                 fflush(stdout);
                 dc1394_feature_set_absolute_control(impl->cam, f->id, DC1394_ON);
+
                 reread = 1;
             }
         }

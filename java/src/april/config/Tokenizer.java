@@ -13,15 +13,17 @@ class Tokenizer
     static GenericTokenizer<String> gt;
 
     static {
-        gt = new GenericTokenizer<String>();
+        gt = new GenericTokenizer<String>("ERROR");
+//        gt.showDeadEnds = true;
 
         gt.add("STRING", "\"[^\"]*\"");
         gt.addEscape("OP", "+{ { } = : , ; [ ]");
         gt.add("SYMBOL", "[a-zA-Z_\\.0-9\\-\\+#]+");
 
-        gt.add(null, "#[^\n]*\\n"); // comment
-        gt.add(null, "//[^\n]*\\n"); // comment
-        gt.add(null, "\\s+");        // whitespace
+        gt.addIgnore("#[^\n]*(\\n|\\$)"); // comment
+        gt.addIgnore("//[^\n]*(\\n|\\$)"); // comment
+        gt.addIgnore("\\s+");        // whitespace
+        gt.addIgnore("\\$");
     }
 
     public Tokenizer(File f) throws IOException
@@ -41,6 +43,10 @@ class Tokenizer
     void process()
     {
         for (GenericTokenizer.Token<String> tok : tokens) {
+            if (tok.type.equals("ERROR")) {
+                System.out.println("Syntax Error: "+tok);
+            }
+
             if (tok.type.equals("STRING")) {
                 StringBuffer sb = new StringBuffer();
                 for (int i = 1; i+1 < tok.token.length(); i++) {

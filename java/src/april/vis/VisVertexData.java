@@ -303,6 +303,26 @@ public class VisVertexData implements VisAbstractVertexData, VisSerializable
         gl.gldUnbind(GL.VBO_TYPE_NORMAL, id);
     }
 
+    public synchronized void bindTexCoord(GL gl)
+    {
+        combine();
+
+        if (id < 0)
+            id = VisUtil.allocateID();
+
+        Block b = blocks.get(0);
+
+        if (b.vf != null)
+            gl.gldBind(GL.VBO_TYPE_TEX_COORD, id, b.nv, b.dim, b.vf);
+        else
+            gl.gldBind(GL.VBO_TYPE_TEX_COORD, id, b.nv, b.dim, b.vd);
+    }
+
+    public synchronized void unbindTexCoord(GL gl)
+    {
+        gl.gldUnbind(GL.VBO_TYPE_TEX_COORD, id);
+    }
+
     public synchronized void render(VisCanvas vc, VisLayer layer, VisCanvas.RenderInfo rinfo, GL gl)
     {
         if (blocks.size() == 0)

@@ -99,6 +99,7 @@ public class TagTest implements ParameterListener
                                    new double[] {0, 2, 0},
                                    new double[] {0, .37, 0.927}, true);
         jf.setSize(800,600);
+        jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         jf.setVisible(true);
 
         ImageSourceFormat ifmt = is.getCurrentFormat();
@@ -219,7 +220,9 @@ public class TagTest implements ParameterListener
                     double tagsize_m = 0.216;
                     double f = 485.6;
                     double aspect = 752.0 / 480.0;
-                    double M[][] = CameraUtil.homographyToPose(f, f, tagsize_m, d.homography);
+//                    double M[][] = CameraUtil.homographyToPose(f, f, tagsize_m, d.homography);
+                    double M[][] = CameraUtil.homographyToPose(f, f, im.getWidth()/2, im.getHeight()/2, d.homography);
+                    M = CameraUtil.scalePose(M, 2.0, tagsize_m);
 
                     BufferedImage tfimg = tf.makeImage(d.id);
                     double vertices[][] = {{ -tagsize_m/2, -tagsize_m/2, 0},

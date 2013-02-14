@@ -1,5 +1,6 @@
-GCC = gcc -Wall -g -std=gnu99 -D_REENTRANT -fPIC -shared -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -Wno-unused-parameter -Wno-format-zero-length
-LIBIMAGESOURCE_OBJS = image_source.o image_source_v4l2.o image_source_jni.o image_source_dc1394.o url_parser.o image_source_islog.o
+include ../common.mk
+
+LIBIMAGESOURCE_OBJS = image_source.o image_source_v4l2.o image_source_jni.o image_source_dc1394.o url_parser.o image_source_islog.o image_source_pgusb.o image_source_filedir.o
 
 LIB=libimagesource.so
 DESTLIB=../../../lib/$(LIB)
@@ -18,40 +19,32 @@ ALL = .phony
 endif
 
 #############################################################
-# Linux
-ifeq "$(shell uname)" "Linux"
-
-endif
-
-#############################################################
 
 
 all: $(ALL)
 
 
 istest: main.o $(LIBIMAGESOURCE_OBJS)
-	gcc -o $@ main.o $(LIBIMAGESOURCE_OBJS) -ldc1394
-
+	gcc -L../../../lib main.o $(LIBIMAGESOURCE_OBJS) -o istest -ldc1394 -lc -lcommon -lpng
 
 $(DESTLIB): $(LIB)
 	cp $(LIB) $(DESTLIB)
 
 libimagesource.so: april_jcam_ImageSourceNative.h $(LIBIMAGESOURCE_OBJS)
-	ld --shared $(LIBIMAGESOURCE_OBJS) -o libimagesource.so -ldc1394
+	$(LD) $(LDFLAGS) $(LIBIMAGESOURCE_OBJS) -o libimagesource.so -ldc1394 -lc -lcommon -lpng
 
 april_jcam_ImageSourceNative.h:
 	echo "Rebuilding JNI headers. Ensure java file has been recently built."
 	javah -classpath ../../april.jar  april.jcam.ImageSourceNative
 
 clean:
-	rm -f *~ april_jcam_ImageSourceNative.h april_jcam_ImageSourceFormat.h $(LIB) $(DESTLIB) $(LIBIMAGESOURCE_OBJS)
+	rm -f *~ april_jcam_ImageSourceNative.h april_jcam_ImageSourceFormat.h $(LIB) $(DESTLIB) $(LIBIMAGESOURCE_OBJS) istest
 
 # If you get an error message saying that you're missing jni.h or
 # jni_md.h, locate those files and add the directories using the -I
 # flag. See example below
 
-JNI_INCLUDES = -I/usr/lib/jvm/java-6-sun/include/ -I/usr/lib/jvm/java-6-sun/include/linux -I/usr/lib/jvm/java-6-openjdk/include/ -I/usr/lib/jvm/java-7-openjdk-amd64/include/
 DC1394_INCLUDES = -I/usr/local/include/
 
 %.o: %.c
-	$(GCC) -shared -O2 -c -fPIC -fno-omit-frame-pointer -fno-stack-protector -D_REENTRANT $< $(JNI_INCLUDES) $(DC1394_INCLUDES)
+	$(CC) $(CCFLAGS) $(JNI_INCLUDES) $(DC1394_INCLUDES) $<

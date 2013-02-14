@@ -8,22 +8,41 @@ import lcm.util.BufferedRandomAccessFile;
 
 public class ISLog
 {
-    // XXX should we use the buffered version from lcm-java?
-    BufferedRandomAccessFile raf;
+    // Depends on LCM...
+    BufferedRandomAccessFile raf; //only used in reading mode
+
+    DataOutputStream outs; // only used in writing mode
+    long writeOffset = 0;
 
     public static final long ISMAGIC = 0x17923349ab10ea9aL;
-    String path;
 
-    public ISLog(File file, String mode) throws IOException
+    // 60MB buffer seems to be sufficient for 60fps@752x480. 120fps eventually overruns
+    public static final int DEFAULT_BUFFER_SIZE = 60*1000*1000; //60 MB
+    final String path, mode;
+
+    // Mode is one of "r" or "w". "rw" is no longer supported
+    public ISLog(File file, String mode, int bufferSize) throws IOException
     {
         this.path = file.getPath();
-        raf = new BufferedRandomAccessFile(file, mode);
+        this.mode = mode;
+
+        if (mode.equals("w"))
+            outs = new DataOutputStream(new ThreadedOutputStream(new FileOutputStream(file), bufferSize));
+        else if (mode.equals("r"))
+            raf = new BufferedRandomAccessFile(file, "rw");
+
+        if (outs == null && raf == null)
+            throw new IllegalArgumentException(String.format("Unsupported ISLog mode %s. Options are \"r\" and \"w\".", mode));
     }
 
     public ISLog(String path, String mode) throws IOException
     {
-        this.path = path;
-        raf = new BufferedRandomAccessFile(path, mode);
+        this(new File(path), mode, DEFAULT_BUFFER_SIZE);
+    }
+
+    public ISLog(File file, String mode) throws IOException
+    {
+        this (file, mode, DEFAULT_BUFFER_SIZE);
     }
 
     /**
@@ -132,7 +151,15 @@ public class ISLog
 
     public synchronized void close() throws IOException
     {
-        raf.close();
+        if (raf != null)
+            raf.close();
+        if (outs != null)
+            outs.close();
+    }
+
+    public synchronized long write(FrameData frmd) throws IOException
+    {
+        return write(frmd.ifmt, frmd.utime, frmd.data);
     }
 
     public synchronized long write(ImageSourceFormat ifmt, byte imbuf[]) throws IOException
@@ -142,17 +169,26 @@ public class ISLog
 
     public synchronized long write(ImageSourceFormat ifmt, long utime, byte imbuf[]) throws IOException
     {
-        long frameStartOffset = raf.getFilePointer();
+        if (outs == null)
+            throw new IOException(String.format("Invalid mode %s for ISLog: write() prohibited\n", mode));
+        assert(outs != null);
 
-        raf.writeLong(ISMAGIC);
-        raf.writeLong(utime);
-        raf.writeInt(ifmt.width);
-        raf.writeInt(ifmt.height);
-        raf.writeInt(ifmt.format.length());
+        // NOTE: If you add/remove anything, make sure to update the 'written' tally below
+        outs.writeLong(ISMAGIC);
+        outs.writeLong(utime);
+        outs.writeInt(ifmt.width);
+        outs.writeInt(ifmt.height);
+        outs.writeInt(ifmt.format.length());
         byte strbuf[] = ifmt.format.getBytes();
-        raf.write(strbuf, 0, strbuf.length);
-        raf.writeInt(imbuf.length);
-        raf.write(imbuf, 0, imbuf.length);
+        outs.write(strbuf, 0, strbuf.length);
+        outs.writeInt(imbuf.length);
+        outs.write(imbuf, 0, imbuf.length);
+
+        long frameStartOffset = writeOffset;
+
+        //NOTE: Be sure to update this!
+        long written = 8 + 8 + 4 + 4 +4 + strbuf.length + 4 + imbuf.length;
+        writeOffset += written;
 
         return frameStartOffset;
     }

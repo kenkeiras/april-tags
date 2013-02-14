@@ -12,7 +12,6 @@ public class Velodyne
     static final int    LOWER_MAGIC     = 0xddff;
     static final double RADIANS_PER_LSB = 0.00017453293;
     static final double METERS_PER_LSB  = 0.002;
-    static final int    NUM_LASERS      = 64;
 
     /** An individual hit from a Velodyne laser. **/
     public static final class Sample
@@ -83,8 +82,20 @@ public class Velodyne
             if (blockOffset + 100 >= data.length)
                 return false;
             int magic = (data[blockOffset] & 0xff) + ((data[blockOffset + 1] & 0xff) << 8);
-            if (magic == UPPER_MAGIC)
-                laserOffset = 32;
+            if (magic == UPPER_MAGIC) {
+                switch (calib.getNumLasers())
+                {
+                    case 32:
+                        laserOffset = 0;
+                        break;
+                    case 64:
+                        laserOffset = 32;
+                        break;
+                    default:
+                        System.out.printf("Error: %d lasers on a velodyne?\n", calib.getNumLasers());
+                        assert(false);
+                }
+            }
             else if (magic == LOWER_MAGIC)
                 laserOffset = 0;
             else

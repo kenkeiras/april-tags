@@ -24,7 +24,7 @@ public class FeedbackSlider extends JComponent
     int goalknobsize=6;
     int actualknobsize=10;
 
-    int totalheight=actualknobsize+4;
+    int totalheight=actualknobsize+4+30;
 
     int marginx=6;
 
@@ -32,10 +32,22 @@ public class FeedbackSlider extends JComponent
 
     boolean copyactual=false;
 
-    boolean showactual=true;
+    public boolean showactual = true;
+    public boolean showgoal = true;
 
-    String goalFormatString = "%.0f";
-    String actualFormatString = "%.0f";
+    // format positions:
+    // -1: disabled
+    // 0: left justified
+    // .5: centered
+    // 1: right justified
+    public String minFormatString = "%.0f";
+    public double minFormatPosition = -1;          // < 0 don't display
+    public String maxFormatString = "%.0f";
+    public double maxFormatPosition = -1;
+    public String goalFormatString = "%.0f";
+    public double goalFormatPosition = 0;
+    public String actualFormatString = "%.0f";
+    public double actualFormatPosition = 1;
 
     public interface Listener
     {
@@ -145,8 +157,8 @@ public class FeedbackSlider extends JComponent
         g.setColor(Color.black);
         g.draw(barr);
 
-        ////// goal knob
-        if (true) {
+        if (showgoal) {
+            ////// goal knob
             double x = width * (goalvalue - minvalue) / (maxvalue - minvalue);
             Ellipse2D.Double goalknob = new Ellipse2D.Double(x - goalknobsize / 2.0,
                                                              cy - goalknobsize / 2.0,
@@ -172,16 +184,33 @@ public class FeedbackSlider extends JComponent
 	    }
 
         if (true) {
-            g.setColor(Color.black);
-            String s = String.format(goalFormatString, goalvalue);
-            g.drawString(s, (int) (width - s.length()*8), (int) (cy + 16));
-	    }
+            int fontWidth = 8;
 
-        if (true) {
-            g.setColor(Color.black);
-            String s = String.format(actualFormatString, actualvalue);
-            g.drawString(s, (int) 0, (int) (cy + 16));
-	    }
+            if (minFormatPosition >= 0) {
+                String s = String.format(minFormatString, minvalue);
+                g.drawString(s, (int) ((width * minFormatPosition) - (s.length()*fontWidth*minFormatPosition)),
+                             (int) (cy + 16));
+            }
+
+            if (maxFormatPosition >= 0) {
+                String s = String.format(maxFormatString, maxvalue);
+                g.drawString(s, (int) ((width * maxFormatPosition) - (s.length()*fontWidth*maxFormatPosition)),
+                             (int) (cy + 16));
+            }
+
+            if (showactual && actualFormatPosition >= 0) {
+                String s = String.format(actualFormatString, actualvalue);
+                g.drawString(s, (int) ((width * actualFormatPosition) - (s.length()*fontWidth*actualFormatPosition)),
+                             (int) (cy + 16));
+            }
+
+            if (showgoal && goalFormatPosition >= 0) {
+                String s = String.format(goalFormatString, goalvalue);
+                g.drawString(s, (int) ((width * goalFormatPosition) - (s.length()*fontWidth*goalFormatPosition)),
+                             (int) (cy + 16));
+            }
+
+        }
     }
 
     void handleClick(int x)

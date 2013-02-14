@@ -55,29 +55,34 @@ public class PoseTracker implements LCMSubscriber
     {
         try {
             pose_t p = new pose_t(ins);
-            queue.add(p);
-
-            // emergency shrinkage.
-            while (queue.size() > MAX_QUEUE_SIZE) {
-                queue.removeFirst();
-                if (!warned) {
-                    System.out.println("PoseTracker queue too large");
-                    warned = true;
-                }
-            }
-
-            while (true) {
-                pose_t first = queue.getFirst();
-                pose_t last = queue.getLast();
-
-                if (Math.abs(last.utime - first.utime) > time*1000000)
-                    queue.removeFirst();
-                else
-                    break;
-            }
+            add(p);
 
         } catch (IOException ex) {
             System.out.println("Exception: " + ex);
+        }
+    }
+
+    public synchronized void add(pose_t p)
+    {
+        queue.add(p);
+
+        // emergency shrinkage.
+        while (queue.size() > MAX_QUEUE_SIZE) {
+            queue.removeFirst();
+            if (!warned) {
+                System.out.println("PoseTracker queue too large");
+                warned = true;
+            }
+        }
+
+        while (true) {
+            pose_t first = queue.getFirst();
+            pose_t last = queue.getLast();
+
+            if (Math.abs(last.utime - first.utime) > time*1000000)
+                queue.removeFirst();
+            else
+                break;
         }
     }
 
