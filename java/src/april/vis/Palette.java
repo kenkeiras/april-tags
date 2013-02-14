@@ -1,16 +1,11 @@
 package april.vis;
 
 import java.awt.Color;
-<<<<<<< HEAD
 import java.util.*;
-
-=======
 import javax.swing.*;
-import java.util.*;
 
 import april.jmat.LinAlg;
 
->>>>>>> dist/master
 public class Palette
 {
     /** Color class where each entry should have a distinct intensity,
@@ -44,8 +39,6 @@ public class Palette
         }
     }
 
-<<<<<<< HEAD
-=======
     /** Color class designed such that no individual color draws the eye
      *  more than any other. This palette is colorblind safe.
      */
@@ -194,7 +187,6 @@ public class Palette
 
     }
 
->>>>>>> dist/master
     public static class vibrant
     {
         public static Color pink    = new Color( 211,  61, 125);
