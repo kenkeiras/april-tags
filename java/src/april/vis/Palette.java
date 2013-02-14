@@ -1,8 +1,8 @@
 package april.vis;
 
 import java.awt.Color;
-import javax.swing.*;
 import java.util.*;
+import javax.swing.*;
 
 import april.jmat.LinAlg;
 
