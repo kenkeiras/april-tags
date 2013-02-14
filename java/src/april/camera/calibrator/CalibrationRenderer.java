@@ -111,13 +111,13 @@ public class CalibrationRenderer
         return vc;
     }
 
-    public void draw()
+    public void draw(List<RobustCameraCalibrator.GraphStats> stats)
     {
         List<CameraCalibrationSystem.CameraWrapper> cameras = cal.getCameras();
         List<CameraCalibrationSystem.MosaicWrapper> mosaics = cal.getMosaics();
 
         drawSubsystems(cameras, mosaics);
-        drawHUD(cameras, mosaics);
+        drawHUD(cameras, mosaics, stats);
         updateLayerManagers(cameras);
     }
 
@@ -175,7 +175,15 @@ public class CalibrationRenderer
     }
 
     private void drawHUD(List<CameraCalibrationSystem.CameraWrapper> cameras,
-                         List<CameraCalibrationSystem.MosaicWrapper> mosaics)
+                         List<CameraCalibrationSystem.MosaicWrapper> mosaics,
+                         List<RobustCameraCalibrator.GraphStats> stats)
+    {
+        drawDistortionCurves(cameras, mosaics);
+        drawHUDText(cameras, mosaics, stats);
+    }
+
+    private void drawDistortionCurves(List<CameraCalibrationSystem.CameraWrapper> cameras,
+                                      List<CameraCalibrationSystem.MosaicWrapper> mosaics)
     {
         HashMap<VisWorld.Buffer,Integer> bufToCameraCount = new HashMap<VisWorld.Buffer,Integer>();
 
@@ -262,6 +270,35 @@ public class CalibrationRenderer
 
         for (VisWorld.Buffer vb : bufToCameraCount.keySet())
             vb.swap();
+    }
+
+    private void drawHUDText(List<CameraCalibrationSystem.CameraWrapper> cameras,
+                             List<CameraCalibrationSystem.MosaicWrapper> mosaics,
+                             List<RobustCameraCalibrator.GraphStats> stats)
+    {
+        if (stats == null)
+            return;
+
+        for (RobustCameraCalibrator.GraphStats gs : stats)
+        {
+            if (gs == null)
+                continue;
+
+            VisWorld vw = worlds[gs.rootNumber];
+            VisWorld.Buffer vb = vw.getBuffer("HUD Text");
+
+            String font = "<<monospaced-12,left,white>>";
+            String str = String.format("%sMean reprojection error:         %6.3f\n" +
+                                       "%sMean-squared reprojection error: %6.3f",
+                                       font, gs.MRE,
+                                       font, gs.MSE);
+            if (gs.SPDError)
+                str = "<<monospaced-12,left,red>>SPD error for graph";
+
+            vb.addBack(new VisLighting(false, new VisPixCoords(VisPixCoords.ORIGIN.TOP_RIGHT,
+                                                               new VzText(VzText.ANCHOR.TOP_RIGHT, str))));
+            vb.swap();
+        }
     }
 
     private void updateLayerManagers(List<CameraCalibrationSystem.CameraWrapper> cameras)

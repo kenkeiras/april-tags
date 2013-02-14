@@ -1258,7 +1258,7 @@ public class EasyCal2
         List<RobustCameraCalibrator.GraphStats> stats =
             calibrator.iterateUntilConvergenceWithReinitalization(1.0, 0.01, 3, 50);
 
-        calibrator.draw();
+        calibrator.draw(stats);
     }
 
     private double[][] getPlottingTransformation(BufferedImage im, boolean mirror)

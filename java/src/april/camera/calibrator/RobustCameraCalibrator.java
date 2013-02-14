@@ -66,6 +66,8 @@ public class RobustCameraCalibrator
 
     public static class GraphStats
     {
+        public int rootNumber;   // the root camera number for this graph stats object
+
         public int numObs;       // number of tags used
         public double MRE;       // mean reprojection error
         public double MSE;       // mean-squared reprojection error
@@ -90,9 +92,10 @@ public class RobustCameraCalibrator
 
     /** Compute MRE and MSE for a graph.
       */
-    public GraphStats getGraphStats(Graph g)
+    public GraphStats getGraphStats(Graph g, int rootNumber)
     {
         GraphStats stats = new GraphStats();
+        stats.rootNumber = rootNumber;
         stats.numObs = 0;
         stats.MRE = 0;
         stats.MSE = 0;
@@ -147,7 +150,7 @@ public class RobustCameraCalibrator
         GraphSolver solver = new CholeskySolver(gw.g, new MinimumDegreeOrdering());
         CholeskySolver.verbose = false;
 
-        GraphStats lastStats = getGraphStats(gw.g);
+        GraphStats lastStats = getGraphStats(gw.g, gw.rootNumber);
         int convergedCount = 0;
         int iterationCount = 0;
 
@@ -155,7 +158,7 @@ public class RobustCameraCalibrator
             while (iterationCount < maxIterations && convergedCount < minConvergedIterations) {
 
                 solver.iterate();
-                GraphStats stats = getGraphStats(gw.g);
+                GraphStats stats = getGraphStats(gw.g, gw.rootNumber);
 
                 double percentImprovement = (lastStats.MRE - stats.MRE) / lastStats.MRE;
 
@@ -560,10 +563,15 @@ public class RobustCameraCalibrator
       */
     public void draw()
     {
+        draw(null);
+    }
+
+    public void draw(List<RobustCameraCalibrator.GraphStats> stats)
+    {
         if (renderer == null)
             return;
 
-        renderer.draw();
+        renderer.draw(stats);
     }
 
     ////////////////////////////////////////////////////////////////////////////////

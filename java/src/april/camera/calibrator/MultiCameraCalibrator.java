@@ -369,7 +369,7 @@ public class MultiCameraCalibrator implements ParameterListener
         List<RobustCameraCalibrator.GraphStats> stats =
             calibrator.iterateUntilConvergenceWithReinitalization(1.0, 0.01, 3, 50);
 
-        calibrator.draw();
+        calibrator.draw(stats);
         if (verbose)
             calibrator.printCalibrationBlock();
 
