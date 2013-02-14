@@ -236,7 +236,7 @@ public class EasyCal2
                 if (toks.length == 2)
                     calibrator.saveCalibration(toks[1]);
                 else
-                    calibrator.saveCalibration();
+                    calibrator.saveCalibration("/tmp/cameraCalibration");
 
                 return true;
             }
@@ -245,7 +245,7 @@ public class EasyCal2
                 if (toks.length == 2)
                     calibrator.saveCalibrationAndImages(toks[1]);
                 else
-                    calibrator.saveCalibrationAndImages();
+                    calibrator.saveCalibrationAndImages("/tmp/cameraCalibration");
 
                 return true;
             }

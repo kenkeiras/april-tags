@@ -653,13 +653,6 @@ public class RobustCameraCalibrator
 
     /** Save the calibration to a file.
       */
-    public synchronized void saveCalibration()
-    {
-        saveCalibration("/tmp/cameraCalibration");
-    }
-
-    /** Save the calibration to a file.
-      */
     public synchronized void saveCalibration(String basepath)
     {
         File dir = new File(basepath);
@@ -690,13 +683,6 @@ public class RobustCameraCalibrator
             System.err.printf("RobustCameraCalibrator: Failed to output calibration to '%s'\n", calName);
             return;
         }
-    }
-
-    /** Save the calibration to a file and all images.
-      */
-    public synchronized void saveCalibrationAndImages()
-    {
-        saveCalibrationAndImages("/tmp/cameraCalibration");
     }
 
     /** Save the calibration to a file and all images.

@@ -155,10 +155,10 @@ public class MultiCameraCalibrator implements ParameterListener
             calibrator.printCalibrationBlock();
 
         if (name.equals("savecalibration"))
-            calibrator.saveCalibration();
+            calibrator.saveCalibration("/tmp/cameraCalibration");
 
         if (name.equals("saveall"))
-            calibrator.saveCalibrationAndImages();
+            calibrator.saveCalibrationAndImages("/tmp/cameraCalibration");
     }
 
     class AcquisitionThread extends Thread
