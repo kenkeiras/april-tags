@@ -117,6 +117,7 @@ public class CalibrationRenderer
         List<CameraCalibrationSystem.MosaicWrapper> mosaics = cal.getMosaics();
 
         drawSubsystems(cameras, mosaics);
+        drawHUD(cameras, mosaics);
         updateLayerManagers(cameras);
     }
 
@@ -171,6 +172,96 @@ public class CalibrationRenderer
             vw.getBuffer("Cameras").swap();
             vw.getBuffer("Mosaics").swap();
         }
+    }
+
+    private void drawHUD(List<CameraCalibrationSystem.CameraWrapper> cameras,
+                         List<CameraCalibrationSystem.MosaicWrapper> mosaics)
+    {
+        HashMap<VisWorld.Buffer,Integer> bufToCameraCount = new HashMap<VisWorld.Buffer,Integer>();
+
+        for (CameraCalibrationSystem.CameraWrapper cam : cameras)
+        {
+            VisWorld vw = worlds[cam.rootNumber];
+            VisWorld.Buffer vb = vw.getBuffer("Distortion");
+
+            Integer idx = bufToCameraCount.get(vb);
+            if (idx == null)
+                idx = 0;
+            bufToCameraCount.put(vb, idx+1);
+
+            VisChain bgchain = new VisChain();
+            VisChain mgchain = new VisChain();
+            VisChain fgchain = new VisChain();
+
+            View cal        = cam.cal;
+            if (cal == null)
+                continue;
+
+            double K[][]    = cal.copyIntrinsics();
+            double Kinv[][] = LinAlg.inverse(K);
+            int width       = cal.getWidth();
+            int height      = cal.getHeight();
+
+            double maxRadius = 0;
+
+            // max image radius
+            maxRadius = Math.max(maxRadius, Math.sqrt(Math.pow(       0 - K[0][2] , 2) + Math.pow(       0 - K[1][2] , 2)));
+            maxRadius = Math.max(maxRadius, Math.sqrt(Math.pow( width-1 - K[0][2] , 2) + Math.pow(       0 - K[1][2] , 2)));
+            maxRadius = Math.max(maxRadius, Math.sqrt(Math.pow(       0 - K[0][2] , 2) + Math.pow(height-1 - K[1][2] , 2)));
+            maxRadius = Math.max(maxRadius, Math.sqrt(Math.pow( width-1 - K[0][2] , 2) + Math.pow(height-1 - K[1][2] , 2)));
+
+            ArrayList<double[]> points = new ArrayList<double[]>();
+            int radius = (int) Math.ceil(2 * maxRadius); // XXX is this far enough?
+            double max = 0;
+            for (int r=0; r < radius; r++) {
+                double xy_rp[] = new double[] { K[0][2] + r, K[1][2] };
+
+                double xy_rn[] = CameraMath.pixelTransform(Kinv, xy_rp);
+
+                double xy_dp[] = cal.normToPixels(xy_rn);
+
+                double dr = xy_dp[0] - K[0][2];
+
+                points.add(new double[] { r, dr });
+
+                max = Math.max(max, dr);
+            }
+
+            boolean good = max > maxRadius;
+            String uistring = String.format("<<monospaced-10,%s>>%s: %s\n<<monospaced-10,%s>>Defined up to %.0f of %.0f pixels",
+                                            good ? "white" : "red",
+                                            cam.name,
+                                            good ? "good (invertible)" : "add tags at edges",
+                                            good ? "white" : "red",
+                                            max,
+                                            maxRadius);
+
+            bgchain.add(new VisChain(LinAlg.translate(100, 50 + 100*idx, 0),
+                                     new VzRectangle(200, 100,
+                                                     new VzMesh.Style(new Color(10*idx, 10*idx, 10*idx)),
+                                                     new VzLines.Style(Color.white, 1))),
+                        new VisChain(LinAlg.translate(0, 100*idx, 0),
+                                     new VzLines(new VisVertexData(new double[][] { {  0,   0}, {100, 100} }),
+                                                 VzLines.LINE_STRIP,
+                                                 new VzLines.Style(new Color(255, 255, 255, 128), 1))));
+            mgchain.add(new VisChain(LinAlg.translate(0, 100*idx, 0),
+                                     LinAlg.scale(100 / maxRadius, 100 / maxRadius, 1),
+                                     new VzLines(new VisVertexData(points),
+                                                 VzLines.LINE_STRIP,
+                                                 new VzLines.Style(Color.red, 1))));
+            fgchain.add(new VisChain(LinAlg.translate(35, 100*idx, 0),
+                                     new VzText(VzText.ANCHOR.BOTTOM_LEFT, "<<monospaced-10>>r rect")),
+                        new VisChain(LinAlg.translate(0, 10+100*idx, 0),
+                                     LinAlg.rotateZ(Math.PI/2),
+                                     new VzText(VzText.ANCHOR.TOP_LEFT, "<<monospaced-10>>r dist")),
+                        new VisChain(LinAlg.translate(0, 100*(idx+1), 0),
+                                     new VzText(VzText.ANCHOR.TOP_LEFT, uistring)));
+
+            vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT, bgchain, mgchain, fgchain));
+        }
+
+        for (VisWorld.Buffer vb : bufToCameraCount.keySet())
+            vb.swap();
     }
 
     private void updateLayerManagers(List<CameraCalibrationSystem.CameraWrapper> cameras)
