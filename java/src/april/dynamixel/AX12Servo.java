@@ -16,9 +16,6 @@ public class AX12Servo extends AbstractServo
         // Return delay time
         byte delay = 0x02;  // each unit = 2 usec
         ensureEEPROM(new byte[] { 0x5, delay });
-
-        // // Set angle limits  (EEPROM)
-        ensureEEPROM(new byte[] { 6, 0, 0, (byte)0xFF, 3 } );
     }
 
     public boolean isAddressEEPROM(int address)
@@ -36,25 +33,9 @@ public class AX12Servo extends AbstractServo
         return Math.toRadians(150);
     }
 
-    public void setGoal(double radians, double speedfrac, double torquefrac)
+    public void setJointGoal(double radians, double speedfrac, double torquefrac)
     {
-        radians = MathUtil.mod2pi(radians);
-        final double limit = Math.toRadians(150);
-        int posv;
-        if (radians >= limit)
-            posv = 0x3ff;
-        else if (radians <= -limit)
-            posv = 0;
-        else
-            posv = ((int) ((radians+limit)/(2*limit)*1024)) & 0x3ff;
-
-        int speedv = (int) (0x3ff * speedfrac);
-        int torquev = (int) (0x3ff * torquefrac);
-
-        writeToRAM(new byte[] { 0x1e,
-                                (byte) (posv & 0xff), (byte) (posv >> 8),
-                                (byte) (speedv & 0xff), (byte) (speedv >> 8),
-                                (byte) (torquev & 0xff), (byte) (torquev >> 8) }, true);
+        setJointGoal(0x3ff, radians, speedfrac, torquefrac);
     }
 
     /** Get servo status **/
@@ -69,7 +50,7 @@ public class AX12Servo extends AbstractServo
             return null;
 
         Status st = new Status();
-        st.positionRadians = ((resp[1] & 0xff) + ((resp[2] & 0x3f) << 8)) * Math.toRadians(300) / 1024.0 - Math.toRadians(150);
+        st.positionRadians = ((resp[1] & 0xff) + ((resp[2] & 0x3) << 8)) * Math.toRadians(300) / 1024.0 - Math.toRadians(150);
 
         int tmp = ((resp[3] & 0xff) + ((resp[4] & 0x3f) << 8));
         if (tmp < 1024)
@@ -86,8 +67,16 @@ public class AX12Servo extends AbstractServo
 
         st.voltage = (resp[7] & 0xff) / 10.0; // scale to voltage
         st.temperature = (resp[8] & 0xff); // deg celsius
+        st.continuous = getRotationMode();
         st.errorFlags = resp[0];
 
         return st;
+    }
+
+    protected void setRotationMode(boolean mode)
+    {
+        ensureEEPROM(mode ?
+                     new byte[] { 0x06, 0, 0, 0, 0 } :
+                     new byte[] { 0x06, 0, 0, (byte)0xFF, (byte)0x03 } );
     }
 }

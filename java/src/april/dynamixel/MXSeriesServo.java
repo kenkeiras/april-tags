@@ -18,12 +18,6 @@ public class MXSeriesServo extends AbstractServo
 
         // Set Alarm Shutdown (EEPROM)
         ensureEEPROM(new byte[] { 18, 36 } );
-
-        // PID (RAM)
-        // byte p = 16;
-        // byte i = 10;
-        // byte d = 0;
-        // writeToRAM(new byte[] { 26, p, i, d }, true );
     }
 
     public boolean isAddressEEPROM(int address)
@@ -49,17 +43,9 @@ public class MXSeriesServo extends AbstractServo
         writeToRAM(new byte[] { 26, d, i, p}, true);
     }
 
-    public void setGoal(double radians, double speedfrac, double torquefrac)
+    public void setJointGoal(double radians, double speedfrac, double torquefrac)
     {
-        radians = MathUtil.mod2pi(radians);
-        int posv = ((int) ((radians + Math.PI) / (2 * Math.PI) * 4096)) & 0xfff;
-        int speedv = (int) (0x3ff * speedfrac);
-        int torquev = (int) (0x3ff * torquefrac);
-
-        writeToRAM(new byte[] { 0x1e,
-                                (byte) (posv & 0xff), (byte) (posv >> 8),
-                                (byte) (speedv & 0xff), (byte) (speedv >> 8),
-                                (byte) (torquev & 0xff), (byte) (torquev >> 8) }, true);
+        setJointGoal(0xfff, radians, speedfrac, torquefrac);
     }
 
     /** Get servo status **/
@@ -75,7 +61,7 @@ public class MXSeriesServo extends AbstractServo
             return null;
 
         Status st = new Status();
-        st.positionRadians = ((resp[1] & 0xff) + ((resp[2] & 0x3f) << 8)) * 2 * Math.PI / 0xfff - Math.PI;
+        st.positionRadians = ((resp[1] & 0xff) + ((resp[2] & 0xf) << 8)) * 2 * Math.PI / 0xfff - Math.PI;
 
         int tmp = ((resp[3] & 0xff) + ((resp[4] & 0x3f) << 8));
         if (tmp < 1024)
@@ -92,9 +78,17 @@ public class MXSeriesServo extends AbstractServo
 
         st.voltage = (resp[7] & 0xff) / 10.0; // scale to voltage
         st.temperature = (resp[8] & 0xff); // deg celsius
+        st.continuous = getRotationMode();
         st.errorFlags = resp[0];
 
         return st;
-     }
+    }
+
+    protected void setRotationMode(boolean mode)
+    {
+        ensureEEPROM(mode ?
+                     new byte[] { 0x06, 0, 0, 0, 0 } :
+                     new byte[] { 0x06, 0, 0, (byte)0xFF, (byte)0x0F } );
+    }
 }
 

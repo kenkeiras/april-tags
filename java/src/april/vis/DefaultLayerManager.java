@@ -6,8 +6,8 @@ import java.io.*;
 import april.jmat.*;
 
 /** Layer positions are given in Java window coordinates, i.e., with
- * 0,0 in the upper left.
- **/
+  * 0,0 in the bottom left corner.
+  **/
 public class DefaultLayerManager implements VisLayerManager, VisSerializable
 {
     HashMap<VisLayer, LayerPosition> layerPositions = new HashMap<VisLayer, LayerPosition>();
@@ -30,7 +30,7 @@ public class DefaultLayerManager implements VisLayerManager, VisSerializable
         // The position of a layer is determined by four numbers:
         //
         // 0: the left most coordinate as a fraction of the viewport width
-        // 1: the top most coordinate as a fraction of the viewport height
+        // 1: the bottom most coordinate as a fraction of the viewport height
         // 2: the width as a fraction of the viewport width
         // 3: the height as a fraction of the viewport height
 

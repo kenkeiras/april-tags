@@ -8,7 +8,7 @@ import april.jmat.*;
 import april.jmat.geom.*;
 import april.util.*;
 
-public class GXYTNode extends GNode
+public class GXYTNode extends GNode implements SpatialNode
 {
     public GXYTNode copy()
     {
@@ -28,8 +28,8 @@ public class GXYTNode extends GNode
         return 3;
     }
 
-    public double[] toXyzRpy(double s[])
+    public double[] toXyzRpy()
     {
-        return new double[] { s[0], s[1], 0, 0, 0, s[2] };
+        return new double[] { state[0], state[1], 0, 0, 0, state[2] };
     }
 }

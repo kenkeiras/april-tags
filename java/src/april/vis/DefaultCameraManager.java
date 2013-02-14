@@ -226,6 +226,20 @@ public class DefaultCameraManager implements VisCameraManager, VisSerializable
         return p;
     }
 
+    public boolean preserveZWhenTranslating()
+    {
+        if (interfaceMode == 3.0)
+            return false;
+
+        return true;
+    }
+
+    public void setPerspectiveness(double p)
+    {
+        this.perspectiveness1 = p;
+        this.mtime1 = System.currentTimeMillis() + UI_ANIMATE_MS;
+    }
+
     public void uiLookAt(double eye[], double lookat[], double up[], boolean setDefault)
     {
         this.eye1 = LinAlg.copy(eye);
