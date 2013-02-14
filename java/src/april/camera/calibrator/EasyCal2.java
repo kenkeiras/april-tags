@@ -160,6 +160,7 @@ public class EasyCal2
         vc = new VisCanvas(vl);
 
         VisConsole vcon = new VisConsole(vw,vl,vc);
+        vcon.drawOrder = 2000;
         VisHandler vlis = new VisHandler();
         vcon.addListener(vlis);
         vl.addEventHandler(vlis);
