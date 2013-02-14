@@ -176,7 +176,9 @@ public class EasyCal2
         // colors
         while (colorList.size() < this.tf.codes.length)
         {
-            List<Color> colors = Palette.listAll();
+            List<Color> colors = Palette.friendly.listAll();
+            colors.addAll(Palette.web.listAll());
+            colors.addAll(Palette.vibrant.listAll());
             colors.remove(0);
             colorList.addAll(colors);
         }
