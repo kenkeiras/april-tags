@@ -33,7 +33,7 @@ public class PixErrScorer implements FrameScorer
 
     public double scoreFrame(List<TagDetection> dets)
     {
-        RobustCameraCalibrator cal = currentCal.copy();
+        RobustCameraCalibrator cal = currentCal.copy(false);
 
         // XXX Passing null here
         cal.addOneImageSet(Arrays.asList(fakeIm), Arrays.asList(dets));

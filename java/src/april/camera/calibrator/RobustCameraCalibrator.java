@@ -768,12 +768,6 @@ public class RobustCameraCalibrator
         return tm;
     }
 
-    public RobustCameraCalibrator copy()
-    {
-        boolean hasgui = (this.renderer != null);
-        return copy(hasgui);
-    }
-
     public RobustCameraCalibrator copy(boolean gui)
     {
         RobustCameraCalibrator rocal = new RobustCameraCalibrator(this.initializers,
