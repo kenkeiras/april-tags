@@ -139,7 +139,7 @@ public class VisUtil
     {
         int tmp[] = new int[stride];
 
-        for (int row = 0; row < (height-1)/2; row++) {
+        for (int row = 0; row < height/2; row++) {
 
             int rowa = row;
             int rowb = height-1 - rowa;
