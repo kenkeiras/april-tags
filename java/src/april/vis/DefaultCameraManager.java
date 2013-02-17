@@ -358,6 +358,7 @@ public class DefaultCameraManager implements VisCameraManager, VisSerializable
             jmenu.add(jmi);
         }
 
+        /*
         if (true) {
             JCheckBoxMenuItem jmi = new JCheckBoxMenuItem("Perspectiveness = 0.25");
             if (perspectiveness1 == 0.25)
@@ -402,6 +403,7 @@ public class DefaultCameraManager implements VisCameraManager, VisSerializable
 
             jmenu.add(jmi);
         }
+        */
 
         if (true) {
             JCheckBoxMenuItem jmi = new JCheckBoxMenuItem("Perspective projection");
