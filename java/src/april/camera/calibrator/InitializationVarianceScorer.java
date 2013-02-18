@@ -8,7 +8,7 @@ import april.tag.*;
 
 public class InitializationVarianceScorer implements FrameScorer
 {
-    public static int NSAMPLES = 10;
+    public static int NSAMPLES = 20;
 
     RobustCameraCalibrator currentCal;
     int imwidth, imheight;
@@ -33,6 +33,17 @@ public class InitializationVarianceScorer implements FrameScorer
     public double scoreFrame(List<TagDetection> detections)
     {
         CalibrationInitializer initializer = initializers.get(0);
+
+        // verify that we can initialize at all
+        if (true) {
+            ParameterizableCalibration cal = initializer.initializeWithObservations(imwidth, imheight,
+                                                                                    Arrays.asList(detections), tm);
+            if (cal == null)
+                return Double.NaN;
+
+            //double K[][] = cal.copyIntrinsics();
+            //System.out.printf("InitializationVarianceScorer.scoreFrame: f is %f\n", K[0][0]);
+        }
 
         List<Double> focallengths = new ArrayList<Double>();
         for (int iter=0; iter < this.NSAMPLES; iter++) {

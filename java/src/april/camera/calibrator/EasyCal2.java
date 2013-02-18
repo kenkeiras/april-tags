@@ -655,7 +655,6 @@ public class EasyCal2
                 vw.getBuffer("SuggestedTags").swap();
                 vw.getBuffer("Detections").swap();
                 vw.getBuffer("Suggestion HUD").swap();
-                vw.getBuffer("Selected-best-color").swap();
                 vw.getBuffer("Error meter").swap();
                 vw.getBuffer("Rectified outline").swap();
                 vw.getBuffer("Flash").swap();
@@ -722,12 +721,14 @@ public class EasyCal2
             double score = scorer.scoreFrame(detections);
 
             // we can sometimes get unlucky with the random samples from the InitializationVarianceScorer
-            if (score <= 1.0e-6)
+            if (score <= 1.0e-6 || Double.isNaN(score) || Double.isInfinite(score)) {
+                System.out.printf("updateInitialization: returning early due to invalid score (%f)\n", score);
                 return;
+            }
 
             EasyCal2.this.currentScore = score;
 
-            if (bestInitImage == null || (score < 0.75*bestScore)) {
+            if (bestInitImage == null || Double.isInfinite(bestScore) || (score < 0.75*bestScore)) {
                 bestScore = score;
                 bestInitImage = im;
                 bestInitDetections = detections;
@@ -739,7 +740,6 @@ public class EasyCal2
                 calibrator.addOneImageSet(Arrays.asList(im), Arrays.asList(detections));
                 calibrator.draw();
             }
-
         }
 
         void drawSuggestions(BufferedImage im)
@@ -778,8 +778,12 @@ public class EasyCal2
             if (suggestion == null)
                 return;
 
+            List<CameraCalibrationSystem.CameraWrapper> camWrappers = calibrator.getCalRef().getCameras();
+            assert(camWrappers.size() == 1);
+            CameraCalibrationSystem.CameraWrapper cam = camWrappers.get(0);
+
             FrameScorer fs = null;
-            if (calibrator.getCalRef().getAllImageSets().size() < 3)
+            if (calibrator.getCalRef().getAllImageSets().size() < 3 || cam.cal == null)
                 fs = new InitializationVarianceScorer(calibrator, imwidth, imheight);
             else
                 fs = new PixErrScorer(calibrator, imwidth, imheight);
@@ -925,15 +929,6 @@ public class EasyCal2
             }
 
             if (suggestion == null) {
-                vb = vw.getBuffer("Selected-best-color");
-                vb.setDrawOrder(1000);
-                vb.addBack(new VisDepthTest(false,
-                                            new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
-                                            new VzText(VzText.ANCHOR.TOP,
-                                                       "<<dropshadow=#AA000000>>"+
-                                                       "<<monospaced-"+getDynamicFontSize(1.5)+"-bold,center,green>>"+
-                                                       "Move target closer to center of image"))));
-                vb.swap();
                 return;
             }
 
@@ -1065,7 +1060,7 @@ public class EasyCal2
                     ////////////////////////////////////////
                     // "flash"
                     vw.getBuffer("Suggestion HUD").swap();
-                    vw.getBuffer("Selected-best-color").swap();
+                    vw.getBuffer("SuggestedTags").swap();
                     new FlashThread().start();
 
                     ////////////////////////////////////////
