@@ -918,6 +918,9 @@ public class EasyCal2
                 vb = vw.getBuffer("Selected-best-color");
                 vb.setDrawOrder(25);
 
+                double maxdim = Math.max(vc.getHeight(), vc.getWidth());
+                double dynamicLineWidth = Math.max(1, Math.ceil(maxdim/500));
+
                 // Draw all the suggestions in muted colors
                 VisChain chain = new VisChain();
                 for (TagDetection d : bestSug.detections) {
@@ -925,7 +928,7 @@ public class EasyCal2
                     Color color = colorList.get(d.id % colorList.size());
                     chain.add(new VzLines(new VisVertexData(d.p),
                                           VzLines.LINE_LOOP,
-                                          new VzLines.Style(color, 2)));
+                                          new VzLines.Style(color, dynamicLineWidth)));
                 }
                 vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
                                             new VisChain(PixelsToVis, chain)));
