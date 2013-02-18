@@ -1,15 +1,17 @@
 package april.camera.calibrator;
 
-import java.io.*;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
-import java.awt.image.*;
-import java.util.*;
 import java.awt.event.*;
-
+import java.awt.image.*;
+import java.io.*;
+import java.util.*;
+import java.util.concurrent.*;
+import javax.imageio.*;
 import javax.swing.*;
+
 import april.camera.*;
 import april.camera.tools.*;
 import april.camera.models.*;
@@ -19,8 +21,6 @@ import april.jmat.geom.*;
 import april.tag.*;
 import april.util.*;
 import april.vis.*;
-
-import javax.imageio.*;
 
 public class EasyCal2
 {
@@ -52,6 +52,9 @@ public class EasyCal2
     ImageSource     isrc;
     BlockingSingleQueue<FrameData> imageQueue = new BlockingSingleQueue<FrameData>();
     BlockingSingleQueue<ProcessedFrame> processedImageQueue = new BlockingSingleQueue<ProcessedFrame>();
+
+    ArrayBlockingQueue<BufferedImage> saveQueue = new ArrayBlockingQueue(100);
+    boolean saveVideo = false;
 
     RobustCameraCalibrator calibrator;
     List<RobustCameraCalibrator.GraphStats> lastGraphStats;
@@ -139,13 +142,14 @@ public class EasyCal2
     }
 
     public EasyCal2(CalibrationInitializer initializer, String url, double tagSpacingMeters, double stoppingAccuracy,
-                    boolean debugGUI, boolean dictionaryGUI, ArrayList<BufferedImage> debugSeedImages)
+                    boolean debugGUI, boolean dictionaryGUI, boolean saveVideo, ArrayList<BufferedImage> debugSeedImages)
     {
         this.tf = new Tag36h11();
         this.tm = new TagMosaic(tf, tagSpacingMeters);
         this.td = new TagDetector(tf);
         this.tagSpacingMeters = tagSpacingMeters;
         this.initializer = initializer;
+        this.saveVideo = saveVideo;
 
         this.stoppingAccuracy = stoppingAccuracy;
 
@@ -234,6 +238,9 @@ public class EasyCal2
         new AcquisitionThread().start();
         new DetectionThread().start();
         new CalibrationThread().start();
+
+        if (saveVideo)
+            new SaveThread().start();
     }
 
     private String[] getConfigCommentLines()
@@ -415,6 +422,8 @@ public class EasyCal2
 
         public void run()
         {
+            int counter = 0;
+
             while (true) {
 
                 FrameData frmd = imageQueue.get();
@@ -436,6 +445,14 @@ public class EasyCal2
                     draw(pf.im, pf.detections);
 
                 processedImageQueue.put(pf);
+
+                counter = (counter + 1) % 5;
+                if (saveVideo && counter == 0) {
+                    try {
+                        saveQueue.add(im);
+                    } catch (IllegalStateException ex) {
+                    }
+                }
             }
         }
 
@@ -1240,9 +1257,7 @@ public class EasyCal2
 
         // Compute single depth for the dictionary XXX
         double K[][] = cal.copyIntrinsics();
-        //double desiredDepths[] = { (K[0][0] / (width*1.0)) * (7*tagSpacingMeters),
-        //                           (K[0][0] / (width*0.6)) * (7*tagSpacingMeters) };
-        double desiredDepths[] = { (K[1][1] / (height*0.6)) * (5*tagSpacingMeters), //};//,
+        double desiredDepths[] = { (K[1][1] / (height*0.6)) * (5*tagSpacingMeters),
                                    (K[1][1] / (height*1.2)) * (5*tagSpacingMeters) };
 
         double rpys[][] = {{ 0.0, 0.0, Math.PI/2 },
@@ -1582,6 +1597,46 @@ public class EasyCal2
         }
     }
 
+    private class SaveThread extends Thread
+    {
+        public void run()
+        {
+            // create directory for image dump
+            int dirNum = -1;
+            String dirName = null;
+            File dir = null;
+            do {
+                dirNum++;
+                dirName = String.format("/var/tmp/easycal/videolog%d/", dirNum);
+                dir = new File(dirName);
+            } while (dir.exists());
+
+            if (dir.mkdirs() != true) {
+                System.err.printf("EasyCal2: Failure to create directory '%s' for image logging\n", dirName);
+                return;
+            }
+
+            int counter = 0;
+            while (true)
+            {
+                BufferedImage im = null;
+
+                try {
+                    im = saveQueue.take();
+                } catch (InterruptedException ex) {
+                    continue;
+                }
+                assert(im != null);
+
+                String path = String.format("%simage%08d.png", dirName, counter++);
+                try {
+                    ImageIO.write(im, "png", new File(path));
+                } catch (IOException ex) {
+                }
+            }
+        }
+    }
+
     public static void main(String args[])
     {
         GetOpt opts  = new GetOpt();
@@ -1594,6 +1649,7 @@ public class EasyCal2
         opts.addString('\0',"debug-seed-images","","Optional parameter listing starting images for debugging");
         opts.addBoolean('\0',"debug-gui",false,"Display additional debugging information");
         opts.addBoolean('\0',"dictionary-gui",false,"Display image dictionary");
+        opts.addBoolean('\0',"save-video",false,"Save video at 5Hz");
 
         if (!opts.parse(args)) {
             System.out.println("Option error: "+opts.getReason());
@@ -1627,7 +1683,8 @@ public class EasyCal2
         }
 
         new EasyCal2(initializer, url, spacing,  opts.getDouble("stopping-accuracy"),
-                     opts.getBoolean("debug-gui"), opts.getBoolean("dictionary-gui"), debugSeedImages);
+                     opts.getBoolean("debug-gui"), opts.getBoolean("dictionary-gui"), opts.getBoolean("save-video"),
+                     debugSeedImages);
     }
 }
 
