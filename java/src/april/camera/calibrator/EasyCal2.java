@@ -179,9 +179,9 @@ public class EasyCal2
         jf = new JFrame("EasyCal2");
         jf.setLayout(new BorderLayout());
         jf.add(vc, BorderLayout.CENTER);
-        jf.setSize(1200, 600);
-        //GraphicsDevice device = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
-        //device.setFullScreenWindow(jf);
+        //jf.setSize(1200, 600);
+        GraphicsDevice device = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
+        device.setFullScreenWindow(jf);
         jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         jf.setVisible(true);
 
@@ -219,7 +219,6 @@ public class EasyCal2
             jf2.setSize(720, 480);
             jf2.setLocation(1200,0);
             jf2.setVisible(true);
-            jf2.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         }
 
         if (dictionaryGUI)
@@ -292,6 +291,19 @@ public class EasyCal2
                 }
             }
 
+            if (toks[0].equals("show-debug-gui")) {
+                calibrator.createGUI();
+
+                JFrame jf2 = new JFrame("Debug");
+                jf2.setLayout(new BorderLayout());
+                jf2.add(calibrator.getVisCanvas(), BorderLayout.CENTER);
+                jf2.setSize(720, 480);
+                jf2.setLocation(1200,0);
+                jf2.setVisible(true);
+
+                return true;
+            }
+
             return false;
         }
 
@@ -300,7 +312,7 @@ public class EasyCal2
          * out.) You may return null. **/
         public ArrayList<String> consoleCompletions(VisConsole vc, String prefix)
         {
-            return new ArrayList(Arrays.asList("print-calibration", "save-calibration /tmp/cameraCalibration", "save-calibration-images /tmp/cameraCalibration", "mode calibrate", "mode rectify"));
+            return new ArrayList(Arrays.asList("print-calibration", "save-calibration /tmp/cameraCalibration", "save-calibration-images /tmp/cameraCalibration", "mode calibrate", "mode rectify", "show-debug-gui"));
         }
 
 
@@ -624,7 +636,7 @@ public class EasyCal2
             if (bestScore < 100)
                 return;
 
-            if (imagesSet.size() != 0 || detections.size() < 4) // XXX
+            if (calibrator.getCalRef().getAllImageSets().size() != 0 || detections.size() < 4) // XXX
                 return;
 
             InitializationVarianceScorer scorer = new InitializationVarianceScorer(calibrator,
@@ -944,6 +956,9 @@ public class EasyCal2
                 vb = vw.getBuffer("Selected-best-color");
                 vb.setDrawOrder(25);
 
+                double maxdim = Math.max(vc.getHeight(), vc.getWidth());
+                double dynamicLineWidth = Math.max(1, Math.ceil(maxdim/500));
+
                 // Draw all the suggestions in muted colors
                 VisChain chain = new VisChain();
                 for (TagDetection d : bestSug.detections) {
@@ -951,7 +966,7 @@ public class EasyCal2
                     Color color = colorList.get(d.id % colorList.size());
                     chain.add(new VzLines(new VisVertexData(d.p),
                                           VzLines.LINE_LOOP,
-                                          new VzLines.Style(color, 2)));
+                                          new VzLines.Style(color, dynamicLineWidth)));
                 }
                 vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
                                             new VisChain(PixelsToVis, chain)));
@@ -1028,6 +1043,7 @@ public class EasyCal2
                     ////////////////////////////////////////
                     // "flash"
                     vw.getBuffer("Suggestion HUD").swap();
+                    vw.getBuffer("Selected-best-color").swap();
                     new FlashThread().start();
 
                     ////////////////////////////////////////
@@ -1146,11 +1162,12 @@ public class EasyCal2
                 maxy = Math.max(maxy, xy[1]);
             }
 
-            double h = vc.getHeight()*0.25;
+            double h = Math.min(vc.getHeight()*0.25, 150);
+            double fraction = h / vc.getHeight();
             double scale = h / (maxy - miny);
 
-            clickHeightFraction = 0.25;
-            clickWidthFraction  = 0.25*((maxx-minx)/(maxy-miny))/(vc.getWidth()/vc.getHeight());
+            clickHeightFraction = fraction;
+            clickWidthFraction  = fraction*((maxx-minx)/(maxy-miny))/(vc.getWidth()/vc.getHeight());
 
             //System.out.printf("im %4d %4d vc %4d %4d percent %5.2f %5.2f :: %6.1f %6.1f %6.1f %6.1f\n",
             //                  imwidth, imheight, vc.getWidth(), vc.getHeight(),

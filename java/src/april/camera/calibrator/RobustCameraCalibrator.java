@@ -549,6 +549,20 @@ public class RobustCameraCalibrator
     ////////////////////////////////////////////////////////////////////////////////
     // rendering code
 
+    public void createGUI()
+    {
+        if (renderer != null)
+            return;
+
+        renderer = new CalibrationRenderer(this.cal, this.tf, this.metersPerTag, this.verbose);
+
+        List<CameraCalibrationSystem.MosaicWrapper> mosaics = this.cal.getMosaics();
+        for (CameraCalibrationSystem.MosaicWrapper mosaic : mosaics)
+            renderer.updateMosaicDimensions(mosaic.detectionSet);
+
+        renderer.draw(null);
+    }
+
     /** Return a reference to the CalibrationRenderer's VisCanvas, if it exists.
       */
     public VisCanvas getVisCanvas()
