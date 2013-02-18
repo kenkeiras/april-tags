@@ -54,7 +54,9 @@ public class EasyCal2
     BlockingSingleQueue<ProcessedFrame> processedImageQueue = new BlockingSingleQueue<ProcessedFrame>();
 
     ArrayBlockingQueue<BufferedImage> saveQueue = new ArrayBlockingQueue(100);
-    boolean saveVideo = false;
+    String videoDir;
+
+    String autosaveDir;
 
     RobustCameraCalibrator calibrator;
     List<RobustCameraCalibrator.GraphStats> lastGraphStats;
@@ -142,14 +144,16 @@ public class EasyCal2
     }
 
     public EasyCal2(CalibrationInitializer initializer, String url, double tagSpacingMeters, double stoppingAccuracy,
-                    boolean debugGUI, boolean dictionaryGUI, boolean saveVideo, ArrayList<BufferedImage> debugSeedImages)
+                    boolean debugGUI, boolean dictionaryGUI, String videoDir, String autosaveDir,
+                    ArrayList<BufferedImage> debugSeedImages)
     {
         this.tf = new Tag36h11();
         this.tm = new TagMosaic(tf, tagSpacingMeters);
         this.td = new TagDetector(tf);
         this.tagSpacingMeters = tagSpacingMeters;
         this.initializer = initializer;
-        this.saveVideo = saveVideo;
+        this.videoDir = videoDir;
+        this.autosaveDir = autosaveDir;
 
         this.stoppingAccuracy = stoppingAccuracy;
 
@@ -239,7 +243,7 @@ public class EasyCal2
         new DetectionThread().start();
         new CalibrationThread().start();
 
-        if (saveVideo)
+        if (!videoDir.isEmpty())
             new SaveThread().start();
     }
 
@@ -422,7 +426,7 @@ public class EasyCal2
 
         public void run()
         {
-            int counter = 0;
+            long lastutime = 0;
 
             while (true) {
 
@@ -446,10 +450,11 @@ public class EasyCal2
 
                 processedImageQueue.put(pf);
 
-                counter = (counter + 1) % 5;
-                if (saveVideo && counter == 0) {
+                double dt = (frmd.utime - lastutime) * 1.0e-6;
+                if (!videoDir.isEmpty() && dt > 0.2) {
                     try {
                         saveQueue.add(im);
+                        lastutime = frmd.utime;
                     } catch (IllegalStateException ex) {
                     }
                 }
@@ -1109,6 +1114,9 @@ public class EasyCal2
                                                                    "type \":save-calibration-images\" to export data"))));
                             vb.setDrawOrder(1001);
                             vb.swap();
+
+                            if (autosaveDir.isEmpty() == false)
+                                calibrator.saveCalibrationAndImages(autosaveDir, getConfigCommentLines());
                         }
 
                         int nimages = calibrator.getCalRef().getAllImageSets().size();
@@ -1607,7 +1615,7 @@ public class EasyCal2
             File dir = null;
             do {
                 dirNum++;
-                dirName = String.format("/var/tmp/easycal/videolog%d/", dirNum);
+                dirName = String.format("%s/videolog%d/", videoDir, dirNum);
                 dir = new File(dirName);
             } while (dir.exists());
 
@@ -1649,7 +1657,8 @@ public class EasyCal2
         opts.addString('\0',"debug-seed-images","","Optional parameter listing starting images for debugging");
         opts.addBoolean('\0',"debug-gui",false,"Display additional debugging information");
         opts.addBoolean('\0',"dictionary-gui",false,"Display image dictionary");
-        opts.addBoolean('\0',"save-video",false,"Save video at 5Hz");
+        opts.addString('\0',"video-dir","","Directory in which to save video at 5Hz");
+        opts.addString('\0',"autosave-dir","","Directory in which to automatically save the calibration");
 
         if (!opts.parse(args)) {
             System.out.println("Option error: "+opts.getReason());
@@ -1658,8 +1667,10 @@ public class EasyCal2
         String url = opts.getString("url");
         String initclass = opts.getString("class");
         double spacing = opts.getDouble("spacing");
+        String videoDir = opts.getString("video-dir");
+        String autosaveDir = opts.getString("autosave-dir");
 
-        if (opts.getBoolean("help") || url.isEmpty()){
+        if (opts.getBoolean("help") || url.isEmpty()) {
             System.out.println("Usage:");
             opts.doHelp();
             System.exit(1);
@@ -1683,8 +1694,8 @@ public class EasyCal2
         }
 
         new EasyCal2(initializer, url, spacing,  opts.getDouble("stopping-accuracy"),
-                     opts.getBoolean("debug-gui"), opts.getBoolean("dictionary-gui"), opts.getBoolean("save-video"),
-                     debugSeedImages);
+                     opts.getBoolean("debug-gui"), opts.getBoolean("dictionary-gui"),
+                     videoDir, autosaveDir, debugSeedImages);
     }
 }
 
