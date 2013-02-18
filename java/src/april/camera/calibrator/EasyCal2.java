@@ -597,6 +597,7 @@ public class EasyCal2
         void calibrationUpdate(ProcessedFrame pf)
         {
             if (applicationMode != MODE_CALIBRATE) {
+                vw.getBuffer("remaining-frames").swap();
                 return;
             }
 
@@ -819,19 +820,24 @@ public class EasyCal2
                 vb.setDrawOrder(1000);
 
                 // Estimate frames remaining
-                int remaining = 10;
+                int pred = 10;
                 {
-                    ArrayList<double[]> nv = new ArrayList();
-                    for (int j = Math.max(0,selectedScores.size() - 5); j < selectedScores.size(); j++)
-                        nv.add(selectedScores.get(j));
-                    nv = stripNAs(nv);
-                    if (nv.size() >= 2) {
-                        double params[] = LinAlg.fitLine(nv);
-                        int pred = (int)Math.ceil(intercept(params, stoppingAccuracy));
+                    if (selectedScores.size() > 2) {
+                        int last_idx = (int)selectedScores.get(selectedScores.size() -1)[0];
+                        double last_error = selectedScores.get(selectedScores.size() -1)[1];
+                        double second_to_last_error = selectedScores.get(selectedScores.size() -2)[1];
+                        double slope = last_error - second_to_last_error;
 
-                        remaining = Math.max(1, pred - calibrator.getCalRef().getAllImageSets().size());
+                        // we can hope to improve the error by at most .5 pixels per frame
+                        // and at the least .01 per frame
+                        slope = MathUtil.clamp(slope, -.5, -.01);
+
+                        int remaining = (int)Math.ceil((stoppingAccuracy - last_error) / slope);
+                        pred = remaining + last_idx;
                     }
                 }
+                int remaining = Math.max(1, Math.min(12, pred - calibrator.getCalRef().getAllImageSets().size()));
+
 
 
                 String name_toks[] = fs.getClass().getName().split("\\.");
@@ -1595,12 +1601,15 @@ public class EasyCal2
             System.out.printf("cur score %f\n", curCalScore);
         }
         // Debug
-        System.out.println("Top ten suggestions:");
-        for (int i = 0; i < Math.min(10, ranked.size()); i++) {
-            System.out.printf(" %02d score %f\n", i, ranked.get(i).score);
+        if (false) {
+            System.out.println("Top ten suggestions:");
+            for (int i = 0; i < Math.min(10, ranked.size()); i++) {
+                System.out.printf(" %02d score %f\n", i, ranked.get(i).score);
+            }
+            int lastIdx = ranked.size()-1;
+            if (lastIdx >= 0) System.out.printf(" %d score %f\n", lastIdx, ranked.get(lastIdx).score);
+
         }
-        int lastIdx = ranked.size()-1;
-        if (lastIdx >= 0) System.out.printf(" %d score %f\n", lastIdx, ranked.get(lastIdx).score);
 
     }
 
