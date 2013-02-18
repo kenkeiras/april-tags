@@ -216,7 +216,6 @@ public class EasyCal2
             jf2.setSize(720, 480);
             jf2.setLocation(1200,0);
             jf2.setVisible(true);
-            jf2.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         }
 
         if (dictionaryGUI)
@@ -289,6 +288,19 @@ public class EasyCal2
                 }
             }
 
+            if (toks[0].equals("show-debug-gui")) {
+                calibrator.createGUI();
+
+                JFrame jf2 = new JFrame("Debug");
+                jf2.setLayout(new BorderLayout());
+                jf2.add(calibrator.getVisCanvas(), BorderLayout.CENTER);
+                jf2.setSize(720, 480);
+                jf2.setLocation(1200,0);
+                jf2.setVisible(true);
+
+                return true;
+            }
+
             return false;
         }
 
@@ -297,7 +309,7 @@ public class EasyCal2
          * out.) You may return null. **/
         public ArrayList<String> consoleCompletions(VisConsole vc, String prefix)
         {
-            return new ArrayList(Arrays.asList("print-calibration", "save-calibration /tmp/cameraCalibration", "save-calibration-images /tmp/cameraCalibration", "mode calibrate", "mode rectify"));
+            return new ArrayList(Arrays.asList("print-calibration", "save-calibration /tmp/cameraCalibration", "save-calibration-images /tmp/cameraCalibration", "mode calibrate", "mode rectify", "show-debug-gui"));
         }
 
 
