@@ -744,7 +744,6 @@ public class EasyCal2
                 // Estimate frames remaining
                 int pred = 10;
                 {
-
                     if (selectedScores.size() > 2) {
                         int last_idx = (int)selectedScores.get(selectedScores.size() -1)[0];
                         double last_error = selectedScores.get(selectedScores.size() -1)[1];
@@ -758,25 +757,6 @@ public class EasyCal2
                         int remaining = (int)Math.ceil((stoppingAccuracy - last_error) / slope);
                         pred = remaining + last_idx;
                     }
-                    /*
-                    ArrayList<double[]> nv = new ArrayList();
-                    for (int j = Math.max(0,selectedScores.size() - 2); j < selectedScores.size(); j++)
-                        nv.add(selectedScores.get(j));
-                    nv = stripNAs(nv);
-
-                    if (false) {
-                        System.out.println("Remaining data:");
-                        for (double pair[] : nv){
-                            System.out.print("   "); LinAlg.printTranspose(pair);
-                        }
-                    }
-
-                    if (nv.size() >= 2) {
-                        double params[] = LinAlg.fitLine(nv);
-                        pred = (int)Math.ceil(intercept(params, stoppingAccuracy));
-
-                    }
-                    */
                 }
                 int remaining = Math.max(1, Math.min(12, pred - calibrator.getCalRef().getAllImageSets().size()));
 
