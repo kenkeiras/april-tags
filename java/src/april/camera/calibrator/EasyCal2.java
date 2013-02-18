@@ -398,6 +398,14 @@ public class EasyCal2
         }
     }
 
+    private int getDynamicFontSize(double scale)
+    {
+        double heightSize = vc.getHeight() * 0.025 * scale;
+        double widthSize  = vc.getWidth()  * 0.017 * scale;
+
+        return (int) Math.min(heightSize, widthSize);
+    }
+
     class DetectionThread extends Thread
     {
         public DetectionThread()
@@ -460,8 +468,78 @@ public class EasyCal2
                                         new VisPixCoords(VisPixCoords.ORIGIN.TOP,
                                                          new VzText(VzText.ANCHOR.TOP,
                                                                     "<<dropshadow=#FF000000,"+
-                                                                    "monospaced-12-bold,white>>"+
+                                                                    "monospaced-"+getDynamicFontSize(1)+"-bold,center,white>>"+
                                                                     "Images are shown in grayscale and mirrored for display purposes"))));
+            if (bestSuggestions != null && bestSuggestions.size() >= 1) {
+                double livetheta = Double.NaN, sugtheta = Double.NaN;
+
+                // suggestion major angle
+                {
+                    SuggestedImage bestSug = bestSuggestions.get(0);
+                    List<TagMosaic.GroupedDetections> columns = tm.getColumnDetections(bestSug.detections);
+                    TagMosaic.GroupedDetections most = null;
+                    for (int idx = 0; idx < columns.size(); idx++) {
+                        TagMosaic.GroupedDetections group = columns.get(idx);
+
+                        if (most == null || most.detections.size() < group.detections.size())
+                            most = group;
+                    }
+                    if (most != null && most.detections.size() >= 2) {
+                        TagDetection mind = null, maxd = null;
+                        for (TagDetection d : most.detections) {
+                            if (mind == null || mind.id > d.id)
+                                mind = d;
+                            if (maxd == null || maxd.id < d.id)
+                                maxd = d;
+                        }
+                        sugtheta = Math.atan2(maxd.cxy[1] - mind.cxy[1], maxd.cxy[0] - mind.cxy[0]);
+                    }
+                }
+
+                // live detection major angle
+                {
+                    List<TagMosaic.GroupedDetections> columns = tm.getColumnDetections(detections);
+                    TagMosaic.GroupedDetections most = null;
+                    for (int idx = 0; idx < columns.size(); idx++) {
+                        TagMosaic.GroupedDetections group = columns.get(idx);
+
+                        if (most == null || most.detections.size() < group.detections.size())
+                            most = group;
+                    }
+                    if (most != null && most.detections.size() >= 2) {
+                        TagDetection mind = null, maxd = null;
+                        for (TagDetection d : most.detections) {
+                            if (mind == null || mind.id > d.id)
+                                mind = d;
+                            if (maxd == null || maxd.id < d.id)
+                                maxd = d;
+                        }
+                        livetheta = Math.atan2(maxd.cxy[1] - mind.cxy[1], maxd.cxy[0] - mind.cxy[0]);
+                    }
+                }
+
+                if (!Double.isNaN(livetheta) && !Double.isNaN(sugtheta)) {
+                    double dtheta = MathUtil.mod2pi(livetheta - sugtheta);
+
+                    int fontsize = getDynamicFontSize(1.5);
+
+                    if (dtheta > Math.PI/3)
+                        vb.addBack(new VisDepthTest(false,
+                                   new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
+                                   new VzText(VzText.ANCHOR.TOP,
+                                              "<<dropshadow=#FF000000,"+
+                                              "monospaced-"+fontsize+"-bold,center,red>>"+
+                                              "Rotate right"))));
+
+                    if (dtheta < -Math.PI/3)
+                        vb.addBack(new VisDepthTest(false,
+                                   new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
+                                   new VzText(VzText.ANCHOR.TOP,
+                                              "<<dropshadow=#FF000000,"+
+                                              "monospaced-"+fontsize+"-bold,center,red>>"+
+                                              "Rotate left"))));
+                }
+            }
             vb.swap();
 
             vb = vw.getBuffer("Shade");
@@ -778,7 +856,7 @@ public class EasyCal2
                 vb.setDrawOrder(1000);
                 vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.TOP_RIGHT,
                                             new VzText(VzText.ANCHOR.TOP_RIGHT,
-                                                       "<<monospaced-20-bold,white>>"+
+                                                       "<<monospaced-"+getDynamicFontSize(1)+"-bold,right,white>>"+
                                                        remaining+" frame"+(remaining != 1 ? "s" : "")+" to go.")));
                 vb.swap();
 
@@ -834,9 +912,9 @@ public class EasyCal2
                 vb.setDrawOrder(1000);
                 vb.addBack(new VisDepthTest(false,
                                             new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
-                                            new VzText(VzText.ANCHOR.CENTER,
+                                            new VzText(VzText.ANCHOR.BOTTOM,
                                                        "<<dropshadow=#AA000000>>"+
-                                                       "<<monospaced-20-bold,green>>"+
+                                                       "<<monospaced-"+getDynamicFontSize(1.5)+"-bold,center,green>>"+
                                                        "Hold target in front of camera"))));
                 vb.swap();
                 return;
@@ -847,9 +925,9 @@ public class EasyCal2
                 vb.setDrawOrder(1000);
                 vb.addBack(new VisDepthTest(false,
                                             new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
-                                            new VzText(VzText.ANCHOR.CENTER,
+                                            new VzText(VzText.ANCHOR.TOP,
                                                        "<<dropshadow=#AA000000>>"+
-                                                       "<<monospaced-20-bold,green>>"+
+                                                       "<<monospaced-"+getDynamicFontSize(1.5)+"-bold,center,green>>"+
                                                        "Move target closer to center of image"))));
                 vb.swap();
                 return;
@@ -862,7 +940,7 @@ public class EasyCal2
                                         new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM,
                                         new VzText(VzText.ANCHOR.BOTTOM,
                                                    "<<dropshadow=#FF000000>>"+
-                                                   "<<monospaced-14-bold,white>>"+
+                                                   "<<monospaced-"+getDynamicFontSize(1)+"-bold,center,white>>"+
                                                    "Align live detections with similarly-colored outlines"))));
 
             // nothing more to do without detections
@@ -994,9 +1072,9 @@ public class EasyCal2
                 vb.setDrawOrder(1000);
                 vb.addBack(new VisDepthTest(false,
                                             new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
-                                            new VzText(VzText.ANCHOR.CENTER,
+                                            new VzText(VzText.ANCHOR.BOTTOM,
                                                        "<<dropshadow=#AA000000>>"+
-                                                       "<<monospaced-20-bold,green>>"+
+                                                       "<<monospaced-"+getDynamicFontSize(1.5)+"-bold,center,green>>"+
                                                        "Almost there..."))));
                 vb.swap();
             }
@@ -1040,14 +1118,13 @@ public class EasyCal2
 
                             vb = vw.getBuffer("Finished");
                             vb.addBack(new VisDepthTest(false,
-                                                        new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
-                                                                         new VzText(VzText.ANCHOR.CENTER,
-                                                                                    "<<dropshadow=#AA000000>>"+
-                                                                                    "<<monospaced-28-bold,green>>"+
-                                                                                    "Calibration Complete."+
-                                                                                    "\n<<monospaced-14-bold>>"+
-                                                                                    "type \"save-calibration\" to export data"
-                                                                             ))));
+                                       new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
+                                                        new VzText(VzText.ANCHOR.CENTER,
+                                                                   "<<dropshadow=#AA000000>>"+
+                                                                   "<<monospaced-"+getDynamicFontSize(2)+"-bold,center,green>>"+
+                                                                   "Calibration complete."+
+                                                                   "\n<<monospaced-"+getDynamicFontSize(1)+"-bold,center>>"+
+                                                                   "type \":save-calibration-images\" to export data"))));
                             vb.setDrawOrder(1001);
                             vb.swap();
                         }
@@ -1096,12 +1173,12 @@ public class EasyCal2
 
                     if (str != null) {
                         str = "<<dropshadow=#AA000000>>"+
-                              "<<monospaced-20-bold,green>>"+
+                              "<<monospaced-"+getDynamicFontSize(1.5)+"-bold,center,green>>"+
                               str;
 
                         vb.addBack(new VisDepthTest(false,
                                                     new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
-                                                    new VzText(VzText.ANCHOR.CENTER, str))));
+                                                    new VzText(VzText.ANCHOR.BOTTOM, str))));
                     }
                 }
 
