@@ -173,6 +173,9 @@ public class EasyCal2
         vcon.addListener(vlis);
         vl.addEventHandler(vlis);
 
+        vl.setBufferEnabled("fs-error-score", false);
+        vl.setBufferEnabled("fs-error-meter", false);
+
         jf = new JFrame("EasyCal2");
         jf.setLayout(new BorderLayout());
         jf.add(vc, BorderLayout.CENTER);
@@ -738,7 +741,7 @@ public class EasyCal2
                 vb.setDrawOrder(1000);
 
                 // Estimate frames remaining
-                double remaining = 0.0;
+                int remaining = 10;
                 {
                     ArrayList<double[]> nv = new ArrayList();
                     for (int j = Math.max(0,selectedScores.size() - 5); j < selectedScores.size(); j++)
@@ -746,9 +749,9 @@ public class EasyCal2
                     nv = stripNAs(nv);
                     if (nv.size() >= 2) {
                         double params[] = LinAlg.fitLine(nv);
-                        double pred = intercept(params, 1.0);
+                        int pred = (int)Math.ceil(intercept(params, stoppingAccuracy));
 
-                        remaining = pred - calibrator.getCalRef().getAllImageSets().size();
+                        remaining = Math.max(1, pred - calibrator.getCalRef().getAllImageSets().size());
                     }
                 }
 
@@ -763,13 +766,22 @@ public class EasyCal2
                                                                      "%sFrameScore       %12.3f\n"+
                                                                      "%sThresh           %12.3f\n"+
                                                                      "%sMin              %12.3f\n"+
-                                                                     "%sRemaining frames %10.1f",
+                                                                     "%sRemaining frames %d",
                                                                      format0, name_toks[name_toks.length -1],
                                                                      format1, fsScore,
                                                                      format0, fsThresh,
                                                                      format2, minFSScore,
                                                                      format0, remaining))));
                 vb.swap();
+
+                vb = vw.getBuffer("remaining-frames");
+                vb.setDrawOrder(1000);
+                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.TOP_RIGHT,
+                                            new VzText(VzText.ANCHOR.TOP_RIGHT,
+                                                       "<<monospaced-20-bold,white>>"+
+                                                       remaining+" frame"+(remaining != 1 ? "s" : "")+" to go.")));
+                vb.swap();
+
             }
 
 
