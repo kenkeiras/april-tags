@@ -409,7 +409,8 @@ public class EasyCal2
 
                 pf.detections = td.process(im, new double[] {im.getWidth()/2.0, im.getHeight()/2.0});
 
-                draw(pf.im, pf.detections);
+                if (applicationMode == MODE_CALIBRATE)
+                    draw(pf.im, pf.detections);
 
                 processedImageQueue.put(pf);
             }
