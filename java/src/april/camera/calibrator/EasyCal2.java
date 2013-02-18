@@ -68,7 +68,7 @@ public class EasyCal2
 
     Random r = new Random();//(1461234L);
     SyntheticTagMosaicImageGenerator simgen;
-    List<SuggestedImage> bestSuggestions = new ArrayList();
+    SuggestedImage suggestion = null;
     int suggestionNumber = 0;
 
     // Score FrameScorer
@@ -470,13 +470,12 @@ public class EasyCal2
                                                                     "<<dropshadow=#FF000000,"+
                                                                     "monospaced-"+getDynamicFontSize(1)+"-bold,center,white>>"+
                                                                     "Images are shown in grayscale and mirrored for display purposes"))));
-            if (bestSuggestions != null && bestSuggestions.size() >= 1) {
+            if (suggestion != null) {
                 double livetheta = Double.NaN, sugtheta = Double.NaN;
 
                 // suggestion major angle
                 {
-                    SuggestedImage bestSug = bestSuggestions.get(0);
-                    List<TagMosaic.GroupedDetections> columns = tm.getColumnDetections(bestSug.detections);
+                    List<TagMosaic.GroupedDetections> columns = tm.getColumnDetections(suggestion.detections);
                     TagMosaic.GroupedDetections most = null;
                     for (int idx = 0; idx < columns.size(); idx++) {
                         TagMosaic.GroupedDetections group = columns.get(idx);
@@ -544,7 +543,7 @@ public class EasyCal2
 
             vb = vw.getBuffer("Shade");
             vb.setDrawOrder(1);
-            if (bestSuggestions.size() > 0) {
+            if (suggestion != null) {
                 vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
                                             new VisChain(PixelsToVis,
                                                          LinAlg.translate(imwidth/2, imheight/2, 0),
@@ -748,24 +747,23 @@ public class EasyCal2
             VisWorld.Buffer vb;
 
             PixelsToVis = getPlottingTransformation(im, true);
+            double maxdim = Math.max(vc.getHeight(), vc.getWidth());
+            double dynamicLineWidth = Math.max(1, Math.ceil(maxdim/500));
 
             vb = vw.getBuffer("SuggestedTags");
             vb.setDrawOrder(20);
-            if (false && bestSuggestions.size() > 0) {
-                for (SuggestedImage si : bestSuggestions) {
+            if (suggestion != null) {
+                // Draw all the suggestions in muted colors
+                VisChain chain = new VisChain();
+                for (TagDetection d : suggestion.detections) {
 
-                    // Draw all the suggestions in muted colors
-                    VisChain chain = new VisChain();
-                    for (TagDetection d : si.detections) {
-
-                        Color color = colorList.get(d.id % colorList.size());
-                        chain.add(new VzLines(new VisVertexData(d.p),
-                                              VzLines.LINE_LOOP,
-                                              new VzLines.Style(new Color(64,64,64,64),2)));//color, 2)));;
-                    }
-                    vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
-                                                new VisChain(PixelsToVis, chain)));
+                    Color color = colorList.get(d.id % colorList.size());
+                    chain.add(new VzLines(new VisVertexData(d.p),
+                                          VzLines.LINE_LOOP,
+                                          new VzLines.Style(color, dynamicLineWidth)));
                 }
+                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
+                                            new VisChain(PixelsToVis, chain)));
             }
             vb.swap();
         }
@@ -777,7 +775,7 @@ public class EasyCal2
 
         void scoreFS(BufferedImage im, List<TagDetection> detections)
         {
-            if (bestSuggestions.size() == 0)
+            if (suggestion == null)
                 return;
 
             FrameScorer fs = null;
@@ -787,7 +785,7 @@ public class EasyCal2
                 fs = new PixErrScorer(calibrator, imwidth, imheight);
 
             double fsScore  = fs.scoreFrame(detections);
-            double fsThresh = bestSuggestions.get(bestSuggestions.size()-1).score;
+            double fsThresh = suggestion.score;
 
             if (fsScore <= .2)
                 return;
@@ -926,7 +924,7 @@ public class EasyCal2
                 return;
             }
 
-            if (bestSuggestions.size() == 0) {
+            if (suggestion == null) {
                 vb = vw.getBuffer("Selected-best-color");
                 vb.setDrawOrder(1000);
                 vb.addBack(new VisDepthTest(false,
@@ -953,17 +951,14 @@ public class EasyCal2
             if (detections.size() == 0)
                 return;
 
-            // find matches between observed and suggested
-            // Find the suggested image with the best score. Draw solids for that??
-            SuggestedImage bestSug = bestSuggestions.get(0);
-            double bestMeanDist = Double.MAX_VALUE;
-
-            for (SuggestedImage sim : bestSuggestions) {
+            // compute score for suggestion
+            double meandist = 0;
+            {
                 double totaldist = 0;
                 int nmatches = 0;
 
                 for (TagDetection det1 : detections) {
-                    for (TagDetection det2 : sim.detections) {
+                    for (TagDetection det2 : suggestion.detections) {
                         if (det1.id != det2.id)
                             continue;
 
@@ -973,14 +968,8 @@ public class EasyCal2
                     }
                 }
 
-                double meandist = totaldist/nmatches;
-
-                if (meandist < bestMeanDist) {
-                    bestMeanDist = meandist;
-                    bestSug = sim;
-                }
+                meandist = totaldist/nmatches;
             }
-            double meandist = bestMeanDist;
 
             // Compute the acceptance threshold based on the size of the target:
             // Compute maximum target dimension
@@ -996,8 +985,6 @@ public class EasyCal2
 
                     // how far apart on the screen are they?
                     double pixDist = LinAlg.distance(td1.cxy, td2.cxy);
-
-
                     double distRatio = pixDist/gridDist; // pixels/square
 
                     if (distRatio > maxDist)
@@ -1007,29 +994,6 @@ public class EasyCal2
 
             // in units of "squares" how close do we need to get on average?
             double meandistthreshold = maxDist;
-
-
-            // Draw selected pose in color
-            {
-                vb = vw.getBuffer("Selected-best-color");
-                vb.setDrawOrder(25);
-
-                double maxdim = Math.max(vc.getHeight(), vc.getWidth());
-                double dynamicLineWidth = Math.max(1, Math.ceil(maxdim/500));
-
-                // Draw all the suggestions in muted colors
-                VisChain chain = new VisChain();
-                for (TagDetection d : bestSug.detections) {
-
-                    Color color = colorList.get(d.id % colorList.size());
-                    chain.add(new VzLines(new VisVertexData(d.p),
-                                          VzLines.LINE_LOOP,
-                                          new VzLines.Style(color, dynamicLineWidth)));
-                }
-                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
-                                            new VisChain(PixelsToVis, chain)));
-                vb.swap();
-            }
 
             ////////////////////////////////////////
             // meter
@@ -1139,8 +1103,7 @@ public class EasyCal2
                         selectedScores.add(new double[]{ nimages+1, score }); // Keep the history
 
                         System.out.printf("Chose image with score %f compared to best in dictionary %f \n",
-                                          score,
-                                          bestSuggestions.get(0).score);
+                                          score, suggestion.score);
                     }
 
                     if (captureNext)
@@ -1166,16 +1129,12 @@ public class EasyCal2
                 vb.setDrawOrder(1000);
 
 
-                if (detections.size() > 0 && bestSug != null && bestSug.detections.size() > 0) {
-                    double detectionSizeError = getMeanDetectionSizeErrors(bestSug.detections, detections);
-                    //System.out.printf("Detection size error %10.3f\r", detectionSizeError);
+                if (detections.size() > 0 && suggestion != null && suggestion.detections.size() > 0) {
+                    double detectionSizeError = getMeanDetectionSizeErrors(suggestion.detections, detections);
 
                     String str = null;
-                    if (detectionSizeError < -5.0)
-                        str = "Move target away from camera";
-
-                    if (detectionSizeError > 10.0)
-                        str = "Move target closer to camera";
+                    if (detectionSizeError < -5.0) str = "Move target away from camera";
+                    if (detectionSizeError > 10.0) str = "Move target closer to camera";
 
                     if (str != null) {
                         str = "<<dropshadow=#AA000000>>"+
@@ -1573,26 +1532,9 @@ public class EasyCal2
         System.out.printf("  Scored %d suggestions in %.3f seconds\n", suggestDictionary.size(), t.toctic());
         // Pick the single best suggestion
         if (true) {
-            if (ranked.size() > 0)
-                bestSuggestions = Arrays.asList(ranked.get(0));
-            else
-                bestSuggestions = new ArrayList();
-        } else {
-            double worstAllowedScore = ranked.get(0).score * 1.2;
-
-            int maxSize  = (int)(ranked.size()*.10);
-
-            ArrayList<SuggestedImage> allowed = new ArrayList();
-            for (SuggestedImage si : ranked) {
-                if (si.score <= worstAllowedScore)
-                    allowed.add(si);
-                if (allowed.size() == maxSize)
-                    break;
-            }
-            bestSuggestions = allowed;
+            if (ranked.size() > 0) suggestion = ranked.get(0);
+            else                   suggestion = null;
         }
-
-        System.out.printf("Picked %d of %d as best suggestions\n", bestSuggestions.size(), suggestDictionary.size());
 
         // Grab the current value of 'cal'
         {
@@ -1610,9 +1552,7 @@ public class EasyCal2
             if (lastIdx >= 0) System.out.printf(" %d score %f\n", lastIdx, ranked.get(lastIdx).score);
 
         }
-
     }
-
 
     private class FlashThread extends Thread
     {
