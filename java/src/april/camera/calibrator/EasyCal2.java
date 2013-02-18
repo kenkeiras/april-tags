@@ -179,9 +179,9 @@ public class EasyCal2
         jf = new JFrame("EasyCal2");
         jf.setLayout(new BorderLayout());
         jf.add(vc, BorderLayout.CENTER);
-        jf.setSize(1200, 600);
-        //GraphicsDevice device = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
-        //device.setFullScreenWindow(jf);
+        //jf.setSize(1200, 600);
+        GraphicsDevice device = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
+        device.setFullScreenWindow(jf);
         jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         jf.setVisible(true);
 
@@ -635,7 +635,7 @@ public class EasyCal2
             if (bestScore < 100)
                 return;
 
-            if (imagesSet.size() != 0 || detections.size() < 4) // XXX
+            if (calibrator.getCalRef().getAllImageSets().size() != 0 || detections.size() < 4) // XXX
                 return;
 
             InitializationVarianceScorer scorer = new InitializationVarianceScorer(calibrator,
@@ -1017,6 +1017,7 @@ public class EasyCal2
                     ////////////////////////////////////////
                     // "flash"
                     vw.getBuffer("Suggestion HUD").swap();
+                    vw.getBuffer("Selected-best-color").swap();
                     new FlashThread().start();
 
                     ////////////////////////////////////////
@@ -1135,11 +1136,12 @@ public class EasyCal2
                 maxy = Math.max(maxy, xy[1]);
             }
 
-            double h = vc.getHeight()*0.25;
+            double h = Math.min(vc.getHeight()*0.25, 150);
+            double fraction = h / vc.getHeight();
             double scale = h / (maxy - miny);
 
-            clickHeightFraction = 0.25;
-            clickWidthFraction  = 0.25*((maxx-minx)/(maxy-miny))/(vc.getWidth()/vc.getHeight());
+            clickHeightFraction = fraction;
+            clickWidthFraction  = fraction*((maxx-minx)/(maxy-miny))/(vc.getWidth()/vc.getHeight());
 
             //System.out.printf("im %4d %4d vc %4d %4d percent %5.2f %5.2f :: %6.1f %6.1f %6.1f %6.1f\n",
             //                  imwidth, imheight, vc.getWidth(), vc.getHeight(),
