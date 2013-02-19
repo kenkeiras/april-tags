@@ -175,7 +175,7 @@ static int get_frame_png(image_source_t *isrc, frame_data_t *frmd, const char *f
 
     png_structp png_ptr;
     png_infop info_ptr;
-    int number_of_passes;
+    //int number_of_passes;
     png_bytep *row_pointers;
 
     unsigned char header[8];    // 8 is the maximum size that can be checked
@@ -211,7 +211,7 @@ static int get_frame_png(image_source_t *isrc, frame_data_t *frmd, const char *f
     png_byte color_type = png_get_color_type(png_ptr, info_ptr);
     png_byte bit_depth = png_get_bit_depth(png_ptr, info_ptr);
 
-    number_of_passes = png_set_interlace_handling(png_ptr);
+    //number_of_passes = png_set_interlace_handling(png_ptr);
     png_read_update_info(png_ptr, info_ptr);
 
     /* read file */
@@ -447,7 +447,7 @@ image_source_t *image_source_filedir_open(url_parser_t *urlp)
     }
 
     varray_sort(impl->files, mysort);
-    varray_map(impl->files, puts);
+    varray_map(impl->files, (void*) puts);
 
     if (varray_size(impl->files) == 0) {
         printf("image_source_filedir: didn't find any files.");
