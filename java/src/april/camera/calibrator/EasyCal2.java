@@ -774,10 +774,10 @@ public class EasyCal2
 
             // we don't need a standard deviation lower than 100
             // was 20 when we added the bestInitImage to the actual calibration
-            if (bestScore < 100)
+            if (bestScore < 40)
                 return;
 
-            if (calibrator.getCalRef().getAllImageSets().size() != 0 || detections.size() < 4) // XXX
+            if (calibrator.getCalRef().getAllImageSets().size() >= 2 || detections.size() < 4) // XXX
                 return;
 
             InitializationVarianceScorer scorer = new InitializationVarianceScorer(calibrator,
