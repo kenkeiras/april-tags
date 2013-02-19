@@ -83,6 +83,7 @@ public class EasyCal2
 
     // Score FrameScorer
     double minFSScore = Double.MAX_VALUE;
+    long progressTimeoutUtime = Long.MAX_VALUE;
     boolean clearScoreState = false;
     int debugCT = 0;
 
@@ -675,6 +676,7 @@ public class EasyCal2
                 fsScoreImages.clear();
                 pixScoreImages.clear();
                 minFSScore = Double.MAX_VALUE;
+                progressTimeoutUtime = Long.MAX_VALUE;
                 clearScoreState = false;
             }
         }
@@ -868,6 +870,7 @@ public class EasyCal2
             if (fsScore < minFSScore) {
 
                 minFSScore = fsScore;
+                progressTimeoutUtime = TimeUtil.utime() + 10*1000000; // 5 second with no progress
 
                 // System.out.printf("Got new min, with %d dections, value %f\n",detections.size(),fsScore);
                 // try {
@@ -879,6 +882,17 @@ public class EasyCal2
 
 
             }
+
+            if (TimeUtil.utime() > progressTimeoutUtime) {
+                VisWorld.Buffer vb = vw.getBuffer("stuck");
+                vb.setDrawOrder(1000);
+                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT,
+                                            new VisDepthTest(false,
+                                            new VzText(VzText.ANCHOR.BOTTOM_LEFT,
+                                                       "<<monospaced-"+getDynamicFontSize(1)+"-bold,right,red,dropshadow=#FFaaaaaa>>"+
+                                                       "Stuck? Press 'space' to take manual frame.\n \n"))));
+            }
+            vw.getBuffer("stuck").swap();
 
             ////////////////////////////////////////
             // frame score heuristic
