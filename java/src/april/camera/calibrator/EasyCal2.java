@@ -621,7 +621,7 @@ public class EasyCal2
             vb = vw.getBuffer("Detections");
             vb.setDrawOrder(10);
             for (TagDetection d : detections) {
-                Color color = colorList.get(d.id);
+                Color color = getTagColor(d.id);
 
                 ArrayList<double[]> quad = new ArrayList<double[]>();
                 quad.add(d.interpolate(-1,-1));
@@ -637,6 +637,19 @@ public class EasyCal2
             }
             vb.swap();
         }
+    }
+
+    private Color getTagColor(int id)
+    {
+        int row = tm.getRow(id);
+        int col = tm.getColumn(id);
+
+        if (minRow != null && maxRow != null && minCol != null && maxCol != null) {
+            if (row > minRow && row < maxRow && col > minCol && col < maxCol)
+                return Color.white;
+        }
+
+        return colorList.get(id);
     }
 
     class CalibrationThread extends Thread
@@ -824,7 +837,7 @@ public class EasyCal2
                 VisChain chain = new VisChain();
                 for (TagDetection d : suggestion.detections) {
 
-                    Color color = colorList.get(d.id % colorList.size());
+                    Color color = getTagColor(d.id);
                     chain.add(new VzLines(new VisVertexData(d.p),
                                           VzLines.LINE_LOOP,
                                           new VzLines.Style(color, dynamicLineWidth)));
