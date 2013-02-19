@@ -12,6 +12,9 @@ import java.util.concurrent.*;
 import javax.imageio.*;
 import javax.swing.*;
 
+import lcm.lcm.*;
+import april.lcmtypes.*;
+
 import april.camera.*;
 import april.camera.tools.*;
 import april.camera.models.*;
@@ -43,6 +46,8 @@ public class EasyCal2
 
     // debug gui
     VisLayer vl2 = null;
+
+    LCM lcm = LCM.getSingleton();
 
     // Debug state
     ArrayList<SuggestedImage> ranked;
@@ -1592,6 +1597,9 @@ public class EasyCal2
             else                   suggestion = null;
         }
 
+        if (suggestion != null)
+            publishSuggestion(suggestion);
+
         // Grab the current value of 'cal'
         {
             double curCalScore = PixErrScorer.scoreCal(calibrator, imwidth, imheight);
@@ -1608,6 +1616,30 @@ public class EasyCal2
             if (lastIdx >= 0) System.out.printf(" %d score %f\n", lastIdx, ranked.get(lastIdx).score);
 
         }
+    }
+
+    private void publishSuggestion(SuggestedImage s)
+    {
+        suggested_image_t si = new suggested_image_t();
+        si.utime = TimeUtil.utime();
+        si.score = s.score;
+        si.xyzrpy = LinAlg.copy(s.xyzrpy);
+        si.xyzrpy_centered = LinAlg.copy(s.xyzrpy_cen);
+
+        si.ndetections   = s.detections.size();
+        si.tag_ids       = new int[si.ndetections];
+        si.tag_positions = new double[si.ndetections][4][2];
+        si.tag_centers   = new double[si.ndetections][2];
+
+        for (int i = 0; i < si.ndetections; i++) {
+            TagDetection d = s.detections.get(i);
+
+            si.tag_ids[i]       = d.id;
+            si.tag_positions[i] = LinAlg.copy(d.p);
+            si.tag_centers[i]   = LinAlg.copy(d.cxy);
+        }
+
+        lcm.publish("SUGGESTED_IMAGE", si);
     }
 
     private class FlashThread extends Thread
@@ -1658,11 +1690,13 @@ public class EasyCal2
 
             // pick filename for islog
             int logNum = -1;
+            String baseLogName = null;
             String logName = null;
             File log = null;
             do {
                 logNum++;
-                logName = String.format("%s/videolog%d.islog", videoDir, logNum);
+                baseLogName = String.format("videolog%d.islog", logNum);
+                logName = String.format("%s/%s", videoDir, baseLogName);
                 log = new File(logName);
             } while (log.exists());
 
@@ -1691,7 +1725,14 @@ public class EasyCal2
                 assert(frmd != null);
 
                 try {
-                    islog.write(frmd);
+                    long offset = islog.write(frmd);
+
+                    url_t url = new url_t();
+                    url.utime = frmd.utime;
+                    url.url = String.format("islog://%s?offset=%s",
+                                            baseLogName, Long.toString(offset));
+                    lcm.publish("ISLOG", url);
+
                 } catch (IOException ex) {
                     System.out.println("Exception: " + ex);
                     ex.printStackTrace();

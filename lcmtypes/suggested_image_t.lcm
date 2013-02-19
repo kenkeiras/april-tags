@@ -1,0 +1,14 @@
+struct suggested_image_t
+{
+    int64_t utime;
+
+    double score;
+
+    double xyzrpy[6];
+    double xyzrpy_centered[6];
+
+    int32_t ndetections;
+    int32_t tag_ids[ndetections];
+    double  tag_positions[ndetections][4][2];
+    double  tag_centers[ndetections][2];
+}

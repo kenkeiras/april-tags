@@ -82,7 +82,7 @@ public class ImageSourceISLogLCM extends ImageSource implements LCMSubscriber
         }
     }
 
-    private ISLog.ISEvent readImage(url_t url) throws IOException, IllegalArgumentException
+    public ISLog.ISEvent readImage(url_t url) throws IOException, IllegalArgumentException
     {
         URLParser parser = new URLParser(url.url);
 
