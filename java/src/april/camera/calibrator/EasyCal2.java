@@ -53,7 +53,7 @@ public class EasyCal2
     BlockingSingleQueue<FrameData> imageQueue = new BlockingSingleQueue<FrameData>();
     BlockingSingleQueue<ProcessedFrame> processedImageQueue = new BlockingSingleQueue<ProcessedFrame>();
 
-    ArrayBlockingQueue<BufferedImage> saveQueue = new ArrayBlockingQueue(100);
+    ArrayBlockingQueue<FrameData> saveQueue = new ArrayBlockingQueue(100);
     String videoDir;
 
     String autosaveDir;
@@ -110,6 +110,12 @@ public class EasyCal2
     boolean bestInitUpdated = false;
 
     List<Color> colorList = new ArrayList<Color>();
+
+    static volatile boolean running = true;
+    final AcquisitionThread   acquisitionThread;
+    final DetectionThread     detectionThread;
+    final CalibrationThread   calibrationThread;
+    final SaveThread          saveThread;
 
     static class SuggestedImage
     {
@@ -239,12 +245,44 @@ public class EasyCal2
         }
 
         ////////////////////////////////////////
-        new AcquisitionThread().start();
-        new DetectionThread().start();
-        new CalibrationThread().start();
+        acquisitionThread = new AcquisitionThread();
+        detectionThread   = new DetectionThread();
+        calibrationThread = new CalibrationThread();
 
         if (!videoDir.isEmpty())
-            new SaveThread().start();
+            saveThread = new SaveThread();
+        else
+            saveThread = null;
+
+        acquisitionThread.start();
+        detectionThread.start();
+        calibrationThread.start();
+
+        if (saveThread != null)
+            saveThread.start();
+
+        ////////////////////////////////////////
+
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            public void run() {
+                this.setName("Shutdown hook");
+
+                running = false;
+
+                try {
+                    acquisitionThread.join();
+                } catch (InterruptedException ex) {
+                }
+
+                if (saveThread != null) {
+                    try {
+                        saveThread.interrupt();
+                        saveThread.join();
+                    } catch (InterruptedException ex) {
+                    }
+                }
+            }
+        });
     }
 
     private String[] getConfigCommentLines()
@@ -396,7 +434,7 @@ public class EasyCal2
             }
 
             isrc.start();
-            while (true) {
+            while (running) {
                 FrameData frmd = isrc.getFrame();
 
                 if (frmd == null)
@@ -404,8 +442,8 @@ public class EasyCal2
 
                 imageQueue.put(frmd);
             }
-
-            System.out.println("Out of frames!");
+            isrc.stop();
+            isrc.close();
         }
     }
 
@@ -451,9 +489,9 @@ public class EasyCal2
                 processedImageQueue.put(pf);
 
                 double dt = (frmd.utime - lastutime) * 1.0e-6;
-                if (!videoDir.isEmpty() && dt > 0.2) {
+                if (!videoDir.isEmpty() && dt >= 0.18) {
                     try {
-                        saveQueue.add(im);
+                        saveQueue.add(frmd);
                         lastutime = frmd.utime;
                     } catch (IllegalStateException ex) {
                     }
@@ -1609,38 +1647,64 @@ public class EasyCal2
     {
         public void run()
         {
-            // create directory for image dump
-            int dirNum = -1;
-            String dirName = null;
-            File dir = null;
-            do {
-                dirNum++;
-                dirName = String.format("%s/videolog%d/", videoDir, dirNum);
-                dir = new File(dirName);
-            } while (dir.exists());
-
-            if (dir.mkdirs() != true) {
-                System.err.printf("EasyCal2: Failure to create directory '%s' for image logging\n", dirName);
-                return;
+            // make sure logging directory exists
+            File videoFile = new File(videoDir);
+            if (videoFile.exists() == false) {
+                if (videoFile.mkdirs() != true) {
+                    System.err.printf("EasyCal2: Failure to create directory '%s' for video logging\n", videoDir);
+                    System.exit(1);
+                }
             }
 
-            int counter = 0;
-            while (true)
+            // pick filename for islog
+            int logNum = -1;
+            String logName = null;
+            File log = null;
+            do {
+                logNum++;
+                logName = String.format("%s/videolog%d.islog", videoDir, logNum);
+                log = new File(logName);
+            } while (log.exists());
+
+            // open islog
+            ISLog islog = null;
+            try {
+                islog = new ISLog(logName, "w");
+
+            } catch (IOException ex) {
+                System.out.println("Exception: " + ex);
+                ex.printStackTrace();
+                System.exit(1);
+            }
+
+            // start logging
+            while (running)
             {
-                BufferedImage im = null;
+                FrameData frmd = null;
 
                 try {
-                    im = saveQueue.take();
+                    frmd = saveQueue.take();
                 } catch (InterruptedException ex) {
+                    System.out.println("EasyCal2 SaveThread interrupted: " + ex);
                     continue;
                 }
-                assert(im != null);
+                assert(frmd != null);
 
-                String path = String.format("%simage%08d.png", dirName, counter++);
                 try {
-                    ImageIO.write(im, "png", new File(path));
+                    islog.write(frmd);
                 } catch (IOException ex) {
+                    System.out.println("Exception: " + ex);
+                    ex.printStackTrace();
+                    System.exit(1);
                 }
+            }
+
+            try {
+                islog.close();
+            } catch (IOException ex) {
+                System.out.println("Exception: " + ex);
+                ex.printStackTrace();
+                System.exit(1);
             }
         }
     }
