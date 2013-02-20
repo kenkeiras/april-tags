@@ -57,8 +57,11 @@ class Tokenizer
 
                 StringBuffer sb = new StringBuffer();
 
-                int i = 1;
-                while (i < tok.token.length()) {
+                int i = 1; // skip leading quotation mark
+                if (tok.type.equals("ENVSTRING"))
+                    i = 2; // skip leading $"
+
+                while (i+1 < tok.token.length()) {
 
                     char c = tok.token.charAt(i);
 
