@@ -161,8 +161,9 @@ public class ViewRobot extends VisEventAdapter implements ViewObject, LCMSubscri
             leadTimer.cancel();
             leadTimer = null;
         }
+
         lcm.publish("POSE_TELEPORT", pose);
-        return true;
+        return false;
     }
 
     class LeadTask extends TimerTask
