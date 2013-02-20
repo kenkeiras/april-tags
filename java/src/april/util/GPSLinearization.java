@@ -30,8 +30,17 @@ public class GPSLinearization
     double lat0_rad, lon0_rad;
     double radius_ns, radius_ew;
 
+    double xyt[];
+
     public GPSLinearization(double origin_deg[])
     {
+        this(origin_deg, new double[3]);
+    }
+
+    public GPSLinearization(double origin_deg[], double _xyt[])
+    {
+        this.xyt = LinAlg.copy(_xyt);
+
         lat0_deg = origin_deg[LAT];
         lon0_deg = origin_deg[LON];
 
@@ -68,12 +77,14 @@ public class GPSLinearization
             Math.sin(d_rad[LON]) * radius_ew * Math.cos(lat0_rad),
             Math.sin(d_rad[LAT]) * radius_ns };
 
-        return result;
+        return LinAlg.transform(xyt, result);
 
     }
 
-    public double[] xy2ll(double xy[])
+    public double[] xy2ll(double _xy[])
     {
+        double xy[] = LinAlg.transform(LinAlg.xytInverse(xyt), _xy);
+
         double dlat_rad =
             Math.asin(xy[Y] / radius_ns);
         double dlon_rad =
@@ -94,6 +105,7 @@ public class GPSLinearization
     {
         double ll_deg[] = ins.readDoubles();
         double r[] = ins.readDoubles();
+        this.xyt = ins.readDoubles();
 
         lat0_deg = ll_deg[0];
         lon0_deg = ll_deg[1];
@@ -109,6 +121,7 @@ public class GPSLinearization
     {
         outs.writeDoubles(new double[] { lat0_deg, lon0_deg });
         outs.writeDoubles(new double[] { radius_ns, radius_ew });
+        outs.writeDoubles(xyt);
     }
 
     public static void main(String args[])
