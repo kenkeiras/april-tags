@@ -16,6 +16,7 @@ class Tokenizer
         gt = new GenericTokenizer<String>("ERROR");
 //        gt.showDeadEnds = true;
 
+        gt.add("ENVSTRING", "$\"[^\"]*\"");
         gt.add("STRING", "\"[^\"]*\"");
         gt.addEscape("OP", "+{ { } = : , ; [ ]");
         gt.add("SYMBOL", "[a-zA-Z_\\.0-9\\-\\+#]+");
@@ -40,6 +41,11 @@ class Tokenizer
         process();
     }
 
+    boolean isEnvChar(char c)
+    {
+        return Character.isLetter(c) || c=='_';
+    }
+
     void process()
     {
         for (GenericTokenizer.Token<String> tok : tokens) {
@@ -47,10 +53,31 @@ class Tokenizer
                 System.out.println("Syntax Error: "+tok);
             }
 
-            if (tok.type.equals("STRING")) {
+            if (tok.type.equals("STRING") || tok.type.equals("ENVSTRING")) {
+
                 StringBuffer sb = new StringBuffer();
-                for (int i = 1; i+1 < tok.token.length(); i++) {
+
+                int i = 1;
+                while (i < tok.token.length()) {
+
                     char c = tok.token.charAt(i);
+
+                    if (tok.type.equals("ENVSTRING") && c=='$') {
+                        // expand environment variable
+                        StringBuffer var = new StringBuffer();
+                        i++; // consume '$'
+
+                        while (i < tok.token.length() && isEnvChar(tok.token.charAt(i))) {
+                            var.append(tok.token.charAt(i));
+                            i++;
+                        }
+
+                        System.out.println("EXPANDING ENV: "+var.toString());
+                        sb.append(System.getenv(var.toString()));
+
+                        continue;
+                    }
+
                     if (c=='\\' && i+2 < tok.token.length()) {
                         i++;
                         c = tok.token.charAt(i);
@@ -66,11 +93,16 @@ class Tokenizer
                                 break;
                             default:
                         }
+                        i++;
+                        continue;
                     }
+
                     sb.append(c);
+                    i++;
                 }
                 tok.token = sb.toString();
             }
+
         }
     }
 
