@@ -384,6 +384,12 @@ public class EasyCal2
             if (code == KeyEvent.VK_SPACE) {
                 // Manual Capture
                 captureNext = true;
+
+                nmea_t nmea = new nmea_t();
+                nmea.utime = TimeUtil.utime();
+                nmea.nmea = "Flagged for manual capture\n";
+                lcm.publish("MANUAL", nmea);
+
                 return true;
             }
 
@@ -471,6 +477,7 @@ public class EasyCal2
         public void run()
         {
             long lastutime = 0;
+            boolean noTagsYet = true;
 
             while (true) {
 
@@ -488,6 +495,15 @@ public class EasyCal2
                 pf.im = im;
 
                 pf.detections = td.process(im, new double[] {im.getWidth()/2.0, im.getHeight()/2.0});
+
+                if (pf.detections.size() > 0 && noTagsYet) {
+                    nmea_t nmea = new nmea_t();
+                    nmea.utime = TimeUtil.utime();
+                    nmea.nmea = "First tag detection\n";
+                    lcm.publish("STARTED", nmea);
+
+                    noTagsYet = false;
+                }
 
                 if (applicationMode == MODE_CALIBRATE)
                     draw(pf.im, pf.detections);
@@ -1185,8 +1201,18 @@ public class EasyCal2
                             vb.setDrawOrder(1001);
                             vb.swap();
 
-                            if (autosaveDir.isEmpty() == false)
+
+
+                            if (autosaveDir.isEmpty() == false) {
                                 calibrator.saveCalibrationAndImages(autosaveDir, getConfigCommentLines());
+
+                                nmea_t nmea = new nmea_t();
+                                nmea.utime = TimeUtil.utime();
+                                nmea.nmea = "Exiting\n";
+                                lcm.publish("FINISHED", nmea);
+
+                                System.exit(0);
+                            }
                         }
 
                         int nimages = calibrator.getCalRef().getAllImageSets().size();
