@@ -883,7 +883,7 @@ public class EasyCal2
             if (fsScore < minFSScore) {
 
                 minFSScore = fsScore;
-                progressTimeoutUtime = TimeUtil.utime() + 10*1000000; // 5 second with no progress
+                progressTimeoutUtime = TimeUtil.utime() + 20*1000000; // 5 second with no progress
 
                 // System.out.printf("Got new min, with %d dections, value %f\n",detections.size(),fsScore);
                 // try {
