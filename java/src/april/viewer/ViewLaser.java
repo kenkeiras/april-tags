@@ -44,13 +44,15 @@ public class ViewLaser implements ViewObject, LCMSubscriber
         double squat[] = ConfigUtil.getQuaternion(config.getRoot(), channel);
         Color color = ConfigUtil.getColor(config.getRoot(), channel, new Color(255, 255, 0));
         double max_range = config.getRoot().getDouble(channel + ".max_range_m", 79);
+        double min_range = config.getRoot().getDouble(channel + ".min_range_m", 0);
+
         laser_t ldata = new laser_t(ins);
         pose_t pose = pt.get(ldata.utime);
         ArrayList<double[]> points = new ArrayList<double[]>();
 
         for (int i = 0; i < ldata.nranges; i++) {
             double r = ldata.ranges[i];
-            if (r > max_range)
+            if (r < min_range || r > max_range)
                 continue;
             double theta = ldata.rad0 + ldata.radstep * i;
             double s = Math.sin(theta), c = Math.cos(theta);

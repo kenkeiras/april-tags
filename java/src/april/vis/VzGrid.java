@@ -38,7 +38,7 @@ public class VzGrid implements VisObject, VisSerializable
 
     public VzGrid()
     {
-        this(new VzMesh.Style(new Color(32,32,32,128)),
+        this(new VzMesh.Style(new Color(32,32,32,64)),
              new VzLines.Style(new Color(128,128,128), 1));
 
     }
