@@ -681,9 +681,9 @@ static char* get_feature_type(image_source_t *isrc, int idx)
     case 7: // shutter-manual
         return strdup("b");
     case 8: // shutter
-        return sprintf_alloc("i,%d,%d",
-                             find_feature(isrc, DC1394_FEATURE_SHUTTER)->min * 1000,
-                             find_feature(isrc, DC1394_FEATURE_SHUTTER)->max * 1000);
+        return sprintf_alloc("f,%f,%f",
+                             find_feature(isrc, DC1394_FEATURE_SHUTTER)->abs_min * 1000,
+                             find_feature(isrc, DC1394_FEATURE_SHUTTER)->abs_max * 1000);
     case 9: // gain-manual
         return strdup("b");
     case 10: // gain

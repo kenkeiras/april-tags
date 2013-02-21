@@ -117,6 +117,16 @@ public class JCamView
         jf.setSize(width,800);
         jf.setVisible(true);
 
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            public void run()
+            {
+                stopRunThread();
+
+                if (isrc != null)
+                    isrc.close();
+            }
+        });
+
         new FeaturePollThread().start();
     }
 
