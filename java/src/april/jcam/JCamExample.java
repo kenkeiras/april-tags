@@ -14,6 +14,8 @@ public class JCamExample
 
     ImageSource isrc;
 
+    volatile boolean running = true;
+
     public JCamExample(ImageSource _isrc)
     {
         isrc = _isrc;
@@ -25,13 +27,21 @@ public class JCamExample
         jf.setSize(800, 600 + 22);
         jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         jf.setVisible(true);
+
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            public void run()
+            {
+                System.out.println("addShutdownHook");
+                running = false;
+            }
+        });
     }
 
     public void run()
     {
         isrc.start();
 
-        while (true) {
+        while (running) {
             FrameData frmd = isrc.getFrame(); // wait for the next frame
 
             // If something goes wrong with the camera, the frame data can be null
