@@ -110,8 +110,8 @@ public class ViewRobot extends VisEventAdapter implements ViewObject, LCMSubscri
             redraw();
 
             if (followMode > 0) {
-                VisCameraManager camManager = viewer.getVisLayer().cameraManager;
-                //vis2 camManager.follow(lastRobotPos, lastRobotQuat, pose.pos, pose.orientation, followMode == 2);
+                DefaultCameraManager camManager = (DefaultCameraManager) viewer.getVisLayer().cameraManager;
+                camManager.follow(lastRobotPos, lastRobotQuat, pose.pos, pose.orientation, followMode == 2);
             }
 
             lastRobotPos = LinAlg.copy(pose.pos);
@@ -161,8 +161,9 @@ public class ViewRobot extends VisEventAdapter implements ViewObject, LCMSubscri
             leadTimer.cancel();
             leadTimer = null;
         }
+
         lcm.publish("POSE_TELEPORT", pose);
-        return true;
+        return false;
     }
 
     class LeadTask extends TimerTask

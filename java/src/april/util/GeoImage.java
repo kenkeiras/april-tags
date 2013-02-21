@@ -18,7 +18,6 @@ import april.jmat.*;
  * The pixelz and altitude fields are ignored and are typically
  * zero. GPS positions correspond to pixel *centers*.
  *
- *
  *  How to create your own GeoImage:
  *
  * Download the NASA Worldwind applet for saving geotiff images from
@@ -26,7 +25,7 @@ import april.jmat.*;
  *  1) Select and save the area you are trying to grab. Be sure to cycle through the layers
  *     to find the best imagery (MS is usually good) for your location
  *  2) convert foo.tif foo.png  (this may complain about some unknown fields, but ignore)
- *  3) java magic.util.TIFF > foo.pngw
+ *  3) java april.util.TIFF > foo.pngw
  *
  * now pass the path for foo.png to an instance of this class
  **/
@@ -35,7 +34,7 @@ public class GeoImage
     public static class TiePoint
     {
         double image[]; // pixel coordinates
-        double ll[];   // lat lon el
+        double ll[];    // lat lon el
         double xy[];    // position in meters using linearization
     }
 
@@ -65,6 +64,13 @@ public class GeoImage
 
             tiepoints.add(tp);
         }
+
+        setGPSLinearization(_gpslin);
+    }
+
+    public void setGPSLinearization(GPSLinearization _gpslin)
+    {
+        this.gpslin = _gpslin;
 
         double mean_ll[] = new double[2];
 

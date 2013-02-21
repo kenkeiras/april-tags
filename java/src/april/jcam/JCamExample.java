@@ -31,7 +31,6 @@ public class JCamExample
         Runtime.getRuntime().addShutdownHook(new Thread() {
             public void run()
             {
-                System.out.println("addShutdownHook");
                 running = false;
             }
         });
