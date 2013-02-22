@@ -66,6 +66,8 @@ public class RobustCameraCalibrator
 
     public static class GraphStats
     {
+        public int rootNumber;   // the root camera number for this graph stats object
+
         public int numObs;       // number of tags used
         public double MRE;       // mean reprojection error
         public double MSE;       // mean-squared reprojection error
@@ -90,9 +92,10 @@ public class RobustCameraCalibrator
 
     /** Compute MRE and MSE for a graph.
       */
-    public GraphStats getGraphStats(Graph g)
+    public GraphStats getGraphStats(Graph g, int rootNumber)
     {
         GraphStats stats = new GraphStats();
+        stats.rootNumber = rootNumber;
         stats.numObs = 0;
         stats.MRE = 0;
         stats.MSE = 0;
@@ -147,7 +150,7 @@ public class RobustCameraCalibrator
         GraphSolver solver = new CholeskySolver(gw.g, new MinimumDegreeOrdering());
         CholeskySolver.verbose = false;
 
-        GraphStats lastStats = getGraphStats(gw.g);
+        GraphStats lastStats = getGraphStats(gw.g, gw.rootNumber);
         int convergedCount = 0;
         int iterationCount = 0;
 
@@ -155,7 +158,7 @@ public class RobustCameraCalibrator
             while (iterationCount < maxIterations && convergedCount < minConvergedIterations) {
 
                 solver.iterate();
-                GraphStats stats = getGraphStats(gw.g);
+                GraphStats stats = getGraphStats(gw.g, gw.rootNumber);
 
                 double percentImprovement = (lastStats.MRE - stats.MRE) / lastStats.MRE;
 
@@ -546,6 +549,20 @@ public class RobustCameraCalibrator
     ////////////////////////////////////////////////////////////////////////////////
     // rendering code
 
+    public void createGUI()
+    {
+        if (renderer != null)
+            return;
+
+        renderer = new CalibrationRenderer(this.cal, this.tf, this.metersPerTag, this.verbose);
+
+        List<CameraCalibrationSystem.MosaicWrapper> mosaics = this.cal.getMosaics();
+        for (CameraCalibrationSystem.MosaicWrapper mosaic : mosaics)
+            renderer.updateMosaicDimensions(mosaic.detectionSet);
+
+        renderer.draw(null);
+    }
+
     /** Return a reference to the CalibrationRenderer's VisCanvas, if it exists.
       */
     public VisCanvas getVisCanvas()
@@ -560,10 +577,15 @@ public class RobustCameraCalibrator
       */
     public void draw()
     {
+        draw(null);
+    }
+
+    public void draw(List<RobustCameraCalibrator.GraphStats> stats)
+    {
         if (renderer == null)
             return;
 
-        renderer.draw();
+        renderer.draw(stats);
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -572,15 +594,15 @@ public class RobustCameraCalibrator
     /** Print the camera calibration string to the terminal. Uses the
       * getCalibrationBlockString() method.
       */
-    public void printCalibrationBlock()
+    public void printCalibrationBlock(String[] commentLines)
     {
-        System.out.printf(getCalibrationBlockString());
+        System.out.printf(getCalibrationBlockString(commentLines));
     }
 
     /** Get the camera calibration string. Intrinsics that aren't initialized
       * result in a comment (thus an invalid calibration block).
       */
-    public String getCalibrationBlockString()
+    public String getCalibrationBlockString(String[] commentLines)
     {
         List<CameraCalibrationSystem.CameraWrapper> cameras = cal.getCameras();
 
@@ -590,14 +612,12 @@ public class RobustCameraCalibrator
         str += "aprilCameraCalibration {\n";
         str += "\n";
 
-        // Comment about MRE, MSE for this calibration
-        /*
-        if (true) {
-            str += String.format("    // MRE: %.5f\n",getMRE());
-            str += String.format("    // MSE: %.5f\n",getMSE());
+        // add all comment lines
+        if (commentLines != null) {
+            for (String line : commentLines)
+                str += String.format("    // %s\n", line.trim().replace("\n",""));
             str += "\n";
         }
-        */
 
         // print name list
         String names = "    names = [";
@@ -645,15 +665,17 @@ public class RobustCameraCalibrator
 
     /** Save the calibration to a file.
       */
-    public synchronized void saveCalibration()
+    public synchronized void saveCalibration(String basepath, String[] commentLines)
     {
-        saveCalibration("/tmp/cameraCalibration");
-    }
+        File dir = new File(basepath);
+        if (!dir.exists()) {
+            boolean success = dir.mkdirs();
+            if (!success) {
+                System.err.printf("RobustCameraCalibrator: Failure to create directory '%s'\n", basepath);
+                return;
+            }
+        }
 
-    /** Save the calibration to a file.
-      */
-    public synchronized void saveCalibration(String basepath)
-    {
         // find unused name
         int calNum = -1;
         String calName = null;
@@ -666,7 +688,7 @@ public class RobustCameraCalibrator
 
         try {
             BufferedWriter outs = new BufferedWriter(new FileWriter(outputConfigFile));
-            outs.write(getCalibrationBlockString());
+            outs.write(getCalibrationBlockString(commentLines));
             outs.flush();
             outs.close();
         } catch (Exception ex) {
@@ -677,14 +699,7 @@ public class RobustCameraCalibrator
 
     /** Save the calibration to a file and all images.
       */
-    public synchronized void saveCalibrationAndImages()
-    {
-        saveCalibrationAndImages("/tmp/cameraCalibration");
-    }
-
-    /** Save the calibration to a file and all images.
-      */
-    public synchronized void saveCalibrationAndImages(String basepath)
+    public synchronized void saveCalibrationAndImages(String basepath, String[] commentLines)
     {
         // create directory for image dump
         int dirNum = -1;
@@ -704,7 +719,7 @@ public class RobustCameraCalibrator
         String configpath = String.format("%s/calibration.config", dirName);
         try {
             BufferedWriter outs = new BufferedWriter(new FileWriter(new File(configpath)));
-            outs.write(getCalibrationBlockString());
+            outs.write(getCalibrationBlockString(commentLines));
             outs.flush();
             outs.close();
         } catch (Exception ex) {
@@ -765,12 +780,6 @@ public class RobustCameraCalibrator
     public TagMosaic getTagMosaic()
     {
         return tm;
-    }
-
-    public RobustCameraCalibrator copy()
-    {
-        boolean hasgui = (this.renderer != null);
-        return copy(hasgui);
     }
 
     public RobustCameraCalibrator copy(boolean gui)

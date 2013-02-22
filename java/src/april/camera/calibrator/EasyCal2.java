@@ -1,15 +1,20 @@
 package april.camera.calibrator;
 
-import java.io.*;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
-import java.awt.image.*;
-import java.util.*;
 import java.awt.event.*;
-
+import java.awt.image.*;
+import java.io.*;
+import java.util.*;
+import java.util.concurrent.*;
+import javax.imageio.*;
 import javax.swing.*;
+
+import lcm.lcm.*;
+import april.lcmtypes.*;
+
 import april.camera.*;
 import april.camera.tools.*;
 import april.camera.models.*;
@@ -20,13 +25,18 @@ import april.tag.*;
 import april.util.*;
 import april.vis.*;
 
-import javax.imageio.*;
-
 public class EasyCal2
 {
     final int MODE_CALIBRATE = 0;
     final int MODE_RECTIFY = 1;
     int applicationMode = MODE_CALIBRATE;
+
+    private class ProcessedFrame
+    {
+        public FrameData fd;
+        public BufferedImage im;
+        public List<TagDetection> detections;
+    }
 
     // gui
     JFrame          jf;
@@ -37,6 +47,8 @@ public class EasyCal2
     // debug gui
     VisLayer vl2 = null;
 
+    LCM lcm = LCM.getSingleton();
+
     // Debug state
     ArrayList<SuggestedImage> ranked;
 
@@ -44,8 +56,15 @@ public class EasyCal2
     String          url;
     ImageSource     isrc;
     BlockingSingleQueue<FrameData> imageQueue = new BlockingSingleQueue<FrameData>();
+    BlockingSingleQueue<ProcessedFrame> processedImageQueue = new BlockingSingleQueue<ProcessedFrame>();
+
+    ArrayBlockingQueue<FrameData> saveQueue = new ArrayBlockingQueue(100);
+    String videoDir;
+
+    String autosaveDir;
 
     RobustCameraCalibrator calibrator;
+    List<RobustCameraCalibrator.GraphStats> lastGraphStats;
     Rasterizer rasterizer;
     double clickWidthFraction = 0.25, clickHeightFraction = 0.25;
 
@@ -59,11 +78,12 @@ public class EasyCal2
 
     Random r = new Random();//(1461234L);
     SyntheticTagMosaicImageGenerator simgen;
-    List<SuggestedImage> bestSuggestions = new ArrayList();
+    SuggestedImage suggestion = null;
     int suggestionNumber = 0;
 
     // Score FrameScorer
     double minFSScore = Double.MAX_VALUE;
+    long progressTimeoutUtime = Long.MAX_VALUE;
     boolean clearScoreState = false;
     int debugCT = 0;
 
@@ -96,6 +116,12 @@ public class EasyCal2
     boolean bestInitUpdated = false;
 
     List<Color> colorList = new ArrayList<Color>();
+
+    static volatile boolean running = true;
+    final AcquisitionThread   acquisitionThread;
+    final DetectionThread     detectionThread;
+    final CalibrationThread   calibrationThread;
+    final SaveThread          saveThread;
 
     static class SuggestedImage
     {
@@ -130,13 +156,16 @@ public class EasyCal2
     }
 
     public EasyCal2(CalibrationInitializer initializer, String url, double tagSpacingMeters, double stoppingAccuracy,
-                    boolean debugGUI, ArrayList<BufferedImage> debugSeedImages)
+                    boolean debugGUI, boolean dictionaryGUI, String videoDir, String autosaveDir,
+                    ArrayList<BufferedImage> debugSeedImages)
     {
         this.tf = new Tag36h11();
         this.tm = new TagMosaic(tf, tagSpacingMeters);
         this.td = new TagDetector(tf);
         this.tagSpacingMeters = tagSpacingMeters;
         this.initializer = initializer;
+        this.videoDir = videoDir;
+        this.autosaveDir = autosaveDir;
 
         this.stoppingAccuracy = stoppingAccuracy;
 
@@ -146,6 +175,7 @@ public class EasyCal2
         april.camera.models.KannalaBrandtInitializer.verbose = false;
         april.camera.models.DistortionFreeInitializer.verbose = false;
         april.camera.models.CaltechInitializer.verbose = false;
+        april.camera.models.Caltech4thOrderInitializer.verbose = false;
         april.camera.models.Radial4thOrderCaltechInitializer.verbose = false;
         april.camera.models.Radial6thOrderCaltechInitializer.verbose = false;
         april.camera.models.Radial8thOrderCaltechInitializer.verbose = false;
@@ -158,23 +188,29 @@ public class EasyCal2
         vc = new VisCanvas(vl);
 
         VisConsole vcon = new VisConsole(vw,vl,vc);
+        vcon.drawOrder = 2000;
         VisHandler vlis = new VisHandler();
         vcon.addListener(vlis);
         vl.addEventHandler(vlis);
 
+        vl.setBufferEnabled("fs-error-score", false);
+        vl.setBufferEnabled("fs-error-meter", false);
+
         jf = new JFrame("EasyCal2");
         jf.setLayout(new BorderLayout());
         jf.add(vc, BorderLayout.CENTER);
-        jf.setSize(1200, 600);
-        //GraphicsDevice device = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
-        //device.setFullScreenWindow(jf);
+        //jf.setSize(1200, 600);
+        GraphicsDevice device = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
+        device.setFullScreenWindow(jf);
         jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         jf.setVisible(true);
 
         // colors
         while (colorList.size() < this.tf.codes.length)
         {
-            List<Color> colors = Palette.listAll();
+            List<Color> colors = Palette.friendly.listAll();
+            colors.addAll(Palette.web.listAll());
+            colors.addAll(Palette.vibrant.listAll());
             colors.remove(0);
             colorList.addAll(colors);
         }
@@ -203,10 +239,10 @@ public class EasyCal2
             jf2.setSize(720, 480);
             jf2.setLocation(1200,0);
             jf2.setVisible(true);
-            jf2.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
-            new DebugEasyCal(this);
         }
+
+        if (dictionaryGUI)
+            new DebugEasyCal(this);
 
         if (debugSeedImages != null && debugSeedImages.size() > 0 ) {
             for (BufferedImage im : debugSeedImages)
@@ -215,8 +251,59 @@ public class EasyCal2
         }
 
         ////////////////////////////////////////
-        new AcquisitionThread().start();
-        new ProcessingThread().start();
+        acquisitionThread = new AcquisitionThread();
+        detectionThread   = new DetectionThread();
+        calibrationThread = new CalibrationThread();
+
+        if (!videoDir.isEmpty())
+            saveThread = new SaveThread();
+        else
+            saveThread = null;
+
+        acquisitionThread.start();
+        detectionThread.start();
+        calibrationThread.start();
+
+        if (saveThread != null)
+            saveThread.start();
+
+        ////////////////////////////////////////
+
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            public void run() {
+                this.setName("Shutdown hook");
+
+                running = false;
+
+                try {
+                    acquisitionThread.join();
+                } catch (InterruptedException ex) {
+                }
+
+                if (saveThread != null) {
+                    try {
+                        saveThread.interrupt();
+                        saveThread.join();
+                    } catch (InterruptedException ex) {
+                    }
+                }
+            }
+        });
+    }
+
+    private String[] getConfigCommentLines()
+    {
+        if (lastGraphStats == null)
+            return null;
+
+        ArrayList<String> lines = new ArrayList();
+
+        for (RobustCameraCalibrator.GraphStats gs : lastGraphStats)
+            lines.add(String.format("MRE: %10s MSE %10s",
+                                    (gs == null) ? "n/a" : String.format("%7.3f px", gs.MRE),
+                                    (gs == null) ? "n/a" : String.format("%7.3f px", gs.MSE)));
+
+        return lines.toArray(new String[0]);
     }
 
     class VisHandler extends VisEventAdapter implements VisConsole.Listener
@@ -226,24 +313,24 @@ public class EasyCal2
         {
             String toks[] = command.split("\\s+");
             if (toks.length == 1 && toks[0].equals("print-calibration")) {
-                calibrator.printCalibrationBlock();
+                calibrator.printCalibrationBlock(getConfigCommentLines());
                 return true;
             }
 
             if (toks[0].equals("save-calibration")) {
                 if (toks.length == 2)
-                    calibrator.saveCalibration(toks[1]);
+                    calibrator.saveCalibration(toks[1], getConfigCommentLines());
                 else
-                    calibrator.saveCalibration();
+                    calibrator.saveCalibration("/tmp/cameraCalibration", getConfigCommentLines());
 
                 return true;
             }
 
             if (toks[0].equals("save-calibration-images")) {
                 if (toks.length == 2)
-                    calibrator.saveCalibrationAndImages(toks[1]);
+                    calibrator.saveCalibrationAndImages(toks[1], getConfigCommentLines());
                 else
-                    calibrator.saveCalibrationAndImages();
+                    calibrator.saveCalibrationAndImages("/tmp/cameraCalibration", getConfigCommentLines());
 
                 return true;
             }
@@ -259,6 +346,19 @@ public class EasyCal2
                 }
             }
 
+            if (toks[0].equals("show-debug-gui")) {
+                calibrator.createGUI();
+
+                JFrame jf2 = new JFrame("Debug");
+                jf2.setLayout(new BorderLayout());
+                jf2.add(calibrator.getVisCanvas(), BorderLayout.CENTER);
+                jf2.setSize(720, 480);
+                jf2.setLocation(1200,0);
+                jf2.setVisible(true);
+
+                return true;
+            }
+
             return false;
         }
 
@@ -267,7 +367,7 @@ public class EasyCal2
          * out.) You may return null. **/
         public ArrayList<String> consoleCompletions(VisConsole vc, String prefix)
         {
-            return new ArrayList(Arrays.asList("print-calibration", "save-calibration /tmp/cameraCalibration", "save-calibration-images /tmp/cameraCalibration", "mode calibrate", "mode rectify"));
+            return new ArrayList(Arrays.asList("print-calibration", "save-calibration /tmp/cameraCalibration", "save-calibration-images /tmp/cameraCalibration", "mode calibrate", "mode rectify", "show-debug-gui"));
         }
 
 
@@ -284,6 +384,12 @@ public class EasyCal2
             if (code == KeyEvent.VK_SPACE) {
                 // Manual Capture
                 captureNext = true;
+
+                nmea_t nmea = new nmea_t();
+                nmea.utime = TimeUtil.utime();
+                nmea.nmea = "Flagged for manual capture\n";
+                lcm.publish("MANUAL", nmea);
+
                 return true;
             }
 
@@ -326,6 +432,7 @@ public class EasyCal2
     {
         public AcquisitionThread()
         {
+            this.setName("EasyCal2 AcquisitionThread");
         }
 
         public void run()
@@ -339,7 +446,7 @@ public class EasyCal2
             }
 
             isrc.start();
-            while (true) {
+            while (running) {
                 FrameData frmd = isrc.getFrame();
 
                 if (frmd == null)
@@ -347,16 +454,30 @@ public class EasyCal2
 
                 imageQueue.put(frmd);
             }
-
-            System.out.println("Out of frames!");
+            isrc.stop();
+            isrc.close();
         }
     }
 
-    class ProcessingThread extends Thread
+    private int getDynamicFontSize(double scale)
     {
+        double heightSize = vc.getHeight() * 0.025 * scale;
+        double widthSize  = vc.getWidth()  * 0.017 * scale;
+
+        return (int) Math.min(heightSize, widthSize);
+    }
+
+    class DetectionThread extends Thread
+    {
+        public DetectionThread()
+        {
+            this.setName("EasyCal2 DetectionThread");
+        }
+
         public void run()
         {
             long lastutime = 0;
+            boolean noTagsYet = true;
 
             while (true) {
 
@@ -369,41 +490,222 @@ public class EasyCal2
                 }
                 assert(imwidth == im.getWidth() && imheight == im.getHeight());
 
-                calibrationUpdate(im);
-                rectificationUpdate(im);
+                ProcessedFrame pf = new ProcessedFrame();
+                pf.fd = frmd;
+                pf.im = im;
 
-                // sleep a little if we're spinning too fast
-                long utime = TimeUtil.utime();
-                long desired = 30000;
-                if ((utime - lastutime) < desired) {
-                    int sleepms = (int) ((desired - (utime-lastutime))*1e-3);
-                    TimeUtil.sleep(sleepms);
+                pf.detections = td.process(im, new double[] {im.getWidth()/2.0, im.getHeight()/2.0});
+
+                if (pf.detections.size() > 0 && noTagsYet) {
+                    nmea_t nmea = new nmea_t();
+                    nmea.utime = TimeUtil.utime();
+                    nmea.nmea = "First tag detection\n";
+                    lcm.publish("STARTED", nmea);
+
+                    noTagsYet = false;
                 }
-                lastutime = utime;
+
+                if (applicationMode == MODE_CALIBRATE)
+                    draw(pf.im, pf.detections);
+
+                processedImageQueue.put(pf);
+
+                double dt = (frmd.utime - lastutime) * 1.0e-6;
+                if (!videoDir.isEmpty() && dt >= 0.18) {
+                    try {
+                        saveQueue.add(frmd);
+                        lastutime = frmd.utime;
+                    } catch (IllegalStateException ex) {
+                    }
+                }
             }
         }
 
-        void calibrationUpdate(BufferedImage im)
+        void draw(BufferedImage im, List<TagDetection> detections)
+        {
+            VisWorld.Buffer vb;
+
+            PixelsToVis = getPlottingTransformation(im, true);
+
+            ////////////////////////////////////////
+            // camera image
+            vb = vw.getBuffer("Camera");
+            vb.setDrawOrder(0);
+            {
+                BufferedImage gray = ImageConvert.convertImage(im, BufferedImage.TYPE_BYTE_GRAY);
+                vb.addBack(new VisLighting(false,
+                                           new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
+                                                            new VisChain(PixelsToVis,
+                                                                         new VzImage(new VisTexture(gray,
+                                                                                                    VisTexture.NO_MAG_FILTER |
+                                                                                                    VisTexture.NO_MIN_FILTER |
+                                                                                                    VisTexture.NO_REPEAT),
+                                                                                     0)))));
+            }
+            vb.swap();
+
+            vb = vw.getBuffer("HUD");
+            vb.setDrawOrder(1000);
+            vb.addBack(new VisDepthTest(false,
+                                        new VisPixCoords(VisPixCoords.ORIGIN.TOP,
+                                                         new VzText(VzText.ANCHOR.TOP,
+                                                                    "<<dropshadow=#FF000000,"+
+                                                                    "monospaced-"+getDynamicFontSize(1)+"-bold,center,white>>"+
+                                                                    "Images are shown in grayscale and mirrored for display purposes"))));
+            if (suggestion != null) {
+                double livetheta = Double.NaN, sugtheta = Double.NaN;
+
+                // suggestion major angle
+                {
+                    List<TagMosaic.GroupedDetections> columns = tm.getColumnDetections(suggestion.detections);
+                    TagMosaic.GroupedDetections most = null;
+                    for (int idx = 0; idx < columns.size(); idx++) {
+                        TagMosaic.GroupedDetections group = columns.get(idx);
+
+                        if (most == null || most.detections.size() < group.detections.size())
+                            most = group;
+                    }
+                    if (most != null && most.detections.size() >= 2) {
+                        TagDetection mind = null, maxd = null;
+                        for (TagDetection d : most.detections) {
+                            if (mind == null || mind.id > d.id)
+                                mind = d;
+                            if (maxd == null || maxd.id < d.id)
+                                maxd = d;
+                        }
+                        sugtheta = Math.atan2(maxd.cxy[1] - mind.cxy[1], maxd.cxy[0] - mind.cxy[0]);
+                    }
+                }
+
+                // live detection major angle
+                {
+                    List<TagMosaic.GroupedDetections> columns = tm.getColumnDetections(detections);
+                    TagMosaic.GroupedDetections most = null;
+                    for (int idx = 0; idx < columns.size(); idx++) {
+                        TagMosaic.GroupedDetections group = columns.get(idx);
+
+                        if (most == null || most.detections.size() < group.detections.size())
+                            most = group;
+                    }
+                    if (most != null && most.detections.size() >= 2) {
+                        TagDetection mind = null, maxd = null;
+                        for (TagDetection d : most.detections) {
+                            if (mind == null || mind.id > d.id)
+                                mind = d;
+                            if (maxd == null || maxd.id < d.id)
+                                maxd = d;
+                        }
+                        livetheta = Math.atan2(maxd.cxy[1] - mind.cxy[1], maxd.cxy[0] - mind.cxy[0]);
+                    }
+                }
+
+                if (!Double.isNaN(livetheta) && !Double.isNaN(sugtheta)) {
+                    double dtheta = MathUtil.mod2pi(livetheta - sugtheta);
+
+                    int fontsize = getDynamicFontSize(1.5);
+
+                    if (dtheta > Math.PI/3)
+                        vb.addBack(new VisDepthTest(false,
+                                   new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
+                                   new VzText(VzText.ANCHOR.TOP,
+                                              "<<dropshadow=#FF000000,"+
+                                              "monospaced-"+fontsize+"-bold,center,red>>"+
+                                              "Rotate right"))));
+
+                    if (dtheta < -Math.PI/3)
+                        vb.addBack(new VisDepthTest(false,
+                                   new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
+                                   new VzText(VzText.ANCHOR.TOP,
+                                              "<<dropshadow=#FF000000,"+
+                                              "monospaced-"+fontsize+"-bold,center,red>>"+
+                                              "Rotate left"))));
+                }
+            }
+            vb.swap();
+
+            vb = vw.getBuffer("Shade");
+            vb.setDrawOrder(1);
+            if (suggestion != null) {
+                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
+                                            new VisChain(PixelsToVis,
+                                                         LinAlg.translate(imwidth/2, imheight/2, 0),
+                                                         new VzRectangle(imwidth, imheight,
+                                                                         new VzMesh.Style(new Color(0, 0, 0, 128))))));
+            }
+            vb.swap();
+
+            vb = vw.getBuffer("Detections");
+            vb.setDrawOrder(10);
+            for (TagDetection d : detections) {
+                Color color = getTagColor(d.id);
+
+                ArrayList<double[]> quad = new ArrayList<double[]>();
+                quad.add(d.interpolate(-1,-1));
+                quad.add(d.interpolate( 1,-1));
+                quad.add(d.interpolate( 1, 1));
+                quad.add(d.interpolate(-1, 1));
+
+                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
+                                            new VisChain(PixelsToVis,
+                                                         new VzMesh(new VisVertexData(quad),
+                                                                    VzMesh.QUADS,
+                                                                    new VzMesh.Style(color)))));
+            }
+            vb.swap();
+        }
+    }
+
+    private Color getTagColor(int id)
+    {
+        int row = tm.getRow(id);
+        int col = tm.getColumn(id);
+
+        if (minRow != null && maxRow != null && minCol != null && maxCol != null) {
+            if (row > minRow && row < maxRow && col > minCol && col < maxCol)
+                return Color.white;
+        }
+
+        return colorList.get(id);
+    }
+
+    class CalibrationThread extends Thread
+    {
+        public CalibrationThread()
+        {
+            this.setName("EasyCal2 CalibrationThread");
+        }
+
+        public void run()
+        {
+            long lastutime = 0;
+
+            while (true) {
+
+                ProcessedFrame pf = processedImageQueue.get();
+
+                calibrationUpdate(pf);
+                rectificationUpdate(pf.im);
+            }
+        }
+
+        void calibrationUpdate(ProcessedFrame pf)
         {
             if (applicationMode != MODE_CALIBRATE) {
+                vw.getBuffer("remaining-frames").swap();
                 return;
             }
 
-            //Tic tic = new Tic();
-            List<TagDetection> detections = td.process(im, new double[] {im.getWidth()/2.0, im.getHeight()/2.0});
-            //double dt = tic.toc();
-            //System.out.printf("\rDetection time: %8.3f seconds", dt);
-
-            updateInitialization(im, detections);
-            updateMosaic(detections);
-            draw(im, detections);
-            scorePix(im, detections);
-            scoreFS(im, detections);
+            updateInitialization(pf.im, pf.detections);
+            updateMosaic(pf.detections);
+            drawSuggestions(pf.im);
+            scorePix(pf.im, pf.detections);
+            scoreFS(pf.im, pf.detections);
 
             if (clearScoreState) {
                 fsScoreImages.clear();
                 pixScoreImages.clear();
                 minFSScore = Double.MAX_VALUE;
+                progressTimeoutUtime = Long.MAX_VALUE;
                 clearScoreState = false;
             }
         }
@@ -449,7 +751,6 @@ public class EasyCal2
                 vw.getBuffer("SuggestedTags").swap();
                 vw.getBuffer("Detections").swap();
                 vw.getBuffer("Suggestion HUD").swap();
-                vw.getBuffer("Selected-best-color").swap();
                 vw.getBuffer("Error meter").swap();
                 vw.getBuffer("Rectified outline").swap();
                 vw.getBuffer("Flash").swap();
@@ -504,10 +805,10 @@ public class EasyCal2
 
             // we don't need a standard deviation lower than 100
             // was 20 when we added the bestInitImage to the actual calibration
-            if (bestScore < 100)
+            if (bestScore < 40)
                 return;
 
-            if (imagesSet.size() != 0 || detections.size() < 8) // XXX
+            if (calibrator.getCalRef().getAllImageSets().size() >= 2 || detections.size() < 4) // XXX
                 return;
 
             InitializationVarianceScorer scorer = new InitializationVarianceScorer(calibrator,
@@ -516,12 +817,14 @@ public class EasyCal2
             double score = scorer.scoreFrame(detections);
 
             // we can sometimes get unlucky with the random samples from the InitializationVarianceScorer
-            if (score <= 1.0e-6)
+            if (score <= 1.0e-6 || Double.isNaN(score) || Double.isInfinite(score)) {
+                System.out.printf("updateInitialization: returning early due to invalid score (%f)\n", score);
                 return;
+            }
 
             EasyCal2.this.currentScore = score;
 
-            if (bestInitImage == null || (score < 0.75*bestScore)) {
+            if (bestInitImage == null || Double.isInfinite(bestScore) || (score < 0.75*bestScore)) {
                 bestScore = score;
                 bestInitImage = im;
                 bestInitDetections = detections;
@@ -533,89 +836,30 @@ public class EasyCal2
                 calibrator.addOneImageSet(Arrays.asList(im), Arrays.asList(detections));
                 calibrator.draw();
             }
-
         }
 
-        void draw(BufferedImage im, List<TagDetection> detections)
+        void drawSuggestions(BufferedImage im)
         {
             VisWorld.Buffer vb;
 
             PixelsToVis = getPlottingTransformation(im, true);
-
-            ////////////////////////////////////////
-            // camera image
-            vb = vw.getBuffer("Camera");
-            vb.setDrawOrder(0);
-            {
-                BufferedImage gray = ImageConvert.convertImage(im, BufferedImage.TYPE_BYTE_GRAY);
-                vb.addBack(new VisLighting(false,
-                                           new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
-                                                            new VisChain(PixelsToVis,
-                                                                         new VzImage(new VisTexture(gray,
-                                                                                                    VisTexture.NO_MAG_FILTER |
-                                                                                                    VisTexture.NO_MIN_FILTER |
-                                                                                                    VisTexture.NO_REPEAT),
-                                                                                     0)))));
-            }
-            vb.swap();
-
-            vb = vw.getBuffer("HUD");
-            vb.setDrawOrder(1000);
-            vb.addBack(new VisDepthTest(false,
-                                        new VisPixCoords(VisPixCoords.ORIGIN.TOP,
-                                                         new VzText(VzText.ANCHOR.TOP,
-                                                                    "<<dropshadow=#FF000000,"+
-                                                                    "monospaced-12-bold,white>>"+
-                                                                    "Images are shown in grayscale and mirrored for display purposes"))));
-            vb.swap();
-
-            vb = vw.getBuffer("Shade");
-            vb.setDrawOrder(1);
-            if (bestSuggestions.size() > 0) {
-                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
-                                            new VisChain(PixelsToVis,
-                                                         LinAlg.translate(imwidth/2, imheight/2, 0),
-                                                         new VzRectangle(imwidth, imheight,
-                                                                         new VzMesh.Style(new Color(0, 0, 0, 128))))));
-            }
-            vb.swap();
+            double maxdim = Math.max(vc.getHeight(), vc.getWidth());
+            double dynamicLineWidth = Math.max(1, Math.ceil(maxdim/500));
 
             vb = vw.getBuffer("SuggestedTags");
             vb.setDrawOrder(20);
-            if (false && bestSuggestions.size() > 0) {
-                for (SuggestedImage si : bestSuggestions) {
+            if (suggestion != null) {
+                // Draw all the suggestions in muted colors
+                VisChain chain = new VisChain();
+                for (TagDetection d : suggestion.detections) {
 
-                    // Draw all the suggestions in muted colors
-                    VisChain chain = new VisChain();
-                    for (TagDetection d : si.detections) {
-
-                        Color color = colorList.get(d.id % colorList.size());
-                        chain.add(new VzLines(new VisVertexData(d.p),
-                                              VzLines.LINE_LOOP,
-                                              new VzLines.Style(new Color(64,64,64,64),2)));//color, 2)));;
-                    }
-                    vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
-                                                new VisChain(PixelsToVis, chain)));
+                    Color color = getTagColor(d.id);
+                    chain.add(new VzLines(new VisVertexData(d.p),
+                                          VzLines.LINE_LOOP,
+                                          new VzLines.Style(color, dynamicLineWidth)));
                 }
-            }
-            vb.swap();
-
-            vb = vw.getBuffer("Detections");
-            vb.setDrawOrder(10);
-            for (TagDetection d : detections) {
-                Color color = colorList.get(d.id);
-
-                ArrayList<double[]> quad = new ArrayList<double[]>();
-                quad.add(d.interpolate(-1,-1));
-                quad.add(d.interpolate( 1,-1));
-                quad.add(d.interpolate( 1, 1));
-                quad.add(d.interpolate(-1, 1));
-
                 vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
-                                            new VisChain(PixelsToVis,
-                                                         new VzMesh(new VisVertexData(quad),
-                                                                    VzMesh.QUADS,
-                                                                    new VzMesh.Style(color)))));
+                                            new VisChain(PixelsToVis, chain)));
             }
             vb.swap();
         }
@@ -627,17 +871,21 @@ public class EasyCal2
 
         void scoreFS(BufferedImage im, List<TagDetection> detections)
         {
-            if (bestSuggestions.size() == 0)
+            if (suggestion == null)
                 return;
 
+            List<CameraCalibrationSystem.CameraWrapper> camWrappers = calibrator.getCalRef().getCameras();
+            assert(camWrappers.size() == 1);
+            CameraCalibrationSystem.CameraWrapper cam = camWrappers.get(0);
+
             FrameScorer fs = null;
-            if (calibrator.getCalRef().getAllImageSets().size() < 3)
+            if (calibrator.getCalRef().getAllImageSets().size() < 3 || cam.cal == null)
                 fs = new InitializationVarianceScorer(calibrator, imwidth, imheight);
             else
                 fs = new PixErrScorer(calibrator, imwidth, imheight);
 
             double fsScore  = fs.scoreFrame(detections);
-            double fsThresh = bestSuggestions.get(bestSuggestions.size()-1).score;
+            double fsThresh = suggestion.score;
 
             if (fsScore <= .2)
                 return;
@@ -651,6 +899,7 @@ public class EasyCal2
             if (fsScore < minFSScore) {
 
                 minFSScore = fsScore;
+                progressTimeoutUtime = TimeUtil.utime() + 20*1000000; // 5 second with no progress
 
                 // System.out.printf("Got new min, with %d dections, value %f\n",detections.size(),fsScore);
                 // try {
@@ -663,6 +912,17 @@ public class EasyCal2
 
             }
 
+            if (TimeUtil.utime() > progressTimeoutUtime) {
+                VisWorld.Buffer vb = vw.getBuffer("stuck");
+                vb.setDrawOrder(1000);
+                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT,
+                                            new VisDepthTest(false,
+                                            new VzText(VzText.ANCHOR.BOTTOM_LEFT,
+                                                       "<<monospaced-"+getDynamicFontSize(1)+"-bold,right,red,dropshadow=#FFaaaaaa>>"+
+                                                       "Stuck? Press 'space' to take manual frame.\n \n"))));
+            }
+            vw.getBuffer("stuck").swap();
+
             ////////////////////////////////////////
             // frame score heuristic
             {
@@ -670,30 +930,52 @@ public class EasyCal2
                 vb.setDrawOrder(1000);
 
                 // Estimate frames remaining
-                double remaining = 0.0;
+                int pred = 10;
                 {
-                    ArrayList<double[]> nv = new ArrayList();
-                    for (int j = Math.max(0,selectedScores.size() - 5); j < selectedScores.size(); j++)
-                        nv.add(selectedScores.get(j));
-                    nv = stripNAs(nv);
-                    if (nv.size() >= 2) {
-                        double params[] = LinAlg.fitLine(nv);
-                        double pred = intercept(params, 1.0);
+                    if (selectedScores.size() > 2) {
+                        int last_idx = (int)selectedScores.get(selectedScores.size() -1)[0];
+                        double last_error = selectedScores.get(selectedScores.size() -1)[1];
+                        double second_to_last_error = selectedScores.get(selectedScores.size() -2)[1];
+                        double slope = last_error - second_to_last_error;
 
-                        remaining = pred - calibrator.getCalRef().getAllImageSets().size();
+                        // we can hope to improve the error by at most .5 pixels per frame
+                        // and at the least .01 per frame
+                        slope = MathUtil.clamp(slope, -.5, -.01);
+
+                        int remaining = (int)Math.ceil((stoppingAccuracy - last_error) / slope);
+                        pred = remaining + last_idx;
                     }
                 }
+                int remaining = Math.max(1, Math.min(12, pred - calibrator.getCalRef().getAllImageSets().size()));
+
 
 
                 String name_toks[] = fs.getClass().getName().split("\\.");
-                String format0 = "<<white>>";
-                String format1 = fsScore < fsThresh ? "<<green>>" : "<<white>>";
-                String format2 = minFSScore < fsThresh ? "<<green>>" : "<<white>>";
+                String format0 = "<<white,monospaced-12,left>>";
+                String format1 = fsScore < fsThresh ? "<<green,monospaced-12,left>>" : "<<white,monospaced-12,left>>";
+                String format2 = minFSScore < fsThresh ? "<<green,monospaced-12,left>>" : "<<white,monospaced-12,left>>";
                 vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.TOP_RIGHT,
                                             new VzText(VzText.ANCHOR.TOP_RIGHT,
-                                                       String.format("%s FrameScore %12.5f\n%sThresh %12.5f\n%sMin %12.5f\n%s%s\nRemaining frames %.1f\n",
-                                                                     format1,fsScore, format0, fsThresh, format2,minFSScore, format0, name_toks[name_toks.length -1], remaining))));
+                                                       String.format("%s%s\n"+
+                                                                     "%sFrameScore       %12.3f\n"+
+                                                                     "%sThresh           %12.3f\n"+
+                                                                     "%sMin              %12.3f\n"+
+                                                                     "%sRemaining frames %d",
+                                                                     format0, name_toks[name_toks.length -1],
+                                                                     format1, fsScore,
+                                                                     format0, fsThresh,
+                                                                     format2, minFSScore,
+                                                                     format0, remaining))));
                 vb.swap();
+
+                vb = vw.getBuffer("remaining-frames");
+                vb.setDrawOrder(1000);
+                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.TOP_RIGHT,
+                                            new VzText(VzText.ANCHOR.TOP_RIGHT,
+                                                       "<<monospaced-"+getDynamicFontSize(1)+"-bold,right,white>>"+
+                                                       remaining+" frame"+(remaining != 1 ? "s" : "")+" to go.")));
+                vb.swap();
+
             }
 
 
@@ -746,24 +1028,15 @@ public class EasyCal2
                 vb.setDrawOrder(1000);
                 vb.addBack(new VisDepthTest(false,
                                             new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
-                                            new VzText(VzText.ANCHOR.CENTER,
+                                            new VzText(VzText.ANCHOR.BOTTOM,
                                                        "<<dropshadow=#AA000000>>"+
-                                                       "<<monospaced-20-bold,green>>"+
+                                                       "<<monospaced-"+getDynamicFontSize(1.5)+"-bold,center,green>>"+
                                                        "Hold target in front of camera"))));
                 vb.swap();
                 return;
             }
 
-            if (bestSuggestions.size() == 0) {
-                vb = vw.getBuffer("Selected-best-color");
-                vb.setDrawOrder(1000);
-                vb.addBack(new VisDepthTest(false,
-                                            new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
-                                            new VzText(VzText.ANCHOR.CENTER,
-                                                       "<<dropshadow=#AA000000>>"+
-                                                       "<<monospaced-20-bold,green>>"+
-                                                       "Move target closer to center of image"))));
-                vb.swap();
+            if (suggestion == null) {
                 return;
             }
 
@@ -774,24 +1047,21 @@ public class EasyCal2
                                         new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM,
                                         new VzText(VzText.ANCHOR.BOTTOM,
                                                    "<<dropshadow=#FF000000>>"+
-                                                   "<<monospaced-14-bold,white>>"+
+                                                   "<<monospaced-"+getDynamicFontSize(1)+"-bold,center,white>>"+
                                                    "Align live detections with similarly-colored outlines"))));
 
             // nothing more to do without detections
             if (detections.size() == 0)
                 return;
 
-            // find matches between observed and suggested
-            // Find the suggested image with the best score. Draw solids for that??
-            SuggestedImage bestSug = bestSuggestions.get(0);
-            double bestMeanDist = Double.MAX_VALUE;
-
-            for (SuggestedImage sim : bestSuggestions) {
+            // compute score for suggestion
+            double meandist = 0;
+            {
                 double totaldist = 0;
                 int nmatches = 0;
 
                 for (TagDetection det1 : detections) {
-                    for (TagDetection det2 : sim.detections) {
+                    for (TagDetection det2 : suggestion.detections) {
                         if (det1.id != det2.id)
                             continue;
 
@@ -801,14 +1071,8 @@ public class EasyCal2
                     }
                 }
 
-                double meandist = totaldist/nmatches;
-
-                if (meandist < bestMeanDist) {
-                    bestMeanDist = meandist;
-                    bestSug = sim;
-                }
+                meandist = totaldist/nmatches;
             }
-            double meandist = bestMeanDist;
 
             // Compute the acceptance threshold based on the size of the target:
             // Compute maximum target dimension
@@ -824,8 +1088,6 @@ public class EasyCal2
 
                     // how far apart on the screen are they?
                     double pixDist = LinAlg.distance(td1.cxy, td2.cxy);
-
-
                     double distRatio = pixDist/gridDist; // pixels/square
 
                     if (distRatio > maxDist)
@@ -835,26 +1097,6 @@ public class EasyCal2
 
             // in units of "squares" how close do we need to get on average?
             double meandistthreshold = maxDist;
-
-
-            // Draw selected pose in color
-            {
-                vb = vw.getBuffer("Selected-best-color");
-                vb.setDrawOrder(25);
-
-                // Draw all the suggestions in muted colors
-                VisChain chain = new VisChain();
-                for (TagDetection d : bestSug.detections) {
-
-                    Color color = colorList.get(d.id % colorList.size());
-                    chain.add(new VzLines(new VisVertexData(d.p),
-                                          VzLines.LINE_LOOP,
-                                          new VzLines.Style(color, 2)));
-                }
-                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
-                                            new VisChain(PixelsToVis, chain)));
-                vb.swap();
-            }
 
             ////////////////////////////////////////
             // meter
@@ -903,9 +1145,9 @@ public class EasyCal2
                 vb.setDrawOrder(1000);
                 vb.addBack(new VisDepthTest(false,
                                             new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
-                                            new VzText(VzText.ANCHOR.CENTER,
+                                            new VzText(VzText.ANCHOR.BOTTOM,
                                                        "<<dropshadow=#AA000000>>"+
-                                                       "<<monospaced-20-bold,green>>"+
+                                                       "<<monospaced-"+getDynamicFontSize(1.5)+"-bold,center,green>>"+
                                                        "Almost there..."))));
                 vb.swap();
             }
@@ -926,6 +1168,7 @@ public class EasyCal2
                     ////////////////////////////////////////
                     // "flash"
                     vw.getBuffer("Suggestion HUD").swap();
+                    vw.getBuffer("SuggestedTags").swap();
                     new FlashThread().start();
 
                     ////////////////////////////////////////
@@ -933,8 +1176,8 @@ public class EasyCal2
                     waitingForBest = false;
                     ScoredImage bestSI = fsScoreImages.get(0);//pixScoreImages.get(0);
 
-                    if (!captureNext)
-                        draw(bestSI.im, bestSI.detections);
+                    //if (!captureNext)
+                    //    draw(bestSI.im, bestSI.detections);
 
                     // Compute the frame score for this image
                     if (calibrator.getCalRef().getAllImageSets().size() >= 3) {
@@ -948,24 +1191,35 @@ public class EasyCal2
 
                             vb = vw.getBuffer("Finished");
                             vb.addBack(new VisDepthTest(false,
-                                                        new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
-                                                                         new VzText(VzText.ANCHOR.CENTER,
-                                                                                    "<<dropshadow=#AA000000>>"+
-                                                                                    "<<monospaced-28-bold,green>>"+
-                                                                                    "Calibration Complete."+
-                                                                                    "\n<<monospaced-14-bold>>"+
-                                                                                    "type \"save-calibration\" to export data"
-                                                                             ))));
+                                       new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
+                                                        new VzText(VzText.ANCHOR.CENTER,
+                                                                   "<<dropshadow=#AA000000>>"+
+                                                                   "<<monospaced-"+getDynamicFontSize(2)+"-bold,center,green>>"+
+                                                                   "Calibration complete."+
+                                                                   "\n<<monospaced-"+getDynamicFontSize(1)+"-bold,center>>"+
+                                                                   "type \":save-calibration-images\" to export data"))));
                             vb.setDrawOrder(1001);
                             vb.swap();
+
+
+
+                            if (autosaveDir.isEmpty() == false) {
+                                calibrator.saveCalibrationAndImages(autosaveDir, getConfigCommentLines());
+
+                                nmea_t nmea = new nmea_t();
+                                nmea.utime = TimeUtil.utime();
+                                nmea.nmea = "Exiting\n";
+                                lcm.publish("FINISHED", nmea);
+
+                                System.exit(0);
+                            }
                         }
 
                         int nimages = calibrator.getCalRef().getAllImageSets().size();
                         selectedScores.add(new double[]{ nimages+1, score }); // Keep the history
 
                         System.out.printf("Chose image with score %f compared to best in dictionary %f \n",
-                                          score,
-                                          bestSuggestions.get(0).score);
+                                          score, suggestion.score);
                     }
 
                     if (captureNext)
@@ -991,25 +1245,21 @@ public class EasyCal2
                 vb.setDrawOrder(1000);
 
 
-                if (detections.size() > 0 && bestSug != null && bestSug.detections.size() > 0) {
-                    double detectionSizeError = getMeanDetectionSizeErrors(bestSug.detections, detections);
-                    //System.out.printf("Detection size error %10.3f\r", detectionSizeError);
+                if (detections.size() > 0 && suggestion != null && suggestion.detections.size() > 0) {
+                    double detectionSizeError = getMeanDetectionSizeErrors(suggestion.detections, detections);
 
                     String str = null;
-                    if (detectionSizeError < -5.0)
-                        str = "Move target away from camera";
-
-                    if (detectionSizeError > 10.0)
-                        str = "Move target closer to camera";
+                    if (detectionSizeError < -5.0) str = "Move target away from camera";
+                    if (detectionSizeError > 10.0) str = "Move target closer to camera";
 
                     if (str != null) {
                         str = "<<dropshadow=#AA000000>>"+
-                              "<<monospaced-20-bold,green>>"+
+                              "<<monospaced-"+getDynamicFontSize(1.5)+"-bold,center,green>>"+
                               str;
 
                         vb.addBack(new VisDepthTest(false,
                                                     new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
-                                                    new VzText(VzText.ANCHOR.CENTER, str))));
+                                                    new VzText(VzText.ANCHOR.BOTTOM, str))));
                     }
                 }
 
@@ -1044,11 +1294,12 @@ public class EasyCal2
                 maxy = Math.max(maxy, xy[1]);
             }
 
-            double h = vc.getHeight()*0.25;
+            double h = Math.min(vc.getHeight()*0.25, 150);
+            double fraction = h / vc.getHeight();
             double scale = h / (maxy - miny);
 
-            clickHeightFraction = 0.25;
-            clickWidthFraction  = 0.25*((maxx-minx)/(maxy-miny))/(vc.getWidth()/vc.getHeight());
+            clickHeightFraction = fraction;
+            clickWidthFraction  = fraction*((maxx-minx)/(maxy-miny))/(vc.getWidth()/vc.getHeight());
 
             //System.out.printf("im %4d %4d vc %4d %4d percent %5.2f %5.2f :: %6.1f %6.1f %6.1f %6.1f\n",
             //                  imwidth, imheight, vc.getWidth(), vc.getHeight(),
@@ -1110,9 +1361,7 @@ public class EasyCal2
 
         // Compute single depth for the dictionary XXX
         double K[][] = cal.copyIntrinsics();
-        //double desiredDepths[] = { (K[0][0] / (width*1.0)) * (7*tagSpacingMeters),
-        //                           (K[0][0] / (width*0.6)) * (7*tagSpacingMeters) };
-        double desiredDepths[] = { (K[1][1] / (height*0.6)) * (5*tagSpacingMeters), //};//,
+        double desiredDepths[] = { (K[1][1] / (height*0.6)) * (5*tagSpacingMeters),
                                    (K[1][1] / (height*1.2)) * (5*tagSpacingMeters) };
 
         double rpys[][] = {{ 0.0, 0.0, Math.PI/2 },
@@ -1256,7 +1505,9 @@ public class EasyCal2
         List<RobustCameraCalibrator.GraphStats> stats =
             calibrator.iterateUntilConvergenceWithReinitalization(1.0, 0.01, 3, 50);
 
-        calibrator.draw();
+        calibrator.draw(stats);
+
+        lastGraphStats = stats;
     }
 
     private double[][] getPlottingTransformation(BufferedImage im, boolean mirror)
@@ -1395,26 +1646,12 @@ public class EasyCal2
         System.out.printf("  Scored %d suggestions in %.3f seconds\n", suggestDictionary.size(), t.toctic());
         // Pick the single best suggestion
         if (true) {
-            if (ranked.size() > 0)
-                bestSuggestions = Arrays.asList(ranked.get(0));
-            else
-                bestSuggestions = new ArrayList();
-        } else {
-            double worstAllowedScore = ranked.get(0).score * 1.2;
-
-            int maxSize  = (int)(ranked.size()*.10);
-
-            ArrayList<SuggestedImage> allowed = new ArrayList();
-            for (SuggestedImage si : ranked) {
-                if (si.score <= worstAllowedScore)
-                    allowed.add(si);
-                if (allowed.size() == maxSize)
-                    break;
-            }
-            bestSuggestions = allowed;
+            if (ranked.size() > 0) suggestion = ranked.get(0);
+            else                   suggestion = null;
         }
 
-        System.out.printf("Picked %d of %d as best suggestions\n", bestSuggestions.size(), suggestDictionary.size());
+        if (suggestion != null)
+            publishSuggestion(suggestion);
 
         // Grab the current value of 'cal'
         {
@@ -1423,18 +1660,48 @@ public class EasyCal2
             System.out.printf("cur score %f\n", curCalScore);
         }
         // Debug
-        System.out.println("Top ten suggestions:");
-        for (int i = 0; i < Math.min(10, ranked.size()); i++) {
-            System.out.printf(" %02d score %f\n", i, ranked.get(i).score);
-        }
-        int lastIdx = ranked.size()-1;
-        if (lastIdx >= 0) System.out.printf(" %d score %f\n", lastIdx, ranked.get(lastIdx).score);
+        if (false) {
+            System.out.println("Top ten suggestions:");
+            for (int i = 0; i < Math.min(10, ranked.size()); i++) {
+                System.out.printf(" %02d score %f\n", i, ranked.get(i).score);
+            }
+            int lastIdx = ranked.size()-1;
+            if (lastIdx >= 0) System.out.printf(" %d score %f\n", lastIdx, ranked.get(lastIdx).score);
 
+        }
     }
 
+    private void publishSuggestion(SuggestedImage s)
+    {
+        suggested_image_t si = new suggested_image_t();
+        si.utime = TimeUtil.utime();
+        si.score = s.score;
+        si.xyzrpy = LinAlg.copy(s.xyzrpy);
+        si.xyzrpy_centered = LinAlg.copy(s.xyzrpy_cen);
+
+        si.ndetections   = s.detections.size();
+        si.tag_ids       = new int[si.ndetections];
+        si.tag_positions = new double[si.ndetections][4][2];
+        si.tag_centers   = new double[si.ndetections][2];
+
+        for (int i = 0; i < si.ndetections; i++) {
+            TagDetection d = s.detections.get(i);
+
+            si.tag_ids[i]       = d.id;
+            si.tag_positions[i] = LinAlg.copy(d.p);
+            si.tag_centers[i]   = LinAlg.copy(d.cxy);
+        }
+
+        lcm.publish("SUGGESTED_IMAGE", si);
+    }
 
     private class FlashThread extends Thread
     {
+        private FlashThread()
+        {
+            this.setName("EasyCal2 FlashThread");
+        }
+
         public void run()
         {
             VisWorld.Buffer vb;
@@ -1461,6 +1728,81 @@ public class EasyCal2
         }
     }
 
+    private class SaveThread extends Thread
+    {
+        public void run()
+        {
+            // make sure logging directory exists
+            File videoFile = new File(videoDir);
+            if (videoFile.exists() == false) {
+                if (videoFile.mkdirs() != true) {
+                    System.err.printf("EasyCal2: Failure to create directory '%s' for video logging\n", videoDir);
+                    System.exit(1);
+                }
+            }
+
+            // pick filename for islog
+            int logNum = -1;
+            String baseLogName = null;
+            String logName = null;
+            File log = null;
+            do {
+                logNum++;
+                baseLogName = String.format("videolog%d.islog", logNum);
+                logName = String.format("%s/%s", videoDir, baseLogName);
+                log = new File(logName);
+            } while (log.exists());
+
+            // open islog
+            ISLog islog = null;
+            try {
+                islog = new ISLog(logName, "w");
+
+            } catch (IOException ex) {
+                System.out.println("Exception: " + ex);
+                ex.printStackTrace();
+                System.exit(1);
+            }
+
+            // start logging
+            while (running)
+            {
+                FrameData frmd = null;
+
+                try {
+                    frmd = saveQueue.take();
+                } catch (InterruptedException ex) {
+                    System.out.println("EasyCal2 SaveThread interrupted: " + ex);
+                    continue;
+                }
+                assert(frmd != null);
+
+                try {
+                    long offset = islog.write(frmd);
+
+                    url_t url = new url_t();
+                    url.utime = frmd.utime;
+                    url.url = String.format("islog://%s?offset=%s",
+                                            baseLogName, Long.toString(offset));
+                    lcm.publish("ISLOG", url);
+
+                } catch (IOException ex) {
+                    System.out.println("Exception: " + ex);
+                    ex.printStackTrace();
+                    System.exit(1);
+                }
+            }
+
+            try {
+                islog.close();
+            } catch (IOException ex) {
+                System.out.println("Exception: " + ex);
+                ex.printStackTrace();
+                System.exit(1);
+            }
+        }
+    }
+
     public static void main(String args[])
     {
         GetOpt opts  = new GetOpt();
@@ -1472,6 +1814,9 @@ public class EasyCal2
         opts.addDouble('\0',"stopping-accuracy",1.0,"Termination accuracy (px) which flags \"finished\"");
         opts.addString('\0',"debug-seed-images","","Optional parameter listing starting images for debugging");
         opts.addBoolean('\0',"debug-gui",false,"Display additional debugging information");
+        opts.addBoolean('\0',"dictionary-gui",false,"Display image dictionary");
+        opts.addString('\0',"video-dir","","Directory in which to save video at 5Hz");
+        opts.addString('\0',"autosave-dir","","Directory in which to automatically save the calibration");
 
         if (!opts.parse(args)) {
             System.out.println("Option error: "+opts.getReason());
@@ -1480,8 +1825,10 @@ public class EasyCal2
         String url = opts.getString("url");
         String initclass = opts.getString("class");
         double spacing = opts.getDouble("spacing");
+        String videoDir = opts.getString("video-dir");
+        String autosaveDir = opts.getString("autosave-dir");
 
-        if (opts.getBoolean("help") || url.isEmpty()){
+        if (opts.getBoolean("help") || url.isEmpty()) {
             System.out.println("Usage:");
             opts.doHelp();
             System.exit(1);
@@ -1505,7 +1852,8 @@ public class EasyCal2
         }
 
         new EasyCal2(initializer, url, spacing,  opts.getDouble("stopping-accuracy"),
-                     opts.getBoolean("debug-gui"), debugSeedImages);
+                     opts.getBoolean("debug-gui"), opts.getBoolean("dictionary-gui"),
+                     videoDir, autosaveDir, debugSeedImages);
     }
 }
 

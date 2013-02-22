@@ -1,0 +1,7 @@
+struct gps_tiepoint_t
+{
+	int64_t utime;
+
+	double lle[3];
+	double xyzt[4];
+}

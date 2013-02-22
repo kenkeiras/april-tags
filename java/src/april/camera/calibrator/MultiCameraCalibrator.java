@@ -29,6 +29,7 @@ public class MultiCameraCalibrator implements ParameterListener
     BlockingSingleQueue<FrameData>  imageQueues[];
 
     RobustCameraCalibrator calibrator;
+    List<RobustCameraCalibrator.GraphStats> lastGraphStats;
     TagFamily   tf;
     TagDetector td;
     double      metersPerTag;
@@ -132,7 +133,9 @@ public class MultiCameraCalibrator implements ParameterListener
         // get a shuffled set of nice tag colors
         while (colorList.size() < this.tf.codes.length)
         {
-            List<Color> colors = Palette.listAll();
+            List<Color> colors = Palette.friendly.listAll();
+            colors.addAll(Palette.web.listAll());
+            colors.addAll(Palette.vibrant.listAll());
             colors.remove(0);
             colorList.addAll(colors);
         }
@@ -144,6 +147,21 @@ public class MultiCameraCalibrator implements ParameterListener
         calibrator.draw();
     }
 
+    private String[] getConfigCommentLines()
+    {
+        if (lastGraphStats == null)
+            return null;
+
+        ArrayList<String> lines = new ArrayList();
+
+        for (RobustCameraCalibrator.GraphStats gs : lastGraphStats)
+            lines.add(String.format("MRE: %10s MSE %10s",
+                                    (gs == null) ? "n/a" : String.format("%7.3f px", gs.MRE),
+                                    (gs == null) ? "n/a" : String.format("%7.3f px", gs.MSE)));
+
+        return lines.toArray(new String[0]);
+    }
+
     public void parameterChanged(ParameterGUI pg, String name)
     {
         if (name.equals("captureOnce")) {
@@ -152,13 +170,13 @@ public class MultiCameraCalibrator implements ParameterListener
         }
 
         if (name.equals("print"))
-            calibrator.printCalibrationBlock();
+            calibrator.printCalibrationBlock(getConfigCommentLines());
 
         if (name.equals("savecalibration"))
-            calibrator.saveCalibration();
+            calibrator.saveCalibration("/tmp/cameraCalibration", getConfigCommentLines());
 
         if (name.equals("saveall"))
-            calibrator.saveCalibrationAndImages();
+            calibrator.saveCalibrationAndImages("/tmp/cameraCalibration", getConfigCommentLines());
     }
 
     class AcquisitionThread extends Thread
@@ -369,9 +387,11 @@ public class MultiCameraCalibrator implements ParameterListener
         List<RobustCameraCalibrator.GraphStats> stats =
             calibrator.iterateUntilConvergenceWithReinitalization(1.0, 0.01, 3, 50);
 
-        calibrator.draw();
+        lastGraphStats = stats;
+
+        calibrator.draw(stats);
         if (verbose)
-            calibrator.printCalibrationBlock();
+            calibrator.printCalibrationBlock(getConfigCommentLines());
 
         if (verbose) {
             for (RobustCameraCalibrator.GraphStats s : stats) {

@@ -289,8 +289,6 @@ public class DefaultEventHandler implements VisEventHandler, VisSerializable
         boolean shift = (mods & MouseEvent.SHIFT_DOWN_MASK)>0;
         boolean ctrl = (mods & MouseEvent.CTRL_DOWN_MASK)>0;
 
-        double mp[] = vl.manipulationManager.pickManipulationPoint(vc, vl, rinfo, ray);
-
         VisCameraManager.CameraPosition cameraPosition = rinfo.cameraPositions.get(vl);
 
         double factor = 1.0;
@@ -303,21 +301,40 @@ public class DefaultEventHandler implements VisEventHandler, VisSerializable
         if (e.getWheelRotation() > 0)
             factor = 1.0 / factor;
 
+        double mp[] = vl.manipulationManager.pickManipulationPoint(vc, vl, rinfo, ray);
+
+        /*
         double lookdir[] = LinAlg.normalize(LinAlg.subtract(cameraPosition.lookat, cameraPosition.eye));
         double dist = LinAlg.distance(cameraPosition.eye, cameraPosition.lookat);
         double newdist = dist * factor;
-/*
-  newdist = Math.min(cameraPosition.zclip_far / 5.0, newdist);
-  newdist = Math.max(cameraPosition.zclip_near * 5.0, newdist);
-*/
-        cameraPosition.eye = LinAlg.subtract(cameraPosition.lookat, LinAlg.scale(lookdir, newdist));
+        //newdist = Math.min(cameraPosition.zclip_far / 5.0, newdist);
+        //newdist = Math.max(cameraPosition.zclip_near * 5.0, newdist);
 
-        double mv[] = windowSpacePanTo(mp, ex, ey, vl.cameraManager.preserveZWhenTranslating(),
-                                       cameraPosition.getProjectionMatrix(), cameraPosition.getViewport(),
-                                       cameraPosition.eye, cameraPosition.lookat, cameraPosition.up);
+        double fakeEye[] = LinAlg.subtract(cameraPosition.lookat, LinAlg.scale(lookdir, newdist));
+        double fakeView[] = LinAlg.subtract(cameraPosition.lookat, fakeEye);
 
-        vl.cameraManager.uiLookAt(LinAlg.add(mv, cameraPosition.eye),
-                                  LinAlg.add(mv, cameraPosition.lookat),
+        double movedir[] = LinAlg.normalize(LinAlg.subtract(mp, cameraPosition.eye));
+        GRay3D moveray = new GRay3D(LinAlg.copy(cameraPosition.eye), movedir);
+
+        cameraPosition.eye = moveray.intersectPlaneXY(fakeEye[2]); // XXX XY only?
+        cameraPosition.lookat = LinAlg.add(cameraPosition.eye, fakeView);
+        */
+
+        // a simple triangle-scaling method
+        double mp2eye[]    = LinAlg.subtract(cameraPosition.eye, mp);
+        double mp2lookat[] = LinAlg.subtract(cameraPosition.lookat, mp);
+
+        mp2eye    = LinAlg.scale(mp2eye, factor);
+        mp2lookat = LinAlg.scale(mp2lookat, factor);
+
+        double neweye[]    = LinAlg.add(mp, mp2eye);
+        double newlookat[] = LinAlg.add(mp, mp2lookat);
+
+        cameraPosition.eye = neweye;
+        cameraPosition.lookat = newlookat;
+
+        vl.cameraManager.uiLookAt(cameraPosition.eye,
+                                  cameraPosition.lookat,
                                   cameraPosition.up,
                                   false);
 

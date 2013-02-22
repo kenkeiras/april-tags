@@ -5,7 +5,7 @@ import april.config.*;
 import april.jmat.*;
 import april.util.*;
 
-public class Caltech4Calibration implements Calibration, ParameterizableCalibration
+public class Caltech4thOrderCalibration implements Calibration, ParameterizableCalibration
 {
     // constants for iteratively rectifying coordinates (e.g. max allowed error)
     private static final int max_iterations = 20;
@@ -43,7 +43,7 @@ public class Caltech4Calibration implements Calibration, ParameterizableCalibrat
     private int             width;
     private int             height;
 
-    public Caltech4Calibration(double fc[], double cc[], double kc[], double skew,
+    public Caltech4thOrderCalibration(double fc[], double cc[], double kc[], double skew,
                               int width, int height)
     {
         this.fc     = LinAlg.copy(fc);
@@ -57,7 +57,7 @@ public class Caltech4Calibration implements Calibration, ParameterizableCalibrat
         createIntrinsicsMatrix();
     }
 
-    public Caltech4Calibration(Config config)
+    public Caltech4thOrderCalibration(Config config)
     {
         this.fc     = config.requireDoubles("intrinsics.fc");
         this.cc     = config.requireDoubles("intrinsics.cc");
@@ -70,7 +70,7 @@ public class Caltech4Calibration implements Calibration, ParameterizableCalibrat
         createIntrinsicsMatrix();
     }
 
-    public Caltech4Calibration(double params[], int width, int height)
+    public Caltech4thOrderCalibration(double params[], int width, int height)
     {
         this.width = width;
         this.height = height;
@@ -148,8 +148,8 @@ public class Caltech4Calibration implements Calibration, ParameterizableCalibrat
         s = String.format("%s        intrinsics {\n", s);
         s = String.format("%s            fc = [%11.6f,%11.6f ];\n", s, fc[0], fc[1]);
         s = String.format("%s            cc = [%11.6f,%11.6f ];\n", s, cc[0], cc[1]);
-        s = String.format("%s            kc = [%11.6f,%11.6f,%11.6f,%11.6f,%11.6f ];\n",
-                          s, kc[0], kc[1], kc[2], kc[3], kc[4]);
+        s = String.format("%s            kc = [%11.6f,%11.6f,%11.6f,%11.6f ];\n",
+                          s, kc[0], kc[1], kc[2], kc[3]);
         s = String.format("%s            skew = %11.6f;\n", s, skew);
         s = String.format("%s        }\n", s);
 
@@ -158,10 +158,10 @@ public class Caltech4Calibration implements Calibration, ParameterizableCalibrat
 
     public String getCacheString()
     {
-        return String.format("%.12f %.12f %.12f %.12f %.12f %.12f %.12f %.12f %.12f %.12f %d %d",
+        return String.format("%.12f %.12f %.12f %.12f %.12f %.12f %.12f %.12f %.12f %d %d",
                              fc[0], fc[1],
                              cc[0], cc[1],
-                             kc[0], kc[1], kc[2], kc[3], kc[4],
+                             kc[0], kc[1], kc[2], kc[3],
                              skew,
                              width, height);
     }
