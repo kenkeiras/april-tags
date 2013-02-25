@@ -38,18 +38,25 @@ public class TagTest implements ParameterListener
     {
         GetOpt opts  = new GetOpt();
         opts.addBoolean('h',"help",false,"See this help screen");
-        opts.addString('u',"url","","Camera url");
+//        opts.addString('u',"url","","Camera url");
         opts.addString('t',"tagfamily","april.tag.Tag36h11","Tag family");
 
         if (!opts.parse(args)) {
             System.out.println("option error: "+opts.getReason());
         }
 
-        String url = opts.getString("url");
+        ArrayList<String> eargs = opts.getExtraArgs();
+
+        String url;
+        if (eargs.size() > 0)
+            url = eargs.get(0);
+        else
+            url = ImageSource.getCameraURLs().get(0);
+
         String tagfamily = opts.getString("tagfamily");
 
         if (opts.getBoolean("help") || url.isEmpty()){
-            System.out.println("Usage:");
+            System.out.println("Usage: TagTest [cameraurl]");
             opts.doHelp();
             System.exit(1);
         }
