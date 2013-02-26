@@ -102,19 +102,20 @@ public class RobustCameraCalibrator
         stats.SPDError = false;
 
         for (GEdge e : g.edges) {
-            assert(e instanceof GTagEdge);
-            GTagEdge edge = (GTagEdge) e;
+            if (e instanceof GTagEdge) {
+                GTagEdge edge = (GTagEdge) e;
 
-            double res[] = edge.getResidualExternal(g);
-            assert((res.length & 0x1) == 0);
+                double res[] = edge.getResidualExternal(g);
+                assert((res.length & 0x1) == 0);
 
-            for (int i=0; i < res.length; i+=2) {
-                double sqerr = res[i]*res[i] + res[i+1]*res[i+1];
-                stats.MSE += sqerr;
-                stats.MRE += Math.sqrt(sqerr);
+                for (int i=0; i < res.length; i+=2) {
+                    double sqerr = res[i]*res[i] + res[i+1]*res[i+1];
+                    stats.MSE += sqerr;
+                    stats.MRE += Math.sqrt(sqerr);
+                }
+
+                stats.numObs += res.length / 2;
             }
-
-            stats.numObs += res.length / 2;
         }
 
         stats.MRE /= stats.numObs;

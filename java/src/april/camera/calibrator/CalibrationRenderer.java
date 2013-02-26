@@ -25,7 +25,7 @@ public class CalibrationRenderer
     TagMosaic tm;
     double metersPerTag;
 
-    int minCol = -1, maxCol = -1, minRow = -1, maxRow = -1;
+    Integer minCol, maxCol, minRow, maxRow;
 
     double Tvis[][] = new double[][] { {  0,  0,  1,  0 },
                                        { -1,  0,  0,  0 } ,
@@ -89,10 +89,13 @@ public class CalibrationRenderer
         for (List<TagDetection> detections : newDetections) {
             // update observed mosaic bounds
             for (TagDetection d : detections) {
-                minCol = Math.min(minCol, this.tm.getColumn(d.id));
-                maxCol = Math.max(maxCol, this.tm.getColumn(d.id));
-                minRow = Math.min(minRow, this.tm.getRow(d.id));
-                maxRow = Math.max(maxRow, this.tm.getRow(d.id));
+                int col = this.tm.getColumn(d.id);
+                int row = this.tm.getRow(d.id);
+
+                if (minCol == null || col < minCol) minCol = col;
+                if (maxCol == null || col > maxCol) maxCol = col;
+                if (minRow == null || row < minRow) minRow = row;
+                if (maxRow == null || row > maxRow) maxRow = row;
             }
         }
     }
@@ -147,6 +150,15 @@ public class CalibrationRenderer
 
             Integer rootNumbers[] = mosaic.MosaicToRootXyzrpys.keySet().toArray(new Integer[0]);
 
+            Set<Integer> tagIDSet = new TreeSet();
+            for (List<TagDetection> detections : mosaic.detectionSet)
+                for (TagDetection d : detections)
+                    tagIDSet.add(d.id);
+
+            ArrayList<double[]> tagPoints_mosaic = new ArrayList();
+            for (int id : tagIDSet)
+                tagPoints_mosaic.add(this.tm.getPositionMeters(id));
+
             for (int root : rootNumbers)
             {
                 VisWorld vw = worlds[root];
@@ -164,6 +176,11 @@ public class CalibrationRenderer
                                         new VzRectangle(XY1[0] - XY0[0],
                                                         XY1[1] - XY0[1],
                                                         new VzLines.Style(c, 2))));
+
+                vb.addBack(new VisChain(Tvis,
+                                        MosaicToRoot,
+                                        new VzPoints(new VisVertexData(tagPoints_mosaic),
+                                                     new VzPoints.Style(c, 1))));
             }
         }
 
