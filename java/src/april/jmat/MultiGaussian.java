@@ -70,6 +70,7 @@ public class MultiGaussian
 		    }
 
             L = cd.getL();
+
             Pscale = 1.0/Math.pow(2*Math.PI, n/2.0)/Math.sqrt(Pdet);
 	    }
 
@@ -217,6 +218,19 @@ public class MultiGaussian
 
             double err = Math.log(mg.prob(x)) - mg.logProb(x);
             assert(Math.abs(err) < 0.000001);
+        }
+
+        // test chi2
+        if (true) {
+//            mg = new MultiGaussian(Matrix.identity(5,5));
+            int iters = 10000;
+            double chi2 = 0;
+
+            for (int i = 0; i < iters; i++) {
+                chi2 += mg.chi2(mg.sample());
+            }
+
+            System.out.printf("should be near 1: %f\n", chi2 / (iters*mg.getDimension()));
         }
     }
 }
