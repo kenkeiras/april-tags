@@ -60,6 +60,7 @@ public class MultiGaussian
         else
 	    {
             Pinv = P.inverse();
+
             CholeskyDecomposition cd = new CholeskyDecomposition(P);
             if (false && !cd.isSPD()) // XXX returning wrong answer sometimes?
 		    {

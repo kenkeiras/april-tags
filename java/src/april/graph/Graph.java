@@ -394,4 +394,16 @@ public class Graph
 
         return estats;
     }
+
+    public void reset()
+    {
+        for (GNode gn : nodes)
+            gn.state = LinAlg.copy(gn.init);
+    }
+
+    public void truth()
+    {
+        for (GNode gn : nodes)
+            gn.state = LinAlg.copy(gn.truth);
+    }
 }
