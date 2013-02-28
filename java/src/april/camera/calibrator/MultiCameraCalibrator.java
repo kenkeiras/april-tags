@@ -17,6 +17,7 @@ import april.vis.*;
 public class MultiCameraCalibrator implements ParameterListener
 {
     public boolean verbose = false; // don't make static
+    boolean autocapture = false;
 
     JFrame          jf;
     JSplitPane      canvasPane;
@@ -27,6 +28,7 @@ public class MultiCameraCalibrator implements ParameterListener
     ImageSource                     isrcs[];
     ImageSourceFormat               ifmts[];
     BlockingSingleQueue<FrameData>  imageQueues[];
+    boolean                         imageQueueFlags[];
 
     RobustCameraCalibrator calibrator;
     List<RobustCameraCalibrator.GraphStats> lastGraphStats;
@@ -46,9 +48,10 @@ public class MultiCameraCalibrator implements ParameterListener
     int imageCounter = 0;
 
     public MultiCameraCalibrator(List<CalibrationInitializer> initializers, String urls[],
-                                 double metersPerTag, boolean verbose)
+                                 double metersPerTag, boolean verbose, boolean autocapture)
     {
         this.verbose = verbose;
+        this.autocapture = autocapture;
         this.tf = new Tag36h11();
         this.td = new TagDetector(tf);
         this.initializers = initializers;
@@ -58,6 +61,7 @@ public class MultiCameraCalibrator implements ParameterListener
         this.isrcs          = new ImageSource[urls.length];
         this.ifmts          = new ImageSourceFormat[urls.length];
         this.imageQueues    = new BlockingSingleQueue[urls.length];
+        this.imageQueueFlags= new boolean[urls.length];
 
         this.start_utime = TimeUtil.utime();
 
@@ -123,7 +127,7 @@ public class MultiCameraCalibrator implements ParameterListener
                 System.exit(-1);
             }
 
-            new AcquisitionThread(urls[i], isrcs[i], imageQueues[i]).start();
+            new AcquisitionThread(i, urls[i], isrcs[i], imageQueues[i]).start();
         }
 
         double XY0[] = getXY0(initializers.size()-1);
@@ -181,15 +185,19 @@ public class MultiCameraCalibrator implements ParameterListener
 
     class AcquisitionThread extends Thread
     {
+        int id;
         String url;
         ImageSource isrc;
         BlockingSingleQueue<FrameData> imageQueue;
+        Boolean imageQueueFlag;
 
-        public AcquisitionThread(String url, ImageSource isrc, BlockingSingleQueue<FrameData> imageQueue)
+        public AcquisitionThread(int id, String url, ImageSource isrc, BlockingSingleQueue<FrameData> imageQueue)
         {
+            this.id = id;
             this.url = url;
             this.isrc = isrc;
             this.imageQueue = imageQueue;
+            this.imageQueueFlag = imageQueueFlag;
         }
 
         public void run()
@@ -203,12 +211,30 @@ public class MultiCameraCalibrator implements ParameterListener
             }
 
             isrc.start();
+            long counter = 0;
             while (true) {
                 FrameData frmd = isrc.getFrame();
                 if (frmd == null)
                     break;
 
+                if (autocapture)
+                    imageQueueFlags[id] = true;
+
                 imageQueue.put(frmd);
+
+                if (autocapture) {
+                    counter++;
+                    System.out.printf("AcquisitionThread %d got frame #%d\n", id, counter);
+                    synchronized (imageQueue) {
+                        while (imageQueueFlags[id]) {
+                            try {
+                                imageQueue.wait();
+                            } catch (InterruptedException ex) {
+                                continue;
+                            }
+                        }
+                    }
+                }
             }
 
             System.out.printf("'%s' Out of frames!\n", url);
@@ -225,12 +251,20 @@ public class MultiCameraCalibrator implements ParameterListener
 
             while (true)
             {
-                if (captureOnce) {
+                if (captureOnce || autocapture) {
 
                     tic.tic();
                     List<BufferedImage> imageSet = new ArrayList<BufferedImage>();
                     for (int i = 0; i < urls.length; i++) {
                         FrameData frmd = imageQueues[i].get();
+
+                        if (autocapture) {
+                            imageQueueFlags[i] = false;
+                            synchronized(imageQueues[i]) {
+                                imageQueues[i].notifyAll();
+                            }
+                        }
+
                         BufferedImage im = ImageConvert.convertToImage(frmd);
                         imageSet.add(im);
                     }
@@ -281,6 +315,10 @@ public class MultiCameraCalibrator implements ParameterListener
                         drawImage(i, im);
                     }
                 }
+
+                // skip the rate limiting in this mode
+                if (autocapture)
+                    continue;
 
                 // sleep a little if we're spinning too fast
                 long utime = TimeUtil.utime();
@@ -414,15 +452,17 @@ public class MultiCameraCalibrator implements ParameterListener
         opts.addString('u',"urls","","Camera URLs separated by semicolons");
         opts.addString('c',"class","april.camera.models.SimpleKannalaBrandtInitializer","Calibration model initializer class name");
         opts.addDouble('m',"spacing",0.0381,"Spacing between tags (meters)");
+        opts.addBoolean('a',"autocapture",false,"Automatically capture every frame");
 
         if (!opts.parse(args)) {
             System.out.println("Option error: "+opts.getReason());
 	    }
 
-        boolean verbose = opts.getBoolean("verbose");
-        String urllist = opts.getString("urls");
-        String initclass = opts.getString("class");
-        double spacing = opts.getDouble("spacing");
+        boolean verbose     = opts.getBoolean("verbose");
+        String urllist      = opts.getString("urls");
+        String initclass    = opts.getString("class");
+        double spacing      = opts.getDouble("spacing");
+        boolean autocapture = opts.getBoolean("autocapture");
 
         if (opts.getBoolean("help") || urllist.isEmpty()){
             System.out.println("Usage:");
@@ -431,6 +471,12 @@ public class MultiCameraCalibrator implements ParameterListener
         }
 
         String urls[] = urllist.split(";");
+
+        if (autocapture && urls.length > 1) {
+            System.out.println("ERROR: Due to the lack of explicit inter-camera synchronization,"+
+                               "using autocapture mode and multiple cameras is not well defined");
+            System.exit(1);
+        }
 
         List<CalibrationInitializer> initializers = new ArrayList<CalibrationInitializer>();
 
@@ -442,7 +488,7 @@ public class MultiCameraCalibrator implements ParameterListener
             initializers.add(initializer);
         }
 
-        new MultiCameraCalibrator(initializers, urls, spacing, verbose);
+        new MultiCameraCalibrator(initializers, urls, spacing, verbose, autocapture);
     }
 }
 
