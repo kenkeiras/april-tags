@@ -53,6 +53,17 @@ public class RobustCameraCalibrator
             renderer.updateMosaicDimensions(newDetections);
     }
 
+    public void addManyImageSets(List<List<BufferedImage>> imagesList,
+                                 List<List<List<TagDetection>>> detectionsList)
+    {
+        cal.addMultipleImageSets(imagesList, detectionsList);
+
+        if (renderer != null)
+            for (List<List<TagDetection>> lists : detectionsList)
+                renderer.updateMosaicDimensions(lists);
+    }
+
+
     public void resetCalibrationSystem()
     {
         cal = new CameraCalibrationSystem(initializers, tf, metersPerTag, verbose);
