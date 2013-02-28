@@ -10,13 +10,6 @@ import april.util.*;
 
 public class GTagEdge extends GEdge
 {
-    //public static long time_linearize = 0;
-    //public static long time_residual = 0;
-    //public static long time_jacobian_intrinsics = 0;
-    //public static long time_jacobian_extrinsics = 0;
-    //public static long time_jacobian_mosaics = 0;
-    //public static long time_number_of_linearizations = 0;
-
     // inherited: nodes
     ArrayList<double[]> pixel_observations = new ArrayList<double[]>();
     ArrayList<double[]> mosaic_coordinates = new ArrayList<double[]>();
@@ -24,12 +17,17 @@ public class GTagEdge extends GEdge
     // Set so that normalized cxhi^2 = 1 on 2012-12-02-tamron28-1px
     double pixelVariance = .057;
 
+    boolean hasCameraIntrinsics = true;
     boolean hasCameraExtrinsics = true;
 
     // indices in this.nodes[] for GNode objects
     int CI = 0;
     int CE = 1;
     int ME = 2;
+
+    // Special mode: for fixed camera intrinsics, we can supply an intrinsics
+    // node that is *not* in the graph
+    GIntrinsicsNode fixedIntrinsics;
 
     public GTagEdge()
     {
@@ -68,6 +66,40 @@ public class GTagEdge extends GEdge
             this.mosaic_coordinates.add(LinAlg.copy(xyz_m));
     }
 
+    // Special constructor for using fixed intrinsics (which won't be optimized)
+    // Camera extrinsics are optional as before
+    public GTagEdge(GIntrinsicsNode fixedIntrinsics, int calExtrisicsIndex, int mosaicExtrinsicsIndex,
+                    ArrayList<double[]> xys_px,
+                    ArrayList<double[]> xyzs_m)
+    {
+        this.fixedIntrinsics = fixedIntrinsics;
+
+        if (calExtrisicsIndex == -1) {
+            hasCameraIntrinsics = false;
+            hasCameraExtrinsics = false;
+            this.nodes = new int[] {mosaicExtrinsicsIndex};
+            CI = -1;
+            CE = -1;
+            ME = 0;
+        }
+        else {
+            hasCameraIntrinsics = false;
+            hasCameraExtrinsics = true;
+            this.nodes = new int[] {calExtrisicsIndex, mosaicExtrinsicsIndex};
+            CI = -1;
+            CE = 0;
+            ME = 1;
+        }
+
+        assert(xys_px.size() == xyzs_m.size());
+
+        for (double[] xy_px : xys_px)
+            this.pixel_observations.add(LinAlg.copy(xy_px));
+
+        for (double[] xyz_m : xyzs_m)
+            this.mosaic_coordinates.add(LinAlg.copy(xyz_m));
+    }
+
     public int getDOF()
     {
         return pixel_observations.size()*2;
@@ -75,15 +107,22 @@ public class GTagEdge extends GEdge
 
     public double[] getResidualExternal(Graph g)
     {
-        assert(g.nodes.get(this.nodes[CI]) instanceof GIntrinsicsNode);
+        if (hasCameraIntrinsics)
+            assert(g.nodes.get(this.nodes[CI]) instanceof GIntrinsicsNode);
         if (hasCameraExtrinsics)
             assert(g.nodes.get(this.nodes[CE]) instanceof GExtrinsicsNode);
         assert(g.nodes.get(this.nodes[ME]) instanceof GExtrinsicsNode);
 
-        GIntrinsicsNode cameraIntrinsics = (GIntrinsicsNode) g.nodes.get(this.nodes[CI]);
+        GIntrinsicsNode cameraIntrinsics = null;
+        if (hasCameraIntrinsics)
+            cameraIntrinsics = (GIntrinsicsNode) g.nodes.get(this.nodes[CI]);
+        else
+            cameraIntrinsics = fixedIntrinsics;
+
         GExtrinsicsNode cameraExtrinsics = null;
         if (hasCameraExtrinsics)
             cameraExtrinsics = (GExtrinsicsNode) g.nodes.get(this.nodes[CE]);
+
         GExtrinsicsNode mosaicExtrinsics = (GExtrinsicsNode) g.nodes.get(this.nodes[ME]);
 
         return getResidual(cameraIntrinsics, cameraExtrinsics, mosaicExtrinsics);
@@ -93,10 +132,13 @@ public class GTagEdge extends GEdge
                                  GExtrinsicsNode cameraExtrinsics,
                                  GExtrinsicsNode mosaicExtrinsics)
     {
-        cameraIntrinsics.updateIntrinsics();
+        if (hasCameraIntrinsics)
+            cameraIntrinsics.updateIntrinsics();
+
         double[][] cameraToGlobal = LinAlg.identity(4);
         if (hasCameraExtrinsics)
             cameraToGlobal = cameraExtrinsics.getMatrix();
+
         double[][] mosaicToGlobal = mosaicExtrinsics.getMatrix();
 
         double[][] mosaicToCamera = LinAlg.matrixAB(LinAlg.inverse(cameraToGlobal),
@@ -146,22 +188,29 @@ public class GTagEdge extends GEdge
 
     public Linearization linearize(Graph g, Linearization lin)
     {
-        //long time_linearize0 = System.nanoTime();
-        assert(g.nodes.get(this.nodes[CI]) instanceof GIntrinsicsNode);
+        if (hasCameraIntrinsics)
+            assert(g.nodes.get(this.nodes[CI]) instanceof GIntrinsicsNode);
         if (hasCameraExtrinsics)
             assert(g.nodes.get(this.nodes[CE]) instanceof GExtrinsicsNode);
         assert(g.nodes.get(this.nodes[ME]) instanceof GExtrinsicsNode);
 
-        GIntrinsicsNode cameraIntrinsics = (GIntrinsicsNode) g.nodes.get(this.nodes[CI]);
+        GIntrinsicsNode cameraIntrinsics = null;
+        if (hasCameraIntrinsics)
+            cameraIntrinsics = (GIntrinsicsNode) g.nodes.get(this.nodes[CI]);
+        else
+            cameraIntrinsics = fixedIntrinsics;
+
         GExtrinsicsNode cameraExtrinsics = null;
         if (hasCameraExtrinsics)
             cameraExtrinsics = (GExtrinsicsNode) g.nodes.get(this.nodes[CE]);
+
         GExtrinsicsNode mosaicExtrinsics = (GExtrinsicsNode) g.nodes.get(this.nodes[ME]);
 
         if (lin == null) {
             lin = new Linearization();
 
-            lin.J.add(new double[this.getDOF()][g.nodes.get(nodes[CI]).getDOF()]);
+            if (hasCameraIntrinsics)
+                lin.J.add(new double[this.getDOF()][g.nodes.get(nodes[CI]).getDOF()]);
             if (hasCameraExtrinsics)
                 lin.J.add(new double[this.getDOF()][g.nodes.get(nodes[CE]).getDOF()]);
             lin.J.add(new double[this.getDOF()][g.nodes.get(nodes[ME]).getDOF()]);
@@ -169,35 +218,20 @@ public class GTagEdge extends GEdge
             lin.W = LinAlg.scale(LinAlg.identity(this.getDOF()), 1/pixelVariance);
         }
 
-        //long time_residual0 = System.nanoTime();
         lin.R = getResidual(cameraIntrinsics, cameraExtrinsics, mosaicExtrinsics);
-        //long time_residual1 = System.nanoTime();
-        //time_residual += time_residual1 - time_residual0;
 
-        //long time_jacobian_intrinsics0 = System.nanoTime();
-        computeJacobianNumerically(cameraIntrinsics, cameraExtrinsics, mosaicExtrinsics,
-                                   cameraIntrinsics, lin.J.get(CI));
-        //long time_jacobian_intrinsics1 = System.nanoTime();
-        //time_jacobian_intrinsics += time_jacobian_intrinsics1 - time_jacobian_intrinsics0;
-
-        if (hasCameraExtrinsics) {
-            //long time_jacobian_extrinsics0 = System.nanoTime();
+        if (hasCameraIntrinsics) {
             computeJacobianNumerically(cameraIntrinsics, cameraExtrinsics, mosaicExtrinsics,
-                                       cameraExtrinsics, lin.J.get(CE));
-            //long time_jacobian_extrinsics1 = System.nanoTime();
-            //time_jacobian_extrinsics += time_jacobian_extrinsics1 - time_jacobian_extrinsics0;
+                                       cameraIntrinsics, lin.J.get(CI));
         }
 
-        //long time_jacobian_mosaics0 = System.nanoTime();
+        if (hasCameraExtrinsics) {
+            computeJacobianNumerically(cameraIntrinsics, cameraExtrinsics, mosaicExtrinsics,
+                                       cameraExtrinsics, lin.J.get(CE));
+        }
+
         computeJacobianNumerically(cameraIntrinsics, cameraExtrinsics, mosaicExtrinsics,
                                    mosaicExtrinsics, lin.J.get(ME));
-        //long time_jacobian_mosaics1 = System.nanoTime();
-        //time_jacobian_mosaics += time_jacobian_mosaics1 - time_jacobian_mosaics0;
-
-        //long time_linearize1 = System.nanoTime();
-        //time_linearize += time_linearize1 - time_linearize0;
-
-        //time_number_of_linearizations++;
 
         return lin;
     }
@@ -208,10 +242,12 @@ public class GTagEdge extends GEdge
         edge.nodes = LinAlg.copy(this.nodes);
         edge.attributes = Attributes.copy(this.attributes);
 
+        edge.hasCameraIntrinsics = this.hasCameraIntrinsics;
         edge.hasCameraExtrinsics = this.hasCameraExtrinsics;
         edge.CI = this.CI;
         edge.CE = this.CE;
         edge.ME = this.ME;
+        edge.fixedIntrinsics = this.fixedIntrinsics;
 
         // inherited: nodes
         edge.pixel_observations = new ArrayList<double[]>(this.pixel_observations);
@@ -232,15 +268,22 @@ public class GTagEdge extends GEdge
 
     public double getChi2(Graph g)
     {
-        assert(g.nodes.get(this.nodes[CI]) instanceof GIntrinsicsNode);
+        if (hasCameraIntrinsics)
+            assert(g.nodes.get(this.nodes[CI]) instanceof GIntrinsicsNode);
         if (hasCameraExtrinsics)
             assert(g.nodes.get(this.nodes[CE]) instanceof GExtrinsicsNode);
         assert(g.nodes.get(this.nodes[ME]) instanceof GExtrinsicsNode);
 
-        GIntrinsicsNode cameraIntrinsics = (GIntrinsicsNode) g.nodes.get(this.nodes[CI]);
+        GIntrinsicsNode cameraIntrinsics = null;
+        if (hasCameraIntrinsics)
+            cameraIntrinsics = (GIntrinsicsNode) g.nodes.get(this.nodes[CI]);
+        else
+            cameraIntrinsics = fixedIntrinsics;
+
         GExtrinsicsNode cameraExtrinsics = null;
         if (hasCameraExtrinsics)
             cameraExtrinsics = (GExtrinsicsNode) g.nodes.get(this.nodes[CE]);
+
         GExtrinsicsNode mosaicExtrinsics = (GExtrinsicsNode) g.nodes.get(this.nodes[ME]);
 
         double r[] = getResidual(cameraIntrinsics, cameraExtrinsics, mosaicExtrinsics);
