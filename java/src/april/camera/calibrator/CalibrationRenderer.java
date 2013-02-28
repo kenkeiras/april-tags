@@ -141,8 +141,12 @@ public class CalibrationRenderer
         }
 
         // compute mosaic border
-        double XY0[] = this.tm.getPositionMeters(minCol - 0.5, minRow - 0.5);
-        double XY1[] = this.tm.getPositionMeters(maxCol + 0.5, maxRow + 0.5);
+        double XY0[] = new double[2];
+        double XY1[] = new double[2];
+        if (minRow != null && maxRow != null && minCol != null && maxCol != null) {
+            XY0 = this.tm.getPositionMeters(minCol - 0.5, minRow - 0.5);
+            XY1 = this.tm.getPositionMeters(maxCol + 0.5, maxRow + 0.5);
+        }
 
         for (int mosaicIndex = 0; mosaicIndex < mosaics.size(); mosaicIndex++)
         {
