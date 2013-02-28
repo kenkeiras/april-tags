@@ -103,7 +103,7 @@ public class RobustCameraCalibrator
 
     /** Compute MRE and MSE for a graph.
       */
-    public GraphStats getGraphStats(Graph g, int rootNumber)
+    public static GraphStats getGraphStats(Graph g, int rootNumber)
     {
         GraphStats stats = new GraphStats();
         stats.rootNumber = rootNumber;
@@ -135,15 +135,26 @@ public class RobustCameraCalibrator
         return stats;
     }
 
+
     /** Iterate each graph until convergence. See the single-graph method for details.
       */
     public List<GraphStats> iterateUntilConvergence(List<GraphWrapper> graphs, double improvementThreshold,
                                                     int minConvergedIterations, int maxIterations)
     {
+        return iterateUntilConvergence(graphs, improvementThreshold, minConvergedIterations,
+                                       maxIterations, this.verbose);
+    }
+
+    /** Iterate each graph until convergence. See the single-graph method for details.
+      */
+    public static List<GraphStats> iterateUntilConvergence(List<GraphWrapper> graphs, double improvementThreshold,
+                                                           int minConvergedIterations, int maxIterations,
+                                                           boolean verbose)
+    {
         List<GraphStats> stats = new ArrayList<GraphStats>();
         for (GraphWrapper gw : graphs) {
             GraphStats s = iterateUntilConvergence(gw, improvementThreshold,
-                                                   minConvergedIterations, maxIterations);
+                                                   minConvergedIterations, maxIterations, verbose);
             stats.add(s);
         }
 
@@ -155,6 +166,17 @@ public class RobustCameraCalibrator
       */
     public GraphStats iterateUntilConvergence(GraphWrapper gw, double improvementThreshold,
                                               int minConvergedIterations, int maxIterations)
+    {
+        return iterateUntilConvergence(gw, improvementThreshold, minConvergedIterations,
+                                       maxIterations, this.verbose);
+    }
+
+    /** Iterate graph until it converges. Catch SPD errors and set the field in the
+      * GraphStats object that is returned.
+      */
+    public static GraphStats iterateUntilConvergence(GraphWrapper gw, double improvementThreshold,
+                                                     int minConvergedIterations, int maxIterations,
+                                                     boolean verbose)
     {
         if (gw == null)
             return null;
@@ -433,6 +455,19 @@ public class RobustCameraCalibrator
     public void updateFromGraphs(List<GraphWrapper> graphWrappers,
                                  List<GraphStats> stats)
     {
+        updateFromGraphs(cal, graphWrappers, stats, this.verbose);
+    }
+
+    /** Update the CameraCalibrationSystem from the graphs provided. If an
+      * entry in either argument is null or the GraphStats.SPDError field is
+      * true, the camera system will <b>not</b> be updated from the
+      * corresponding GraphWrapper.
+      */
+    public static void updateFromGraphs(CameraCalibrationSystem cal,
+                                        List<GraphWrapper> graphWrappers,
+                                        List<GraphStats> stats,
+                                        boolean verbose)
+    {
         assert(graphWrappers.size() == stats.size());
 
         for (int i = 0; i < graphWrappers.size(); i++)
@@ -440,7 +475,7 @@ public class RobustCameraCalibrator
             GraphWrapper gw = graphWrappers.get(i);
             GraphStats s = stats.get(i);
 
-            updateFromGraph(gw, s);
+            updateFromGraph(cal, gw, s);
         }
 
         if (verbose)
@@ -451,11 +486,11 @@ public class RobustCameraCalibrator
       * argument is null or the GraphStats.SPDError field is true, the camera
       * system will <b>not</b> be updated from the corresponding GraphWrapper.
       */
-    public void updateFromGraph(GraphWrapper gw, GraphStats s)
+    public static void updateFromGraph(CameraCalibrationSystem cal, GraphWrapper gw, GraphStats s)
     {
-        updateCameraIntrinsicsFromGraph(gw, s);
-        updateCameraExtrinsicsFromGraph(gw, s);
-        updateMosaicExtrinsicsFromGraph(gw, s);
+        updateCameraIntrinsicsFromGraph(cal, gw, s);
+        updateCameraExtrinsicsFromGraph(cal, gw, s);
+        updateMosaicExtrinsicsFromGraph(cal, gw, s);
     }
 
     /** Update the CameraCalibrationSystem's camera intrinsics from the graph
@@ -463,7 +498,7 @@ public class RobustCameraCalibrator
       * is true, the camera * system will <b>not</b> be updated from the
       * corresponding GraphWrapper.
       */
-    public void updateCameraIntrinsicsFromGraph(GraphWrapper gw, GraphStats s)
+    public static void updateCameraIntrinsicsFromGraph(CameraCalibrationSystem cal, GraphWrapper gw, GraphStats s)
     {
         if (gw == null || s == null || s.SPDError == true)
             return;
@@ -496,7 +531,7 @@ public class RobustCameraCalibrator
       * is true, the camera * system will <b>not</b> be updated from the
       * corresponding GraphWrapper.
       */
-    public void updateCameraExtrinsicsFromGraph(GraphWrapper gw, GraphStats s)
+    public static void updateCameraExtrinsicsFromGraph(CameraCalibrationSystem cal, GraphWrapper gw, GraphStats s)
     {
         if (gw == null || s == null || s.SPDError == true)
             return;
@@ -528,7 +563,7 @@ public class RobustCameraCalibrator
       * is true, the camera * system will <b>not</b> be updated from the
       * corresponding GraphWrapper.
       */
-    public void updateMosaicExtrinsicsFromGraph(GraphWrapper gw, GraphStats s)
+    public static void updateMosaicExtrinsicsFromGraph(CameraCalibrationSystem cal, GraphWrapper gw, GraphStats s)
     {
         if (gw == null || s == null || s.SPDError == true)
             return;
