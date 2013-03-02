@@ -651,6 +651,11 @@ public class RobustCameraCalibrator
       */
     public String getCalibrationBlockString(String[] commentLines)
     {
+        return getCalibrationBlockString(cal, commentLines);
+    }
+
+    public static String getCalibrationBlockString(CameraCalibrationSystem cal, String[] commentLines)
+    {
         List<CameraCalibrationSystem.CameraWrapper> cameras = cal.getCameras();
 
         String str = "";
