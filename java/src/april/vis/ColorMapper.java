@@ -1,9 +1,16 @@
 package april.vis;
 
-import java.util.List;
 import java.awt.Color;
-import lcm.lcm.*;
 import java.io.*;
+import java.util.List;
+import lcm.lcm.*;
+
+// for legend
+import java.awt.Font;
+import java.awt.Graphics2D;
+import java.awt.image.*;
+
+
 /** Converts scalar values to RGB colors by interpolating from a
  *  user-provided look-up table.
  *  Creates a VisColorData VBO by taking a set of data, and an index in that data to map:
@@ -190,6 +197,46 @@ public class ColorMapper implements VisSerializable
 
         // force opacity
         return c | 0xff000000;
+    }
+
+    // Returns an image with text labels
+    // e.g. makeLegend(70, 480, 0.35, "%5.1f", new Font("Monospaced", Font.PLAIN, 12));
+    public BufferedImage makeLegend(int width, int height, double barFraction, String format, Font font)
+    {
+        BufferedImage legend = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        int legenddata[] = ((DataBufferInt) (legend.getRaster().getDataBuffer())).getData();
+
+        int barwidth     = (int) (width * barFraction);
+        int barheight    = height;
+
+        for (int y = 0; y < barheight; y++) {
+            for (int x = 0; x < barwidth; x++) {
+                double val        = ((double) (barheight - y) * (maxval - minval)) / barheight + minval;
+                legenddata[y*width + x] = map(val);
+            }
+        }
+
+        Graphics2D g = legend.createGraphics();
+        g.setColor(Color.white);
+        g.setFont(font);
+
+        int fontsize = font.getSize();
+
+        int x = (int) (width * (barFraction + 0.1));
+        for (int i = 0; i < colors.length; i++) {
+
+            double percent = ((double) (i)) / (colors.length - 1);
+
+            int y = (int) (percent * barheight);
+            if (i == 0)               y += fontsize/2;
+            if (i+1 == colors.length) y -= fontsize*3/2;
+            y = barheight - y;
+
+            String s = String.format(format, minval + percent * (maxval - minval));
+            g.drawString(s, x, y);
+        }
+
+        return legend;
     }
 
     // Serialization
