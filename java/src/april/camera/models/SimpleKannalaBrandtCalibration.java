@@ -234,6 +234,9 @@ public class SimpleKannalaBrandtCalibration implements Calibration, Parameteriza
 
     private double[] rectifyNormalized(double xy_dn[])
     {
+        if (LinAlg.magnitude(xy_dn) < 1e-12)
+            return new double[] { 0, 0 };
+
         double psi = Math.atan2(xy_dn[1], xy_dn[0]);
 
         double rtheta = ((xy_dn[0]/Math.cos(psi)) + (xy_dn[1]/Math.sin(psi))) / 2d;
