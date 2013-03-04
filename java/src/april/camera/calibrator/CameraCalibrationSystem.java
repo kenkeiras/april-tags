@@ -380,7 +380,7 @@ public class CameraCalibrationSystem
     ////////////////////////////////////////////////////////////////////////////////
     // Helper methods
 
-    private List<List<TagDetection>> getCamerasUsableDetections(int cameraIndex)
+    public List<List<TagDetection>> getCamerasUsableDetections(int cameraIndex)
     {
         List<List<TagDetection>> currentCameraDetections = new ArrayList<List<TagDetection>>();
 

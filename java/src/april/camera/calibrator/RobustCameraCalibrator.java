@@ -593,6 +593,51 @@ public class RobustCameraCalibrator
         }
     }
 
+    public List<List<GraphStats>> performModelSelection(List<List<CalibrationInitializer>> initializerSets,
+                                                        double reinitMREThreshold, double improvementThreshold,
+                                                        int minConvergedIterations, int maxIterations)
+    {
+        List<List<GraphStats>> allGraphStats = new ArrayList();
+
+        outer:
+        for (List<CalibrationInitializer> initializerSet : initializerSets)
+        {
+            RobustCameraCalibrator calCopy = this.copy(false);
+
+            List<CameraCalibrationSystem.CameraWrapper> cameras = calCopy.getCalRef().getCameras();
+            assert(initializerSet.size() == cameras.size());
+
+            for (int cameraIndex = 0; cameraIndex < cameras.size(); cameraIndex++)
+            {
+                CameraCalibrationSystem.CameraWrapper cam = cameras.get(cameraIndex);
+                CalibrationInitializer initializer = initializerSet.get(cameraIndex);
+
+                List<List<TagDetection>> usableDetections =
+                    calCopy.getCalRef().getCamerasUsableDetections(cameraIndex);
+
+                ParameterizableCalibration cal =
+                    initializer.initializeWithObservations(cam.width, cam.height,
+                                                           usableDetections, tm);
+
+                if (cal == null) {
+                    allGraphStats.add(null);
+                    continue outer;
+                }
+
+                cam.initializer = initializer;
+                cam.cal = cal;
+            }
+
+            List<RobustCameraCalibrator.GraphStats> stats =
+                calCopy.iterateUntilConvergenceWithReinitalization(reinitMREThreshold, improvementThreshold,
+                                                                   minConvergedIterations, maxIterations);
+
+            allGraphStats.add(stats);
+        }
+
+        return allGraphStats;
+    }
+
     ////////////////////////////////////////////////////////////////////////////////
     // rendering code
 

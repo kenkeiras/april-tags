@@ -359,6 +359,11 @@ public class EasyCal2
                 return true;
             }
 
+            if (toks[0].equals("model-selection")) {
+                selectModel();
+                return true;
+            }
+
             return false;
         }
 
@@ -367,9 +372,8 @@ public class EasyCal2
          * out.) You may return null. **/
         public ArrayList<String> consoleCompletions(VisConsole vc, String prefix)
         {
-            return new ArrayList(Arrays.asList("print-calibration", "save-calibration /tmp/cameraCalibration", "save-calibration-images /tmp/cameraCalibration", "mode calibrate", "mode rectify", "show-debug-gui"));
+            return new ArrayList(Arrays.asList("print-calibration", "save-calibration /tmp/cameraCalibration", "save-calibration-images /tmp/cameraCalibration", "mode calibrate", "mode rectify", "show-debug-gui", "model-selection"));
         }
-
 
         public boolean keyPressed(VisCanvas vc, VisLayer vl, VisCanvas.RenderInfo rinfo, KeyEvent e)
         {
@@ -1201,7 +1205,9 @@ public class EasyCal2
                             vb.setDrawOrder(1001);
                             vb.swap();
 
-
+                            if (true) {
+                                selectModel();
+                            }
 
                             if (autosaveDir.isEmpty() == false) {
                                 calibrator.saveCalibrationAndImages(autosaveDir, getConfigCommentLines());
@@ -1693,6 +1699,37 @@ public class EasyCal2
         }
 
         lcm.publish("SUGGESTED_IMAGE", si);
+    }
+
+    private void selectModel()
+    {
+        List<List<CalibrationInitializer>> initializerSets = new ArrayList();
+        initializerSets.add(Arrays.asList((CalibrationInitializer) new DistortionFreeInitializer()));
+        initializerSets.add(Arrays.asList((CalibrationInitializer) new Radial4thOrderCaltechInitializer()));
+        initializerSets.add(Arrays.asList((CalibrationInitializer) new Radial6thOrderCaltechInitializer()));
+        initializerSets.add(Arrays.asList((CalibrationInitializer) new Radial8thOrderCaltechInitializer()));
+        initializerSets.add(Arrays.asList((CalibrationInitializer) new Radial10thOrderCaltechInitializer()));
+        initializerSets.add(Arrays.asList((CalibrationInitializer) new Caltech4thOrderInitializer()));
+        initializerSets.add(Arrays.asList((CalibrationInitializer) new CaltechInitializer()));
+        initializerSets.add(Arrays.asList((CalibrationInitializer) new SimpleKannalaBrandtInitializer()));
+
+        List<List<RobustCameraCalibrator.GraphStats>> allGraphStats =
+            calibrator.performModelSelection(initializerSets, 1.0, 0.01, 3, 50);
+
+        for (int i = 0; i < initializerSets.size(); i++) {
+
+            List<RobustCameraCalibrator.GraphStats> stats = allGraphStats.get(i);
+            assert(stats.size() == 1);
+            RobustCameraCalibrator.GraphStats gs = stats.get(0);
+
+            List<CalibrationInitializer> initializers = initializerSets.get(i);
+            assert(initializers.size() == 1);
+            CalibrationInitializer initializer = initializers.get(0);
+
+            System.out.printf("Calibration with model %-35s: MRE %8.3f MSE %8.3f\n",
+                              "'"+initializer.getClass().getName().replace("april.camera.models.","")+"'",
+                              gs.MRE, gs.MSE);
+        }
     }
 
     private class FlashThread extends Thread
