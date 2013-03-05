@@ -9,6 +9,7 @@ import java.util.*;
 import javax.swing.*;
 
 import april.camera.*;
+import april.camera.models.*;
 import april.jcam.*;
 import april.tag.*;
 import april.util.*;
@@ -83,6 +84,7 @@ public class MultiCameraCalibrator implements ParameterListener
         pg.addCheckBoxes("screenshots","Automatically save screenshots to /tmp", false);
         pg.addButtons("captureOnce","Capture once",
                       "print", "Print calibration block",
+                      "modelselect","Perform model selection",
                       "savecalibration","Save calibration",
                       "saveall","Save calibration and images");
         pg.addListener(this);
@@ -175,6 +177,9 @@ public class MultiCameraCalibrator implements ParameterListener
 
         if (name.equals("print"))
             calibrator.printCalibrationBlock(getConfigCommentLines());
+
+        if (name.equals("modelselect"))
+            selectModel();
 
         if (name.equals("savecalibration"))
             calibrator.saveCalibration("/tmp/cameraCalibration", getConfigCommentLines());
@@ -440,6 +445,45 @@ public class MultiCameraCalibrator implements ParameterListener
                 System.out.printf("Graph with %d observations, MRE %12.6f pixels, MSE %12.6f pixels, SPD Error: %s\n",
                                   s.numObs, s.MRE, s.MSE, s.SPDError ? "true" : "false");
             }
+        }
+    }
+
+    void selectModel()
+    {
+        List<CalibrationInitializer> initializerTypes = new ArrayList();
+        initializerTypes.add((CalibrationInitializer) new DistortionFreeInitializer());
+        initializerTypes.add((CalibrationInitializer) new Radial4thOrderCaltechInitializer());
+        initializerTypes.add((CalibrationInitializer) new Radial6thOrderCaltechInitializer());
+        initializerTypes.add((CalibrationInitializer) new Radial8thOrderCaltechInitializer());
+        initializerTypes.add((CalibrationInitializer) new Radial10thOrderCaltechInitializer());
+        initializerTypes.add((CalibrationInitializer) new Caltech4thOrderInitializer());
+        initializerTypes.add((CalibrationInitializer) new CaltechInitializer());
+        initializerTypes.add((CalibrationInitializer) new SimpleKannalaBrandtInitializer());
+
+        List<List<CalibrationInitializer>> initializerSets = new ArrayList();
+        for (CalibrationInitializer initializer : initializerTypes) {
+            List<CalibrationInitializer> initializerSet = new ArrayList();
+            for (int cameraIndex = 0; cameraIndex < urls.length; cameraIndex++)
+                initializerSet.add(initializer);
+            initializerSets.add(initializerSet);
+        }
+
+        List<List<RobustCameraCalibrator.GraphStats>> allGraphStats =
+            calibrator.performModelSelection(initializerSets, 1.0, 0.01, 3, 50);
+
+        for (int i = 0; i < initializerSets.size(); i++) {
+
+            CalibrationInitializer initializerType = initializerTypes.get(i);
+
+            List<RobustCameraCalibrator.GraphStats> stats = allGraphStats.get(i);
+
+            System.out.printf("Calibration with model %-35s: ",
+                              "'"+initializerType.getClass().getName().replace("april.camera.models.","")+"'");
+
+            for (RobustCameraCalibrator.GraphStats gs : stats)
+                System.out.printf("MRE %8.3f (MSE %8.3f)", gs.MRE, gs.MSE);
+
+            System.out.println();
         }
     }
 
