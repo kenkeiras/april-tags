@@ -1,11 +1,11 @@
 package april.camera.calibrator;
 
-import java.io.*;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.image.*;
+import java.io.*;
 import java.util.*;
-
+import javax.imageio.*;
 import javax.swing.*;
 
 import april.camera.*;
@@ -84,7 +84,7 @@ public class MultiCameraCalibrator implements ParameterListener
         pg.addCheckBoxes("screenshots","Automatically save screenshots to /tmp", false);
         pg.addButtons("captureOnce","Capture once",
                       "print", "Print calibration block",
-                      "modelselect","Perform model selection",
+                      "modelselect","Perform model selection and save",
                       "savecalibration","Save calibration",
                       "saveall","Save calibration and images");
         pg.addListener(this);
@@ -179,7 +179,7 @@ public class MultiCameraCalibrator implements ParameterListener
             calibrator.printCalibrationBlock(getConfigCommentLines());
 
         if (name.equals("modelselect"))
-            selectModel();
+            selectModelAndSave("/tmp/cameraCalibration");
 
         if (name.equals("savecalibration"))
             calibrator.saveCalibration("/tmp/cameraCalibration", getConfigCommentLines());
@@ -448,7 +448,7 @@ public class MultiCameraCalibrator implements ParameterListener
         }
     }
 
-    void selectModel()
+    void selectModelAndSave(String basepath)
     {
         List<CalibrationInitializer> initializerTypes = new ArrayList();
         initializerTypes.add((CalibrationInitializer) new DistortionFreeInitializer());
@@ -468,23 +468,105 @@ public class MultiCameraCalibrator implements ParameterListener
             initializerSets.add(initializerSet);
         }
 
-        List<List<RobustCameraCalibrator.GraphStats>> allGraphStats =
-            calibrator.performModelSelection(initializerSets, 1.0, 0.01, 3, 50);
+        List<RobustCameraCalibrator> calibrators = calibrator.createModelSelectionCalibrators(initializerSets);
+        assert(calibrators.size() == initializerSets.size());
 
+        // create directory
+        int dirNum = -1;
+        String dirName = null;
+        File dir = null;
+        do {
+            dirNum++;
+            dirName = String.format("%s/imageSet%d/", basepath, dirNum);
+            dir = new File(dirName);
+        } while (dir.exists());
+
+        if (dir.mkdirs() != true) {
+            System.err.printf("Failure to create directory '%s'\n", dirName);
+            return;
+        }
+
+        // save all camera models
         for (int i = 0; i < initializerSets.size(); i++) {
 
-            CalibrationInitializer initializerType = initializerTypes.get(i);
+            RobustCameraCalibrator rcc = calibrators.get(i);
+            CalibrationInitializer initializer = initializerTypes.get(i);
+            String shortclassname = initializer.getClass().getName().replace("april.camera.models.","");
+            shortclassname = shortclassname.replace("Initializer","Calibration");
 
-            List<RobustCameraCalibrator.GraphStats> stats = allGraphStats.get(i);
+            if (rcc == null) {
+                System.out.printf("Calibration with model %-35s: failed to initialize\n", "'"+shortclassname+"'");
+                continue;
+            }
 
-            System.out.printf("Calibration with model %-35s: ",
-                              "'"+initializerType.getClass().getName().replace("april.camera.models.","")+"'");
+            List<RobustCameraCalibrator.GraphStats> stats =
+                rcc.iterateUntilConvergenceWithReinitalization(1.0, 0.01, 3, 50);
 
-            for (RobustCameraCalibrator.GraphStats gs : stats)
-                System.out.printf("MRE %8.3f (MSE %8.3f)", gs.MRE, gs.MSE);
-
+            System.out.printf("Calibration with model %-35s: ", "'"+shortclassname+"'");
+            ArrayList<String> lines = new ArrayList();
+            for (RobustCameraCalibrator.GraphStats gs : stats) {
+                String s = String.format("MRE: %10s MSE %10s",
+                                        (gs == null) ? "n/a" : String.format("%7.3f px", gs.MRE),
+                                        (gs == null) ? "n/a" : String.format("%7.3f px", gs.MSE));
+                lines.add(s);
+                System.out.printf(s);
+            }
             System.out.println();
+
+            String calName = dirName + shortclassname + ".config";
+
+            try {
+                BufferedWriter outs = new BufferedWriter(new FileWriter(new File(calName)));
+                outs.write(rcc.getCalibrationBlockString(lines.toArray(new String[0])));
+                outs.flush();
+                outs.close();
+            } catch (Exception ex) {
+                System.err.printf("Failed to output calibration to '%s'\n", calName);
+                return;
+            }
         }
+
+        // save images
+        List<List<BufferedImage>> imageSets = calibrator.getCalRef().getAllImageSets();
+        for (int cameraIndex = 0; cameraIndex < urls.length; cameraIndex++) {
+
+            String subDirName = dirName;
+
+            // make a subdirectory if we have multiple cameras
+            if (urls.length > 1) {
+                subDirName = String.format("%scamera%d/", dirName, cameraIndex);
+                File subDir = new File(subDirName);
+
+                if (subDir.mkdirs() != true) {
+                    System.err.printf("Failure to create subdirectory '%s'\n", subDirName);
+                    return;
+                }
+            }
+
+            for (int imageSetIndex = 0; imageSetIndex < imageSets.size(); imageSetIndex++) {
+
+                List<BufferedImage> images = imageSets.get(imageSetIndex);
+                BufferedImage im = images.get(cameraIndex);
+
+                String fileName = String.format("%simage%04d.png", subDirName, imageSetIndex);
+                File imageFile = new File(fileName);
+
+                System.out.printf("Filename '%s'\n", fileName);
+
+                try {
+                    ImageIO.write(im, "png", imageFile);
+
+                } catch (IllegalArgumentException ex) {
+                    System.err.printf("Failed to output images to '%s'\n", subDirName);
+                    return;
+                } catch (IOException ex) {
+                    System.err.printf("Failed to output images to '%s'\n", subDirName);
+                    return;
+                }
+            }
+        }
+
+        System.out.printf("Saved all model calibrations and images to '%s'\n", dirName);
     }
 
     public static void main(String args[])

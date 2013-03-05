@@ -593,11 +593,9 @@ public class RobustCameraCalibrator
         }
     }
 
-    public List<List<GraphStats>> performModelSelection(List<List<CalibrationInitializer>> initializerSets,
-                                                        double reinitMREThreshold, double improvementThreshold,
-                                                        int minConvergedIterations, int maxIterations)
+    public List<RobustCameraCalibrator> createModelSelectionCalibrators(List<List<CalibrationInitializer>> initializerSets)
     {
-        List<List<GraphStats>> allGraphStats = new ArrayList();
+        List<RobustCameraCalibrator> calibrators = new ArrayList();
 
         outer:
         for (List<CalibrationInitializer> initializerSet : initializerSets)
@@ -620,7 +618,7 @@ public class RobustCameraCalibrator
                                                            usableDetections, tm);
 
                 if (cal == null) {
-                    allGraphStats.add(null);
+                    calibrators.add(null);
                     continue outer;
                 }
 
@@ -628,14 +626,10 @@ public class RobustCameraCalibrator
                 cam.cal = cal;
             }
 
-            List<RobustCameraCalibrator.GraphStats> stats =
-                calCopy.iterateUntilConvergenceWithReinitalization(reinitMREThreshold, improvementThreshold,
-                                                                   minConvergedIterations, maxIterations);
-
-            allGraphStats.add(stats);
+            calibrators.add(calCopy);
         }
 
-        return allGraphStats;
+        return calibrators;
     }
 
     ////////////////////////////////////////////////////////////////////////////////

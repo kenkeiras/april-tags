@@ -360,7 +360,11 @@ public class EasyCal2
             }
 
             if (toks[0].equals("model-selection")) {
-                selectModel();
+                if (toks.length == 2)
+                    selectModelAndSave(toks[1]);
+                else
+                    selectModelAndSave("/tmp/cameraCalibration");
+
                 return true;
             }
 
@@ -1205,10 +1209,6 @@ public class EasyCal2
                             vb.setDrawOrder(1001);
                             vb.swap();
 
-                            if (true) {
-                                selectModel();
-                            }
-
                             if (autosaveDir.isEmpty() == false) {
                                 calibrator.saveCalibrationAndImages(autosaveDir, getConfigCommentLines());
 
@@ -1701,7 +1701,7 @@ public class EasyCal2
         lcm.publish("SUGGESTED_IMAGE", si);
     }
 
-    private void selectModel()
+    private void selectModelAndSave(String basepath)
     {
         List<List<CalibrationInitializer>> initializerSets = new ArrayList();
         initializerSets.add(Arrays.asList((CalibrationInitializer) new DistortionFreeInitializer()));
@@ -1713,23 +1713,91 @@ public class EasyCal2
         initializerSets.add(Arrays.asList((CalibrationInitializer) new CaltechInitializer()));
         initializerSets.add(Arrays.asList((CalibrationInitializer) new SimpleKannalaBrandtInitializer()));
 
-        List<List<RobustCameraCalibrator.GraphStats>> allGraphStats =
-            calibrator.performModelSelection(initializerSets, 1.0, 0.01, 3, 50);
+        List<RobustCameraCalibrator> calibrators = calibrator.createModelSelectionCalibrators(initializerSets);
+        assert(calibrators.size() == initializerSets.size());
 
+        // create directory
+        int dirNum = -1;
+        String dirName = null;
+        File dir = null;
+        do {
+            dirNum++;
+            dirName = String.format("%s/imageSet%d/", basepath, dirNum);
+            dir = new File(dirName);
+        } while (dir.exists());
+
+        if (dir.mkdirs() != true) {
+            System.err.printf("Failure to create directory '%s'\n", dirName);
+            return;
+        }
+
+        // save all camera models
         for (int i = 0; i < initializerSets.size(); i++) {
 
-            List<RobustCameraCalibrator.GraphStats> stats = allGraphStats.get(i);
-            assert(stats.size() == 1);
-            RobustCameraCalibrator.GraphStats gs = stats.get(0);
+            RobustCameraCalibrator rcc = calibrators.get(i);
+            CalibrationInitializer initializer = initializerSets.get(i).get(0);
+            String shortclassname = initializer.getClass().getName().replace("april.camera.models.","");
+            shortclassname = shortclassname.replace("Initializer","Calibration");
 
-            List<CalibrationInitializer> initializers = initializerSets.get(i);
-            assert(initializers.size() == 1);
-            CalibrationInitializer initializer = initializers.get(0);
+            if (rcc == null) {
+                System.out.printf("Calibration with model %-35s: failed to initialize\n", "'"+shortclassname+"'");
+                continue;
+            }
 
-            System.out.printf("Calibration with model %-35s: MRE %8.3f MSE %8.3f\n",
-                              "'"+initializer.getClass().getName().replace("april.camera.models.","")+"'",
-                              gs.MRE, gs.MSE);
+            List<RobustCameraCalibrator.GraphStats> stats =
+                rcc.iterateUntilConvergenceWithReinitalization(1.0, 0.01, 3, 50);
+
+            System.out.printf("Calibration with model %-35s: ", "'"+shortclassname+"'");
+            ArrayList<String> lines = new ArrayList();
+            for (RobustCameraCalibrator.GraphStats gs : stats) {
+                String s = String.format("MRE: %10s MSE %10s",
+                                        (gs == null) ? "n/a" : String.format("%7.3f px", gs.MRE),
+                                        (gs == null) ? "n/a" : String.format("%7.3f px", gs.MSE));
+                lines.add(s);
+                System.out.printf(s);
+            }
+            System.out.println();
+
+            String calName = dirName + shortclassname + ".config";
+
+            try {
+                BufferedWriter outs = new BufferedWriter(new FileWriter(new File(calName)));
+                outs.write(rcc.getCalibrationBlockString(lines.toArray(new String[0])));
+                outs.flush();
+                outs.close();
+            } catch (Exception ex) {
+                System.err.printf("EasyCal: Failed to output calibration to '%s'\n", calName);
+                return;
+            }
         }
+
+        // save images
+        List<List<BufferedImage>> imageSets = calibrator.getCalRef().getAllImageSets();
+
+        for (int imageSetIndex = 0; imageSetIndex < imageSets.size(); imageSetIndex++) {
+
+            List<BufferedImage> images = imageSets.get(imageSetIndex);
+            assert(images.size() == 1);
+            BufferedImage im = images.get(0);
+
+            String fileName = String.format("%simage%04d.png", dirName, imageSetIndex);
+            File imageFile = new File(fileName);
+
+            System.out.printf("Filename '%s'\n", fileName);
+
+            try {
+                ImageIO.write(im, "png", imageFile);
+
+            } catch (IllegalArgumentException ex) {
+                System.err.printf("Failed to output images to '%s'\n", dirName);
+                return;
+            } catch (IOException ex) {
+                System.err.printf("Failed to output images to '%s'\n", dirName);
+                return;
+            }
+        }
+
+        System.out.printf("Saved all model calibrations and images to '%s'\n", dirName);
     }
 
     private class FlashThread extends Thread
