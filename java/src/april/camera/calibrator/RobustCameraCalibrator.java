@@ -237,12 +237,28 @@ public class RobustCameraCalibrator
         }
         origJointMRE = origJointMRE / origJointNumObs;
 
+        boolean origBadFocalLength = false;
+        for (GraphWrapper gw : origGraphWrappers) {
+            if (gw == null || gw.g == null)
+                continue;
+
+            for (GNode n : gw.g.nodes) {
+                if (n instanceof GIntrinsicsNode) {
+                    GIntrinsicsNode intrinsics = (GIntrinsicsNode) n;
+                    double K[][] = intrinsics.copyIntrinsicsMatrix();
+
+                    if (K[0][0] < 0 || K[1][1] < 0)
+                        origBadFocalLength = true;
+                }
+            }
+        }
+
         // is it acceptable?
-        if (!origError && origJointMRE < reinitMREThreshold) {
+        if (!origError && !origBadFocalLength && origJointMRE < reinitMREThreshold) {
             this.updateFromGraphs(origGraphWrappers, origStats);
             if (verbose)
-                System.out.printf("Skipped reinitialization, using original (orig %b/%8.3f)\n",
-                                  origError, origJointMRE);
+                System.out.printf("Skipped reinitialization, using original (orig %b/%b/%8.3f)\n",
+                                  origError, origBadFocalLength, origJointMRE);
             return origStats;
         }
 
@@ -267,18 +283,39 @@ public class RobustCameraCalibrator
         }
         newJointMRE = newJointMRE / newJointNumObs;
 
+        boolean newBadFocalLength = false;
+        for (GraphWrapper gw : newGraphWrappers) {
+            if (gw == null || gw.g == null)
+                continue;
+
+            for (GNode n : gw.g.nodes) {
+                if (n instanceof GIntrinsicsNode) {
+                    GIntrinsicsNode intrinsics = (GIntrinsicsNode) n;
+                    double K[][] = intrinsics.copyIntrinsicsMatrix();
+
+                    if (K[0][0] < 0 || K[1][1] < 0)
+                        newBadFocalLength = true;
+                }
+            }
+        }
+
         // decide which system to use
         boolean useNew = false;
-        if (!origError && !newError && (newJointMRE + 0.001 < origJointMRE)) // both are good but new has lower error
+        if (!origError && !origBadFocalLength &&
+            !newError && !newBadFocalLength &&
+            (newJointMRE + 0.001 < origJointMRE)) // both are good but new has lower error
+        {
             useNew = true;
-        else if (origError)
+        }
+        else if (origError || origBadFocalLength)
             useNew = true;
 
         if (!useNew) {
             this.updateFromGraphs(origGraphWrappers, origStats);
             if (verbose)
-                System.out.printf("Attempted reinitialization, using original (orig %b/%8.3f new %b/%8.3f)\n",
-                                  origError, origJointMRE, newError, newJointMRE);
+                System.out.printf("Attempted reinitialization, using original (orig %b/%b/%8.3f new %b/%b/%8.3f)\n",
+                                  origError, origBadFocalLength, origJointMRE,
+                                  newError, newBadFocalLength, newJointMRE);
             return origStats;
         }
 
@@ -287,8 +324,9 @@ public class RobustCameraCalibrator
         if (this.renderer != null)
             this.renderer.replaceCalibrationSystem(copy);
         if (verbose)
-            System.out.printf("Attempted reinitialization, using new (orig %b/%8.3f new %b/%8.3f)\n",
-                              origError, origJointMRE, newError, newJointMRE);
+            System.out.printf("Attempted reinitialization, using new (orig %b/%b/%8.3f new %b/%b/%8.3f)\n",
+                              origError, origBadFocalLength, origJointMRE,
+                              newError, newBadFocalLength, newJointMRE);
         return newStats;
     }
 

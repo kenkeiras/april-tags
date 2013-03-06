@@ -39,6 +39,11 @@ public class GIntrinsicsNode extends GNode
         cal.resetParameterization(this.state);
     }
 
+    public double[][] copyIntrinsicsMatrix()
+    {
+        return cal.copyIntrinsics();
+    }
+
     public double[] project(double xyz_camera[])
     {
         return CameraMath.project(cal, null, xyz_camera);
