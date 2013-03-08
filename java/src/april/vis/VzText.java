@@ -193,6 +193,34 @@ public class VzText implements VisObject, VisSerializable
 
     }
 
+    public double getTotalWidth()
+    {
+        double maxLineWidth = 0;
+
+        if (lines == null)
+            parse();
+
+        for (Line line : lines)
+            maxLineWidth = Math.max(line.getWidth(), maxLineWidth);
+
+        double totalWidth = maxLineWidth + 2*pixelMargin;
+        return scale * totalWidth;
+    }
+
+    public double getTotalHeight()
+    {
+        double totalHeight = 0;
+
+        if (lines == null)
+            parse();
+
+        for (Line line : lines)
+            totalHeight += line.getHeight();
+
+        totalHeight += 2*pixelMargin;
+        return scale * totalHeight;
+    }
+
     // completely reparse the text.
     void parse()
     {

@@ -137,8 +137,13 @@ public class LaserPlugin implements SpyPlugin
             double min_intensity = 7500, max_intensity = 12000;
 
             if (pg.gb("normalized_intensities")) {
-                min_intensity = 0;
-                max_intensity = 1;
+                min_intensity = Double.MAX_VALUE;
+                max_intensity = -Double.MAX_VALUE;
+
+                for (int i = 0; i < l.intensities.length; i++) {
+                    min_intensity = Math.min(min_intensity, l.intensities[i]);
+                    max_intensity = Math.max(max_intensity, l.intensities[i]);
+                }
             }
 
             ColorMapper colormap = new ColorMapper(new int[] {0x0000ff,
@@ -377,7 +382,7 @@ public class LaserPlugin implements SpyPlugin
             setLayout(new BorderLayout());
             pg = new ParameterGUI();
             pg.addCheckBoxes("volume", "Show volume", true,
-                             "normalized_intensities", "Intensity [0,1]", false,
+                             "normalized_intensities", "Auto-scale Intensity", false,
                              "intensity", "Display intensity", false);
             lp = new LaserPane(pg);
             add(lp, BorderLayout.CENTER);
