@@ -105,10 +105,21 @@ public class DefaultCameraManager implements VisCameraManager, VisSerializable
                                          (f.xy0[1] + f.xy1[1]) / 2,
                                          0 };
 
+                // width, height, & perspective of Fit
+                double wF = f.xy1[0] - f.xy0[0];
+                double hF = f.xy1[1] - f.xy0[1];
+                double pF = wF / hF;
+
+                // perspective of Viewport
+                double pV = layerViewport[2] * 1.0 / layerViewport[3];
+
+                double tAngle = Math.tan(Math.toRadians(perspective_fovy_degrees/2));
+
+                // if viewport wider, set on fit height, else set on fit (adjusted)width
+                double h = 0.5 * (pV > pF ? hF : wF / pV) / tAngle;
                 eye1 = new double[] { (f.xy0[0] + f.xy1[0]) / 2,
                                       (f.xy0[1] + f.xy1[1]) / 2,
-                                      Math.max(f.xy1[0] - f.xy0[0],
-                                               f.xy1[1] - f.xy0[1]) };
+                                      Math.abs(h) };
 
                 up1 = new double[] { 0, 1, 0 };
                 mtime1 = f.mtime;
