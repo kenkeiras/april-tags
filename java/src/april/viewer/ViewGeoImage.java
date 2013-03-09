@@ -64,6 +64,7 @@ public class ViewGeoImage implements ViewObject, LCMSubscriber
     {
         for (int i = 0; i < imagePaths.size(); i++) {
             VisWorld.Buffer vb = viewer.getVisWorld().getBuffer("GeoImage: "+new File(imagePaths.get(i)).getName());
+            vb.setDrawOrder(9900); // a bit higher priority than the vzgrid
             vb.addBack(new VisChain(gimages.get(i).getMatrix(), vimages.get(i)));
             vb.swap();
         }
