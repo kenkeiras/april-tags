@@ -28,7 +28,7 @@ public class PoseTracker implements LCMSubscriber
     public double           maxTimeErr  = 0.1;
 
     static PoseTracker pt;
-    static final int MAX_QUEUE_SIZE     = 10000;
+    public int MAX_QUEUE_SIZE     = 10000;
 
     public static PoseTracker getSingleton()
     {
@@ -43,7 +43,8 @@ public class PoseTracker implements LCMSubscriber
         this.channel = channel;
         this.time = time;
 
-        lcm.subscribe(channel, this);
+        if (channel != null)
+            lcm.subscribe(channel, this);
     }
 
     public synchronized void clear()
