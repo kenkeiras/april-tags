@@ -224,6 +224,15 @@ public class AlignPoints2D
         nPoints+=weight;
     }
 
+    public double[] getCentroidA()
+    {
+        return new double[] { Sax / nPoints, Say / nPoints };
+    }
+
+    public double[] getCentroidB()
+    {
+        return new double[] { Sbx / nPoints, Sby / nPoints };
+    }
 
     public double getNumPoints()
     {

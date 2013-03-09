@@ -37,6 +37,8 @@ public class GPSLinearization
         this(origin_deg, new double[3]);
     }
 
+    /** Associate the GPS coordinate system at origin_deg facing north with
+        the Euclidean coordinate system _xyt. **/
     public GPSLinearization(double origin_deg[], double _xyt[])
     {
         this.xyt = LinAlg.copy(_xyt);

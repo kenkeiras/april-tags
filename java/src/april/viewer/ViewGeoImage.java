@@ -76,7 +76,7 @@ public class ViewGeoImage implements ViewObject, LCMSubscriber
         GPSLinearization gpslin = new GPSLinearization(tiepoint.lle,
                                                        new double[] { tiepoint.xyzt[0],
                                                                       tiepoint.xyzt[1],
-                                                                      tiepoint.xyzt[3] - Math.PI/2 });
+                                                                      tiepoint.xyzt[3] });
 
 
         for (int i = 0; i < imagePaths.size(); i++)
