@@ -223,8 +223,8 @@ public class DefaultCameraManager implements VisCameraManager, VisSerializable
         if (true) {
             double lookdir[] = LinAlg.normalize(LinAlg.subtract(lookat, eye));
             double dist = LinAlg.distance(eye, lookat);
-            dist = Math.min(zclip_far / 5.0, dist);
-            dist = Math.max(zclip_near * 5.0, dist);
+            dist = Math.min(zclip_far / 3.0, dist);
+            dist = Math.max(zclip_near * 3.0, dist);
             eye = LinAlg.subtract(lookat, LinAlg.scale(lookdir, dist));
         }
 
