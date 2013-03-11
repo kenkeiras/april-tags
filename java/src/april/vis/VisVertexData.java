@@ -168,6 +168,32 @@ public class VisVertexData implements VisAbstractVertexData, VisSerializable
         blocks.add(b);
     }
 
+    public synchronized void addFloats(ArrayList<float[]> points)
+    {
+        int dim = 2;
+        for (float p[] : points) {
+            if (p.length >= 3)
+                dim = 3;
+        }
+
+        Block b = new Block();
+        b.vf = new float[points.size()*dim];
+
+        for (int i = 0; i < points.size(); i++) {
+            float p[] = points.get(i);
+
+            b.vf[i*dim+0] = p[0];
+            b.vf[i*dim+1] = p[1];
+            if (p.length > 2)
+                b.vf[i*dim+2] = p[2];
+        }
+
+        b.nv = points.size();
+        b.dim = dim;
+
+        blocks.add(b);
+    }
+
     public synchronized int size()
     {
         combine();

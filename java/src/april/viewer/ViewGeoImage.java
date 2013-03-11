@@ -18,9 +18,11 @@ public class ViewGeoImage implements ViewObject, LCMSubscriber
     String name;
     Config config;
     LCM         lcm = LCM.getSingleton();
-    GeoImage  geoImage;
-    VzImage image;
     String channel;
+
+    ArrayList<VzImage> vimages = new ArrayList<VzImage>();
+    ArrayList<GeoImage> gimages = new ArrayList<GeoImage>();
+    ArrayList<String> imagePaths = new ArrayList<String>();
 
     public ViewGeoImage(Viewer viewer, String name, Config config)
     {
@@ -30,9 +32,16 @@ public class ViewGeoImage implements ViewObject, LCMSubscriber
         this.channel = config.getString("channel", "GPS_TIEPOINT");
 
         try {
-            geoImage = new GeoImage(config.requireString("file"), null);
-            image = new VzImage(geoImage.getImage());
-            image.modulateColor = new Color(255, 255, 255, config.getInt("alpha", 120));
+            String files[] = config.requireStrings("files");
+            for (String file : files) {
+                GeoImage gim = new GeoImage(file, null);
+                VzImage vim = new VzImage(gim.getImage());
+                vim.modulateColor = new Color(255, 255, 255, config.getInt("alpha", 12));
+
+                gimages.add(gim);
+                vimages.add(vim);
+                imagePaths.add(file);
+            }
         } catch (Exception ex) {
             System.out.println("ex: "+ex);
         }
@@ -53,10 +62,12 @@ public class ViewGeoImage implements ViewObject, LCMSubscriber
 
     void update()
     {
-        VisWorld.Buffer vb = viewer.getVisWorld().getBuffer("GeoImage: "+channel);
-
-        vb.addBack(new VisChain(geoImage.getMatrix(), image));
-        vb.swap();
+        for (int i = 0; i < imagePaths.size(); i++) {
+            VisWorld.Buffer vb = viewer.getVisWorld().getBuffer("GeoImage: "+new File(imagePaths.get(i)).getName());
+            vb.setDrawOrder(9900); // a bit higher priority than the vzgrid
+            vb.addBack(new VisChain(gimages.get(i).getMatrix(), vimages.get(i)));
+            vb.swap();
+        }
     }
 
     void messageReceivedEx(String channel, LCMDataInputStream ins) throws IOException
@@ -66,8 +77,11 @@ public class ViewGeoImage implements ViewObject, LCMSubscriber
         GPSLinearization gpslin = new GPSLinearization(tiepoint.lle,
                                                        new double[] { tiepoint.xyzt[0],
                                                                       tiepoint.xyzt[1],
-                                                                      tiepoint.xyzt[3] - Math.PI/2 });
-        geoImage.setGPSLinearization(gpslin);
+                                                                      tiepoint.xyzt[3] });
+
+
+        for (int i = 0; i < imagePaths.size(); i++)
+            gimages.get(i).setGPSLinearization(gpslin);
 
         update();
     }
