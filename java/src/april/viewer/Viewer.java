@@ -88,7 +88,7 @@ public class Viewer
     {
         this.config = _config.getChild("viewer");
 
-        vw.getBuffer("grid").addFront(new VzGrid());
+        VzGrid.addGrid(vw);
 
         String viewobjects[] = config.requireStrings("viewobjects");
 
