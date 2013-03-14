@@ -14,8 +14,13 @@ public class GTagEdge extends GEdge
     ArrayList<double[]> pixel_observations = new ArrayList<double[]>();
     ArrayList<double[]> mosaic_coordinates = new ArrayList<double[]>();
 
-    // Set so that normalized cxhi^2 = 1 on 2012-12-02-tamron28-1px
-    double pixelVariance = .057;
+    // Set so that normalized cxhi^2 = 1 (as best as we can)
+    public Double pixelVariance = null;// will be set by checking the with of the camera cal later
+
+    // On the lens/camera combos we have observed, the typical
+    // fit value for this is .000040, so this is an over estimate
+    // based on 2012-12-02-tamron28-1px-wizard
+    public double pixVarPerPixOfWidth = 0.000070; // = 0.057 / 752
 
     boolean hasCameraIntrinsics = true;
     boolean hasCameraExtrinsics = true;
@@ -98,6 +103,9 @@ public class GTagEdge extends GEdge
 
         for (double[] xyz_m : xyzs_m)
             this.mosaic_coordinates.add(LinAlg.copy(xyz_m));
+
+        pixelVariance = pixVarPerPixOfWidth * fixedIntrinsics.getWidth();
+
     }
 
     public int getDOF()
@@ -208,12 +216,15 @@ public class GTagEdge extends GEdge
 
         if (lin == null) {
             lin = new Linearization();
+            if (pixelVariance == null && hasCameraIntrinsics)
+                pixelVariance = pixVarPerPixOfWidth * cameraIntrinsics.getWidth();
 
             if (hasCameraIntrinsics)
                 lin.J.add(new double[this.getDOF()][g.nodes.get(nodes[CI]).getDOF()]);
             if (hasCameraExtrinsics)
                 lin.J.add(new double[this.getDOF()][g.nodes.get(nodes[CE]).getDOF()]);
             lin.J.add(new double[this.getDOF()][g.nodes.get(nodes[ME]).getDOF()]);
+
 
             lin.W = LinAlg.scale(LinAlg.identity(this.getDOF()), 1/pixelVariance);
         }
@@ -279,6 +290,9 @@ public class GTagEdge extends GEdge
             cameraIntrinsics = (GIntrinsicsNode) g.nodes.get(this.nodes[CI]);
         else
             cameraIntrinsics = fixedIntrinsics;
+
+        if (pixelVariance == null)
+            pixelVariance = pixVarPerPixOfWidth * cameraIntrinsics.getWidth();
 
         GExtrinsicsNode cameraExtrinsics = null;
         if (hasCameraExtrinsics)
