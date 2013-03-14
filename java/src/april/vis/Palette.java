@@ -214,10 +214,10 @@ public class Palette
 
     public static class vibrant_printable
     {
-        public static Color pink    = new Color( 211,  61, 125);
-        public static Color green   = new Color( 173, 231,  80);
         public static Color orange  = new Color( 235, 148,  49);
         public static Color blue    = new Color(  77, 143, 201);
+        public static Color green   = new Color( 173, 231,  80);
+        public static Color pink    = new Color( 211,  61, 125);
         public static Color cyan    = new Color(  97, 223, 241);
         public static Color purple  = new Color( 186, 153, 251);
         public static Color tan     = new Color( 218, 204, 110);
@@ -226,11 +226,11 @@ public class Palette
         public static List<Color> listAll()
         {
             List<Color> list = new ArrayList<Color>();
-            list.add(pink);
-            list.add(green);
             list.add(orange);
-            list.add(cyan);
             list.add(blue);
+            list.add(green);
+            list.add(pink);
+            list.add(cyan);
             list.add(purple);
             list.add(tan);
             list.add(gray);
