@@ -26,6 +26,8 @@ public class ViewLaser implements ViewObject, LCMSubscriber
         this.config = config;
         String channel = config.getString("channel", "(.*LIDAR.*)|(.*LASER.*)");
         lcm.subscribe(channel, this);
+
+	System.out.println("subscribing: "+channel);
     }
 
     public void messageReceived(LCM lcm, String channel, LCMDataInputStream ins)

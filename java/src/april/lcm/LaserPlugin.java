@@ -266,12 +266,14 @@ public class LaserPlugin implements SpyPlugin
             }
         }
 
+        @Override
         public void keyTyped(KeyEvent e)
         {
             switch (e.getKeyChar())
             {
                 case 'z':
                 case '-':
+                case '_':
                     zoom(.5, new Point(getWidth()/2, getHeight()/2));
                     break;
 
@@ -295,6 +297,8 @@ public class LaserPlugin implements SpyPlugin
         public void mouseMoved(MouseEvent e) {}
         public void mouseClicked(MouseEvent e)
         {
+            grabFocus();
+
             // restore default view
             if (e.getClickCount()==2) {
                 T = null;

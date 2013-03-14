@@ -25,12 +25,12 @@ public class GLManager
 
     /** Schedule a task to be run on the GL thread. If the task is
      * already scheduled to run, the task is not scheduled again. **/
-    public void add(Task t)
+    public boolean add(Task t)
     {
         synchronized(tasks) {
             if (tasks.contains(t))
-                return;
-            tasks.offer(t);
+                return true;
+            return tasks.offer(t);
         }
     }
 
