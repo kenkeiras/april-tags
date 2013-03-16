@@ -202,12 +202,12 @@ public class SimpleKannalaBrandtCalibration implements Calibration, Parameteriza
         double y = xy_rn[1];
         double z = 1.0;
 
-        // the three sides of the triangle
-        double O = Math.sqrt(x*x + y*y);
-        double H = Math.sqrt(x*x + y*y + z*z);
-        double A = z;
+        // XXX This formulation is not capable of supporting z < 0
+        // because z is assumed to be one above. The solution to
+        // this problem would be to convert between pixel coordinates
+        // and unit vectors, not "normalized coordinates"
 
-        double theta  = Math.asin(O/H);
+        double theta  = Math.atan2(Math.sqrt(x*x + y*y), z);
         double theta2 = theta*theta;
         double theta3 = theta*theta2;
         double theta5 = theta3*theta2;
