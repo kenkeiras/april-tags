@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <unistd.h>
+#include <limits.h>
+#include <stdlib.h>
 
 #include "common/getopt.h"
 #include "lcmtypes/nmea_t.h"
@@ -42,7 +44,7 @@ void ubx_callback(int64_t time, ublox_packet_t *packet)
                (long long)(time/1000000), (long)(time%1000000), nMsgs);
         printf("txbuf: %-4d usage: %3d%%  errors: %x\n",
                data->pending[3], data->usage[3], data->errors);
-    } 
+    }
     // Print NAK messages
     else if (packet->class == 0x05 && packet->id == 0x00) {
         printf("Warning: NAK received for CFG message %02x %02x\n",
@@ -157,9 +159,17 @@ int main (int argc, char *argv[])
 
     lcm = lcm_create(NULL);
 
-    ub = ublox_create(port, getopt_get_int(gopt, "baud"));
+    char device[PATH_MAX];
+    if (realpath(port, device) == NULL) {
+        printf("Error resolving real device path (e.g. following symlinks) for '%s'\n", port);
+        return 1;
+    }
+
+    printf("Resolved '%s' to device '%s'\n", port, device);
+
+    ub = ublox_create(device , getopt_get_int(gopt, "baud"));
     if (ub == NULL) {
-        printf("Error opening port %s\n", port);
+        printf("Error opening device %s\n", device);
         return 1;
     }
     ublox_set_ubx_callback(ub, ubx_callback);
