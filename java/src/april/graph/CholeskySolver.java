@@ -11,7 +11,7 @@ public class CholeskySolver implements GraphSolver
     public static boolean verbose = true;
 
     public int matrixType = Matrix.SPARSE;
-    public boolean conditionMatrix = true;
+    public boolean useTikhonov = false;
 
     public Ordering ordering;
 
@@ -84,7 +84,7 @@ public class CholeskySolver implements GraphSolver
         if (verbose)
             System.out.printf("Build A, B: %15.5f\n", tic.toctic());
 
-        if (conditionMatrix) {
+        if (useTikhonov) {
             // Condition the matrix. Any un-constrained variables get a
             // weight to be unchanged.
 
