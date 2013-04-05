@@ -40,6 +40,9 @@ public class VisCanvas extends JComponent implements VisSerializable
     public int popupFrameRates[] = new int[] { 1, 5, 10, 20, 30, 60, 100, 100000 };
     int targetFrameRate = 20;
 
+    public boolean smoothPoints = false;
+    public boolean smoothPolygons = false;
+
     // a list of open movies.
     ArrayList<Movie> movies = new ArrayList<Movie>();
     Movie popupMovie;
@@ -335,18 +338,19 @@ public class VisCanvas extends JComponent implements VisSerializable
 
             gl.glShadeModel(GL.GL_SMOOTH);
 
-/*
-  gl.glEnable(GL.GL_POINT_SMOOTH);
-  gl.glHint(GL.GL_POINT_SMOOTH_HINT, GL.GL_NICEST);
-*/
+            if (smoothPoints) {
+                gl.glEnable(GL.GL_POINT_SMOOTH);
+                gl.glHint(GL.GL_POINT_SMOOTH_HINT, GL.GL_NICEST);
+            }
 
             // VzGrid benefits tremendously from this
             gl.glEnable(GL.GL_LINE_SMOOTH);
             gl.glHint(GL.GL_LINE_SMOOTH_HINT, GL.GL_NICEST);
-/*
-  gl.glEnable(GL.GL_POLYGON_SMOOTH);
-  gl.glHint(GL.GL_POLYGON_SMOOTH_HINT, GL.GL_NICEST);
-*/
+
+            if (smoothPolygons) {
+                gl.glEnable(GL.GL_POLYGON_SMOOTH);
+                gl.glHint(GL.GL_POLYGON_SMOOTH_HINT, GL.GL_NICEST);
+            }
 
             gl.glEnable(GL.GL_SCISSOR_TEST);
 
