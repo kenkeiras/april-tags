@@ -54,6 +54,16 @@ public class ImageSourceReflect extends ImageSource
         return is.getFormat(idx);
     }
 
+    public void setFormat(int idx)
+    {
+        is.setFormat(idx);
+    }
+
+    public int getCurrentFormatIndex()
+    {
+        return is.getCurrentFormatIndex();
+    }
+
     public boolean isFeatureAvailable(int idx)
     {
         return is.isFeatureAvailable(idx);
@@ -64,14 +74,26 @@ public class ImageSourceReflect extends ImageSource
         return is.getFeatureType(idx);
     }
 
-    public void setFormat(int idx)
+
+    public int getNumFeatures()
     {
-        is.setFormat(idx);
+        return is.getNumFeatures();
     }
 
-    public int getCurrentFormatIndex()
+    public String getFeatureName(int idx)
     {
-        return is.getCurrentFormatIndex();
+        return is.getFeatureName(idx);
+    }
+
+    public double getFeatureValue(int idx)
+    {
+        return is.getFeatureValue(idx);
+    }
+
+    /** returns non-zero on error. **/
+    public int setFeatureValue(int idx, double v)
+    {
+        return is.setFeatureValue(idx, v);
     }
 
     public void printInfo()
@@ -83,5 +105,7 @@ public class ImageSourceReflect extends ImageSource
     {
         return is.close();
     }
+
+
 
 }
