@@ -25,7 +25,7 @@ import april.tag.*;
 import april.util.*;
 import april.vis.*;
 
-public class EasyCal2
+public class AprilCal
 {
     final int MODE_CALIBRATE = 0;
     final int MODE_RECTIFY = 1;
@@ -149,7 +149,7 @@ public class EasyCal2
         }
     }
 
-    public EasyCal2(CalibrationInitializer initializer, String url, double tagSpacingMeters, double stoppingAccuracy,
+    public AprilCal(CalibrationInitializer initializer, String url, double tagSpacingMeters, double stoppingAccuracy,
                     boolean debugGUI, boolean dictionaryGUI, ArrayList<BufferedImage> debugSeedImages)
     {
         this.tf = new Tag36h11();
@@ -174,7 +174,7 @@ public class EasyCal2
         ////////////////////////////////////////
         // GUI
         vw = new VisWorld();
-        vl = new VisLayer("EasyCal2", vw);
+        vl = new VisLayer("AprilCal", vw);
         vc = new VisCanvas(vl);
 
         VisConsole vcon = new VisConsole(vw,vl,vc);
@@ -186,7 +186,7 @@ public class EasyCal2
         vl.setBufferEnabled("fs-error-score", false);
         vl.setBufferEnabled("fs-error-meter", false);
 
-        jf = new JFrame("EasyCal2");
+        jf = new JFrame("AprilCal");
         jf.setLayout(new BorderLayout());
         jf.add(vc, BorderLayout.CENTER);
         //jf.setSize(1200, 600);
@@ -232,7 +232,7 @@ public class EasyCal2
         }
 
         if (dictionaryGUI)
-            new DebugEasyCal(this);
+            new DebugAprilCalDictionary(this);
 
         if (debugSeedImages != null && debugSeedImages.size() > 0 ) {
             for (BufferedImage im : debugSeedImages)
@@ -408,7 +408,7 @@ public class EasyCal2
     {
         public AcquisitionThread()
         {
-            this.setName("EasyCal2 AcquisitionThread");
+            this.setName("AprilCal AcquisitionThread");
         }
 
         public void run()
@@ -447,7 +447,7 @@ public class EasyCal2
     {
         public DetectionThread()
         {
-            this.setName("EasyCal2 DetectionThread");
+            this.setName("AprilCal DetectionThread");
         }
 
         public void run()
@@ -629,7 +629,7 @@ public class EasyCal2
     {
         public CalibrationThread()
         {
-            this.setName("EasyCal2 CalibrationThread");
+            this.setName("AprilCal CalibrationThread");
         }
 
         public void run()
@@ -779,7 +779,7 @@ public class EasyCal2
                 return;
             }
 
-            EasyCal2.this.currentScore = score;
+            AprilCal.this.currentScore = score;
 
             if (bestInitImage == null || Double.isInfinite(bestScore) || (score < 0.75*bestScore)) {
                 bestScore = score;
@@ -1677,7 +1677,7 @@ public class EasyCal2
                 outs.flush();
                 outs.close();
             } catch (Exception ex) {
-                System.err.printf("EasyCal: Failed to output calibration to '%s'\n", calName);
+                System.err.printf("AprilCal: Failed to output calibration to '%s'\n", calName);
                 return;
             }
         }
@@ -1715,7 +1715,7 @@ public class EasyCal2
     {
         private FlashThread()
         {
-            this.setName("EasyCal2 FlashThread");
+            this.setName("AprilCal FlashThread");
         }
 
         public void run()
@@ -1754,8 +1754,8 @@ public class EasyCal2
         opts.addDouble('m',"spacing",0.0381,"Spacing between tags (meters)");
         opts.addDouble('\0',"stopping-accuracy",1.0,"Termination accuracy (px) which flags \"finished\"");
         opts.addString('\0',"debug-seed-images","","Optional parameter listing starting images for debugging");
-        opts.addBoolean('\0',"debug-gui",false,"Display calibration extrinsics and other debugging info");
         opts.addBoolean('\0',"dictionary-gui",false,"Display image dictionary");
+        opts.addBoolean('\0',"debug-gui",false,"Display calibration extrinsics and other debugging info");
 
         if (!opts.parse(args)) {
             System.out.println("Option error: "+opts.getReason());
@@ -1788,7 +1788,7 @@ public class EasyCal2
                 System.out.println("Failed to load seed images: "+e);
         }
 
-        new EasyCal2(initializer, url, spacing,  opts.getDouble("stopping-accuracy"),
+        new AprilCal(initializer, url, spacing,  opts.getDouble("stopping-accuracy"),
                      opts.getBoolean("debug-gui"), opts.getBoolean("dictionary-gui"),
                      debugSeedImages);
     }

@@ -13,7 +13,7 @@ import april.util.*;
 import april.tag.*;
 import java.awt.image.*;
 
-public class DebugEasyCal extends Thread implements VisConsole.Listener
+public class DebugAprilCalDictionary extends Thread implements VisConsole.Listener
 {
     VisWorld vw = new VisWorld();
     VisLayer vl = new VisLayer(vw);
@@ -21,13 +21,13 @@ public class DebugEasyCal extends Thread implements VisConsole.Listener
 
     JFrame jf = new JFrame("Debug Frame Scorers");
 
-    EasyCal2 ec;
+    AprilCal ac;
 
     HashSet<String> bufferNames = new HashSet();
 
-    public DebugEasyCal(EasyCal2 ec)
+    public DebugAprilCalDictionary(AprilCal ac)
     {
-        this.ec = ec;
+        this.ac = ac;
 
         jf.setLayout(new BorderLayout());
         jf.add(vc, BorderLayout.CENTER);
@@ -66,13 +66,13 @@ public class DebugEasyCal extends Thread implements VisConsole.Listener
     public void run()
     {
 
-        ArrayList<EasyCal2.SuggestedImage> ranked = ec.ranked;
+        ArrayList<AprilCal.SuggestedImage> ranked = ac.ranked;
         while(true){
             TimeUtil.sleep(100);
-            if (ec.ranked == ranked)
+            if (ac.ranked == ranked)
                 continue;
 
-            ranked = ec.ranked;
+            ranked = ac.ranked;
             // Else, do some debug rendering
 
             drawDictionary(ranked);
@@ -80,12 +80,12 @@ public class DebugEasyCal extends Thread implements VisConsole.Listener
     }
 
 
-    public void drawDictionary(ArrayList<EasyCal2.SuggestedImage> ranked)
+    public void drawDictionary(ArrayList<AprilCal.SuggestedImage> ranked)
     {
         ranked = new ArrayList(ranked); // Thread saf(er)
         // Draw each ranked image on a separate buffer
-        BufferedImage sampleIm = ec.calibrator.getCalRef().getAllImageSets().get(0).get(0);
-        CalibrationInitializer initializer = ec.calibrator.getCalRef().getInitializers().get(0);
+        BufferedImage sampleIm = ac.calibrator.getCalRef().getAllImageSets().get(0).get(0);
+        CalibrationInitializer initializer = ac.calibrator.getCalRef().getInitializers().get(0);
         double PixelsToVis[][] = getPlottingTransformation(sampleIm, true);
 
         for (int i = 0; i < ranked.size(); i++) {
@@ -109,8 +109,8 @@ public class DebugEasyCal extends Thread implements VisConsole.Listener
 
         ParameterizableCalibration curcal = null, cal = null;
         double params[] = null;
-        if (ec.calibrator != null)
-            curcal = ec.calibrator.getCalRef().getCameras().get(0).cal;
+        if (ac.calibrator != null)
+            curcal = ac.calibrator.getCalRef().getCameras().get(0).cal;
         if (curcal != null)
             params = curcal.getParameterization();
         if (params != null)
