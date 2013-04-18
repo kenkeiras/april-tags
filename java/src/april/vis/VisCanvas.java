@@ -724,7 +724,12 @@ public class VisCanvas extends JComponent implements VisSerializable
         drawSync();
 
         // Our image will be upside down. let's flip it.
-        BufferedImage thisim = ImageUtil.flipVertical(im);
+        BufferedImage thisim = this.im;
+        if (thisim == null) {
+            System.out.println("WRN: Screenshot failed due to null image");
+            return;
+        }
+        thisim = ImageUtil.flipVertical(im);
         try {
             ImageIO.write(thisim, format, file);
         } catch (IOException ex) {

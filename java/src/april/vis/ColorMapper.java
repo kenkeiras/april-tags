@@ -157,6 +157,24 @@ public class ColorMapper implements VisSerializable
 
     }
 
+    public static ColorMapper makeDivergentPinkGreen(double min, double max)
+    {
+        /* http://geography.uoregon.edu/datagraphics/color_scales.htm
+         * ColorMap: blue to dark-red 18 steps */
+        return new ColorMapper(new int[] {
+                new Color(142,   1,  82).getRGB(),
+                new Color(197,  27, 125).getRGB(),
+                new Color(222, 119, 174).getRGB(),
+                new Color(241, 182, 218).getRGB(),
+                new Color(253, 224, 239).getRGB(),
+                new Color(247, 247, 247).getRGB(),
+                new Color(230, 245, 208).getRGB(),
+                new Color(184, 225, 134).getRGB(),
+                new Color(127, 188,  65).getRGB(),
+                new Color( 77, 146,  33).getRGB(),
+                new Color( 39, 100,  25).getRGB()}, min, max);
+    }
+
     public Color mapColor(double vin)
     {
         int v = map(vin);
