@@ -839,7 +839,7 @@ public class AprilCal
             if (calibrator.getCalRef().getAllImageSets().size() < 3 || cam.cal == null)
                 fs = new InitializationVarianceScorer(calibrator, imwidth, imheight);
             else
-                fs = new PixErrScorer(calibrator, imwidth, imheight);
+                fs = new MaxEREScorer(calibrator, imwidth, imheight);
 
             double fsScore  = fs.scoreFrame(detections);
             double fsThresh = suggestion.score;
@@ -1138,7 +1138,7 @@ public class AprilCal
 
                     // Compute the frame score for this image
                     if (calibrator.getCalRef().getAllImageSets().size() >= 3) {
-                        FrameScorer fs = new PixErrScorer(calibrator, imwidth, imheight);
+                        FrameScorer fs = new MaxEREScorer(calibrator, imwidth, imheight);
                         double score = fs.scoreFrame(detections);
 
                         // Only fire the first time we are "finished"
@@ -1582,7 +1582,7 @@ public class AprilCal
         if (calibrator.getCalRef().getAllImageSets().size() < 3)
             fs = new InitializationVarianceScorer(calibrator, imwidth, imheight);
         else
-            fs = new PixErrScorer(calibrator, imwidth, imheight);
+            fs = new MaxEREScorer(calibrator, imwidth, imheight);
 
         Tic t = new Tic();
         //ArrayList<SuggestedImage>
@@ -1596,7 +1596,7 @@ public class AprilCal
 
         // Grab the current value of 'cal'
         {
-            double curCalScore = PixErrScorer.scoreCal(calibrator, imwidth, imheight);
+            double curCalScore = MaxEREScorer.scoreCal(calibrator, imwidth, imheight);
 
             System.out.printf("cur score %f\n", curCalScore);
         }

@@ -8,8 +8,12 @@ import java.awt.image.*;
 
 import april.camera.*;
 
-// You must instantiate a new FrameScorer each time the currentCal changes
-public class PixErrScorer implements FrameScorer
+/** Frame scorer which reports the Maximum Expected Reprojection Error (MaxERE)
+  * for a coarse grid of samples spread across the image.
+  *
+  * You must instantiate a new FrameScorer each time the currentCal changes
+  */
+public class MaxEREScorer implements FrameScorer
 {
     final static boolean useMarginal = true; // can either use marginal (slow) or conditional (faster, not "correct")
 
@@ -22,7 +26,7 @@ public class PixErrScorer implements FrameScorer
     final int width, height;
     BufferedImage fakeIm;
 
-    public PixErrScorer(RobustCameraCalibrator _currentCal, int _width, int _height)
+    public MaxEREScorer(RobustCameraCalibrator _currentCal, int _width, int _height)
     {
         currentCal = _currentCal;
 

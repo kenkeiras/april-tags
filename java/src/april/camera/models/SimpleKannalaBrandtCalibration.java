@@ -5,6 +5,9 @@ import april.config.*;
 import april.jmat.*;
 import april.util.*;
 
+/** A simple radial distortion model parameterized in angle instead of
+  * rectified image radius. Usually results in a better model in the image corners.
+  */
 public class SimpleKannalaBrandtCalibration implements Calibration, ParameterizableCalibration
 {
     // required calibration parameter lengths
