@@ -58,11 +58,6 @@ public class EasyCal2
     BlockingSingleQueue<FrameData> imageQueue = new BlockingSingleQueue<FrameData>();
     BlockingSingleQueue<ProcessedFrame> processedImageQueue = new BlockingSingleQueue<ProcessedFrame>();
 
-    ArrayBlockingQueue<FrameData> saveQueue = new ArrayBlockingQueue(100);
-    String videoDir;
-
-    String autosaveDir;
-
     RobustCameraCalibrator calibrator;
     List<RobustCameraCalibrator.GraphStats> lastGraphStats;
     Rasterizer rasterizer;
@@ -121,7 +116,6 @@ public class EasyCal2
     final AcquisitionThread   acquisitionThread;
     final DetectionThread     detectionThread;
     final CalibrationThread   calibrationThread;
-    final SaveThread          saveThread;
 
     static class SuggestedImage
     {
@@ -156,18 +150,14 @@ public class EasyCal2
     }
 
     public EasyCal2(CalibrationInitializer initializer, String url, double tagSpacingMeters, double stoppingAccuracy,
-                    boolean debugGUI, boolean dictionaryGUI, String videoDir, String autosaveDir,
-                    ArrayList<BufferedImage> debugSeedImages)
+                    boolean debugGUI, boolean dictionaryGUI, ArrayList<BufferedImage> debugSeedImages)
     {
         this.tf = new Tag36h11();
         this.tm = new TagMosaic(tf, tagSpacingMeters);
         this.td = new TagDetector(tf);
-        this.tagSpacingMeters = tagSpacingMeters;
-        this.initializer = initializer;
-        this.videoDir = videoDir;
-        this.autosaveDir = autosaveDir;
-
-        this.stoppingAccuracy = stoppingAccuracy;
+        this.tagSpacingMeters  = tagSpacingMeters;
+        this.initializer       = initializer;
+        this.stoppingAccuracy  = stoppingAccuracy;
 
         // silence!
         IntrinsicsEstimator.verbose = false;
@@ -255,17 +245,9 @@ public class EasyCal2
         detectionThread   = new DetectionThread();
         calibrationThread = new CalibrationThread();
 
-        if (!videoDir.isEmpty())
-            saveThread = new SaveThread();
-        else
-            saveThread = null;
-
         acquisitionThread.start();
         detectionThread.start();
         calibrationThread.start();
-
-        if (saveThread != null)
-            saveThread.start();
 
         ////////////////////////////////////////
 
@@ -278,14 +260,6 @@ public class EasyCal2
                 try {
                     acquisitionThread.join();
                 } catch (InterruptedException ex) {
-                }
-
-                if (saveThread != null) {
-                    try {
-                        saveThread.interrupt();
-                        saveThread.join();
-                    } catch (InterruptedException ex) {
-                    }
                 }
             }
         });
@@ -392,12 +366,6 @@ public class EasyCal2
             if (code == KeyEvent.VK_SPACE) {
                 // Manual Capture
                 captureNext = true;
-
-                nmea_t nmea = new nmea_t();
-                nmea.utime = TimeUtil.utime();
-                nmea.nmea = "Flagged for manual capture\n";
-                lcm.publish("MANUAL", nmea);
-
                 return true;
             }
 
@@ -485,7 +453,6 @@ public class EasyCal2
         public void run()
         {
             long lastutime = 0;
-            boolean noTagsYet = true;
 
             while (true) {
 
@@ -504,28 +471,10 @@ public class EasyCal2
 
                 pf.detections = td.process(im, new double[] {im.getWidth()/2.0, im.getHeight()/2.0});
 
-                if (pf.detections.size() > 0 && noTagsYet) {
-                    nmea_t nmea = new nmea_t();
-                    nmea.utime = TimeUtil.utime();
-                    nmea.nmea = "First tag detection\n";
-                    lcm.publish("STARTED", nmea);
-
-                    noTagsYet = false;
-                }
-
                 if (applicationMode == MODE_CALIBRATE)
                     draw(pf.im, pf.detections);
 
                 processedImageQueue.put(pf);
-
-                double dt = (frmd.utime - lastutime) * 1.0e-6;
-                if (!videoDir.isEmpty() && dt >= 0.18) {
-                    try {
-                        saveQueue.add(frmd);
-                        lastutime = frmd.utime;
-                    } catch (IllegalStateException ex) {
-                    }
-                }
             }
         }
 
@@ -1208,17 +1157,6 @@ public class EasyCal2
                                                                    "type \":save-calibration-images\" to export data"))));
                             vb.setDrawOrder(1001);
                             vb.swap();
-
-                            if (autosaveDir.isEmpty() == false) {
-                                calibrator.saveCalibrationAndImages(autosaveDir, getConfigCommentLines());
-
-                                nmea_t nmea = new nmea_t();
-                                nmea.utime = TimeUtil.utime();
-                                nmea.nmea = "Exiting\n";
-                                lcm.publish("FINISHED", nmea);
-
-                                System.exit(0);
-                            }
                         }
 
                         int nimages = calibrator.getCalRef().getAllImageSets().size();
@@ -1656,9 +1594,6 @@ public class EasyCal2
             else                   suggestion = null;
         }
 
-        if (suggestion != null)
-            publishSuggestion(suggestion);
-
         // Grab the current value of 'cal'
         {
             double curCalScore = PixErrScorer.scoreCal(calibrator, imwidth, imheight);
@@ -1675,30 +1610,6 @@ public class EasyCal2
             if (lastIdx >= 0) System.out.printf(" %d score %f\n", lastIdx, ranked.get(lastIdx).score);
 
         }
-    }
-
-    private void publishSuggestion(SuggestedImage s)
-    {
-        suggested_image_t si = new suggested_image_t();
-        si.utime = TimeUtil.utime();
-        si.score = s.score;
-        si.xyzrpy = LinAlg.copy(s.xyzrpy);
-        si.xyzrpy_centered = LinAlg.copy(s.xyzrpy_cen);
-
-        si.ndetections   = s.detections.size();
-        si.tag_ids       = new int[si.ndetections];
-        si.tag_positions = new double[si.ndetections][4][2];
-        si.tag_centers   = new double[si.ndetections][2];
-
-        for (int i = 0; i < si.ndetections; i++) {
-            TagDetection d = s.detections.get(i);
-
-            si.tag_ids[i]       = d.id;
-            si.tag_positions[i] = LinAlg.copy(d.p);
-            si.tag_centers[i]   = LinAlg.copy(d.cxy);
-        }
-
-        lcm.publish("SUGGESTED_IMAGE", si);
     }
 
     private void selectModelAndSave(String basepath)
@@ -1833,81 +1744,6 @@ public class EasyCal2
         }
     }
 
-    private class SaveThread extends Thread
-    {
-        public void run()
-        {
-            // make sure logging directory exists
-            File videoFile = new File(videoDir);
-            if (videoFile.exists() == false) {
-                if (videoFile.mkdirs() != true) {
-                    System.err.printf("EasyCal2: Failure to create directory '%s' for video logging\n", videoDir);
-                    System.exit(1);
-                }
-            }
-
-            // pick filename for islog
-            int logNum = -1;
-            String baseLogName = null;
-            String logName = null;
-            File log = null;
-            do {
-                logNum++;
-                baseLogName = String.format("videolog%d.islog", logNum);
-                logName = String.format("%s/%s", videoDir, baseLogName);
-                log = new File(logName);
-            } while (log.exists());
-
-            // open islog
-            ISLog islog = null;
-            try {
-                islog = new ISLog(logName, "w");
-
-            } catch (IOException ex) {
-                System.out.println("Exception: " + ex);
-                ex.printStackTrace();
-                System.exit(1);
-            }
-
-            // start logging
-            while (running)
-            {
-                FrameData frmd = null;
-
-                try {
-                    frmd = saveQueue.take();
-                } catch (InterruptedException ex) {
-                    System.out.println("EasyCal2 SaveThread interrupted: " + ex);
-                    continue;
-                }
-                assert(frmd != null);
-
-                try {
-                    long offset = islog.write(frmd);
-
-                    url_t url = new url_t();
-                    url.utime = frmd.utime;
-                    url.url = String.format("islog://%s?offset=%s",
-                                            baseLogName, Long.toString(offset));
-                    lcm.publish("ISLOG", url);
-
-                } catch (IOException ex) {
-                    System.out.println("Exception: " + ex);
-                    ex.printStackTrace();
-                    System.exit(1);
-                }
-            }
-
-            try {
-                islog.close();
-            } catch (IOException ex) {
-                System.out.println("Exception: " + ex);
-                ex.printStackTrace();
-                System.exit(1);
-            }
-        }
-    }
-
     public static void main(String args[])
     {
         GetOpt opts  = new GetOpt();
@@ -1918,10 +1754,8 @@ public class EasyCal2
         opts.addDouble('m',"spacing",0.0381,"Spacing between tags (meters)");
         opts.addDouble('\0',"stopping-accuracy",1.0,"Termination accuracy (px) which flags \"finished\"");
         opts.addString('\0',"debug-seed-images","","Optional parameter listing starting images for debugging");
-        opts.addBoolean('\0',"debug-gui",false,"Display additional debugging information");
+        opts.addBoolean('\0',"debug-gui",false,"Display calibration extrinsics and other debugging info");
         opts.addBoolean('\0',"dictionary-gui",false,"Display image dictionary");
-        opts.addString('\0',"video-dir","","Directory in which to save video at 5Hz");
-        opts.addString('\0',"autosave-dir","","Directory in which to automatically save the calibration");
 
         if (!opts.parse(args)) {
             System.out.println("Option error: "+opts.getReason());
@@ -1930,8 +1764,6 @@ public class EasyCal2
         String url = opts.getString("url");
         String initclass = opts.getString("class");
         double spacing = opts.getDouble("spacing");
-        String videoDir = opts.getString("video-dir");
-        String autosaveDir = opts.getString("autosave-dir");
 
         if (opts.getBoolean("help") || url.isEmpty()) {
             System.out.println("Usage:");
@@ -1958,7 +1790,7 @@ public class EasyCal2
 
         new EasyCal2(initializer, url, spacing,  opts.getDouble("stopping-accuracy"),
                      opts.getBoolean("debug-gui"), opts.getBoolean("dictionary-gui"),
-                     videoDir, autosaveDir, debugSeedImages);
+                     debugSeedImages);
     }
 }
 
