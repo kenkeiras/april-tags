@@ -58,8 +58,8 @@ public class AprilCal
     BlockingSingleQueue<FrameData> imageQueue = new BlockingSingleQueue<FrameData>();
     BlockingSingleQueue<ProcessedFrame> processedImageQueue = new BlockingSingleQueue<ProcessedFrame>();
 
-    RobustCameraCalibrator calibrator;
-    List<RobustCameraCalibrator.GraphStats> lastGraphStats;
+    CameraCalibrator calibrator;
+    List<CameraCalibrator.GraphStats> lastGraphStats;
     Rasterizer rasterizer;
     double clickWidthFraction = 0.25, clickHeightFraction = 0.25;
 
@@ -220,7 +220,7 @@ public class AprilCal
         ////////////////////////////////////////
         // Calibrator setup
 
-        calibrator = new RobustCameraCalibrator(Arrays.asList(initializer), tf, tagSpacingMeters, debugGUI, false);
+        calibrator = new CameraCalibrator(Arrays.asList(initializer), tf, tagSpacingMeters, debugGUI, false);
 
         if (debugGUI) {
             JFrame jf2 = new JFrame("Debug");
@@ -272,7 +272,7 @@ public class AprilCal
 
         ArrayList<String> lines = new ArrayList();
 
-        for (RobustCameraCalibrator.GraphStats gs : lastGraphStats)
+        for (CameraCalibrator.GraphStats gs : lastGraphStats)
             lines.add(String.format("MRE: %10s MSE %10s",
                                     (gs == null) ? "n/a" : String.format("%7.3f px", gs.MRE),
                                     (gs == null) ? "n/a" : String.format("%7.3f px", gs.MSE)));
@@ -1446,7 +1446,7 @@ public class AprilCal
         calibrator.addOneImageSet(Arrays.asList(im),
                                   Arrays.asList(detections));
 
-        List<RobustCameraCalibrator.GraphStats> stats =
+        List<CameraCalibrator.GraphStats> stats =
             calibrator.iterateUntilConvergenceWithReinitalization(1.0, 0.01, 3, 50);
 
         calibrator.draw(stats);
@@ -1624,7 +1624,7 @@ public class AprilCal
         initializerSets.add(Arrays.asList((CalibrationInitializer) new CaltechInitializer()));
         initializerSets.add(Arrays.asList((CalibrationInitializer) new SimpleKannalaBrandtInitializer()));
 
-        List<RobustCameraCalibrator> calibrators = calibrator.createModelSelectionCalibrators(initializerSets);
+        List<CameraCalibrator> calibrators = calibrator.createModelSelectionCalibrators(initializerSets);
         assert(calibrators.size() == initializerSets.size());
 
         // create directory
@@ -1645,7 +1645,7 @@ public class AprilCal
         // save all camera models
         for (int i = 0; i < initializerSets.size(); i++) {
 
-            RobustCameraCalibrator rcc = calibrators.get(i);
+            CameraCalibrator rcc = calibrators.get(i);
             CalibrationInitializer initializer = initializerSets.get(i).get(0);
             String shortclassname = initializer.getClass().getName().replace("april.camera.models.","");
             shortclassname = shortclassname.replace("Initializer","Calibration");
@@ -1655,12 +1655,12 @@ public class AprilCal
                 continue;
             }
 
-            List<RobustCameraCalibrator.GraphStats> stats =
+            List<CameraCalibrator.GraphStats> stats =
                 rcc.iterateUntilConvergenceWithReinitalization(1.0, 0.01, 3, 50);
 
             System.out.printf("Calibration with model %-35s: ", "'"+shortclassname+"'");
             ArrayList<String> lines = new ArrayList();
-            for (RobustCameraCalibrator.GraphStats gs : stats) {
+            for (CameraCalibrator.GraphStats gs : stats) {
                 String s = String.format("MRE: %10s MSE %10s",
                                         (gs == null) ? "n/a" : String.format("%7.3f px", gs.MRE),
                                         (gs == null) ? "n/a" : String.format("%7.3f px", gs.MSE));

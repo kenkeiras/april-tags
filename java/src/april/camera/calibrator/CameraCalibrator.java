@@ -13,7 +13,7 @@ import april.jmat.ordering.*;
 import april.tag.*;
 import april.vis.*;
 
-public class RobustCameraCalibrator
+public class CameraCalibrator
 {
     public boolean verbose = false; // don't make static
 
@@ -25,9 +25,9 @@ public class RobustCameraCalibrator
     TagMosaic tm;
     double metersPerTag;
 
-    public RobustCameraCalibrator(List<CalibrationInitializer> initializers,
-                                  TagFamily tf, double metersPerTag,
-                                  boolean gui, boolean verbose)
+    public CameraCalibrator(List<CalibrationInitializer> initializers,
+                            TagFamily tf, double metersPerTag,
+                            boolean gui, boolean verbose)
     {
         this.verbose = verbose;
         this.initializers = initializers;
@@ -209,7 +209,7 @@ public class RobustCameraCalibrator
             lastStats.SPDError = true;
 
             if (verbose)
-                System.out.println("RobustCameraCalibrator: Caught SPD error during optimization");
+                System.out.println("CameraCalibrator: Caught SPD error during optimization");
         }
 
         return lastStats;
@@ -631,14 +631,14 @@ public class RobustCameraCalibrator
         }
     }
 
-    public List<RobustCameraCalibrator> createModelSelectionCalibrators(List<List<CalibrationInitializer>> initializerSets)
+    public List<CameraCalibrator> createModelSelectionCalibrators(List<List<CalibrationInitializer>> initializerSets)
     {
-        List<RobustCameraCalibrator> calibrators = new ArrayList();
+        List<CameraCalibrator> calibrators = new ArrayList();
 
         outer:
         for (List<CalibrationInitializer> initializerSet : initializerSets)
         {
-            RobustCameraCalibrator calCopy = this.copy(false);
+            CameraCalibrator calCopy = this.copy(false);
 
             List<CameraCalibrationSystem.CameraWrapper> cameras = calCopy.getCalRef().getCameras();
             assert(initializerSet.size() == cameras.size());
@@ -704,7 +704,7 @@ public class RobustCameraCalibrator
         draw(null);
     }
 
-    public void draw(List<RobustCameraCalibrator.GraphStats> stats)
+    public void draw(List<CameraCalibrator.GraphStats> stats)
     {
         if (renderer == null)
             return;
@@ -800,7 +800,7 @@ public class RobustCameraCalibrator
         if (!dir.exists()) {
             boolean success = dir.mkdirs();
             if (!success) {
-                System.err.printf("RobustCameraCalibrator: Failure to create directory '%s'\n", basepath);
+                System.err.printf("CameraCalibrator: Failure to create directory '%s'\n", basepath);
                 return;
             }
         }
@@ -821,7 +821,7 @@ public class RobustCameraCalibrator
             outs.flush();
             outs.close();
         } catch (Exception ex) {
-            System.err.printf("RobustCameraCalibrator: Failed to output calibration to '%s'\n", calName);
+            System.err.printf("CameraCalibrator: Failed to output calibration to '%s'\n", calName);
             return;
         }
     }
@@ -841,7 +841,7 @@ public class RobustCameraCalibrator
         } while (dir.exists());
 
         if (dir.mkdirs() != true) {
-            System.err.printf("RobustCameraCalibrator: Failure to create directory '%s'\n", dirName);
+            System.err.printf("CameraCalibrator: Failure to create directory '%s'\n", dirName);
             return;
         }
 
@@ -852,7 +852,7 @@ public class RobustCameraCalibrator
             outs.flush();
             outs.close();
         } catch (Exception ex) {
-            System.err.printf("RobustCameraCalibrator: Failed to output calibration to '%s'\n", configpath);
+            System.err.printf("CameraCalibrator: Failed to output calibration to '%s'\n", configpath);
             return;
         }
 
@@ -868,7 +868,7 @@ public class RobustCameraCalibrator
                 File subDir = new File(subDirName);
 
                 if (subDir.mkdirs() != true) {
-                    System.err.printf("RobustCameraCalibrator: Failure to create subdirectory '%s'\n", subDirName);
+                    System.err.printf("CameraCalibrator: Failure to create subdirectory '%s'\n", subDirName);
                     return;
                 }
             }
@@ -887,10 +887,10 @@ public class RobustCameraCalibrator
                     ImageIO.write(im, "png", imageFile);
 
                 } catch (IllegalArgumentException ex) {
-                    System.err.printf("RobustCameraCalibrator: Failed to output images to '%s'\n", subDirName);
+                    System.err.printf("CameraCalibrator: Failed to output images to '%s'\n", subDirName);
                     return;
                 } catch (IOException ex) {
-                    System.err.printf("RobustCameraCalibrator: Failed to output images to '%s'\n", subDirName);
+                    System.err.printf("CameraCalibrator: Failed to output images to '%s'\n", subDirName);
                     return;
                 }
             }
@@ -911,13 +911,13 @@ public class RobustCameraCalibrator
         return tm;
     }
 
-    public RobustCameraCalibrator copy(boolean gui)
+    public CameraCalibrator copy(boolean gui)
     {
-        RobustCameraCalibrator rocal = new RobustCameraCalibrator(this.initializers,
-                                                                  this.tf,
-                                                                  this.metersPerTag,
-                                                                  gui,
-                                                                  this.verbose);
+        CameraCalibrator rocal = new CameraCalibrator(this.initializers,
+                                                      this.tf,
+                                                      this.metersPerTag,
+                                                      gui,
+                                                      this.verbose);
         rocal.cal = this.cal.copy();
         if (rocal.renderer != null)
             rocal.renderer.replaceCalibrationSystem(rocal.cal);

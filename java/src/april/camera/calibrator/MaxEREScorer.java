@@ -21,12 +21,12 @@ public class MaxEREScorer implements FrameScorer
     public static int seed = 14;
     public static int nsamples = 50;
 
-    final RobustCameraCalibrator currentCal;
+    final CameraCalibrator currentCal;
 
     final int width, height;
     BufferedImage fakeIm;
 
-    public MaxEREScorer(RobustCameraCalibrator _currentCal, int _width, int _height)
+    public MaxEREScorer(CameraCalibrator _currentCal, int _width, int _height)
     {
         currentCal = _currentCal;
 
@@ -37,17 +37,17 @@ public class MaxEREScorer implements FrameScorer
 
     public double scoreFrame(List<TagDetection> dets)
     {
-        RobustCameraCalibrator cal = currentCal.copy(false);
+        CameraCalibrator cal = currentCal.copy(false);
 
         // XXX Passing null here
         cal.addOneImageSet(Arrays.asList(fakeIm), Arrays.asList(dets));
 
         // build graphs
-        List<RobustCameraCalibrator.GraphWrapper> graphWrappers = cal.buildCalibrationGraphs();
+        List<CameraCalibrator.GraphWrapper> graphWrappers = cal.buildCalibrationGraphs();
         assert(graphWrappers.size() == 1);
 
         // optimize
-        List<RobustCameraCalibrator.GraphStats> stats =
+        List<CameraCalibrator.GraphStats> stats =
             cal.iterateUntilConvergence(graphWrappers, 0.01, 2, 1000);
         assert(stats.size() == 1);
 
@@ -55,8 +55,8 @@ public class MaxEREScorer implements FrameScorer
         cal.updateFromGraphs(graphWrappers, stats);
 
         // there should only be one camera, so get its graph objects
-        RobustCameraCalibrator.GraphWrapper gw = graphWrappers.get(0);
-        RobustCameraCalibrator.GraphStats s = stats.get(0);
+        CameraCalibrator.GraphWrapper gw = graphWrappers.get(0);
+        CameraCalibrator.GraphStats s = stats.get(0);
         assert(gw != null);
         assert(s != null);
 
@@ -74,13 +74,13 @@ public class MaxEREScorer implements FrameScorer
                         gw.g, cameraIntrinsicsIndex, width, height);
     }
 
-    public static double scoreCal(RobustCameraCalibrator cal, int width, int height)
+    public static double scoreCal(CameraCalibrator cal, int width, int height)
     {
         // build graphs
-        List<RobustCameraCalibrator.GraphWrapper> graphWrappers = cal.buildCalibrationGraphs();
+        List<CameraCalibrator.GraphWrapper> graphWrappers = cal.buildCalibrationGraphs();
         assert(graphWrappers.size() == 1);
 
-        RobustCameraCalibrator.GraphWrapper gw = graphWrappers.get(0);
+        CameraCalibrator.GraphWrapper gw = graphWrappers.get(0);
         assert(gw != null);
 
         // get the node index for the camera intrinsics

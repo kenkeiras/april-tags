@@ -10,7 +10,7 @@ public class InitializationVarianceScorer implements FrameScorer
 {
     public static int NSAMPLES = 20;
 
-    RobustCameraCalibrator currentCal;
+    CameraCalibrator currentCal;
     int imwidth, imheight;
 
     List<CalibrationInitializer> initializers;
@@ -18,7 +18,7 @@ public class InitializationVarianceScorer implements FrameScorer
 
     Random r = new Random();
 
-    public InitializationVarianceScorer(RobustCameraCalibrator cal, int width, int height)
+    public InitializationVarianceScorer(CameraCalibrator cal, int width, int height)
     {
         this.currentCal = cal;
         this.imwidth = width;

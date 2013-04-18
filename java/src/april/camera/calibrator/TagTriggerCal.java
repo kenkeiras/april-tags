@@ -47,8 +47,8 @@ public class TagTriggerCal
     BlockingSingleQueue<FrameData> imageQueue = new BlockingSingleQueue<FrameData>();
     BlockingSingleQueue<ProcessedFrame> processedImageQueue = new BlockingSingleQueue<ProcessedFrame>();
 
-    RobustCameraCalibrator calibrator;
-    List<RobustCameraCalibrator.GraphStats> lastGraphStats;
+    CameraCalibrator calibrator;
+    List<CameraCalibrator.GraphStats> lastGraphStats;
     Rasterizer rasterizer;
     double clickWidthFraction = 0.25, clickHeightFraction = 0.25;
 
@@ -94,7 +94,7 @@ public class TagTriggerCal
         ////////////////////////////////////////
         // Calibrator setup
 
-        calibrator = new RobustCameraCalibrator(Arrays.asList(initializer), tf, tagSpacingMeters, true, false);
+        calibrator = new CameraCalibrator(Arrays.asList(initializer), tf, tagSpacingMeters, true, false);
 
         ////////////////////////////////////////
         // GUI
@@ -158,7 +158,7 @@ public class TagTriggerCal
 
         ArrayList<String> lines = new ArrayList();
 
-        for (RobustCameraCalibrator.GraphStats gs : lastGraphStats)
+        for (CameraCalibrator.GraphStats gs : lastGraphStats)
             lines.add(String.format("MRE: %10s MSE %10s",
                                     (gs == null) ? "n/a" : String.format("%7.3f px", gs.MRE),
                                     (gs == null) ? "n/a" : String.format("%7.3f px", gs.MSE)));
@@ -594,7 +594,7 @@ public class TagTriggerCal
         calibrator.addOneImageSet(Arrays.asList(im),
                                   Arrays.asList(detections));
 
-        List<RobustCameraCalibrator.GraphStats> stats =
+        List<CameraCalibrator.GraphStats> stats =
             calibrator.iterateUntilConvergenceWithReinitalization(1.0, 0.01, 3, 50);
 
         calibrator.draw(stats);

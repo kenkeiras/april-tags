@@ -114,7 +114,7 @@ public class CalibrationRenderer
         return vc;
     }
 
-    public void draw(List<RobustCameraCalibrator.GraphStats> stats)
+    public void draw(List<CameraCalibrator.GraphStats> stats)
     {
         List<CameraCalibrationSystem.CameraWrapper> cameras = cal.getCameras();
         List<CameraCalibrationSystem.MosaicWrapper> mosaics = cal.getMosaics();
@@ -197,7 +197,7 @@ public class CalibrationRenderer
 
     private void drawHUD(List<CameraCalibrationSystem.CameraWrapper> cameras,
                          List<CameraCalibrationSystem.MosaicWrapper> mosaics,
-                         List<RobustCameraCalibrator.GraphStats> stats)
+                         List<CameraCalibrator.GraphStats> stats)
     {
         drawDistortionCurves(cameras, mosaics);
         drawHUDText(cameras, mosaics, stats);
@@ -295,12 +295,12 @@ public class CalibrationRenderer
 
     private void drawHUDText(List<CameraCalibrationSystem.CameraWrapper> cameras,
                              List<CameraCalibrationSystem.MosaicWrapper> mosaics,
-                             List<RobustCameraCalibrator.GraphStats> stats)
+                             List<CameraCalibrator.GraphStats> stats)
     {
         if (stats == null)
             return;
 
-        for (RobustCameraCalibrator.GraphStats gs : stats)
+        for (CameraCalibrator.GraphStats gs : stats)
         {
             if (gs == null)
                 continue;

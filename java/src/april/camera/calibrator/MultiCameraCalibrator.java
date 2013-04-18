@@ -31,8 +31,8 @@ public class MultiCameraCalibrator implements ParameterListener
     BlockingSingleQueue<FrameData>  imageQueues[];
     boolean                         imageQueueFlags[];
 
-    RobustCameraCalibrator calibrator;
-    List<RobustCameraCalibrator.GraphStats> lastGraphStats;
+    CameraCalibrator calibrator;
+    List<CameraCalibrator.GraphStats> lastGraphStats;
     TagFamily   tf;
     TagDetector td;
     double      metersPerTag;
@@ -67,7 +67,7 @@ public class MultiCameraCalibrator implements ParameterListener
         this.start_utime = TimeUtil.utime();
 
         // Calibrator setup
-        calibrator = new RobustCameraCalibrator(initializers, tf, metersPerTag, true, verbose);
+        calibrator = new CameraCalibrator(initializers, tf, metersPerTag, true, verbose);
 
         // silence!
         IntrinsicsEstimator.verbose = false;
@@ -160,7 +160,7 @@ public class MultiCameraCalibrator implements ParameterListener
 
         ArrayList<String> lines = new ArrayList();
 
-        for (RobustCameraCalibrator.GraphStats gs : lastGraphStats)
+        for (CameraCalibrator.GraphStats gs : lastGraphStats)
             lines.add(String.format("MRE: %10s MSE %10s",
                                     (gs == null) ? "n/a" : String.format("%7.3f px", gs.MRE),
                                     (gs == null) ? "n/a" : String.format("%7.3f px", gs.MSE)));
@@ -427,7 +427,7 @@ public class MultiCameraCalibrator implements ParameterListener
     {
         calibrator.addOneImageSet(imageSet, detectionSet);
 
-        List<RobustCameraCalibrator.GraphStats> stats =
+        List<CameraCalibrator.GraphStats> stats =
             calibrator.iterateUntilConvergenceWithReinitalization(1.0, 0.01, 3, 50);
 
         lastGraphStats = stats;
@@ -437,7 +437,7 @@ public class MultiCameraCalibrator implements ParameterListener
             calibrator.printCalibrationBlock(getConfigCommentLines());
 
         if (verbose) {
-            for (RobustCameraCalibrator.GraphStats s : stats) {
+            for (CameraCalibrator.GraphStats s : stats) {
                 if (s == null) {
                     System.out.printf("Graph is null\n");
                     continue;
@@ -468,7 +468,7 @@ public class MultiCameraCalibrator implements ParameterListener
             initializerSets.add(initializerSet);
         }
 
-        List<RobustCameraCalibrator> calibrators = calibrator.createModelSelectionCalibrators(initializerSets);
+        List<CameraCalibrator> calibrators = calibrator.createModelSelectionCalibrators(initializerSets);
         assert(calibrators.size() == initializerSets.size());
 
         // create directory
@@ -489,7 +489,7 @@ public class MultiCameraCalibrator implements ParameterListener
         // save all camera models
         for (int i = 0; i < initializerSets.size(); i++) {
 
-            RobustCameraCalibrator rcc = calibrators.get(i);
+            CameraCalibrator rcc = calibrators.get(i);
             CalibrationInitializer initializer = initializerTypes.get(i);
             String shortclassname = initializer.getClass().getName().replace("april.camera.models.","");
             shortclassname = shortclassname.replace("Initializer","Calibration");
@@ -499,12 +499,12 @@ public class MultiCameraCalibrator implements ParameterListener
                 continue;
             }
 
-            List<RobustCameraCalibrator.GraphStats> stats =
+            List<CameraCalibrator.GraphStats> stats =
                 rcc.iterateUntilConvergenceWithReinitalization(1.0, 0.01, 3, 50);
 
             System.out.printf("Calibration with model %-35s: ", "'"+shortclassname+"'");
             ArrayList<String> lines = new ArrayList();
-            for (RobustCameraCalibrator.GraphStats gs : stats) {
+            for (CameraCalibrator.GraphStats gs : stats) {
                 String s = String.format("MRE: %10s MSE %10s",
                                         (gs == null) ? "n/a" : String.format("%7.3f px", gs.MRE),
                                         (gs == null) ? "n/a" : String.format("%7.3f px", gs.MSE));
