@@ -130,7 +130,7 @@ public class SphericalProjection
 
         opts.addBoolean('h',"help",false,"See the help screen");
         opts.addString('c',"config","","Config file path");
-        opts.addString('s',"childstring","aprilCameraCalibration.camera0","CameraSet child name (e.g. aprilCameraCalibration.camera0)");
+        opts.addString('s',"childstring","aprilCameraCalibration.camera0000","CameraSet child name (e.g. aprilCameraCalibration.camera0)");
         opts.addString('i',"image","","Image path");
         opts.addBoolean('p',"planar",false,"Draw as a plane instead of a sphere");
 
