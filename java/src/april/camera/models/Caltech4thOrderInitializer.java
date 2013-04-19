@@ -8,7 +8,7 @@ import april.tag.*;
 
 public class Caltech4thOrderInitializer implements CalibrationInitializer
 {
-    public static boolean verbose = true;
+    public static boolean verbose = false;
 
     public Caltech4thOrderInitializer()
     {

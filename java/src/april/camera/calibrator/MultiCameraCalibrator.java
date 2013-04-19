@@ -69,17 +69,6 @@ public class MultiCameraCalibrator implements ParameterListener
         // Calibrator setup
         calibrator = new CameraCalibrator(initializers, tf, metersPerTag, true, verbose);
 
-        // silence!
-        IntrinsicsEstimator.verbose = false;
-        april.camera.models.SimpleKannalaBrandtInitializer.verbose = false;
-        april.camera.models.KannalaBrandtInitializer.verbose = false;
-        april.camera.models.DistortionFreeInitializer.verbose = false;
-        april.camera.models.CaltechInitializer.verbose = false;
-        april.camera.models.Radial4thOrderCaltechInitializer.verbose = false;
-        april.camera.models.Radial6thOrderCaltechInitializer.verbose = false;
-        april.camera.models.Radial8thOrderCaltechInitializer.verbose = false;
-        april.camera.models.Radial10thOrderCaltechInitializer.verbose = false;
-
         pg = new ParameterGUI();
         pg.addCheckBoxes("screenshots","Automatically save screenshots to /tmp", false);
         pg.addButtons("captureOnce","Capture once",

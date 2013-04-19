@@ -60,7 +60,7 @@ public class DistortionFunctionVerifier
 
         // compute the various representations for the center pixel
         center_rp = new double[] { cc[0], cc[1] };
-        center_rn = CameraMath.pixelTransform(Kinv, center_rp);
+        center_rn = CameraMath.pinholeTransform(Kinv, center_rp);
         center_dp = view.normToPixels(center_rn);
         double lastPixelRadius = 0;
 
@@ -78,7 +78,7 @@ public class DistortionFunctionVerifier
             // assuming the distortion is primarily radial, we only increase x
             xy_rp[0] += 1;
 
-            double xy_rn[] = CameraMath.pixelTransform(Kinv, xy_rp);
+            double xy_rn[] = CameraMath.pinholeTransform(Kinv, xy_rp);
             double normalizedRadius = Math.sqrt(xy_rn[0]*xy_rn[0] + xy_rn[1]*xy_rn[1]);
 
             double xy_dp[] = view.normToPixels(xy_rn);
@@ -158,7 +158,9 @@ public class DistortionFunctionVerifier
       */
     public boolean validPixelCoord(double xy_dp[])
     {
-        double pixelsRadius = LinAlg.distance(xy_dp, center_dp);
+        double dx = xy_dp[0] - center_dp[0];
+        double dy = xy_dp[1] - center_dp[1];
+        double pixelsRadius = Math.sqrt(dx*dx + dy*dy);
 
         if (pixelsRadius < this.maxValidPixelRadius)
             return true;

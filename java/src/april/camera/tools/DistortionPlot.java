@@ -103,8 +103,8 @@ public class DistortionPlot
                 for (int x=0; x < inputWidth; x+=stepsize) {
 
                     double xy1_dp[] = new double[] {x, y};
-                    double xy1_rp[] = output.normToPixels(input.pixelsToNorm(xy1_dp));
-                    double xy2_dp[] = input.normToPixels(output.pixelsToNorm(xy1_rp));
+                    double xy1_rp[] = output.rayToPixels(input.pixelsToRay(xy1_dp));
+                    double xy2_dp[] = input.rayToPixels(output.pixelsToRay(xy1_rp));
 
                     points_d1.add(xy1_dp);
                     points_r1.add(xy1_rp);
@@ -161,7 +161,7 @@ public class DistortionPlot
                 for (int x = -inputWidth; x < inputWidth*2; x+=stepsize) {
 
                     double xy_rp[] = new double[] {x, y};
-                    double xy_dp[] = input.normToPixels(output.pixelsToNorm(xy_rp));
+                    double xy_dp[] = input.rayToPixels(output.pixelsToRay(xy_rp));
 
                     int ix = (int) Math.floor(xy_dp[0]);
                     int iy = (int) Math.floor(xy_dp[1]);
@@ -197,7 +197,7 @@ public class DistortionPlot
                 for (int x=0; x < outputWidth; x+=stepsize) {
 
                     double xy_rp[] = new double[] { x, y };
-                    double xy_dp[] = input.normToPixels(output.pixelsToNorm(xy_rp));
+                    double xy_dp[] = input.rayToPixels(output.pixelsToRay(xy_rp));
 
                     points_r1.add(xy_rp);
                     points_d1.add(xy_dp);

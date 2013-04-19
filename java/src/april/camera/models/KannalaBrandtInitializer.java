@@ -8,7 +8,7 @@ import april.tag.*;
 
 public class KannalaBrandtInitializer implements CalibrationInitializer
 {
-    public static boolean verbose = true;
+    public static boolean verbose = false;
 
     public KannalaBrandtInitializer()
     {

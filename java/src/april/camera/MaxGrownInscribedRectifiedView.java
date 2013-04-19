@@ -112,8 +112,8 @@ public class MaxGrownInscribedRectifiedView implements View
         {
             double xy_dp[] = new double[] { x_dp, y_dp };
             xy_dp = verifier.clampPixels(xy_dp);
-            double xy_rn[] = view.pixelsToNorm(xy_dp);
-            double xy_rp[] = CameraMath.pixelTransform(K, xy_rn);
+            double xyz_r[] = view.pixelsToRay(xy_dp);
+            double xy_rp[] = CameraMath.pinholeTransform(K, xyz_r);
             border.add(xy_rp);
         }
 
@@ -123,8 +123,8 @@ public class MaxGrownInscribedRectifiedView implements View
         {
             double xy_dp[] = new double[] { x_dp, y_dp };
             xy_dp = verifier.clampPixels(xy_dp);
-            double xy_rn[] = view.pixelsToNorm(xy_dp);
-            double xy_rp[] = CameraMath.pixelTransform(K, xy_rn);
+            double xyz_r[] = view.pixelsToRay(xy_dp);
+            double xy_rp[] = CameraMath.pinholeTransform(K, xyz_r);
             border.add(xy_rp);
         }
 
@@ -134,8 +134,8 @@ public class MaxGrownInscribedRectifiedView implements View
         {
             double xy_dp[] = new double[] { x_dp, y_dp };
             xy_dp = verifier.clampPixels(xy_dp);
-            double xy_rn[] = view.pixelsToNorm(xy_dp);
-            double xy_rp[] = CameraMath.pixelTransform(K, xy_rn);
+            double xyz_r[] = view.pixelsToRay(xy_dp);
+            double xy_rp[] = CameraMath.pinholeTransform(K, xyz_r);
             border.add(xy_rp);
         }
 
@@ -145,8 +145,8 @@ public class MaxGrownInscribedRectifiedView implements View
         {
             double xy_dp[] = new double[] { x_dp, y_dp };
             xy_dp = verifier.clampPixels(xy_dp);
-            double xy_rn[] = view.pixelsToNorm(xy_dp);
-            double xy_rp[] = CameraMath.pixelTransform(K, xy_rn);
+            double xyz_r[] = view.pixelsToRay(xy_dp);
+            double xy_rp[] = CameraMath.pinholeTransform(K, xyz_r);
             border.add(xy_rp);
         }
 
@@ -181,14 +181,14 @@ public class MaxGrownInscribedRectifiedView implements View
         return LinAlg.copy(K);
     }
 
-    public double[] normToPixels(double xy_rn[])
+    public double[] rayToPixels(double xyz_r[])
     {
-        return CameraMath.pixelTransform(K, xy_rn);
+        return CameraMath.pinholeTransform(K, xyz_r);
     }
 
-    public double[] pixelsToNorm(double xy_rp[])
+    public double[] pixelsToRay(double xy_rp[])
     {
-        return CameraMath.pixelTransform(Kinv, xy_rp);
+        return CameraMath.rayToPlane(CameraMath.pinholeTransform(Kinv, xy_rp));
     }
 
     public String getCacheString()

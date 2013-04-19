@@ -8,7 +8,7 @@ import april.tag.*;
 
 public class Radial6thOrderCaltechInitializer implements CalibrationInitializer
 {
-    public static boolean verbose = true;
+    public static boolean verbose = false;
 
     public Radial6thOrderCaltechInitializer()
     {

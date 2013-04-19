@@ -52,14 +52,14 @@ public class StereoRectifiedView implements View
         return LinAlg.copy(K);
     }
 
-    public double[] normToPixels(double xy_rn[])
+    public double[] rayToPixels(double xyz_r[])
     {
-        return CameraMath.pixelTransform(K, xy_rn);
+        return CameraMath.pinholeTransform(K, xyz_r);
     }
 
-    public double[] pixelsToNorm(double xy_rp[])
+    public double[] pixelsToRay(double xy_rp[])
     {
-        return CameraMath.pixelTransform(Kinv, xy_rp);
+        return CameraMath.rayToPlane(CameraMath.pinholeTransform(Kinv, xy_rp));
     }
 
     public String getCacheString()

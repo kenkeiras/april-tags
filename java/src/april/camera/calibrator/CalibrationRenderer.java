@@ -245,9 +245,9 @@ public class CalibrationRenderer
             for (int r=0; r < radius; r++) {
                 double xy_rp[] = new double[] { K[0][2] + r, K[1][2] };
 
-                double xy_rn[] = CameraMath.pixelTransform(Kinv, xy_rp);
+                double xyz_r[] = CameraMath.rayToPlane(CameraMath.pinholeTransform(Kinv, xy_rp));
 
-                double xy_dp[] = cal.normToPixels(xy_rn);
+                double xy_dp[] = cal.rayToPixels(xyz_r);
 
                 double dr = xy_dp[0] - K[0][2];
 

@@ -141,11 +141,11 @@ public class MaxEREScorer implements FrameScorer
 
                 int idx = y*width + x;
                 double meanPix [] = {x,y};
-                double meanNorm[] = meanCal.pixelsToNorm(meanPix);
+                double meanRay[] = meanCal.pixelsToRay(meanPix);
 
                 MultiGaussianEstimator mge = new MultiGaussianEstimator(1);
                 for (View cal : cals) {
-                    double samplePix[] = cal.normToPixels(meanNorm);
+                    double samplePix[] = cal.rayToPixels(meanRay);
                     mge.observe(new double[]{LinAlg.distance(samplePix, meanPix)});
                 }
                 errSamples.add(mge.getEstimate());

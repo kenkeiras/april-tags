@@ -32,16 +32,16 @@ public class MaxInscribedRectifiedView implements View
 
         DistortionFunctionVerifier verifier = new DistortionFunctionVerifier(view);
 
-        Rb = CameraMath.pixelTransform(K, view.pixelsToNorm(verifier.clampPixels(new double[] {                0,                  0})))[1];
-        Rr = CameraMath.pixelTransform(K, view.pixelsToNorm(verifier.clampPixels(new double[] {view.getWidth()-1,                  0})))[0];
-        Rt = CameraMath.pixelTransform(K, view.pixelsToNorm(verifier.clampPixels(new double[] {view.getWidth()-1, view.getHeight()-1})))[1];
-        Rl = CameraMath.pixelTransform(K, view.pixelsToNorm(verifier.clampPixels(new double[] {                0, view.getHeight()-1})))[0];
+        Rb = CameraMath.pinholeTransform(K, view.pixelsToRay(verifier.clampPixels(new double[] {                0,                  0})))[1];
+        Rr = CameraMath.pinholeTransform(K, view.pixelsToRay(verifier.clampPixels(new double[] {view.getWidth()-1,                  0})))[0];
+        Rt = CameraMath.pinholeTransform(K, view.pixelsToRay(verifier.clampPixels(new double[] {view.getWidth()-1, view.getHeight()-1})))[1];
+        Rl = CameraMath.pinholeTransform(K, view.pixelsToRay(verifier.clampPixels(new double[] {                0, view.getHeight()-1})))[0];
 
         // TL -> TR
         y_dp = 0;
         for (x_dp = 0; x_dp < view.getWidth(); x_dp++) {
 
-            double xy_rp[] = CameraMath.pixelTransform(K, view.pixelsToNorm(verifier.clampPixels(new double[] { x_dp, y_dp })));
+            double xy_rp[] = CameraMath.pinholeTransform(K, view.pixelsToRay(verifier.clampPixels(new double[] { x_dp, y_dp })));
             Rb = Math.max(Rb, xy_rp[1]);
         }
 
@@ -49,7 +49,7 @@ public class MaxInscribedRectifiedView implements View
         x_dp = view.getWidth()-1;
         for (y_dp = 0; y_dp < view.getHeight(); y_dp++) {
 
-            double xy_rp[] = CameraMath.pixelTransform(K, view.pixelsToNorm(verifier.clampPixels(new double[] { x_dp, y_dp })));
+            double xy_rp[] = CameraMath.pinholeTransform(K, view.pixelsToRay(verifier.clampPixels(new double[] { x_dp, y_dp })));
             Rr = Math.min(Rr, xy_rp[0]);
         }
 
@@ -57,7 +57,7 @@ public class MaxInscribedRectifiedView implements View
         y_dp = view.getHeight()-1;
         for (x_dp = view.getWidth()-1; x_dp >= 0; x_dp--) {
 
-            double xy_rp[] = CameraMath.pixelTransform(K, view.pixelsToNorm(verifier.clampPixels(new double[] { x_dp, y_dp })));
+            double xy_rp[] = CameraMath.pinholeTransform(K, view.pixelsToRay(verifier.clampPixels(new double[] { x_dp, y_dp })));
             Rt = Math.min(Rt, xy_rp[1]);
         }
 
@@ -65,7 +65,7 @@ public class MaxInscribedRectifiedView implements View
         x_dp = 0;
         for (y_dp = view.getHeight()-1; y_dp >= 0; y_dp--) {
 
-            double xy_rp[] = CameraMath.pixelTransform(K, view.pixelsToNorm(verifier.clampPixels(new double[] { x_dp, y_dp })));
+            double xy_rp[] = CameraMath.pinholeTransform(K, view.pixelsToRay(verifier.clampPixels(new double[] { x_dp, y_dp })));
             Rl = Math.max(Rl, xy_rp[0]);
         }
 
@@ -99,14 +99,14 @@ public class MaxInscribedRectifiedView implements View
         return LinAlg.copy(K);
     }
 
-    public double[] normToPixels(double xy_rn[])
+    public double[] rayToPixels(double xyz_r[])
     {
-        return CameraMath.pixelTransform(K, xy_rn);
+        return CameraMath.pinholeTransform(K, xyz_r);
     }
 
-    public double[] pixelsToNorm(double xy_rp[])
+    public double[] pixelsToRay(double xy_rp[])
     {
-        return CameraMath.pixelTransform(Kinv, xy_rp);
+        return CameraMath.rayToPlane(CameraMath.pinholeTransform(Kinv, xy_rp));
     }
 
     public String getCacheString()

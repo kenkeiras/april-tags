@@ -123,7 +123,7 @@ public class DistortionDebugger implements ParameterListener
         for (int i=0; i < points.size(); i++) {
             double r = points.get(i)[0];
             double xy_rp[] = new double[] { cx + f*r, cy };
-            double xy_rn[] = CameraMath.pixelTransform(Kinv, xy_rp);
+            double xy_rn[] = CameraMath.pinholeTransform(Kinv, xy_rp);
             colors[i] = verifier.validNormalizedCoord(xy_rn) ? 0xFFFF0000 : 0xFF0000FF;
         }
         VisColorData colorData = new VisColorData(colors);

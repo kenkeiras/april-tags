@@ -113,22 +113,22 @@ public class Radial10thOrderCaltechCalibration implements Calibration, Parameter
         return LinAlg.copy(K);
     }
 
-    /** Convert a 2D double { X/Z, Y/Z } to pixel coordinates in this view,
+    /** Convert a 3D ray to pixel coordinates in this view,
       * applying distortion if appropriate.
       */
-    public double[] normToPixels(double xy_rn[])
+    public double[] rayToPixels(double xyz_r[])
     {
-        double xy_dn[] = distortNormalized(xy_rn);
-        return CameraMath.pixelTransform(K, xy_dn);
+        double xy_dn[] = distortRay(xyz_r);
+        return CameraMath.pinholeTransform(K, xy_dn);
     }
 
-    /** Convert a 2D pixel coordinate in this view to normalized coordinates,
-      * { X/Z, Y/Z }, removing distortion if appropriate.
+    /** Convert a 2D pixel coordinate in this view to a 3D ray,
+      * removing distortion if appropriate.
       */
-    public double[] pixelsToNorm(double xy_dp[])
+    public double[] pixelsToRay(double xy_dp[])
     {
-        double xy_dn[] = CameraMath.pixelTransform(Kinv, xy_dp);
-        return rectifyNormalized(xy_dn);
+        double xy_dn[] = CameraMath.pinholeTransform(Kinv, xy_dp);
+        return rectifyToRay(xy_dn);
     }
 
     /** Return a string of all critical parameters for caching data based
@@ -208,11 +208,15 @@ public class Radial10thOrderCaltechCalibration implements Calibration, Parameter
     ////////////////////////////////////////////////////////////////////////////////
     // Private methods
 
-    // Perform distortion in normalized coordinates
-    private double[] distortNormalized(double xy_rn[])
+    // Distort a ray
+    private double[] distortRay(double xyz_r[])
     {
-        double x = xy_rn[0];
-        double y = xy_rn[1];
+        double x = xyz_r[0];
+        double y = xyz_r[1];
+        double z = xyz_r[2];
+        // pinhole assumption
+        x = x / z;
+        y = y / z;
 
         double r2 = x*x + y*y;
         double r4 = r2 * r2;
@@ -231,8 +235,8 @@ public class Radial10thOrderCaltechCalibration implements Calibration, Parameter
         return xy_dn;
     }
 
-    // Perform iterative rectification in normalized coordinates
-    private double[] rectifyNormalized(double xy_dn[])
+    // Perform iterative rectification and return a ray
+    private double[] rectifyToRay(double xy_dn[])
     {
         double x_rn = xy_dn[0];
         double y_rn = xy_dn[1];
@@ -261,9 +265,7 @@ public class Radial10thOrderCaltechCalibration implements Calibration, Parameter
                 break;
         }
 
-        return new double[] { x_rn, y_rn };
+        return new double[] { x_rn, y_rn, 1 };
     }
 }
-
-
 

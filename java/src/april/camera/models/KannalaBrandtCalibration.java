@@ -124,22 +124,22 @@ public class KannalaBrandtCalibration implements Calibration, ParameterizableCal
         return LinAlg.copy(K);
     }
 
-    /** Convert a 2D double { X/Z, Y/Z } to pixel coordinates in this view,
+    /** Convert a 3D ray to pixel coordinates in this view,
       * applying distortion if appropriate.
       */
-    public double[] normToPixels(double xy_rn[])
+    public double[] rayToPixels(double xyz_r[])
     {
-        double xy_dn[] = distortNormalized(xy_rn);
-        return CameraMath.pixelTransform(K, xy_dn);
+        double xy_dn[] = distortRay(xyz_r);
+        return CameraMath.pinholeTransform(K, xy_dn);
     }
 
-    /** Convert a 2D pixel coordinate in this view to normalized coordinates,
-      * { X/Z, Y/Z }, removing distortion if appropriate.
+    /** Convert a 2D pixel coordinate in this view to a 3D ray,
+      * removing distortion if appropriate.
       */
-    public double[] pixelsToNorm(double xy_dp[])
+    public double[] pixelsToRay(double xy_dp[])
     {
-        double xy_dn[] = CameraMath.pixelTransform(Kinv, xy_dp);
-        return rectifyNormalized(xy_dn);
+        double xy_dn[] = CameraMath.pinholeTransform(Kinv, xy_dp);
+        return rectifyToRay(xy_dn);
     }
 
     /** Return a string of all critical parameters for caching data based
@@ -273,14 +273,14 @@ public class KannalaBrandtCalibration implements Calibration, ParameterizableCal
     ////////////////////////////////////////////////////////////////////////////////
     // Private methods
 
-    // Perform distortion in normalized coordinates
-    private double[] distortNormalized(double xy_rn[])
+    // Distort a ray
+    private double[] distortRay(double xyz_r[])
     {
-        assert(xy_rn.length == 2);
+        assert(xyz_r.length == 3);
 
-        double x = xy_rn[0];
-        double y = xy_rn[1];
-        double z = 1.0;
+        double x = xyz_r[0];
+        double y = xyz_r[1];
+        double z = xyz_r[2];
 
         // the three sides of the triangle
         double O = Math.sqrt(x*x + y*y);
@@ -327,7 +327,8 @@ public class KannalaBrandtCalibration implements Calibration, ParameterizableCal
         return xy_dn;
     }
 
-    private double[] rectifyNormalized(double xy_dn[])
+    // Perform iterative rectification and return a ray
+    private double[] rectifyToRay(double xy_dn[])
     {
         System.out.println("Error: KannalaBrandtCalibration cannot be used for rectification until tested on fisheye lens");
         assert(false);

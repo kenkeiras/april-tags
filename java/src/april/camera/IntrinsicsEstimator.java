@@ -9,7 +9,7 @@ import april.util.*;
 
 public class IntrinsicsEstimator
 {
-    public static boolean verbose = true;
+    public static boolean verbose = false;
 
     private double K[][];
     private ArrayList<double[][]> vanishingPoints = new ArrayList<double[][]>();

@@ -159,18 +159,6 @@ public class AprilCal
         this.initializer       = initializer;
         this.stoppingAccuracy  = stoppingAccuracy;
 
-        // silence!
-        IntrinsicsEstimator.verbose = false;
-        april.camera.models.SimpleKannalaBrandtInitializer.verbose = false;
-        april.camera.models.KannalaBrandtInitializer.verbose = false;
-        april.camera.models.DistortionFreeInitializer.verbose = false;
-        april.camera.models.CaltechInitializer.verbose = false;
-        april.camera.models.Caltech4thOrderInitializer.verbose = false;
-        april.camera.models.Radial4thOrderCaltechInitializer.verbose = false;
-        april.camera.models.Radial6thOrderCaltechInitializer.verbose = false;
-        april.camera.models.Radial8thOrderCaltechInitializer.verbose = false;
-        april.camera.models.Radial10thOrderCaltechInitializer.verbose = false;
-
         ////////////////////////////////////////
         // GUI
         vw = new VisWorld();
@@ -1347,8 +1335,7 @@ public class AprilCal
                     // if (!verifier.validPixelCoord(xy_dp))
                     //     continue;
 
-                    double norm[] = cal.pixelsToNorm(xy_dp);
-                    double xyz[] = {norm[0], norm[1], 1};
+                    double xyz[] = cal.pixelsToRay(xy_dp);
                     //LinAlg.scaleEquals(xyz, desiredDepth + r.nextGaussian() * 0.01 );
                     LinAlg.scaleEquals(xyz, desiredDepth );
 

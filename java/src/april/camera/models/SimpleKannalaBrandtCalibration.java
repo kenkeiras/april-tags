@@ -102,22 +102,22 @@ public class SimpleKannalaBrandtCalibration implements Calibration, Parameteriza
         return LinAlg.copy(K);
     }
 
-    /** Convert a 2D double { X/Z, Y/Z } to pixel coordinates in this view,
+    /** Convert a 3D ray to pixel coordinates in this view,
       * applying distortion if appropriate.
       */
-    public double[] normToPixels(double xy_rn[])
+    public double[] rayToPixels(double xyz_r[])
     {
-        double xy_dn[] = distortNormalized(xy_rn);
-        return CameraMath.pixelTransform(K, xy_dn);
+        double xy_dn[] = distortRay(xyz_r);
+        return CameraMath.pinholeTransform(K, xy_dn);
     }
 
-    /** Convert a 2D pixel coordinate in this view to normalized coordinates,
-      * { X/Z, Y/Z }, removing distortion if appropriate.
+    /** Convert a 2D pixel coordinate in this view to a 3D ray,
+      * removing distortion if appropriate.
       */
-    public double[] pixelsToNorm(double xy_dp[])
+    public double[] pixelsToRay(double xy_dp[])
     {
-        double xy_dn[] = CameraMath.pixelTransform(Kinv, xy_dp);
-        return rectifyNormalized(xy_dn);
+        double xy_dn[] = CameraMath.pinholeTransform(Kinv, xy_dp);
+        return CameraMath.rayToSphere(rectifyToRay(xy_dn));
     }
 
     /** Return a string of all critical parameters for caching data based
@@ -196,21 +196,18 @@ public class SimpleKannalaBrandtCalibration implements Calibration, Parameteriza
     ////////////////////////////////////////////////////////////////////////////////
     // Private methods
 
-    // Perform distortion in normalized coordinates
-    private double[] distortNormalized(double xy_rn[])
+    // Distort a ray
+    public double[] distortRay(double xyz_r[])
     {
-        assert(xy_rn.length == 2);
+        assert(xyz_r.length == 3);
 
-        double x = xy_rn[0];
-        double y = xy_rn[1];
-        double z = 1.0;
+        double x = xyz_r[0];
+        double y = xyz_r[1];
+        double z = xyz_r[2];
 
-        // XXX This formulation is not capable of supporting z < 0
-        // because z is assumed to be one above. The solution to
-        // this problem would be to convert between pixel coordinates
-        // and unit vectors, not "normalized coordinates"
+        double r = Math.sqrt(x*x + y*y);
 
-        double theta  = Math.atan2(Math.sqrt(x*x + y*y), z);
+        double theta  = Math.atan2(r, z);
         double theta2 = theta*theta;
         double theta3 = theta*theta2;
         double theta5 = theta3*theta2;
@@ -219,6 +216,7 @@ public class SimpleKannalaBrandtCalibration implements Calibration, Parameteriza
 
         double psi = Math.atan2(y, x);
 
+        // polynomial mapping function. not to be mistaken as r*theta
         double rtheta =         theta + // force kc0 to 1
                         kc[0] * theta3 +
                         kc[1] * theta5 +
@@ -235,25 +233,45 @@ public class SimpleKannalaBrandtCalibration implements Calibration, Parameteriza
         return xy_dn;
     }
 
-    private double[] rectifyNormalized(double xy_dn[])
+    // Perform iterative rectification and return a ray
+    public double[] rectifyToRay(double xy_dn[])
     {
         if (LinAlg.magnitude(xy_dn) < 1e-12)
-            return new double[] { 0, 0 };
+            return new double[] { 0, 0, 1 };
 
-        double psi = Math.atan2(xy_dn[1], xy_dn[0]);
+        double psi = 0;
+        if (Math.abs(xy_dn[1]) > 1e-9)
+            psi = Math.atan2(xy_dn[1], xy_dn[0]);
 
-        double rtheta = ((xy_dn[0]/Math.cos(psi)) + (xy_dn[1]/Math.sin(psi))) / 2d;
+        double xrtheta = (xy_dn[0]/Math.cos(psi));
+        double yrtheta = (xy_dn[1]/Math.sin(psi));
 
-        double theta = Math.asin(Math.sqrt(xy_dn[0]*xy_dn[0] + xy_dn[1]*xy_dn[1]) /
-                                 Math.sqrt(xy_dn[0]*xy_dn[0] + xy_dn[1]*xy_dn[1] + 1));
+        // avoid NaNs
+        double rtheta = 0;
+        if (Double.isNaN(xrtheta))      rtheta = yrtheta;
+        else if (Double.isNaN(yrtheta)) rtheta = xrtheta;
+        else                            rtheta = (xrtheta + yrtheta) / 2.0;
+
+        double theta = Math.sqrt(xy_dn[0]*xy_dn[0] + xy_dn[1]*xy_dn[1]);
 
         for (int i=0; i < 10; i++)
-            theta = rtheta - (kc[0]*Math.pow(theta, 3) + kc[1]*Math.pow(theta, 5) + kc[2]*Math.pow(theta, 7) + kc[3]*Math.pow(theta, 9));
+            theta = rtheta - (kc[0]*Math.pow(theta, 3) +
+                              kc[1]*Math.pow(theta, 5) +
+                              kc[2]*Math.pow(theta, 7) +
+                              kc[3]*Math.pow(theta, 9));
 
-        double r = Math.tan(theta);
+        // Theta is the angle off of the z axis, which forms a triangle with sides
+        // z (adjacent), r (opposite), and mag (hypotenuse). Theta is the hard mapping.
+        // Psi, the rotation about the z axis, relates x, y, and r.
 
-        return new double[] { r*Math.cos(psi), r*Math.sin(psi) };
+        double mag = 1; // unit length
+        double z = Math.cos(theta); // cos(theta) = A/H = z/1 = z
+        double r = Math.sin(theta); // sin(theta) = O/H = r/1 = r
+
+        double x = r*Math.cos(psi);
+        double y = r*Math.sin(psi);
+
+        return new double[] { x, y, z };
     }
 }
-
 

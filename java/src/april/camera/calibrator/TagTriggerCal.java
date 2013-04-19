@@ -79,18 +79,6 @@ public class TagTriggerCal
         this.tagSpacingMeters = tagSpacingMeters;
         this.initializer = initializer;
 
-        // silence!
-        IntrinsicsEstimator.verbose = false;
-        april.camera.models.SimpleKannalaBrandtInitializer.verbose = false;
-        april.camera.models.KannalaBrandtInitializer.verbose = false;
-        april.camera.models.DistortionFreeInitializer.verbose = false;
-        april.camera.models.CaltechInitializer.verbose = false;
-        april.camera.models.Caltech4thOrderInitializer.verbose = false;
-        april.camera.models.Radial4thOrderCaltechInitializer.verbose = false;
-        april.camera.models.Radial6thOrderCaltechInitializer.verbose = false;
-        april.camera.models.Radial8thOrderCaltechInitializer.verbose = false;
-        april.camera.models.Radial10thOrderCaltechInitializer.verbose = false;
-
         ////////////////////////////////////////
         // Calibrator setup
 

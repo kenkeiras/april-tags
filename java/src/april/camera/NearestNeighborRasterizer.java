@@ -48,13 +48,15 @@ public class NearestNeighborRasterizer implements Rasterizer
                 if (!outVerifier.validPixelCoord(xy_rp))
                     continue;
 
-                double xy_rn[] = output.pixelsToNorm(xy_rp);
-                xy_rn = CameraMath.pixelTransform(R_OutToIn, xy_rn);
+                double z = 1; // Rasterizers make planar images, so we can assume z==1
 
-                if (!inVerifier.validNormalizedCoord(xy_rn))
+                double xyz_r[] = output.pixelsToRay(xy_rp);
+                xyz_r = CameraMath.pointTransform(R_OutToIn, xyz_r);
+
+                if (!inVerifier.validNormalizedCoord(xyz_r))
                     continue;
 
-                double xy_dp[] = input.normToPixels(xy_rn);
+                double xy_dp[] = input.rayToPixels(xyz_r);
 
                 int x_dp = (int) Math.round(xy_dp[0]);
                 int y_dp = (int) Math.round(xy_dp[1]);
