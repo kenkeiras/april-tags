@@ -61,7 +61,7 @@ public class DistortionFunctionVerifier
         // compute the various representations for the center pixel
         center_rp = new double[] { cc[0], cc[1] };
         center_rn = CameraMath.pinholeTransform(Kinv, center_rp);
-        center_dp = view.normToPixels(center_rn);
+        center_dp = view.rayToPixels(CameraMath.rayToPlane(center_rn));
         double lastPixelRadius = 0;
 
         // find the max radius by starting at the focal center and increasing x
@@ -81,7 +81,7 @@ public class DistortionFunctionVerifier
             double xy_rn[] = CameraMath.pinholeTransform(Kinv, xy_rp);
             double normalizedRadius = Math.sqrt(xy_rn[0]*xy_rn[0] + xy_rn[1]*xy_rn[1]);
 
-            double xy_dp[] = view.normToPixels(xy_rn);
+            double xy_dp[] = view.rayToPixels(CameraMath.rayToPlane(xy_rn));
             double pixelsRadius = LinAlg.distance(xy_dp, center_dp);
 
             // if the distorted radius "shrinks", the distortion function
@@ -103,7 +103,7 @@ public class DistortionFunctionVerifier
             lastPixelRadius = pixelsRadius;
 
             // if the distorted radius has now stepped outside of the distorted
-            // image boundary, it's time to quit. we add a big off buffer
+            // image boundary, it's time to quit. we add an offset
             // because it is useful to know if something almost projects into
             // the image (sometimes we detect tags with one corner just outside)
             if (pixelsRadius > (1.0 + this.radiusBuffer) * maxObservedPixelRadius) {
@@ -142,10 +142,12 @@ public class DistortionFunctionVerifier
     ////////////////////////////////////////////////////////////////////////////////
     // public methods
 
-    /** Will this rectified, normalized coordinate be valid after distortion?
+    /** Will this ray be valid after distortion?
       */
-    public boolean validNormalizedCoord(double xy_rn[])
+    public boolean validRay(double xyz_r[])
     {
+        double xy_rn[] = CameraMath.rayToPlane(xyz_r);
+
         double normalizedRadius = Math.sqrt(xy_rn[0]*xy_rn[0] + xy_rn[1]*xy_rn[1]);
 
         if (normalizedRadius < this.maxValidNormalizedRadius)
@@ -168,23 +170,27 @@ public class DistortionFunctionVerifier
         return false;
     }
 
-    /** If this normalized coordinate is valid, return it, otherwise, return a
-      * coordinate in the same direction from the focal center with the maximum
-      * valid normalizd radius for this calibration.
+    /** If this ray is valid, return it, otherwise, return a ray at the same
+      * angle about the principal axis with the maximum valid normalizd
+      * radius for this calibration.
       */
-    public double[] clampNormalized(double xy_rn[])
+    public double[] clampRay(double xyz_r[])
     {
+        double xy_rn[] = CameraMath.rayToPlane(xyz_r);
+
         double normalizedRadius = Math.sqrt(xy_rn[0]*xy_rn[0] + xy_rn[1]*xy_rn[1]);
 
         if (normalizedRadius < this.maxValidNormalizedRadius)
-            return xy_rn;
+            return xyz_r;
 
-        return LinAlg.scale(LinAlg.normalize(xy_rn),
-                            maxValidNormalizedRadius);
+        xyz_r = LinAlg.scale(LinAlg.normalize(xy_rn),
+                             maxValidNormalizedRadius);
+
+        return CameraMath.rayToPlane(xyz_r);
     }
 
     /** If this pixel coordinate is valid, return it, otherwise, return a
-      * coordinate in the same direction from the focal center with the maximum
+      * coordinate at the same angle about the principal axis with the maximum
       * valid pixel radius for this calibration.
       */
     public double[] clampPixels(double xy_dp[])

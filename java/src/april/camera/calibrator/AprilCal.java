@@ -1108,7 +1108,7 @@ public class AprilCal
             if (captureNext || waitingForBest) {
                 double waited = (TimeUtil.utime() - startedWaiting)*1.0e-6;
 
-                if (captureNext || waited > waitTime) {
+                if (fsScoreImages.size() >= 1 && (captureNext || waited > waitTime)) {
 
                     ////////////////////////////////////////
                     // "flash"

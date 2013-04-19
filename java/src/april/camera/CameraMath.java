@@ -655,7 +655,7 @@ public class CameraMath
         if (L2C != null)
             xyz_camera = LinAlg.transform(L2C, xyz);
 
-        if (verifier.validNormalizedCoord(xyz_camera))
+        if (verifier.validRay(xyz_camera))
             return view.rayToPixels(xyz_camera);
 
         return null;
