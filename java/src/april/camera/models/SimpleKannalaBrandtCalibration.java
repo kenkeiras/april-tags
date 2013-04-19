@@ -264,7 +264,7 @@ public class SimpleKannalaBrandtCalibration implements Calibration, Parameteriza
         // z (adjacent), r (opposite), and mag (hypotenuse). Theta is the hard mapping.
         // Psi, the rotation about the z axis, relates x, y, and r.
 
-        double mag = 1; // unit length
+        // magnitude == 1
         double z = Math.cos(theta); // cos(theta) = A/H = z/1 = z
         double r = Math.sin(theta); // sin(theta) = O/H = r/1 = r
 

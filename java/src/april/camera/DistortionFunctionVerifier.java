@@ -33,7 +33,9 @@ public class DistortionFunctionVerifier
     // A value of 0.10 goes 10% beyond the corner radius
     public double radiusBuffer = 0.10;
 
-    double maxValidNormalizedRadius;
+    double dTheta;
+
+    double maxValidTheta; // angle off of principal (z) axis
     double maxValidPixelRadius;
 
     View view;
@@ -41,29 +43,58 @@ public class DistortionFunctionVerifier
     double Kinv[][];
     double cc[];
 
-    double center_rp[];
-    double center_rn[];
-    double center_dp[];
-
     public DistortionFunctionVerifier(View view)
     {
-        this.view = view;
-        this.K    = view.copyIntrinsics();
-        this.Kinv = LinAlg.inverse(K);
-        this.cc   = new double[] { K[0][2], K[1][2] };
+        this(view, Math.PI/1000); // 1000 steps over the theta range
+    }
 
-        int width = view.getWidth();
-        int height = view.getHeight();
+    public DistortionFunctionVerifier(View view, double dTheta)
+    {
+        this.view   = view;
+        this.dTheta = dTheta;
+        this.K      = view.copyIntrinsics();
+        this.Kinv   = LinAlg.inverse(K);
+        this.cc     = new double[] { K[0][2], K[1][2] };
 
+        int width   = view.getWidth();
+        int height  = view.getHeight();
         double maxObservedPixelRadius = getMaxObservedPixelRadius(cc, width, height);
-        int MAX_SEARCH_RADIUS = (int) (maxObservedPixelRadius*10);
 
-        // compute the various representations for the center pixel
-        center_rp = new double[] { cc[0], cc[1] };
-        center_rn = CameraMath.pinholeTransform(Kinv, center_rp);
-        center_dp = view.rayToPixels(CameraMath.rayToPlane(center_rn));
+        boolean functionWasNonMonotonic = false;
+        double maxTheta = Math.PI; // max angle from z axis
+        double lastTheta = 0;
         double lastPixelRadius = 0;
 
+        for (double theta = 0; theta < maxTheta; theta += dTheta) {
+
+            double x = Math.sin(theta); // if y==0, x==r. sin(theta) = O/H = r/1 = r = x
+            double y = 0;
+            double z = Math.cos(theta); // cos(theta) = A/H = z/1 = z
+
+            double xyz_r[] = new double[] { x, y, z };
+
+            double xy_dp[] = view.rayToPixels(xyz_r);
+            double pixelRadius = LinAlg.distance(xy_dp, cc);
+
+            if (pixelRadius < lastPixelRadius) {
+                functionWasNonMonotonic = true;
+                break;
+            }
+
+            this.maxValidTheta = theta;
+            this.maxValidPixelRadius = pixelRadius;
+
+            lastPixelRadius = pixelRadius;
+            lastTheta = theta;
+
+            // break if we're past the furthest corner in the distorted image.
+            // we add a user-configurable buffer because projections just outside
+            // of the image can be useful
+            if (pixelRadius > (1.0 + this.radiusBuffer)*maxObservedPixelRadius)
+                break;
+        }
+
+        /*
         // find the max radius by starting at the focal center and increasing x
         // until either the distortion function is non-monotonic or we're outside
         // of the observed distorted image
@@ -125,6 +156,7 @@ public class DistortionFunctionVerifier
         }
 
         //System.out.printf("Maximum normalized radius is %12.6f\n", maxValidNormalizedRadius);
+        */
     }
 
     private double getMaxObservedPixelRadius(double cc[], int width, int height)
@@ -146,11 +178,14 @@ public class DistortionFunctionVerifier
       */
     public boolean validRay(double xyz_r[])
     {
-        double xy_rn[] = CameraMath.rayToPlane(xyz_r);
+        double x = xyz_r[0];
+        double y = xyz_r[1];
+        double z = xyz_r[2];
 
-        double normalizedRadius = Math.sqrt(xy_rn[0]*xy_rn[0] + xy_rn[1]*xy_rn[1]);
+        double r = Math.sqrt(x*x + y*y);
+        double theta = Math.atan2(r, z);
 
-        if (normalizedRadius < this.maxValidNormalizedRadius)
+        if (theta < this.maxValidTheta)
             return true;
 
         return false;
@@ -160,8 +195,8 @@ public class DistortionFunctionVerifier
       */
     public boolean validPixelCoord(double xy_dp[])
     {
-        double dx = xy_dp[0] - center_dp[0];
-        double dy = xy_dp[1] - center_dp[1];
+        double dx = xy_dp[0] - cc[0];
+        double dy = xy_dp[1] - cc[1];
         double pixelsRadius = Math.sqrt(dx*dx + dy*dy);
 
         if (pixelsRadius < this.maxValidPixelRadius)
@@ -171,22 +206,31 @@ public class DistortionFunctionVerifier
     }
 
     /** If this ray is valid, return it, otherwise, return a ray at the same
-      * angle about the principal axis with the maximum valid normalizd
-      * radius for this calibration.
+      * angle about the principal axis (psi) with the maximum valid angle off
+      * of the principal axis (theta) for this calibration.
       */
     public double[] clampRay(double xyz_r[])
     {
-        double xy_rn[] = CameraMath.rayToPlane(xyz_r);
+        double x = xyz_r[0];
+        double y = xyz_r[1];
+        double z = xyz_r[2];
 
-        double normalizedRadius = Math.sqrt(xy_rn[0]*xy_rn[0] + xy_rn[1]*xy_rn[1]);
+        double r = Math.sqrt(x*x + y*y);
+        double theta = Math.atan2(r, z);
+        double psi   = Math.atan2(y, x);
 
-        if (normalizedRadius < this.maxValidNormalizedRadius)
+        if (theta < this.maxValidTheta)
             return xyz_r;
 
-        xyz_r = LinAlg.scale(LinAlg.normalize(xy_rn),
-                             maxValidNormalizedRadius);
+        theta = this.maxValidTheta;
 
-        return CameraMath.rayToPlane(xyz_r);
+        z = Math.cos(theta); // cos(theta) = A/H = z/1 = z
+        r = Math.sin(theta); // sin(theta) = O/H = r/1 = r
+
+        x = r*Math.cos(psi);
+        y = r*Math.sin(psi);
+
+        return new double[] { x, y, z };
     }
 
     /** If this pixel coordinate is valid, return it, otherwise, return a
@@ -195,14 +239,15 @@ public class DistortionFunctionVerifier
       */
     public double[] clampPixels(double xy_dp[])
     {
-        double relative_dp[] = LinAlg.subtract(xy_dp, center_dp);
+        double relative_dp[] = LinAlg.subtract(xy_dp, cc);
         double pixelsRadius = LinAlg.magnitude(relative_dp);
 
         if (pixelsRadius < this.maxValidPixelRadius)
             return xy_dp;
 
-        return LinAlg.add(center_dp,
+        return LinAlg.add(cc,
                           LinAlg.scale(relative_dp,
                                        maxValidPixelRadius/pixelsRadius));
     }
 }
+
