@@ -247,7 +247,7 @@ public class CalibrationRenderer
 
                 double xyz_d[] = CameraMath.rayToSphere(CameraMath.pinholeTransform(Kinv, xy_dp));
 
-                double newr = Math.sqrt(xyz_d[0]*xyz_d[0] + xyz_d[1]*xyz_d[1]);
+                double newr = xyz_d[0];
                 double newtheta = Math.atan2(newr, xyz_d[2]);
 
                 points.add(new double[] { theta, newtheta });
