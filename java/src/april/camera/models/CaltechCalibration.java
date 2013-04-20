@@ -171,20 +171,6 @@ public class CaltechCalibration implements Calibration, ParameterizableCalibrati
         return s;
     }
 
-    public String getCacheString()
-    {
-        String s = String.format("%.12f %.12f %.12f %.12f ",
-                                 fc[0], fc[1],
-                                 cc[0], cc[1]);
-
-        for (int i = 0; i < LENGTH_KC; i++)
-            s = String.format("%s%.12f ", s, kc[i]);
-
-        s = String.format("%s%.12f %.12f %.12f %d %d", s, lc[0], lc[1], skew, width, height);
-
-        return s;
-    }
-
     ////////////////////////////////////////////////////////////////////////////////
     // Parameterizable interface methods
     public double[] getParameterization()

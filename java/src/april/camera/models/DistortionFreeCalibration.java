@@ -125,14 +125,6 @@ public class DistortionFreeCalibration implements Calibration, ParameterizableCa
         return s;
     }
 
-    public String getCacheString()
-    {
-        return String.format("%.12f %.12f %.12f %.12f %d %d",
-                             fc[0], fc[1],
-                             cc[0], cc[1],
-                             width, height);
-    }
-
     ////////////////////////////////////////////////////////////////////////////////
     // Parameterizable interface methods
     public double[] getParameterization()

@@ -16,12 +16,9 @@ public class MaxGrownInscribedRectifiedView implements View
     int         width;
     int         height;
 
-    String      viewCacheString;
-
     public MaxGrownInscribedRectifiedView(View view)
     {
         computeMaxGrownInscribedRectifiedRectangle(view);
-        viewCacheString = view.getCacheString();
     }
 
     private void computeMaxGrownInscribedRectifiedRectangle(View view)
@@ -189,14 +186,6 @@ public class MaxGrownInscribedRectifiedView implements View
     public double[] pixelsToRay(double xy_rp[])
     {
         return CameraMath.rayToPlane(CameraMath.pinholeTransform(Kinv, xy_rp));
-    }
-
-    public String getCacheString()
-    {
-        return String.format("%s %.12f %.12f %.12f %.12f %d %d",
-                             viewCacheString,
-                             Rb, Rr, Rt, Rl,
-                             width, height);
     }
 }
 

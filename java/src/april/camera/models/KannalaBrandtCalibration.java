@@ -178,26 +178,6 @@ public class KannalaBrandtCalibration implements Calibration, ParameterizableCal
         return s;
     }
 
-    public String getCacheString()
-    {
-        String s = String.format("%.12f %.12f %.12f %.12f ",
-                                 fc[0], fc[1],
-                                 cc[0], cc[1]);
-
-        for (int i = 0; i < LENGTH_KC; i++)
-            s = String.format("%s%.12f ", s, kc[i]);
-
-        s = String.format("%s %.12f %.12f %.12f %.12f %.12f %.12f %.12f %.12f %.12f %.12f %.12f %.12f %.12f %.12f %d %d",
-                          s,
-                          lc[0], lc[1], lc[2],
-                          ic[0], ic[1], ic[2], ic[3],
-                          mc[0], mc[1], mc[2],
-                          jc[0], jc[1], jc[2], jc[3],
-                          width, height);
-
-        return s;
-    }
-
     ////////////////////////////////////////////////////////////////////////////////
     // Parameterizable interface methods
     public double[] getParameterization()

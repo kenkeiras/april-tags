@@ -25,10 +25,5 @@ public interface View
       * removing distortion if appropriate.
       */
     public double[]     pixelsToRay(double xy_p[]);
-
-    /** Return a string of all critical parameters for caching data based
-      * on a calibration (e.g. lookup tables).
-      */
-    public String       getCacheString();
 }
 

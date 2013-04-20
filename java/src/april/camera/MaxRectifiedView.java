@@ -16,12 +16,9 @@ public class MaxRectifiedView implements View
     int         width;
     int         height;
 
-    String      viewCacheString;
-
     public MaxRectifiedView(View view)
     {
         computeMaxRectifiedRectangle(view);
-        viewCacheString = view.getCacheString();
     }
 
     private void computeMaxRectifiedRectangle(View view)
@@ -119,14 +116,6 @@ public class MaxRectifiedView implements View
     public double[] pixelsToRay(double xy_rp[])
     {
         return CameraMath.rayToPlane(CameraMath.pinholeTransform(Kinv, xy_rp));
-    }
-
-    public String getCacheString()
-    {
-        return String.format("%s %.12f %.12f %.12f %.12f %d %d",
-                             viewCacheString,
-                             Rb, Rr, Rt, Rl,
-                             width, height);
     }
 }
 

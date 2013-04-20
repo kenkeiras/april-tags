@@ -56,11 +56,4 @@ public class ScaledView implements View
     {
         return view.pixelsToRay(CameraMath.pinholeTransform(Sinv, xy_p));
     }
-
-    public String getCacheString()
-    {
-        return String.format("%s %.12f",
-                             view.getCacheString(),
-                             scale);
-    }
 }

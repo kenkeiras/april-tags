@@ -206,8 +206,8 @@ public class StereoRectification
         XY01_B[0][1] = XY01_A[0][1];
         XY01_B[1][1] = XY01_A[1][1];
 
-        viewA = new StereoRectifiedView(K, XY01_A, cal_A.getCacheString());
-        viewB = new StereoRectifiedView(K, XY01_B, cal_B.getCacheString());
+        viewA = new StereoRectifiedView(K, XY01_A);
+        viewB = new StereoRectifiedView(K, XY01_B);
         assert(viewA.getHeight() == viewB.getHeight());
     }
 
@@ -365,8 +365,8 @@ public class StereoRectification
         XY01_B[0][1] = XY01_A[0][1];
         XY01_B[1][1] = XY01_A[1][1];
 
-        viewA = new StereoRectifiedView(K, XY01_A, cal_A.getCacheString());
-        viewB = new StereoRectifiedView(K, XY01_B, cal_B.getCacheString());
+        viewA = new StereoRectifiedView(K, XY01_A);
+        viewB = new StereoRectifiedView(K, XY01_B);
         assert(viewA.getHeight() == viewB.getHeight());
     }
 
@@ -463,8 +463,8 @@ public class StereoRectification
         XY01_B[0][1] = XY01_A[0][1];
         XY01_B[1][1] = XY01_A[1][1];
 
-        viewA = new StereoRectifiedView(K, XY01_A, cal_A.getCacheString());
-        viewB = new StereoRectifiedView(K, XY01_B, cal_B.getCacheString());
+        viewA = new StereoRectifiedView(K, XY01_A);
+        viewB = new StereoRectifiedView(K, XY01_B);
         assert(viewA.getHeight() == viewB.getHeight());
     }
 
