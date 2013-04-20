@@ -5,22 +5,16 @@ import april.config.*;
 import april.jmat.*;
 import april.util.*;
 
-public class Radial6thOrderCaltechCalibration implements Calibration, ParameterizableCalibration
+/** A simple radial distortion model parameterized in angle instead of
+  * rectified image radius. Usually results in a better model in the image corners.
+  */
+public class AngularPolynomialCalibration implements Calibration, ParameterizableCalibration
 {
-    // constants for iteratively rectifying coordinates (e.g. max allowed error)
-    private static final int max_iterations = 20;
-    private static final double max_pixel_error = 0.01;
-    private double max_sqerr;
-
     // required calibration parameter lengths
     static final public int LENGTH_FC = 2;
     static final public int LENGTH_CC = 2;
-    static final public int LENGTH_KC = 3;
 
-    // indices for lookup in kc[]
-    static final public int KC1 = 0; // r^2
-    static final public int KC2 = 1; // r^4
-    static final public int KC5 = 2; // r^6
+    public int LENGTH_KC;
 
     // Focal length, in pixels
     private double[]        fc;
@@ -29,7 +23,7 @@ public class Radial6thOrderCaltechCalibration implements Calibration, Parameteri
     private double[]        cc;
 
     // Distortion
-    private double[]        kc; // [kc1 kc2 kc5]
+    private double[]        kc;
 
     // Intrinsics matrix
     private double[][]      K;
@@ -39,12 +33,13 @@ public class Radial6thOrderCaltechCalibration implements Calibration, Parameteri
     private int             width;
     private int             height;
 
-    public Radial6thOrderCaltechCalibration(double fc[], double cc[], double kc[],
+    public AngularPolynomialCalibration(double fc[], double cc[], double kc[],
                                     int width, int height)
     {
         this.fc     = LinAlg.copy(fc);
         this.cc     = LinAlg.copy(cc);
         this.kc     = LinAlg.copy(kc);
+        this.LENGTH_KC = this.kc.length;
 
         this.width  = width;
         this.height = height;
@@ -52,11 +47,12 @@ public class Radial6thOrderCaltechCalibration implements Calibration, Parameteri
         createIntrinsicsMatrix();
     }
 
-    public Radial6thOrderCaltechCalibration(Config config)
+    public AngularPolynomialCalibration(Config config)
     {
         this.fc     = config.requireDoubles("intrinsics.fc");
         this.cc     = config.requireDoubles("intrinsics.cc");
         this.kc     = config.requireDoubles("intrinsics.kc");
+        this.LENGTH_KC = this.kc.length;
 
         this.width  = config.requireInt("width");
         this.height = config.requireInt("height");
@@ -64,10 +60,11 @@ public class Radial6thOrderCaltechCalibration implements Calibration, Parameteri
         createIntrinsicsMatrix();
     }
 
-    public Radial6thOrderCaltechCalibration(double params[], int width, int height)
+    public AngularPolynomialCalibration(int kclength, double params[], int width, int height)
     {
         this.width = width;
         this.height = height;
+        this.LENGTH_KC = kclength;
 
         resetParameterization(params);
     }
@@ -75,16 +72,13 @@ public class Radial6thOrderCaltechCalibration implements Calibration, Parameteri
     private void createIntrinsicsMatrix()
     {
         assert(fc.length == LENGTH_FC);
-        assert(kc.length == LENGTH_KC);
         assert(cc.length == LENGTH_CC);
+        assert(kc.length == LENGTH_KC);
 
-        K = new double[][] { { fc[0],           0, cc[0] } ,
-                             {   0.0,       fc[1], cc[1] } ,
-                             {   0.0,         0.0,   1.0 } };
+        K = new double[][] { { fc[0],   0.0, cc[0] } ,
+                             {   0.0, fc[1], cc[1] } ,
+                             {   0.0,   0.0,   1.0 } };
         Kinv = LinAlg.inverse(K);
-
-        // compute the max square error for iterative rectification in normalized units
-        max_sqerr = Math.pow(max_pixel_error / Math.max(fc[0], fc[1]), 2);
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -126,7 +120,7 @@ public class Radial6thOrderCaltechCalibration implements Calibration, Parameteri
     public double[] pixelsToRay(double xy_dp[])
     {
         double xy_dn[] = CameraMath.pinholeTransform(Kinv, xy_dp);
-        return rectifyToRay(xy_dn);
+        return CameraMath.rayToSphere(rectifyToRay(xy_dn));
     }
 
     /** Return a string of all critical parameters for caching data based
@@ -142,8 +136,11 @@ public class Radial6thOrderCaltechCalibration implements Calibration, Parameteri
         s = String.format("%s        intrinsics {\n", s);
         s = String.format("%s            fc = [%11.6f,%11.6f ];\n", s, fc[0], fc[1]);
         s = String.format("%s            cc = [%11.6f,%11.6f ];\n", s, cc[0], cc[1]);
-        s = String.format("%s            kc = [%11.6f,%11.6f,%11.6f ];\n",
-                          s, kc[0], kc[1], kc[2]);
+
+        s = String.format("%s            kc = [",s);
+        for (int i = 0; i < LENGTH_KC; i++)
+            s = String.format("%s%11.6f%s", s, kc[i], (i+1 < LENGTH_KC) ? "," : " ];\n");
+
         s = String.format("%s        }\n", s);
 
         return s;
@@ -151,11 +148,16 @@ public class Radial6thOrderCaltechCalibration implements Calibration, Parameteri
 
     public String getCacheString()
     {
-        return String.format("%.12f %.12f %.12f %.12f %.12f %.12f %.12f %d %d",
-                             fc[0], fc[1],
-                             cc[0], cc[1],
-                             kc[0], kc[1], kc[2],
-                             width, height);
+        String s = String.format("%.12f %.12f %.12f %.12f ",
+                                 fc[0], fc[1],
+                                 cc[0], cc[1]);
+
+        for (int i = 0; i < LENGTH_KC; i++)
+            s = String.format("%s%.12f ", s, kc[i]);
+
+        s = String.format("%s%d %d", s, width, height);
+
+        return s;
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -166,15 +168,14 @@ public class Radial6thOrderCaltechCalibration implements Calibration, Parameteri
 
         double params[] = new double[len];
 
-        params[0] = fc[0];
-        params[1] = fc[1];
+        params[ 0] = fc[0];
+        params[ 1] = fc[1];
 
-        params[2] = cc[0];
-        params[3] = cc[1];
+        params[ 2] = cc[0];
+        params[ 3] = cc[1];
 
-        params[4] = kc[0];
-        params[5] = kc[1];
-        params[6] = kc[2];
+        for (int i = 0; i < LENGTH_KC; i++)
+            params[4+i] = kc[i];
 
         return params;
     }
@@ -192,9 +193,8 @@ public class Radial6thOrderCaltechCalibration implements Calibration, Parameteri
         cc[1] = params[3];
 
         kc = new double[LENGTH_KC];
-        kc[0] = params[4];
-        kc[1] = params[5];
-        kc[2] = params[6];
+        for (int i = 0; i < LENGTH_KC; i++)
+            kc[i] = params[4+i];
 
         createIntrinsicsMatrix();
     }
@@ -203,55 +203,89 @@ public class Radial6thOrderCaltechCalibration implements Calibration, Parameteri
     // Private methods
 
     // Distort a ray
-    private double[] distortRay(double xyz_r[])
+    public double[] distortRay(double xyz_r[])
     {
+        assert(xyz_r.length == 3);
+
         double x = xyz_r[0];
         double y = xyz_r[1];
         double z = xyz_r[2];
-        // pinhole assumption
-        x = x / z;
-        y = y / z;
 
-        double r2 = x*x + y*y;
-        double r4 = r2*r2;
-        double r6 = r4*r2;
+        double r = Math.sqrt(x*x + y*y);
 
-        double multiplier = 1 + kc[KC1] * r2
-                              + kc[KC2] * r4
-                              + kc[KC5] * r6 ;
+        double theta  = Math.atan2(r, z);
+        double theta2 = theta*theta;
+        double theta3 = theta*theta2;
+        double theta5 = theta3*theta2;
+        double theta7 = theta5*theta2;
+        double theta9 = theta7*theta2;
 
-        double xy_dn[] = new double[] { x*multiplier ,
-                                        y*multiplier };
+        double psi = Math.atan2(y, x);
+
+        // polynomial mapping function. not to be mistaken as r*theta
+        double rtheta   = theta;
+        double thetapow = theta;
+        for (int i = 0; i < LENGTH_KC; i++) {
+            thetapow *= theta2;
+            rtheta += kc[i] * thetapow;
+        }
+
+        double ur[] = new double[] { Math.cos(psi), Math.sin(psi) };
+
+        double xy_dn[] = new double[2];
+
+        xy_dn[0] += ur[0] * rtheta;
+        xy_dn[1] += ur[1] * rtheta;
+
         return xy_dn;
     }
 
     // Perform iterative rectification and return a ray
-    private double[] rectifyToRay(double xy_dn[])
+    public double[] rectifyToRay(double xy_dn[])
     {
-        double x_rn = xy_dn[0];
-        double y_rn = xy_dn[1];
+        if (LinAlg.magnitude(xy_dn) < 1e-12)
+            return new double[] { 0, 0, 1 };
 
-        for (int i=0; i < max_iterations; i++) {
-            double r2 = x_rn*x_rn + y_rn*y_rn;
-            double r4 = r2 * r2;
-            double r6 = r4 * r2;
+        double psi = 0;
+        if (Math.abs(xy_dn[1]) > 1e-9)
+            psi = Math.atan2(xy_dn[1], xy_dn[0]);
 
-            double multiplier = 1 + kc[KC1] * r2
-                                  + kc[KC2] * r4
-                                  + kc[KC5] * r6 ;
+        double xrtheta = (xy_dn[0]/Math.cos(psi));
+        double yrtheta = (xy_dn[1]/Math.sin(psi));
 
-            double x_sqerr = xy_dn[0] - (x_rn*multiplier);
-            double y_sqerr = xy_dn[1] - (y_rn*multiplier);
-            double sqerr = x_sqerr*x_sqerr + y_sqerr*y_sqerr;
+        // avoid NaNs
+        double rtheta = 0;
+        if (Double.isNaN(xrtheta))      rtheta = yrtheta;
+        else if (Double.isNaN(yrtheta)) rtheta = xrtheta;
+        else                            rtheta = (xrtheta + yrtheta) / 2.0;
 
-            x_rn = (xy_dn[0]) / multiplier;
-            y_rn = (xy_dn[1]) / multiplier;
+        double theta = Math.sqrt(xy_dn[0]*xy_dn[0] + xy_dn[1]*xy_dn[1]);
 
-            if (sqerr < this.max_sqerr)
-                break;
+        for (int i=0; i < 10; i++) {
+
+            double rthetaHigher = 0;
+            double thetapow     = theta;
+            double theta2       = theta*theta;
+            for (int j=0; j < LENGTH_KC; j++) {
+                thetapow *= theta2;
+                rthetaHigher += kc[j]*thetapow;
+            }
+
+            theta = rtheta - rthetaHigher;
         }
 
-        return new double[] { x_rn, y_rn, 1 };
+        // Theta is the angle off of the z axis, which forms a triangle with sides
+        // z (adjacent), r (opposite), and mag (hypotenuse). Theta is the hard mapping.
+        // Psi, the rotation about the z axis, relates x, y, and r.
+
+        // magnitude == 1
+        double z = Math.cos(theta); // cos(theta) = A/H = z/1 = z
+        double r = Math.sin(theta); // sin(theta) = O/H = r/1 = r
+
+        double x = r*Math.cos(psi);
+        double y = r*Math.sin(psi);
+
+        return new double[] { x, y, z };
     }
 }
 

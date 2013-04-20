@@ -10,8 +10,20 @@ public class KannalaBrandtInitializer implements CalibrationInitializer
 {
     public static boolean verbose = false;
 
-    public KannalaBrandtInitializer()
+    String parameterString;
+    int kclen;
+
+    public KannalaBrandtInitializer(String parameterString)
     {
+        this.parameterString = parameterString;
+        this.kclen = InitializerUtil.getParameter(parameterString, "kclength");
+    }
+
+    /** Return the parameter string passed in via the required constructor.
+      */
+    public String getParameterString()
+    {
+        return this.parameterString;
     }
 
     /** Initialize the calibration using the estimation process specified by
@@ -36,14 +48,32 @@ public class KannalaBrandtInitializer implements CalibrationInitializer
                 if (Double.isNaN(K[i][j]))
                     return null;
 
+        if (true) {
+            String s = "KannalaBrandtCalibration seems very sensitive to initialization. "+
+                "For best results, use LMSolver instead of CholeskySolver in CameraCalibrator. "+
+                "To initialize parameters, calibrate first with AngularPolynomialCalibration, "+
+                "then copy the values for fc, cc, and kc into KannalaBrandtInitializer.java";
+
+            System.out.println(s);
+            System.exit(1);
+        }
+
         double fc[] = new double[] {  K[0][0],  K[1][1] };
         double cc[] = new double[] {  width/2, height/2 };
+        double kc[] = new double[kclen];
 
         // initialize kc to the polynomial approximation to the tangent function
-        double kc[] = new double[] {  1.0/  3,
-                                      2.0/ 15,
-                                     17.0/315,
-                                      0.0 };
+        double defaultkc[] = new double[] {  1.0/  3,
+                                             2.0/ 15,
+                                            17.0/315,
+                                             0.0    };
+
+        for (int i = 0; i < kclen; i++) {
+            if (i < defaultkc.length) kc[i] = defaultkc[i];
+            else                      kc[i] = 0.0;
+        }
+
+        // copy initialized fc, cc, and kc here and comment them out above
 
         double lc[] = new double[] { 0.01, 0.01, 0.01 };
         double ic[] = new double[] { 0.01, 0.01, 0.01, 0.01 };
@@ -61,7 +91,7 @@ public class KannalaBrandtInitializer implements CalibrationInitializer
     public ParameterizableCalibration initializeWithParameters(int width, int height,
                                                                double params[])
     {
-        return new KannalaBrandtCalibration(params, width, height);
+        return new KannalaBrandtCalibration(kclen, params, width, height);
     }
 }
 

@@ -10,8 +10,20 @@ public class CaltechInitializer implements CalibrationInitializer
 {
     public static boolean verbose = false;
 
-    public CaltechInitializer()
+    String parameterString;
+    int kclen;
+
+    public CaltechInitializer(String parameterString)
     {
+        this.parameterString = parameterString;
+        this.kclen = InitializerUtil.getParameter(parameterString, "kclength");
+    }
+
+    /** Return the parameter string passed in via the required constructor.
+      */
+    public String getParameterString()
+    {
+        return this.parameterString;
     }
 
     /** Initialize the calibration using the estimation process specified by
@@ -77,10 +89,11 @@ public class CaltechInitializer implements CalibrationInitializer
 
         double fc[] = new double[] {  K[0][0],  K[1][1] };
         double cc[] = new double[] {  width/2, height/2 };
-        double kc[] = new double[] {  0, 0, 0, 0, 0 };
+        double kc[] = new double[kclen];
+        double lc[] = new double[2];
         double skew = 0;
 
-        return new CaltechCalibration(fc, cc, kc, skew, width, height);
+        return new CaltechCalibration(fc, cc, kc, lc, skew, width, height);
     }
 
     /** Initialize the calibration using the provided parameters. Essentially,
@@ -91,6 +104,6 @@ public class CaltechInitializer implements CalibrationInitializer
     public ParameterizableCalibration initializeWithParameters(int width, int height,
                                                                double params[])
     {
-        return new CaltechCalibration(params, width, height);
+        return new CaltechCalibration(kclen, params, width, height);
     }
 }

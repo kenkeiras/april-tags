@@ -11,7 +11,8 @@ public class KannalaBrandtCalibration implements Calibration, ParameterizableCal
     static final public int LENGTH_FC = 2;
     static final public int LENGTH_CC = 2;
 
-    static final public int LENGTH_KC = 4;
+    public int LENGTH_KC;
+
     static final public int LENGTH_LC = 3;
     static final public int LENGTH_IC = 4;
     static final public int LENGTH_MC = 3;
@@ -46,6 +47,7 @@ public class KannalaBrandtCalibration implements Calibration, ParameterizableCal
         this.fc     = LinAlg.copy(fc);
         this.cc     = LinAlg.copy(cc);
         this.kc     = LinAlg.copy(kc);
+        this.LENGTH_KC = this.kc.length;
 
         this.lc     = LinAlg.copy(lc);
         this.ic     = LinAlg.copy(ic);
@@ -63,6 +65,7 @@ public class KannalaBrandtCalibration implements Calibration, ParameterizableCal
         this.fc     = config.requireDoubles("intrinsics.fc");
         this.cc     = config.requireDoubles("intrinsics.cc");
         this.kc     = config.requireDoubles("intrinsics.kc");
+        this.LENGTH_KC = this.kc.length;
 
         this.lc     = config.requireDoubles("intrinsics.lc");
         this.ic     = config.requireDoubles("intrinsics.ic");
@@ -75,10 +78,11 @@ public class KannalaBrandtCalibration implements Calibration, ParameterizableCal
         createIntrinsicsMatrix();
     }
 
-    public KannalaBrandtCalibration(double params[], int width, int height)
+    public KannalaBrandtCalibration(int kclen, double params[], int width, int height)
     {
         this.width = width;
         this.height = height;
+        this.LENGTH_KC = kclen;
 
         resetParameterization(params);
     }
@@ -155,8 +159,10 @@ public class KannalaBrandtCalibration implements Calibration, ParameterizableCal
         s = String.format("%s        intrinsics {\n", s);
         s = String.format("%s            fc = [%11.6f,%11.6f ];\n", s, fc[0], fc[1]);
         s = String.format("%s            cc = [%11.6f,%11.6f ];\n", s, cc[0], cc[1]);
-        s = String.format("%s            kc = [%11.6f,%11.6f,%11.6f,%11.6f ];\n",
-                          s, kc[0], kc[1], kc[2], kc[3]);
+
+        s = String.format("%s            kc = [", s);
+        for (int i = 0; i < LENGTH_KC; i++)
+            s = String.format("%s%11.6f%s", s, kc[i], (i+1<LENGTH_KC) ? "," : " ];\n");
 
         s = String.format("%s            lc = [%11.6f,%11.6f,%11.6f ];\n",
                           s, lc[0], lc[1], lc[2]);
@@ -174,15 +180,22 @@ public class KannalaBrandtCalibration implements Calibration, ParameterizableCal
 
     public String getCacheString()
     {
-        return String.format("%.12f %.12f %.12f %.12f %.12f %.12f %.12f %.12f %d %d",
-                             fc[0], fc[1],
-                             cc[0], cc[1],
-                             kc[0], kc[1], kc[2], kc[3],
-                             lc[0], lc[1], lc[2],
-                             ic[0], ic[1], ic[2], ic[3],
-                             mc[0], mc[1], mc[2],
-                             jc[0], jc[1], jc[2], jc[3],
-                             width, height);
+        String s = String.format("%.12f %.12f %.12f %.12f ",
+                                 fc[0], fc[1],
+                                 cc[0], cc[1]);
+
+        for (int i = 0; i < LENGTH_KC; i++)
+            s = String.format("%s%.12f ", s, kc[i]);
+
+        s = String.format("%s %.12f %.12f %.12f %.12f %.12f %.12f %.12f %.12f %.12f %.12f %.12f %.12f %.12f %.12f %d %d",
+                          s,
+                          lc[0], lc[1], lc[2],
+                          ic[0], ic[1], ic[2], ic[3],
+                          mc[0], mc[1], mc[2],
+                          jc[0], jc[1], jc[2], jc[3],
+                          width, height);
+
+        return s;
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -193,35 +206,41 @@ public class KannalaBrandtCalibration implements Calibration, ParameterizableCal
                   LENGTH_LC + LENGTH_IC + LENGTH_MC + LENGTH_JC;
 
         double params[] = new double[len];
+        int base = 0;
 
-        params[ 0] = fc[0];
-        params[ 1] = fc[1];
+        params[base+0] = fc[0];
+        params[base+1] = fc[1];
+        base += LENGTH_FC;
 
-        params[ 2] = cc[0];
-        params[ 3] = cc[1];
+        params[base+0] = cc[0];
+        params[base+1] = cc[1];
+        base += LENGTH_CC;
 
-        params[ 4] = kc[0];
-        params[ 5] = kc[1];
-        params[ 6] = kc[2];
-        params[ 7] = kc[3];
+        for (int i = 0; i < LENGTH_KC; i++)
+            params[base+i] = kc[i];
+        base += LENGTH_KC;
 
-        params[ 8] = lc[0];
-        params[ 9] = lc[1];
-        params[10] = lc[2];
+        params[base+0] = lc[0];
+        params[base+1] = lc[1];
+        params[base+2] = lc[2];
+        base += LENGTH_LC;
 
-        params[11] = ic[0];
-        params[12] = ic[1];
-        params[13] = ic[2];
-        params[14] = ic[3];
+        params[base+0] = ic[0];
+        params[base+1] = ic[1];
+        params[base+2] = ic[2];
+        params[base+3] = ic[3];
+        base += LENGTH_IC;
 
-        params[15] = mc[0];
-        params[16] = mc[1];
-        params[17] = mc[2];
+        params[base+0] = mc[0];
+        params[base+1] = mc[1];
+        params[base+2] = mc[2];
+        base += LENGTH_MC;
 
-        params[18] = jc[0];
-        params[19] = jc[1];
-        params[20] = jc[2];
-        params[21] = jc[3];
+        params[base+0] = jc[0];
+        params[base+1] = jc[1];
+        params[base+2] = jc[2];
+        params[base+3] = jc[3];
+        base += LENGTH_JC;
 
         return params;
     }
@@ -230,42 +249,50 @@ public class KannalaBrandtCalibration implements Calibration, ParameterizableCal
     {
         assert(params.length == (LENGTH_FC + LENGTH_CC + LENGTH_KC +
                                  LENGTH_LC + LENGTH_IC + LENGTH_MC + LENGTH_JC));
+        int base = 0;
 
         fc = new double[LENGTH_FC];
-        fc[0] = params[0];
-        fc[1] = params[1];
+        fc[0] = params[base+0];
+        fc[1] = params[base+1];
+        base += LENGTH_FC;
 
         cc = new double[LENGTH_CC];
-        cc[0] = params[2];
-        cc[1] = params[3];
+        cc[0] = params[base+0];
+        cc[1] = params[base+1];
+        base += LENGTH_CC;
 
         kc = new double[LENGTH_KC];
-        kc[0] = params[4];
-        kc[1] = params[5];
-        kc[2] = params[6];
-        kc[3] = params[7];
+        kc[0] = params[base+0];
+        kc[1] = params[base+1];
+        kc[2] = params[base+2];
+        kc[3] = params[base+3];
+        base += LENGTH_KC;
 
         lc = new double[LENGTH_LC];
-        lc[0] = params[8];
-        lc[1] = params[9];
-        lc[2] = params[10];
+        lc[0] = params[base+0];
+        lc[1] = params[base+1];
+        lc[2] = params[base+2];
+        base += LENGTH_LC;
 
         ic = new double[LENGTH_IC];
-        ic[0] = params[11];
-        ic[1] = params[12];
-        ic[2] = params[13];
-        ic[3] = params[14];
+        ic[0] = params[base+0];
+        ic[1] = params[base+1];
+        ic[2] = params[base+2];
+        ic[3] = params[base+3];
+        base += LENGTH_IC;
 
         mc = new double[LENGTH_MC];
-        mc[0] = params[15];
-        mc[1] = params[16];
-        mc[2] = params[17];
+        mc[0] = params[base+0];
+        mc[1] = params[base+1];
+        mc[2] = params[base+2];
+        base += LENGTH_MC;
 
         jc = new double[LENGTH_JC];
-        jc[0] = params[18];
-        jc[1] = params[19];
-        jc[2] = params[20];
-        jc[3] = params[21];
+        jc[0] = params[base+0];
+        jc[1] = params[base+1];
+        jc[2] = params[base+2];
+        jc[3] = params[base+3];
+        base += LENGTH_JC;
 
         createIntrinsicsMatrix();
     }
@@ -291,16 +318,15 @@ public class KannalaBrandtCalibration implements Calibration, ParameterizableCal
         double theta2 = theta*theta;
         double theta3 = theta*theta2;
         double theta5 = theta3*theta2;
-        double theta7 = theta5*theta2;
-        double theta9 = theta7*theta2;
 
         double psi = Math.atan2(y, x);
 
-        double rtheta =         theta  + // force kc0 to 1
-                        kc[0] * theta3 +
-                        kc[1] * theta5 +
-                        kc[2] * theta7 +
-                        kc[3] * theta9;
+        double thetapow = theta;
+        double rtheta = theta;
+        for (int i = 0; i < LENGTH_KC; i++) {
+            thetapow *= theta2;
+            rtheta += kc[i]*thetapow;
+        }
 
         double ur[] = new double[] { Math.cos(psi), Math.sin(psi) };
         double upsi[] = new double[] { -ur[1], ur[0] };

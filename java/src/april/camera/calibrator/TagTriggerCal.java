@@ -684,7 +684,8 @@ public class TagTriggerCal
 
         opts.addBoolean('h',"help",false,"See this help screen");
         opts.addString('u',"url","","Camera URL");
-        opts.addString('c',"class","april.camera.models.SimpleKannalaBrandtInitializer","Calibration model initializer class name");
+        opts.addString('c',"class","april.camera.models.AngularPolynomialInitializer","Calibration model initializer class name");
+        opts.addString('p',"parameterString","kclength=4","Initializer parameter string (comma separated, key=value pairs)");
         opts.addDouble('m',"spacing",0.0381,"Spacing between tags (meters)");
         opts.addBoolean('\0',"debug-gui",false,"Display additional debugging information");
 
@@ -692,9 +693,10 @@ public class TagTriggerCal
             System.out.println("Option error: "+opts.getReason());
 	    }
 
-        String url = opts.getString("url");
-        String initclass = opts.getString("class");
-        double spacing = opts.getDouble("spacing");
+        String url             = opts.getString("url");
+        String initclass       = opts.getString("class");
+        String parameterString = opts.getString("parameterString");
+        double spacing         = opts.getDouble("spacing");
 
         if (opts.getBoolean("help") || url.isEmpty()) {
             System.out.println("Usage:");
@@ -702,7 +704,7 @@ public class TagTriggerCal
             System.exit(1);
         }
 
-        Object obj = ReflectUtil.createObject(initclass);
+        Object obj = ReflectUtil.createObject(initclass, parameterString);
         assert(obj != null);
         assert(obj instanceof CalibrationInitializer);
         CalibrationInitializer initializer = (CalibrationInitializer) obj;

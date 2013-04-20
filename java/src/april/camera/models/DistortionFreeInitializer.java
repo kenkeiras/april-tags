@@ -10,16 +10,23 @@ public class DistortionFreeInitializer implements CalibrationInitializer
 {
     public static boolean verbose = false;
 
-    public DistortionFreeInitializer()
+    public DistortionFreeInitializer(String parameterString)
     {
+    }
+
+    /** Return the parameter string passed in via the required constructor.
+      */
+    public String getParameterString()
+    {
+        return "";
     }
 
     /** Initialize the calibration using the estimation process specified by
       * the initializer. Returns null if initialization could not proceed.
       */
     public ParameterizableCalibration initializeWithObservations(int width, int height,
-                                        List<List<TagDetection>> allDetections,
-                                        TagMosaic tm)
+                                                                 List<List<TagDetection>> allDetections,
+                                                                 TagMosaic tm)
     {
         IntrinsicsEstimator estimator = new IntrinsicsEstimator(allDetections, tm,
                                                                 width/2, height/2);

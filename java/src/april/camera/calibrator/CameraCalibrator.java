@@ -182,6 +182,7 @@ public class CameraCalibrator
             return null;
 
         GraphSolver solver = new CholeskySolver(gw.g, new MinimumDegreeOrdering());
+        //GraphSolver solver = new LMSolver(gw.g, new MinimumDegreeOrdering(), 10e-6, 10e6, 10);
         CholeskySolver.verbose = false;
 
         GraphStats lastStats = getGraphStats(gw.g, gw.rootNumber);

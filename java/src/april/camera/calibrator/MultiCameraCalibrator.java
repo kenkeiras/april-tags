@@ -440,14 +440,19 @@ public class MultiCameraCalibrator implements ParameterListener
     void selectModelAndSave(String basepath)
     {
         List<CalibrationInitializer> initializerTypes = new ArrayList();
-        initializerTypes.add((CalibrationInitializer) new DistortionFreeInitializer());
-        initializerTypes.add((CalibrationInitializer) new Radial4thOrderCaltechInitializer());
-        initializerTypes.add((CalibrationInitializer) new Radial6thOrderCaltechInitializer());
-        initializerTypes.add((CalibrationInitializer) new Radial8thOrderCaltechInitializer());
-        initializerTypes.add((CalibrationInitializer) new Radial10thOrderCaltechInitializer());
-        initializerTypes.add((CalibrationInitializer) new Caltech4thOrderInitializer());
-        initializerTypes.add((CalibrationInitializer) new CaltechInitializer());
-        initializerTypes.add((CalibrationInitializer) new SimpleKannalaBrandtInitializer());
+        initializerTypes.add((CalibrationInitializer) new DistortionFreeInitializer(""));
+        initializerTypes.add((CalibrationInitializer) new AngularPolynomialInitializer("kclength=2"));
+        initializerTypes.add((CalibrationInitializer) new AngularPolynomialInitializer("kclength=3"));
+        initializerTypes.add((CalibrationInitializer) new AngularPolynomialInitializer("kclength=4"));
+        initializerTypes.add((CalibrationInitializer) new AngularPolynomialInitializer("kclength=5"));
+        initializerTypes.add((CalibrationInitializer) new RadialPolynomialInitializer("kclength=2"));
+        initializerTypes.add((CalibrationInitializer) new RadialPolynomialInitializer("kclength=3"));
+        initializerTypes.add((CalibrationInitializer) new RadialPolynomialInitializer("kclength=4"));
+        initializerTypes.add((CalibrationInitializer) new RadialPolynomialInitializer("kclength=5"));
+        initializerTypes.add((CalibrationInitializer) new CaltechInitializer("kclength=2"));
+        initializerTypes.add((CalibrationInitializer) new CaltechInitializer("kclength=3"));
+        initializerTypes.add((CalibrationInitializer) new CaltechInitializer("kclength=4"));
+        initializerTypes.add((CalibrationInitializer) new CaltechInitializer("kclength=5"));
 
         List<List<CalibrationInitializer>> initializerSets = new ArrayList();
         for (CalibrationInitializer initializer : initializerTypes) {
@@ -482,16 +487,17 @@ public class MultiCameraCalibrator implements ParameterListener
             CalibrationInitializer initializer = initializerTypes.get(i);
             String shortclassname = initializer.getClass().getName().replace("april.camera.models.","");
             shortclassname = shortclassname.replace("Initializer","Calibration");
+            shortclassname += ","+initializer.getParameterString();
 
             if (rcc == null) {
-                System.out.printf("Calibration with model %-35s: failed to initialize\n", "'"+shortclassname+"'");
+                System.out.printf("Calibration with model %-45s: failed to initialize\n", "'"+shortclassname+"'");
                 continue;
             }
 
             List<CameraCalibrator.GraphStats> stats =
                 rcc.iterateUntilConvergenceWithReinitalization(1.0, 0.01, 3, 50);
 
-            System.out.printf("Calibration with model %-35s: ", "'"+shortclassname+"'");
+            System.out.printf("Calibration with model %-45s: ", "'"+shortclassname+"'");
             ArrayList<String> lines = new ArrayList();
             for (CameraCalibrator.GraphStats gs : stats) {
                 String s = String.format("MRE: %10s MSE %10s",
@@ -565,7 +571,8 @@ public class MultiCameraCalibrator implements ParameterListener
         opts.addBoolean('h',"help",false,"See this help screen");
         opts.addBoolean('v',"verbose",false,"Enable verbosity");
         opts.addString('u',"urls","","Camera URLs separated by semicolons");
-        opts.addString('c',"class","april.camera.models.SimpleKannalaBrandtInitializer","Calibration model initializer class name");
+        opts.addString('c',"class","april.camera.models.AngularPolynomialInitializer","Calibration model initializer class name");
+        opts.addString('p',"parameterString","kclength=4","Initializer parameter string (comma separated, key=value pairs)");
         opts.addDouble('m',"spacing",0.0381,"Spacing between tags (meters)");
         opts.addBoolean('a',"autocapture",false,"Automatically capture every frame");
 
@@ -573,11 +580,12 @@ public class MultiCameraCalibrator implements ParameterListener
             System.out.println("Option error: "+opts.getReason());
 	    }
 
-        boolean verbose     = opts.getBoolean("verbose");
-        String urllist      = opts.getString("urls");
-        String initclass    = opts.getString("class");
-        double spacing      = opts.getDouble("spacing");
-        boolean autocapture = opts.getBoolean("autocapture");
+        boolean verbose        = opts.getBoolean("verbose");
+        String urllist         = opts.getString("urls");
+        String initclass       = opts.getString("class");
+        String parameterString = opts.getString("parameterString");
+        double spacing         = opts.getDouble("spacing");
+        boolean autocapture    = opts.getBoolean("autocapture");
 
         if (opts.getBoolean("help") || urllist.isEmpty()){
             System.out.println("Usage:");
@@ -596,7 +604,7 @@ public class MultiCameraCalibrator implements ParameterListener
         List<CalibrationInitializer> initializers = new ArrayList<CalibrationInitializer>();
 
         for (int i=0; i < urls.length; i++) {
-            Object obj = ReflectUtil.createObject(initclass);
+            Object obj = ReflectUtil.createObject(initclass, parameterString);
             assert(obj != null);
             assert(obj instanceof CalibrationInitializer);
             CalibrationInitializer initializer = (CalibrationInitializer) obj;

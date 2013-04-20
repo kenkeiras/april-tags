@@ -1601,18 +1601,23 @@ public class AprilCal
 
     private void selectModelAndSave(String basepath)
     {
-        List<List<CalibrationInitializer>> initializerSets = new ArrayList();
-        initializerSets.add(Arrays.asList((CalibrationInitializer) new DistortionFreeInitializer()));
-        initializerSets.add(Arrays.asList((CalibrationInitializer) new Radial4thOrderCaltechInitializer()));
-        initializerSets.add(Arrays.asList((CalibrationInitializer) new Radial6thOrderCaltechInitializer()));
-        initializerSets.add(Arrays.asList((CalibrationInitializer) new Radial8thOrderCaltechInitializer()));
-        initializerSets.add(Arrays.asList((CalibrationInitializer) new Radial10thOrderCaltechInitializer()));
-        initializerSets.add(Arrays.asList((CalibrationInitializer) new Caltech4thOrderInitializer()));
-        initializerSets.add(Arrays.asList((CalibrationInitializer) new CaltechInitializer()));
-        initializerSets.add(Arrays.asList((CalibrationInitializer) new SimpleKannalaBrandtInitializer()));
+        List<List<CalibrationInitializer>> initializerTypes = new ArrayList();
+        initializerTypes.add(Arrays.asList((CalibrationInitializer) new DistortionFreeInitializer("")));
+        initializerTypes.add(Arrays.asList((CalibrationInitializer) new AngularPolynomialInitializer("kclength=2")));
+        initializerTypes.add(Arrays.asList((CalibrationInitializer) new AngularPolynomialInitializer("kclength=3")));
+        initializerTypes.add(Arrays.asList((CalibrationInitializer) new AngularPolynomialInitializer("kclength=4")));
+        initializerTypes.add(Arrays.asList((CalibrationInitializer) new AngularPolynomialInitializer("kclength=5")));
+        initializerTypes.add(Arrays.asList((CalibrationInitializer) new RadialPolynomialInitializer("kclength=2")));
+        initializerTypes.add(Arrays.asList((CalibrationInitializer) new RadialPolynomialInitializer("kclength=3")));
+        initializerTypes.add(Arrays.asList((CalibrationInitializer) new RadialPolynomialInitializer("kclength=4")));
+        initializerTypes.add(Arrays.asList((CalibrationInitializer) new RadialPolynomialInitializer("kclength=5")));
+        initializerTypes.add(Arrays.asList((CalibrationInitializer) new CaltechInitializer("kclength=2")));
+        initializerTypes.add(Arrays.asList((CalibrationInitializer) new CaltechInitializer("kclength=3")));
+        initializerTypes.add(Arrays.asList((CalibrationInitializer) new CaltechInitializer("kclength=4")));
+        initializerTypes.add(Arrays.asList((CalibrationInitializer) new CaltechInitializer("kclength=5")));
 
-        List<CameraCalibrator> calibrators = calibrator.createModelSelectionCalibrators(initializerSets);
-        assert(calibrators.size() == initializerSets.size());
+        List<CameraCalibrator> calibrators = calibrator.createModelSelectionCalibrators(initializerTypes);
+        assert(calibrators.size() == initializerTypes.size());
 
         // create directory
         int dirNum = -1;
@@ -1630,22 +1635,23 @@ public class AprilCal
         }
 
         // save all camera models
-        for (int i = 0; i < initializerSets.size(); i++) {
+        for (int i = 0; i < initializerTypes.size(); i++) {
 
             CameraCalibrator rcc = calibrators.get(i);
-            CalibrationInitializer initializer = initializerSets.get(i).get(0);
+            CalibrationInitializer initializer = initializerTypes.get(i).get(0);
             String shortclassname = initializer.getClass().getName().replace("april.camera.models.","");
             shortclassname = shortclassname.replace("Initializer","Calibration");
+            shortclassname += ","+initializer.getParameterString();
 
             if (rcc == null) {
-                System.out.printf("Calibration with model %-35s: failed to initialize\n", "'"+shortclassname+"'");
+                System.out.printf("Calibration with model %-45s: failed to initialize\n", "'"+shortclassname+"'");
                 continue;
             }
 
             List<CameraCalibrator.GraphStats> stats =
                 rcc.iterateUntilConvergenceWithReinitalization(1.0, 0.01, 3, 50);
 
-            System.out.printf("Calibration with model %-35s: ", "'"+shortclassname+"'");
+            System.out.printf("Calibration with model %-45s: ", "'"+shortclassname+"'");
             ArrayList<String> lines = new ArrayList();
             for (CameraCalibrator.GraphStats gs : stats) {
                 String s = String.format("MRE: %10s MSE %10s",
@@ -1737,7 +1743,8 @@ public class AprilCal
 
         opts.addBoolean('h',"help",false,"See this help screen");
         opts.addString('u',"url","","Camera URL");
-        opts.addString('c',"class","april.camera.models.SimpleKannalaBrandtInitializer","Calibration model initializer class name");
+        opts.addString('c',"class","april.camera.models.AngularPolynomialInitializer","Calibration model initializer class name");
+        opts.addString('p',"parameterString","kclength=4","Initializer parameter string (comma separated, key=value pairs)");
         opts.addDouble('m',"spacing",0.0381,"Spacing between tags (meters)");
         opts.addDouble('\0',"stopping-accuracy",1.0,"Termination accuracy (px) which flags \"finished\"");
         opts.addString('\0',"debug-seed-images","","Optional parameter listing starting images for debugging");
@@ -1748,9 +1755,10 @@ public class AprilCal
             System.out.println("Option error: "+opts.getReason());
 	    }
 
-        String url = opts.getString("url");
-        String initclass = opts.getString("class");
-        double spacing = opts.getDouble("spacing");
+        String url             = opts.getString("url");
+        String initclass       = opts.getString("class");
+        String parameterString = opts.getString("parameterString");
+        double spacing         = opts.getDouble("spacing");
 
         if (opts.getBoolean("help") || url.isEmpty()) {
             System.out.println("Usage:");
@@ -1758,7 +1766,7 @@ public class AprilCal
             System.exit(1);
         }
 
-        Object obj = ReflectUtil.createObject(initclass);
+        Object obj = ReflectUtil.createObject(initclass, parameterString);
         assert(obj != null);
         assert(obj instanceof CalibrationInitializer);
         CalibrationInitializer initializer = (CalibrationInitializer) obj;

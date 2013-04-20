@@ -6,24 +6,40 @@ import april.camera.*;
 import april.jmat.*;
 import april.tag.*;
 
-public class Caltech4thOrderInitializer implements CalibrationInitializer
+public class RadialPolynomialInitializer implements CalibrationInitializer
 {
     public static boolean verbose = false;
 
-    public Caltech4thOrderInitializer()
+    String parameterString;
+    int kclen;
+
+    public RadialPolynomialInitializer(String parameterString)
     {
+        this.parameterString = parameterString;
+        this.kclen = InitializerUtil.getParameter(parameterString, "kclength");
+    }
+
+    /** Return the parameter string passed in via the required constructor.
+      */
+    public String getParameterString()
+    {
+        return this.parameterString;
     }
 
     /** Initialize the calibration using the estimation process specified by
       * the initializer. Returns null if initialization could not proceed.
       */
     public ParameterizableCalibration initializeWithObservations(int width, int height,
-                                        List<List<TagDetection>> allDetections,
-                                        TagMosaic tm)
+                                                                 List<List<TagDetection>> allDetections,
+                                                                 TagMosaic tm)
     {
-        IntrinsicsFreeDistortionEstimator distortionEstimator =
-                        new IntrinsicsFreeDistortionEstimator(allDetections, tm,
-                                                              width, height);
+        IntrinsicsFreeDistortionEstimator distortionEstimator = null;
+        try {
+            distortionEstimator = new IntrinsicsFreeDistortionEstimator(allDetections, tm,
+                                                                        width, height);
+        } catch (Exception ex) {
+            return null;
+        }
 
         List<List<TagDetection>> allRectifiedDetections = new ArrayList<List<TagDetection>>();
         for (List<TagDetection> detections : allDetections) {
@@ -57,9 +73,11 @@ public class Caltech4thOrderInitializer implements CalibrationInitializer
 
             allRectifiedDetections.add(rectifiedDetections);
         }
-        IntrinsicsEstimator estimator = new IntrinsicsEstimator(allRectifiedDetections, tm,
-                                                                width/2, height/2);
-        double K[][] = estimator.getIntrinsics();
+
+        IntrinsicsEstimator intrinsicsEstimator = new IntrinsicsEstimator(allRectifiedDetections, tm,
+                                                                          width/2, height/2);
+
+        double K[][] = intrinsicsEstimator.getIntrinsics();
         if (K == null)
             return null;
 
@@ -73,10 +91,9 @@ public class Caltech4thOrderInitializer implements CalibrationInitializer
 
         double fc[] = new double[] {  K[0][0],  K[1][1] };
         double cc[] = new double[] {  width/2, height/2 };
-        double kc[] = new double[] {  0, 0, 0, 0 };
-        double skew = 0;
+        double kc[] = new double[kclen];
 
-        return new Caltech4thOrderCalibration(fc, cc, kc, skew, width, height);
+        return new RadialPolynomialCalibration(fc, cc, kc, width, height);
     }
 
     /** Initialize the calibration using the provided parameters. Essentially,
@@ -87,6 +104,6 @@ public class Caltech4thOrderInitializer implements CalibrationInitializer
     public ParameterizableCalibration initializeWithParameters(int width, int height,
                                                                double params[])
     {
-        return new Caltech4thOrderCalibration(params, width, height);
+        return new RadialPolynomialCalibration(kclen, params, width, height);
     }
 }
