@@ -32,35 +32,28 @@ public class ScaledView implements View
         height = (int) Math.floor(view.getHeight() * scale);
     }
 
-    public int          getWidth()
+    public int getWidth()
     {
         return width;
     }
 
-    public int          getHeight()
+    public int getHeight()
     {
         return height;
     }
 
-    public double[][]   copyIntrinsics()
+    public double[][] copyIntrinsics()
     {
         return LinAlg.matrixAB(S, view.copyIntrinsics());
     }
 
-    public double[] normToPixels(double xy_rn[])
+    public double[] rayToPixels(double xyz_r[])
     {
-        return CameraMath.pixelTransform(S, view.normToPixels(xy_rn));
+        return CameraMath.pinholeTransform(S, view.rayToPixels(xyz_r));
     }
 
-    public double[] pixelsToNorm(double xy_p[])
+    public double[] pixelsToRay(double xy_p[])
     {
-        return view.pixelsToNorm(CameraMath.pixelTransform(Sinv, xy_p));
-    }
-
-    public String       getCacheString()
-    {
-        return String.format("%s %.12f",
-                             view.getCacheString(),
-                             scale);
+        return view.pixelsToRay(CameraMath.pinholeTransform(Sinv, xy_p));
     }
 }

@@ -106,7 +106,7 @@ public class ExampleStereoRectifier
         StereoRectification sr;
 
         if (inscribed)
-            sr = StereoRectification.getMaxInscribedSR(leftView,
+            sr = StereoRectification.getMaxGrownInscribedSR(leftView,
                                                        rightView,
                                                        cameras.getExtrinsicsL2C(0),
                                                        cameras.getExtrinsicsL2C(1));
