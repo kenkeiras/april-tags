@@ -500,9 +500,10 @@ public class MultiCameraCalibrator implements ParameterListener
             System.out.printf("Calibration with model %-45s: ", "'"+shortclassname+"'");
             ArrayList<String> lines = new ArrayList();
             for (CameraCalibrator.GraphStats gs : stats) {
-                String s = String.format("MRE: %10s MSE %10s",
+                String s = String.format("MRE: %10s MSE %10s MaxRE %10s",
                                         (gs == null) ? "n/a" : String.format("%7.3f px", gs.MRE),
-                                        (gs == null) ? "n/a" : String.format("%7.3f px", gs.MSE));
+                                        (gs == null) ? "n/a" : String.format("%7.3f px", gs.MSE),
+                                        (gs == null) ? "n/a" : String.format("%7.3f px", gs.MaxRE));
                 lines.add(s);
                 System.out.printf(s);
             }

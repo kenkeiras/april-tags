@@ -82,6 +82,7 @@ public class CameraCalibrator
         public int numObs;       // number of tags used
         public double MRE;       // mean reprojection error
         public double MSE;       // mean-squared reprojection error
+        public double MaxRE;     // max reprojection error
         public boolean SPDError; // did we catch an SPD error from the graph solver?
     }
 
@@ -110,6 +111,7 @@ public class CameraCalibrator
         stats.numObs = 0;
         stats.MRE = 0;
         stats.MSE = 0;
+        stats.MaxRE = 0;
         stats.SPDError = false;
 
         for (GEdge e : g.edges) {
@@ -121,8 +123,10 @@ public class CameraCalibrator
 
                 for (int i=0; i < res.length; i+=2) {
                     double sqerr = res[i]*res[i] + res[i+1]*res[i+1];
+                    double abserr = Math.sqrt(sqerr);
+                    stats.MRE += abserr;
                     stats.MSE += sqerr;
-                    stats.MRE += Math.sqrt(sqerr);
+                    stats.MaxRE = Math.max(stats.MaxRE, abserr);
                 }
 
                 stats.numObs += res.length / 2;

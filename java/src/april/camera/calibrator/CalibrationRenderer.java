@@ -296,9 +296,11 @@ public class CalibrationRenderer
 
             String font = "<<monospaced-12,left,white>>";
             String str = String.format("%sMean reprojection error:         %6.3f\n" +
-                                       "%sMean-squared reprojection error: %6.3f",
+                                       "%sMean-squared reprojection error: %6.3f\n" +
+                                       "%sMax reprojection error:          %6.3f",
                                        font, gs.MRE,
-                                       font, gs.MSE);
+                                       font, gs.MSE,
+                                       font, gs.MaxRE);
             if (gs.SPDError)
                 str = "<<monospaced-12,left,red>>SPD error for graph";
 
