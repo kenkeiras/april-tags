@@ -36,6 +36,16 @@ public class StereoRectification
         this.G2C_B = GlobalToCam_B;
     }
 
+    public static StereoRectification getMaxGrownInscribedSR(View cal_A, View cal_B,
+                                                             double[][] GlobalToCam_A, double[][] GlobalToCam_B)
+    {
+        StereoRectification sr = new StereoRectification(cal_A, cal_B, GlobalToCam_A, GlobalToCam_B);
+        sr.computeTransformations();
+        sr.createMaxGrownInscribedSRViews();
+
+        return sr;
+    }
+
     public static StereoRectification getMaxInscribedSR(View cal_A, View cal_B,
                                                         double[][] GlobalToCam_A, double[][] GlobalToCam_B)
     {
@@ -179,6 +189,158 @@ public class StereoRectification
         return extrinsics;
     }
 
+    private void createMaxGrownInscribedSRViews()
+    {
+        assert(cal_A != null);
+        assert(cal_B != null);
+        assert(R_N2O_A != null);
+        assert(R_N2O_B != null);
+        assert(K != null);
+        double XY01_A[][] = computeMaxGrownInscribedRectifiedRectangle(cal_A, R_N2O_A, K);
+        double XY01_B[][] = computeMaxGrownInscribedRectifiedRectangle(cal_B, R_N2O_B, K);
+
+        // make sure that the Y offsets are shared. this ensures that the y
+        // indices into the image match
+        XY01_A[0][1] = Math.max(XY01_A[0][1], XY01_B[0][1]);
+        XY01_A[1][1] = Math.min(XY01_A[1][1], XY01_B[1][1]);
+        XY01_B[0][1] = XY01_A[0][1];
+        XY01_B[1][1] = XY01_A[1][1];
+
+        viewA = new StereoRectifiedView(K, XY01_A);
+        viewB = new StereoRectifiedView(K, XY01_B);
+        assert(viewA.getHeight() == viewB.getHeight());
+    }
+
+    private static double[][] computeMaxGrownInscribedRectifiedRectangle(View cal,
+                                                                         double R_N2O[][], double K[][])
+    {
+        assert(cal != null);
+        assert(R_N2O != null);
+        assert(K != null);
+        double T[][] = LinAlg.matrixAB(K,
+                                       LinAlg.inverse(R_N2O));
+
+        double Rb, Rt, Rl, Rr;
+        int x_dp, y_dp;
+
+        DistortionFunctionVerifier verifier = new DistortionFunctionVerifier(cal);
+
+        ////////////////////////////////////////
+        // compute rectified border
+        ArrayList<double[]> border = new ArrayList<double[]>();
+
+        // TL -> TR
+        y_dp = 0;
+        for (x_dp = 0; x_dp < cal.getWidth(); x_dp++)
+        {
+            double xy_dp[] = new double[] { x_dp, y_dp };
+            xy_dp = verifier.clampPixels(xy_dp);
+            double xyz_r[] = cal.pixelsToRay(xy_dp);
+            double xy_rp[] = CameraMath.pinholeTransform(T, xyz_r);
+            border.add(xy_rp);
+        }
+
+        // TR -> BR
+        x_dp = cal.getWidth()-1;
+        for (y_dp = 0; y_dp < cal.getHeight(); y_dp++)
+        {
+            double xy_dp[] = new double[] { x_dp, y_dp };
+            xy_dp = verifier.clampPixels(xy_dp);
+            double xyz_r[] = cal.pixelsToRay(xy_dp);
+            double xy_rp[] = CameraMath.pinholeTransform(T, xyz_r);
+            border.add(xy_rp);
+        }
+
+        // BR -> BL
+        y_dp = cal.getHeight()-1;
+        for (x_dp = cal.getWidth()-1; x_dp >= 0; x_dp--)
+        {
+            double xy_dp[] = new double[] { x_dp, y_dp };
+            xy_dp = verifier.clampPixels(xy_dp);
+            double xyz_r[] = cal.pixelsToRay(xy_dp);
+            double xy_rp[] = CameraMath.pinholeTransform(T, xyz_r);
+            border.add(xy_rp);
+        }
+
+        // BL -> TL
+        x_dp = 0;
+        for (y_dp = cal.getHeight()-1; y_dp >= 0; y_dp--)
+        {
+            double xy_dp[] = new double[] { x_dp, y_dp };
+            xy_dp = verifier.clampPixels(xy_dp);
+            double xyz_r[] = cal.pixelsToRay(xy_dp);
+            double xy_rp[] = CameraMath.pinholeTransform(T, xyz_r);
+            border.add(xy_rp);
+        }
+
+        ////////////////////////////////////////
+        // grow inscribed rectangle
+
+        double centroid[] = new double[2];
+        for (double xy[] : border) {
+            centroid[0] += xy[0]/border.size();
+            centroid[1] += xy[1]/border.size();
+        }
+
+        // corner case
+        int xmin = (int) centroid[0];
+        int xmax = (int) centroid[0];
+        int ymin = (int) centroid[1];
+        int ymax = (int) centroid[1];
+
+        boolean changed = true;
+        while (changed)
+        {
+            changed = false;
+
+            if (acceptMove(border, xmin-1, xmax, ymin, ymax)) {
+                changed = true;
+                xmin--;
+            }
+
+            if (acceptMove(border, xmin, xmax+1, ymin, ymax)) {
+                changed = true;
+                xmax++;
+            }
+
+            if (acceptMove(border, xmin, xmax, ymin-1, ymax)) {
+                changed = true;
+                ymin--;
+            }
+
+            if (acceptMove(border, xmin, xmax, ymin, ymax+1)) {
+                changed = true;
+                ymax++;
+            }
+
+            double area = (xmax - xmin)*(ymax - ymin);
+            if (area > 10*cal.getWidth()*cal.getHeight()) { // XXX
+                break;
+            }
+        }
+
+        Rb = ymin;
+        Rt = ymax;
+        Rl = xmin;
+        Rr = xmax;
+
+        System.out.printf("Bottom: %5.1f Right: %5.1f Top: %5.1f Left: %5.1f\n", Rb, Rr, Rt, Rl);
+
+        return new double[][] { { Rl, Rb }, { Rr, Rt } };
+    }
+
+    private static boolean acceptMove(ArrayList<double[]> border,
+                                      double xmin, double xmax,
+                                      double ymin, double ymax)
+    {
+        for (double xy[] : border) {
+            if (xy[0] > xmin && xy[0] < xmax && xy[1] > ymin && xy[1] < ymax)
+                return false;
+        }
+
+        return true;
+    }
+
     private void createMaxInscribedSRViews()
     {
         assert(cal_A != null);
@@ -203,8 +365,8 @@ public class StereoRectification
         XY01_B[0][1] = XY01_A[0][1];
         XY01_B[1][1] = XY01_A[1][1];
 
-        viewA = new StereoRectifiedView(K, XY01_A, cal_A.getCacheString());
-        viewB = new StereoRectifiedView(K, XY01_B, cal_B.getCacheString());
+        viewA = new StereoRectifiedView(K, XY01_A);
+        viewB = new StereoRectifiedView(K, XY01_B);
         assert(viewA.getHeight() == viewB.getHeight());
     }
 
@@ -219,25 +381,27 @@ public class StereoRectification
         double Rb, Rt, Rl, Rr;
         int x_dp, y_dp;
 
+        DistortionFunctionVerifier verifier = new DistortionFunctionVerifier(cal);
+
         // initialize bounds
         {
-            double xy_rn[];
+            double xyz_r[];
             double xy_rp[];
 
-            xy_rn = cal.pixelsToNorm(new double[] {                0,                 0});
-            xy_rp = CameraMath.pixelTransform(T, xy_rn);
+            xyz_r = cal.pixelsToRay(verifier.clampPixels(new double[] {                0,                 0}));
+            xy_rp = CameraMath.pinholeTransform(T, xyz_r);
             Rb = xy_rp[1];
 
-            xy_rn = cal.pixelsToNorm(new double[] { cal.getWidth()-1,                 0});
-            xy_rp = CameraMath.pixelTransform(T, xy_rn);
+            xyz_r = cal.pixelsToRay(verifier.clampPixels(new double[] { cal.getWidth()-1,                 0}));
+            xy_rp = CameraMath.pinholeTransform(T, xyz_r);
             Rr = xy_rp[0];
 
-            xy_rn = cal.pixelsToNorm(new double[] { cal.getWidth()-1, cal.getHeight()-1});
-            xy_rp = CameraMath.pixelTransform(T, xy_rn);
+            xyz_r = cal.pixelsToRay(verifier.clampPixels(new double[] { cal.getWidth()-1, cal.getHeight()-1}));
+            xy_rp = CameraMath.pinholeTransform(T, xyz_r);
             Rt = xy_rp[1];
 
-            xy_rn = cal.pixelsToNorm(new double[] {                0, cal.getHeight()-1});
-            xy_rp = CameraMath.pixelTransform(T, xy_rn);
+            xyz_r = cal.pixelsToRay(verifier.clampPixels(new double[] {                0, cal.getHeight()-1}));
+            xy_rp = CameraMath.pinholeTransform(T, xyz_r);
             Rl = xy_rp[0];
         }
 
@@ -245,8 +409,8 @@ public class StereoRectification
         y_dp = 0;
         for (x_dp = 0; x_dp < cal.getWidth(); x_dp++) {
 
-            double xy_rn[] = cal.pixelsToNorm(new double[] { x_dp, y_dp });
-            double xy_rp[] = CameraMath.pixelTransform(T, xy_rn);
+            double xyz_r[] = cal.pixelsToRay(verifier.clampPixels(new double[] { x_dp, y_dp }));
+            double xy_rp[] = CameraMath.pinholeTransform(T, xyz_r);
             Rb = Math.max(Rb, xy_rp[1]);
         }
 
@@ -254,8 +418,8 @@ public class StereoRectification
         x_dp = cal.getWidth()-1;
         for (y_dp = 0; y_dp < cal.getHeight(); y_dp++) {
 
-            double xy_rn[] = cal.pixelsToNorm(new double[] { x_dp, y_dp });
-            double xy_rp[] = CameraMath.pixelTransform(T, xy_rn);
+            double xyz_r[] = cal.pixelsToRay(verifier.clampPixels(new double[] { x_dp, y_dp }));
+            double xy_rp[] = CameraMath.pinholeTransform(T, xyz_r);
             Rr = Math.min(Rr, xy_rp[0]);
         }
 
@@ -263,8 +427,8 @@ public class StereoRectification
         y_dp = cal.getHeight()-1;
         for (x_dp = cal.getWidth()-1; x_dp >= 0; x_dp--) {
 
-            double xy_rn[] = cal.pixelsToNorm(new double[] { x_dp, y_dp });
-            double xy_rp[] = CameraMath.pixelTransform(T, xy_rn);
+            double xyz_r[] = cal.pixelsToRay(verifier.clampPixels(new double[] { x_dp, y_dp }));
+            double xy_rp[] = CameraMath.pinholeTransform(T, xyz_r);
             Rt = Math.min(Rt, xy_rp[1]);
         }
 
@@ -272,8 +436,8 @@ public class StereoRectification
         x_dp = 0;
         for (y_dp = cal.getHeight()-1; y_dp >= 0; y_dp--) {
 
-            double xy_rn[] = cal.pixelsToNorm(new double[] { x_dp, y_dp });
-            double xy_rp[] = CameraMath.pixelTransform(T, xy_rn);
+            double xyz_r[] = cal.pixelsToRay(verifier.clampPixels(new double[] { x_dp, y_dp }));
+            double xy_rp[] = CameraMath.pinholeTransform(T, xyz_r);
             Rl = Math.max(Rl, xy_rp[0]);
         }
 
@@ -299,8 +463,8 @@ public class StereoRectification
         XY01_B[0][1] = XY01_A[0][1];
         XY01_B[1][1] = XY01_A[1][1];
 
-        viewA = new StereoRectifiedView(K, XY01_A, cal_A.getCacheString());
-        viewB = new StereoRectifiedView(K, XY01_B, cal_B.getCacheString());
+        viewA = new StereoRectifiedView(K, XY01_A);
+        viewB = new StereoRectifiedView(K, XY01_B);
         assert(viewA.getHeight() == viewB.getHeight());
     }
 
@@ -315,25 +479,27 @@ public class StereoRectification
         double Rb, Rt, Rl, Rr;
         int x_dp, y_dp;
 
+        DistortionFunctionVerifier verifier = new DistortionFunctionVerifier(cal);
+
         // initialize bounds
         {
-            double xy_rn[];
+            double xyz_r[];
             double xy_rp[];
 
-            xy_rn = cal.pixelsToNorm(new double[] {                0,                 0});
-            xy_rp = CameraMath.pixelTransform(T, xy_rn);
+            xyz_r = cal.pixelsToRay(verifier.clampPixels(new double[] {                0,                 0}));
+            xy_rp = CameraMath.pinholeTransform(T, xyz_r);
             Rb = xy_rp[1];
 
-            xy_rn = cal.pixelsToNorm(new double[] { cal.getWidth()-1,                 0});
-            xy_rp = CameraMath.pixelTransform(T, xy_rn);
+            xyz_r = cal.pixelsToRay(verifier.clampPixels(new double[] { cal.getWidth()-1,                 0}));
+            xy_rp = CameraMath.pinholeTransform(T, xyz_r);
             Rr = xy_rp[0];
 
-            xy_rn = cal.pixelsToNorm(new double[] { cal.getWidth()-1, cal.getHeight()-1});
-            xy_rp = CameraMath.pixelTransform(T, xy_rn);
+            xyz_r = cal.pixelsToRay(verifier.clampPixels(new double[] { cal.getWidth()-1, cal.getHeight()-1}));
+            xy_rp = CameraMath.pinholeTransform(T, xyz_r);
             Rt = xy_rp[1];
 
-            xy_rn = cal.pixelsToNorm(new double[] {                0, cal.getHeight()-1});
-            xy_rp = CameraMath.pixelTransform(T, xy_rn);
+            xyz_r = cal.pixelsToRay(verifier.clampPixels(new double[] {                0, cal.getHeight()-1}));
+            xy_rp = CameraMath.pinholeTransform(T, xyz_r);
             Rl = xy_rp[0];
         }
 
@@ -341,8 +507,8 @@ public class StereoRectification
         y_dp = 0;
         for (x_dp = 0; x_dp < cal.getWidth(); x_dp++) {
 
-            double xy_rn[] = cal.pixelsToNorm(new double[] { x_dp, y_dp });
-            double xy_rp[] = CameraMath.pixelTransform(T, xy_rn);
+            double xyz_r[] = cal.pixelsToRay(verifier.clampPixels(new double[] { x_dp, y_dp }));
+            double xy_rp[] = CameraMath.pinholeTransform(T, xyz_r);
             Rb = Math.min(Rb, xy_rp[1]);
         }
 
@@ -350,8 +516,8 @@ public class StereoRectification
         x_dp = cal.getWidth()-1;
         for (y_dp = 0; y_dp < cal.getHeight(); y_dp++) {
 
-            double xy_rn[] = cal.pixelsToNorm(new double[] { x_dp, y_dp });
-            double xy_rp[] = CameraMath.pixelTransform(T, xy_rn);
+            double xyz_r[] = cal.pixelsToRay(verifier.clampPixels(new double[] { x_dp, y_dp }));
+            double xy_rp[] = CameraMath.pinholeTransform(T, xyz_r);
             Rr = Math.max(Rr, xy_rp[0]);
         }
 
@@ -359,8 +525,8 @@ public class StereoRectification
         y_dp = cal.getHeight()-1;
         for (x_dp = cal.getWidth()-1; x_dp >= 0; x_dp--) {
 
-            double xy_rn[] = cal.pixelsToNorm(new double[] { x_dp, y_dp });
-            double xy_rp[] = CameraMath.pixelTransform(T, xy_rn);
+            double xyz_r[] = cal.pixelsToRay(verifier.clampPixels(new double[] { x_dp, y_dp }));
+            double xy_rp[] = CameraMath.pinholeTransform(T, xyz_r);
             Rt = Math.max(Rt, xy_rp[1]);
         }
 
@@ -368,8 +534,8 @@ public class StereoRectification
         x_dp = 0;
         for (y_dp = cal.getHeight()-1; y_dp >= 0; y_dp--) {
 
-            double xy_rn[] = cal.pixelsToNorm(new double[] { x_dp, y_dp });
-            double xy_rp[] = CameraMath.pixelTransform(T, xy_rn);
+            double xyz_r[] = cal.pixelsToRay(verifier.clampPixels(new double[] { x_dp, y_dp }));
+            double xy_rp[] = CameraMath.pinholeTransform(T, xyz_r);
             Rl = Math.min(Rl, xy_rp[0]);
         }
 

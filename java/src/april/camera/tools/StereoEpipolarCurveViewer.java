@@ -270,7 +270,7 @@ public class StereoEpipolarCurveViewer implements ParameterListener
                                   View passiveCal,          double passiveG2C[][],
                                   BufferedImage activeIm,   BufferedImage passiveIm)
     {
-        double xy_rn[] = activeCal.pixelsToNorm(xy_dp);
+        double xyz_r[] = activeCal.pixelsToRay(xy_dp);
 
         ArrayList<double[]> points = new ArrayList<double[]>();
         ArrayList<double[]> depths = new ArrayList<double[]>();
@@ -281,9 +281,7 @@ public class StereoEpipolarCurveViewer implements ParameterListener
         double lastvisxy[] = null;
         for (double z=0.0; z < zmax; z += 0.01) {
 
-            double xyz_cam[] = new double[] { xy_rn[0]*z ,
-                                              xy_rn[1]*z ,
-                                                       z };
+            double xyz_cam[] = LinAlg.scale(xyz_r, z);
 
             double xyz_global[] = LinAlg.transform(LinAlg.inverse(activeG2C),
                                                    xyz_cam);

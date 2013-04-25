@@ -55,7 +55,7 @@ public class TestHomography
             double xy[] = xys.get(i);
             double xyp[] = xy_primes.get(i);
 
-            double xy_est[] = CameraMath.pixelTransform(H, xy);
+            double xy_est[] = CameraMath.pinholeTransform(H, xy);
 
             double dist = LinAlg.distance(xy_est, xyp);
 
