@@ -18,14 +18,26 @@ import april.jmat.*;
  * The pixelz and altitude fields are ignored and are typically
  * zero. GPS positions correspond to pixel *centers*.
  *
- *  How to create your own GeoImage:
- *
- * Download the NASA Worldwind applet for saving geotiff images from
- *     http://worldwind.arc.nasa.gov/java/demos/SectorSelectAndSave.jnlp
+ * How to create your own GeoImage:
+ *   Download and extract the worldwind jars from NASA:
+ *   http://builds.worldwind.arc.nasa.gov/download-release.asp
+ *   a) Add the jars to your classpath, in your .bashrc
+
+ * Download the NASA Worldwind applet for saving geotiff images:
+ *   mkdir -p ~/worldwind
+ *   cd ~/worldwind
+ *   wget http://worldwind.arc.nasa.gov/java/demos/worldwind.jar
+ *   wget http://worldwind.arc.nasa.gov/java/demos/worldwindx.jar
+ *   sudo apt-get install libjogl-java libjogl-jni
+ * Now add the appropriate CLASSPATH entry to your .bashrc:
+ *   export CLASSPATH=/usr/share/java/gluegen-rt.jar:/usr/share/java/jogl.jar:$CLASSPATH
+ *   export CLASSPATH=$HOME/worldwind/worldwind.jar:$HOME/worldwind/worldwindx.jar:$CLASSPATH
+ * Open a new terminal, and do:
+ *   java gov.nasa.worldwindx.examples.ExportImageOrElevations  *   java worldwind
  *  1) Select and save the area you are trying to grab. Be sure to cycle through the layers
  *     to find the best imagery (MS is usually good) for your location
  *  2) convert foo.tif foo.png  (this may complain about some unknown fields, but ignore)
- *  3) java april.util.TIFF > foo.pngw
+ *  3) java april.util.TIFF foo.tif | tail -n 4 > foo.pngw
  *
  * now pass the path for foo.png to an instance of this class
  **/
