@@ -132,6 +132,7 @@ public class TagFamilyGenerator
         long iter1;
 
         ComputeThread threads[];
+        int threadidx; // which thread am I?
 
         public void run()
         {
@@ -161,6 +162,9 @@ public class TagFamilyGenerator
                 if (isCodeOkay(v)) {
                     goodCode = v;
                     goodIter = iter;
+
+                    for (int i = threadidx+1; i < threads.length; i++)
+                        threads[i].stop = true;
                     return;
                 }
             }
@@ -217,7 +221,7 @@ public class TagFamilyGenerator
             for (int i = 0; i < threads.length; i++) {
                 threads[i] = new ComputeThread();
                 threads[i].threads = threads;
-
+                threads[i].threadidx = i;
                 threads[i].iter0 = iter;
                 iter += chunksize;
                 iter = Math.min(iter, 1L << nbits);
