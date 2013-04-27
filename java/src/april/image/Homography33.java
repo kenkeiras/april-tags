@@ -168,6 +168,8 @@ public class Homography33
         A[4][5] += a24*a25;
         A[5][5] += a25*a25;
 
+        LinAlg.print(A);
+
         H = null; // force re-compute.
     }
 
@@ -191,6 +193,7 @@ public class Homography33
             for (int j = 0; j < 3; j++)
                 H[i][j] = V.get(i*3+j, V.getColumnDimension()-1);
 
+        LinAlg.print(H);
         return H;
     }
 

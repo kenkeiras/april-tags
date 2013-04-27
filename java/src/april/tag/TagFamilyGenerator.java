@@ -18,6 +18,8 @@ public class TagFamilyGenerator
     long rotcodes[] = new long[16384];
     int nrotcodes = 0;
 
+    static final long PRIME = 982451653;
+
     public TagFamilyGenerator(int nbits, int minhamming, int mincomplexity)
     {
         this.nbits = nbits;
@@ -77,54 +79,93 @@ public class TagFamilyGenerator
         tfg.report();
     }
 
-/*
-  class ComputeThread extends Thread
-  {
-  boolean stop = false;
-  long iter0;
-  int nthreads;
-  int threadid;
+    boolean isCodeOkay(long v)
+    {
+        // The tag must be different from itself when rotated.
+        if (true) {
+            long rv1 = TagFamily.rotate90(v, d);
+            long rv2 = TagFamily.rotate90(rv1, d);
+            long rv3 = TagFamily.rotate90(rv2, d);
 
-  public ComputeThread(long iter0, int nthreads, int threadid)
-  {
-  this.iter0 = iter0;
-  this.nthreads = nthreads;
-  this.threadid = threadid;
-  }
+            if (!hammingDistanceAtLeast(v, rv1, minhamming) ||
+                !hammingDistanceAtLeast(v, rv2, minhamming) ||
+                !hammingDistanceAtLeast(v, rv3, minhamming) ||
+                !hammingDistanceAtLeast(rv1, rv2, minhamming) ||
+                !hammingDistanceAtLeast(rv1, rv3, minhamming) ||
+                !hammingDistanceAtLeast(rv2, rv3, minhamming)) {
 
-  public void run()
-  {
-  long v = v0;
+                return false;
+            }
+        }
 
-  for (long iter = iter0; iter < (1L<<nbits) && !stop; iter += nthreads) {
-  v = v0 + 982451653*(iter+1);
-  v &= ((1L<<nbits) - 1);
+        // tag must be different from other tags.
+        if (true) {
+            for (int widx = 0; widx < nrotcodes; widx++) {
 
-  boolean good = true;
+                long w = rotcodes[widx];
 
-  for (int widx = 0; widx < nrotcodes; widx++) {
+                if (!hammingDistanceAtLeast(v, w, minhamming)) {
+                    return false;
+                }
+            }
+        }
 
-  long w = rotcodes[widx];
+        // tag must be reasonably complex
+        if (true) {
+            int complexity = computeComplexity(v, d);
+            if (complexity < mincomplexity)
+                return false;
+        }
 
-  if (!hammingDistanceAtLeast(v, w, minhamming)) {
-  good = false;
-  break;
-  }
-  }
+        return true;
+    }
 
-  if (good) {
-  int complexity = computeComplexity(v, d);
-  if (complexity < mincomplexity)
-  good = false;
-  }
+    class ComputeThread extends Thread
+    {
+        long goodCode = -1;
+        long goodIter = -1;
 
-  if (good) {
+        boolean stop = false;
 
-  }
-  }
-  }
-  }
-*/
+        long V0;
+        long iter0;
+        long iter1;
+
+        ComputeThread threads[];
+
+        public void run()
+        {
+
+            // compute v = V0 + PRIME * iter0,
+            // being very careful about overflow.
+            // (consider the power-of-two expansion of iter0....)
+            long v = V0;
+
+            long acc = PRIME;
+            long M = iter0;
+            while (M > 0) {
+                if ((M & 1) > 0) {
+                    v += acc;
+                    v &= ((1L<<nbits) - 1);
+                }
+
+                acc *= 2;
+                acc &= ((1L << nbits) - 1);
+                M >>= 1;
+            }
+
+            for (long iter = iter0; iter < iter1 && !stop; iter++) {
+                v += PRIME; // big prime.
+                v &= ((1L<<nbits) - 1);
+
+                if (isCodeOkay(v)) {
+                    goodCode = v;
+                    goodIter = iter;
+                    return;
+                }
+            }
+        }
+    }
 
     public TagFamily compute()
     {
@@ -142,12 +183,15 @@ public class TagFamilyGenerator
         long lastprogresstime = starttime;
         long lastprogressiters = 0;
 
-        long v = V0;
+        int nthreads = Runtime.getRuntime().availableProcessors();
+        System.out.printf("Using %d threads.\n", nthreads);
 
-        for (long iter = 0; iter < (1L<<nbits); iter++) {
+        ComputeThread threads[] = new ComputeThread[nthreads];
 
-            v += 982451653; // big prime.
-            v &= ((1L<<nbits) - 1);
+        long iter = 0;
+        long chunksize = 50000;
+
+        while (iter < (1L << nbits)) {
 
             // print a progress report.
             long now = System.currentTimeMillis();
@@ -163,56 +207,56 @@ public class TagFamilyGenerator
                 long diters = iter - lastprogressiters;
                 double rate = diters / dt; // iterations per second
                 double secremaining = ((long) (1L<<nbits) - iter) / rate;
-                System.out.printf("%8.2f%%  codes: %-5d (%.0f iters/sec, %.2f minutes = %.2f hours)           \r", donepercent, codelist.size(), rate, secremaining/(60.0), secremaining/3600.0);
+                System.out.printf("%8.2f%%  codes: %-5d (%.0f iters/sec, %.2f minutes = %.2f hours)           \r",
+                                  donepercent, codelist.size(), rate, secremaining/(60.0), secremaining/3600.0);
                 lastprogresstime = now;
                 lastprogressiters = iter;
             }
 
-            boolean good = true;
+            // fire up the threads.
+            for (int i = 0; i < threads.length; i++) {
+                threads[i] = new ComputeThread();
+                threads[i].threads = threads;
 
-            // The tag must be different from itself when rotated.
-            if (true) {
-                long rv1 = TagFamily.rotate90(v, d);
-                long rv2 = TagFamily.rotate90(rv1, d);
-                long rv3 = TagFamily.rotate90(rv2, d);
+                threads[i].iter0 = iter;
+                iter += chunksize;
+                iter = Math.min(iter, 1L << nbits);
+                threads[i].iter1 = iter;
+                threads[i].V0 = V0;
+            }
+            for (int i = 0; i < threads.length; i++)
+                threads[i].start();
 
-                if (!hammingDistanceAtLeast(v, rv1, minhamming) ||
-                    !hammingDistanceAtLeast(v, rv2, minhamming) ||
-                    !hammingDistanceAtLeast(v, rv3, minhamming) ||
-                    !hammingDistanceAtLeast(rv1, rv2, minhamming) ||
-                    !hammingDistanceAtLeast(rv1, rv3, minhamming) ||
-                    !hammingDistanceAtLeast(rv2, rv3, minhamming)) {
-                    good = false;
+
+            // find the lowest code that was found by any thread
+            long bestCode = -1;
+            long bestIter = Long.MAX_VALUE;
+
+//            System.out.printf(".");
+//            System.out.flush();
+
+            for (int i = 0; i < threads.length; i++) {
+                try {
+                    threads[i].join();
+                } catch (InterruptedException ex) {
+                    System.out.println("FATAL");
+                    assert(false);
+                }
+
+                if (threads[i].goodIter >= 0 && threads[i].goodIter < bestIter) {
+                    bestIter = threads[i].goodIter;
+                    bestCode = threads[i].goodCode;
                 }
             }
 
-            // tag must be different from other tags.
-            if (good) {
-                for (int widx = 0; widx < nrotcodes; widx++) {
+            if (bestCode >= 0) {
 
-                    long w = rotcodes[widx];
-
-                    if (!hammingDistanceAtLeast(v, w, minhamming)) {
-                        good = false;
-                        break;
-                    }
-                }
-            }
-
-            // tag must be reasonably complex
-            if (good) {
-                int complexity = computeComplexity(v, d);
-                if (complexity < mincomplexity)
-                    good = false;
-            }
-
-            // If we like the tag, add it to the db.
-            if (good) {
-                codelist.add(v);
-                long rv1 = TagFamily.rotate90(v, d);
+                codelist.add(bestCode);
+                long rv1 = TagFamily.rotate90(bestCode, d);
                 long rv2 = TagFamily.rotate90(rv1, d);
                 long rv3 = TagFamily.rotate90(rv2, d);
 
+                // grow?
                 if (nrotcodes + 4 >= rotcodes.length) {
                     long newrotcodes[] = new long[rotcodes.length*2];
                     for (int i = 0; i < rotcodes.length; i++)
@@ -220,11 +264,15 @@ public class TagFamilyGenerator
                     rotcodes = newrotcodes;
                 }
 
-                rotcodes[nrotcodes++] = v;
+                rotcodes[nrotcodes++] = bestCode;
                 rotcodes[nrotcodes++] = rv1;
                 rotcodes[nrotcodes++] = rv2;
                 rotcodes[nrotcodes++] = rv3;
+
+                // restart the search at the next iteration.
+                iter = bestIter + 1;
             }
+
         }
 
         long codes[] = new long[codelist.size()];
