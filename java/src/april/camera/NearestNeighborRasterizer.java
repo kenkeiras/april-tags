@@ -19,6 +19,9 @@ public class NearestNeighborRasterizer implements Rasterizer
     public NearestNeighborRasterizer(View input, double G2C_input[][],
                                      View output, double G2C_output[][])
     {
+        DistortionFunctionVerifier inVerifier = new DistortionFunctionVerifier(input);
+        DistortionFunctionVerifier outVerifier = new DistortionFunctionVerifier(output);
+
         ////////////////////////////////////////
         inputWidth  = input.getWidth();
         inputHeight = input.getHeight();
@@ -42,8 +45,16 @@ public class NearestNeighborRasterizer implements Rasterizer
             for (int x_rp = 0; x_rp < outputWidth; x_rp++) {
 
                 double xy_rp[] = new double[] { x_rp, y_rp };
+                if (!outVerifier.validPixelCoord(xy_rp))
+                    continue;
 
-                double xy_dp[] = input.normToPixels(CameraMath.pixelTransform(R_OutToIn, output.pixelsToNorm(xy_rp)));
+                double xyz_r[] = CameraMath.rayToPlane(output.pixelsToRay(xy_rp));
+                xyz_r = CameraMath.pointTransform(R_OutToIn, xyz_r);
+
+                if (!inVerifier.validRay(xyz_r))
+                    continue;
+
+                double xy_dp[] = input.rayToPixels(xyz_r);
 
                 int x_dp = (int) Math.round(xy_dp[0]);
                 int y_dp = (int) Math.round(xy_dp[1]);

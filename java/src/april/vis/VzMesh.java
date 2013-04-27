@@ -129,6 +129,7 @@ public class VzMesh implements VisObject, VisSerializable
     {
         outs.writeObject(vd);
         outs.writeObject(nd);
+        outs.writeObject(id);
         outs.writeInt(type);
 
         outs.writeInt(styles.length);
@@ -140,6 +141,7 @@ public class VzMesh implements VisObject, VisSerializable
     {
         vd = (VisAbstractVertexData) ins.readObject();
         nd = (VisAbstractVertexData) ins.readObject();
+        id = (VisAbstractIndexData) ins.readObject();
         type = ins.readInt();
 
         int nstyles = ins.readInt();

@@ -1,1150 +1,744 @@
 package april.camera.calibrator;
 
-import java.awt.Color;
 import java.awt.image.*;
+import java.awt.Color;
 import java.io.*;
 import java.util.*;
 import javax.imageio.*;
 
 import april.camera.*;
-import april.camera.models.*;
-import april.config.*;
 import april.graph.*;
 import april.jmat.*;
-import april.jmat.geom.*;
 import april.jmat.ordering.*;
 import april.tag.*;
-import april.util.*;
 import april.vis.*;
 
-/** Camera calibrator class. Takes a list of full-length class names (e.g.
- * april.camera.CaltechCalibration), an AprilTag family for tag detection, and
- * the distance between tags on the calibration mosaic (see constructor for
- * details). It also takes two optional parameters: a VisLayer for debugging
- * and a list of initial parameter values for the camera intrinsics. Once
- * instantiated, add sets of images (one image per camera) with the addImages
- * method.
- */
 public class CameraCalibrator
 {
-    public int REQUIRED_NUM_IMAGES = 3;       // number of images needed before iteration
-    public int REQUIRED_TAGS_PER_IMAGE = 8;   // number of constraints needed per image
-    public static boolean verbose = true;
+    public boolean verbose = false; // don't make static
 
-    List<CalibrationInitializer> initializers       = null;
-    List<double[]>               initialParameters  = null;
-    List<double[]>               initialExtrinsics  = null;
-    List<List<ProcessedImage>>   images             = new ArrayList<List<ProcessedImage>>();
-    List<double[]>               mosaicExtInits     = new ArrayList<double[]>();
+    List<CalibrationInitializer> initializers;
+    CameraCalibrationSystem cal;
+    CalibrationRenderer renderer;
 
-    List<CameraWrapper>          cameras            = null;
-
-    TagDetector detector;
-    TagFamily   tf;
-    TagMosaic   mosaic;
-    double      metersPerTag;
-
-    VisWorld        vw;
-    VisLayer        vl;
-    VisCanvas       vc;
-    VisWorld.Buffer vb;
-    TreeSet<String> disabledBuffers = new TreeSet<String>();
-
-    Graph g;
-    GraphSolver solver;
-
-    ArrayList<double[]> tagPositions;
-
-    ArrayList<TagConstraint> constraints = new ArrayList<TagConstraint>();
-    ArrayList<Integer> mosaicExtrinsicsIndices = new ArrayList<Integer>();
-
-    double Tvis[][] = new double[][] { {  0,  0,  1,  0 },
-                                       { -1,  0,  0,  0 } ,
-                                       {  0, -1,  0,  0 } ,
-                                       {  0,  0,  0,  1 } };
-
-    private static class ProcessedImage
-    {
-        public BufferedImage image;
-        public List<TagDetection> detections;
-
-        public ProcessedImage(BufferedImage image, List<TagDetection> detections)
-        {
-            this.image = image;
-            this.detections = detections;
-        }
-    }
-
-    private static class CameraWrapper
-    {
-        public ParameterizableCalibration cal;
-
-        public GIntrinsicsNode cameraIntrinsics;
-        public int cameraIntrinsicsIndex;
-
-        public GExtrinsicsNode cameraExtrinsics;
-        public int cameraExtrinsicsIndex;
-        public boolean extrinsicsInitialized;
-
-        String name;
-        String classname;
-    }
-
-    private static class TagConstraint
-    {
-        public int      tagid;
-        public int      graphNodeIndex;
-
-        public int      cameraIndex;
-        public int      imageIndex;
-
-        public double   xy_px[];
-        public double   xyz_m[];
-    }
-
-    /** The constructor for the somewhat-general camera calibrator.  This
-     * calibrator has been tested on single cameras and stereo camera pairs.
-     * Camera intrinsics are initialized to sane default values.
-     */
-    public CameraCalibrator(List<CalibrationInitializer> initializers, TagFamily tf,
-                            double metersPerTag)
-    {
-        this(initializers, tf, metersPerTag, null);
-    }
+    TagFamily tf;
+    TagMosaic tm;
+    double metersPerTag;
 
     public CameraCalibrator(List<CalibrationInitializer> initializers,
                             TagFamily tf, double metersPerTag,
-                            VisLayer vl)
+                            boolean gui, boolean verbose)
     {
-        this(initializers, tf, metersPerTag, vl, true);
-    }
-
-    /** The constructor for the somewhat-general camera calibrator.  This
-     * calibrator has been tested on single cameras and stereo camera pairs.
-     *
-     * @param initializers - A list of CalibrationInitializers (one per camera)
-     * that will be used to determine the initial parameter values for each camera
-     * intrinsics
-     * @param tf - The family of AprilTags (in april.tag) used on the tag
-     * mosaic, e.g. Tag36h11.
-     * @param metersPerTag - The spacing on the tag mosaic. This is <b>not</b>
-     * the width of the tag -- it is the distance between a point on one tag
-     * (e.g. top left corner) to the same point on the adjacent tag.
-     * Effectively, the tag width including part of the white border.
-     * @param vl - (Optional) VisLayer for plotting the current state of the graph. This
-     * includes 3D rig positions (drawn with VzAxes) and VzRectangles for each
-     * position of the tag mosaic
-     */
-    public CameraCalibrator(List<CalibrationInitializer> initializers,
-                            TagFamily tf, double metersPerTag,
-                            VisLayer vl, boolean resetVisCameraManager)
-    {
+        this.verbose = verbose;
         this.initializers = initializers;
-
         this.tf = tf;
-        this.detector = new TagDetector(this.tf);
+        this.tm = new TagMosaic(tf, metersPerTag);
         this.metersPerTag = metersPerTag;
-        this.mosaic = new TagMosaic(tf, metersPerTag);
 
-        this.vl = vl;
-        if (vl != null) {
-            this.vw = vl.world;
+        cal = new CameraCalibrationSystem(initializers, tf, metersPerTag, verbose);
 
-            if (resetVisCameraManager) {
-                DefaultCameraManager cameraManager = (DefaultCameraManager) vl.cameraManager;
-                cameraManager.interfaceMode = 2.5;
+        if (gui)
+            renderer = new CalibrationRenderer(cal, this.tf, this.metersPerTag, verbose);
+    }
 
-                VisCameraManager.CameraPosition pos = cameraManager.getCameraTarget();
-                pos.eye    = new double[] { 0.1, 0.0, 2.0 };
-                pos.lookat = new double[] { 0.1, 0.0, 0.0 };
-                pos.up     = new double[] { 1.0, 0.0, 0.0 };
-                pos.perspectiveness = 0;
-                //pos.eye    = new double[] { 1.2, 0.0, 0.5 };
-                //pos.lookat = new double[] { 0.2, 0.0, 0.0 };
-                //pos.up     = new double[] {-0.4, 0.0, 0.9 };
-                cameraManager.goUI(pos);
-                cameraManager.setDefaultPosition(pos.eye, pos.lookat, pos.up);
+    ////////////////////////////////////////////////////////////////////////////////
+    // add imagery
 
-                VzGrid.addGrid(vw, new VzGrid(new VzLines.Style(new Color(128, 128, 128, 128), 1)));
-                vw.getBuffer("grid").setDrawOrder(-10001);
-                vw.getBuffer("grid-overlay").setDrawOrder(-10000);
+    public void addOneImageSet(List<BufferedImage> newImages,
+                               List<List<TagDetection>> newDetections)
+    {
+        cal.addSingleImageSet(newImages, newDetections);
+
+        if (renderer != null)
+            renderer.updateMosaicDimensions(newDetections);
+    }
+
+    public void addManyImageSets(List<List<BufferedImage>> imagesList,
+                                 List<List<List<TagDetection>>> detectionsList)
+    {
+        cal.addMultipleImageSets(imagesList, detectionsList);
+
+        if (renderer != null)
+            for (List<List<TagDetection>> lists : detectionsList)
+                renderer.updateMosaicDimensions(lists);
+    }
+
+
+    public void resetCalibrationSystem()
+    {
+        cal = new CameraCalibrationSystem(initializers, tf, metersPerTag, verbose);
+
+        if (renderer != null)
+            renderer.replaceCalibrationSystem(cal);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // graph optimization
+
+    public static class GraphStats
+    {
+        public int rootNumber;   // the root camera number for this graph stats object
+
+        public int numObs;       // number of tags used
+        public double MRE;       // mean reprojection error
+        public double MSE;       // mean-squared reprojection error
+        public double MaxRE;     // max reprojection error
+        public boolean SPDError; // did we catch an SPD error from the graph solver?
+    }
+
+    public static class GraphWrapper
+    {
+        // The graph that was created (all graph state can be changed without affecting the camera system)
+        public Graph g;
+
+        // The root camera number for this graph
+        public int rootNumber;
+
+        // Maps that connect a camera or mosaic wrapper to the GNode index in the graph
+        // Note: The keys in these maps are from the original CameraCalibrationSystem
+        //  -- changing their values will modify the original system
+        public HashMap<CameraCalibrationSystem.CameraWrapper,Integer> cameraToIntrinsicsNodeIndex;
+        public HashMap<CameraCalibrationSystem.CameraWrapper,Integer> cameraToExtrinsicsNodeIndex;
+        public HashMap<CameraCalibrationSystem.MosaicWrapper,Integer> mosaicToExtrinsicsNodeIndex;
+    }
+
+    /** Compute MRE and MSE for a graph.
+      */
+    public static GraphStats getGraphStats(Graph g, int rootNumber)
+    {
+        GraphStats stats = new GraphStats();
+        stats.rootNumber = rootNumber;
+        stats.numObs = 0;
+        stats.MRE = 0;
+        stats.MSE = 0;
+        stats.MaxRE = 0;
+        stats.SPDError = false;
+
+        for (GEdge e : g.edges) {
+            if (e instanceof GTagEdge) {
+                GTagEdge edge = (GTagEdge) e;
+
+                double res[] = edge.getResidualExternal(g);
+                assert((res.length & 0x1) == 0);
+
+                for (int i=0; i < res.length; i+=2) {
+                    double sqerr = res[i]*res[i] + res[i+1]*res[i+1];
+                    double abserr = Math.sqrt(sqerr);
+                    stats.MRE += abserr;
+                    stats.MSE += sqerr;
+                    stats.MaxRE = Math.max(stats.MaxRE, abserr);
+                }
+
+                stats.numObs += res.length / 2;
             }
         }
 
-        g = new Graph();
+        stats.MRE /= stats.numObs;
+        stats.MSE /= stats.numObs;
 
-        CholeskySolver gs   = new CholeskySolver(g, new MinimumDegreeOrdering());
-        //LMSolver gs = new LMSolver(g, new MinimumDegreeOrdering(), 10e-1, 10e10, 10);
-        gs.verbose          = false;
-        gs.matrixType       = Matrix.SPARSE;
-        solver = gs;
-
-        generateTagPositions(tf, metersPerTag);
+        return stats;
     }
 
-    /** Set the camera intrinsics for each camera. If the cameras haven't been
-      * initialized, we save this setting for later. Otherwise, we apply it now
-      * and edit the underlying graph.
+
+    /** Iterate each graph until convergence. See the single-graph method for details.
       */
-    public synchronized void setCalibrationParameters(List<double[]> parameters)
+    public List<GraphStats> iterateUntilConvergence(List<GraphWrapper> graphs, double improvementThreshold,
+                                                    int minConvergedIterations, int maxIterations)
     {
-        assert(parameters.size() == initializers.size());
-
-        // prepare the parameters for initialization when we call addImages()
-        // and return
-        if (cameras == null) {
-            initialParameters = parameters;
-            return;
-        }
-
-        // reset each camera's intrinsics
-        for (int i=0; i < cameras.size(); i++) {
-            CameraWrapper cam = cameras.get(i);
-
-            double params[] = parameters.get(i);
-
-            cam.cal.resetParameterization(params);
-            cam.cameraIntrinsics.state = LinAlg.copy(params);
-        }
+        return iterateUntilConvergence(graphs, improvementThreshold, minConvergedIterations,
+                                       maxIterations, this.verbose);
     }
 
-    /** Set the extrinsic parameters for each camera relative to the first camera.
-      * If the cameras haven't been initialized, we'll save this state for later.
-      * Otherwise, we apply it now and edit the underlying graph.
-      *
-      * @param xyzrpys - An XYZRPY double for each camera <b>except</b> the
-      * first camera which is "privileged" and located at the origin. Be sure
-      * to specify the "camera to global" transformation.
+    /** Iterate each graph until convergence. See the single-graph method for details.
       */
-    public synchronized void setRelativeExtrinsicsCameraToGlobal(List<double[]> xyzrpys)
+    public static List<GraphStats> iterateUntilConvergence(List<GraphWrapper> graphs, double improvementThreshold,
+                                                           int minConvergedIterations, int maxIterations,
+                                                           boolean verbose)
     {
-        assert(xyzrpys.size() == (initializers.size() - 1));
-
-        // prepare the extrinsics for the first call to addImages()
-        // and return;
-        if (cameras == null) {
-            initialExtrinsics = xyzrpys;
-            return;
+        List<GraphStats> stats = new ArrayList<GraphStats>();
+        for (GraphWrapper gw : graphs) {
+            GraphStats s = iterateUntilConvergence(gw, improvementThreshold,
+                                                   minConvergedIterations, maxIterations, verbose);
+            stats.add(s);
         }
 
-        // reset each camera's intrinsics
-        for (int i=0; i < xyzrpys.size(); i++) {
-
-            double xyzrpy[] = xyzrpys.get(i);
-
-            int cameraIndex = i + 1;
-            CameraWrapper cam = cameras.get(cameraIndex);
-            cam.cameraExtrinsics.state = LinAlg.copy(xyzrpy);
-        }
+        return stats;
     }
 
-    /** Return list of double-vectors for all cameras using the getParameterization method of
-     * the ParameterizableCalibration interface.
-     */
-    public synchronized List<double[]> getCalibrationParameters()
+    /** Iterate graph until it converges. Catch SPD errors and set the field in the
+      * GraphStats object that is returned.
+      */
+    public GraphStats iterateUntilConvergence(GraphWrapper gw, double improvementThreshold,
+                                              int minConvergedIterations, int maxIterations)
     {
-        if (cameras == null)
+        return iterateUntilConvergence(gw, improvementThreshold, minConvergedIterations,
+                                       maxIterations, this.verbose);
+    }
+
+    /** Iterate graph until it converges. Catch SPD errors and set the field in the
+      * GraphStats object that is returned.
+      */
+    public static GraphStats iterateUntilConvergence(GraphWrapper gw, double improvementThreshold,
+                                                     int minConvergedIterations, int maxIterations,
+                                                     boolean verbose)
+    {
+        if (gw == null)
             return null;
 
-        ArrayList<double[]> parameters = new ArrayList<double[]>();
-
-        for (CameraWrapper cam : cameras)
-            parameters.add(cam.cal.getParameterization());
-
-        return parameters;
-    }
-
-    /** Return vector of doubles for this camera using the getParameterization method of
-     * the ParameterizableCalibration interface.
-     */
-    public synchronized double[] getCalibrationParameters(int cameraIndex)
-    {
-        if (cameras == null)
-            return null;
-
-        if (cameraIndex < 0 || cameraIndex >= cameras.size())
-            return null;
-
-        CameraWrapper cam = cameras.get(cameraIndex);
-        return cam.cal.getParameterization();
-    }
-
-    /** Copy and return the intrinsics for the specified camera.
-      */
-    public synchronized double[][] getCalibrationIntrinsics(int cameraIndex)
-    {
-        if (cameras == null)
-            return null;
-
-        if (cameraIndex < 0 || cameraIndex >= cameras.size())
-            return null;
-
-        CameraWrapper cam = cameras.get(cameraIndex);
-        return cam.cal.copyIntrinsics();
-    }
-
-    /** Return the XYZRPY camera-to-global representation of the extrinsics
-      * for the specified camera.
-      */
-    public synchronized double[] getCalibrationExtrinsics(int cameraIndex)
-    {
-        assert(cameraIndex >= 0 && cameraIndex < cameras.size());
-
-        if (cameraIndex == 0)
-            return new double[6];
-
-        CameraWrapper cam = cameras.get(cameraIndex);
-
-        return LinAlg.copy(cam.cameraExtrinsics.state);
-    }
-
-    public synchronized double[] getMosaicExtrinsics(int mosaic)
-    {
-        return LinAlg.copy(g.nodes.get(mosaicExtrinsicsIndices.get(mosaic)).state);
-    }
-
-    public synchronized ArrayList<double[]> getMosaicExtrinsics()
-    {
-        ArrayList<double[]> extrins = new ArrayList();
-
-        for (Integer i : mosaicExtrinsicsIndices)
-            extrins.add(LinAlg.copy(g.nodes.get(i).state));
-
-        return extrins;
-    }
-
-    public synchronized Graph getGraphCopy()
-    {
-        return g.copy();
-    }
-
-    private void generateTagPositions(TagFamily tf, double metersPerTag)
-    {
-        tagPositions = new ArrayList<double[]>();
-
-        // TODO Add a method to TagFamily that returns this grid?
-        int mosaicWidth     = (int) Math.sqrt(tf.codes.length);
-        int mosaicHeight    = tf.codes.length / mosaicWidth + 1;
-
-        for (int y=0; y < mosaicHeight; y++) {
-            for (int x=0; x < mosaicWidth; x++) {
-                int id = y*mosaicWidth + x;
-                if (id >= tf.codes.length)
-                    continue;
-
-                tagPositions.add(new double[] { x * metersPerTag ,
-                                                y * metersPerTag ,
-                                                0.0              });
-            }
-        }
-    }
-
-    public synchronized void addImages(List<BufferedImage> newImages)
-    {
-        addImages(newImages, null, null);
-    }
-
-    public synchronized void addImages(List<BufferedImage> newImages,
-                                       List<List<TagDetection>> allDetections)
-    {
-        addImages(newImages, allDetections, null);
-    }
-
-    public synchronized void addImages(List<BufferedImage> newImages,
-                                       double MosaicToGlobalXyzrpy[])
-    {
-        addImages(newImages, null, MosaicToGlobalXyzrpy);
-    }
-
-    /** Add sets of images, <b>exactly one image per camera</b>, for
-     * calibration in the same order as initialization.
-     * If allDetections is null, the april.tag.TagDetector will detect tags in
-     * the images. If it is not null, the provided TagDetections will be used.
-     * If MosaicToGlobalXyzrpy is null, the position will be estimated with
-     * CameraUtil.homographyToPose and jmat.AlignPoints3D. If it is not null,
-     * the provided estimate will be used.<br>
-     * <br>
-     * The mosaic and cameras must not move within the list of images provided.
-     */
-
-    public synchronized void addImages(List<BufferedImage> newImages,
-                                       List<List<TagDetection>> allDetections,
-                                       double MosaicToGlobalXyzrpy[])
-    {
-        boolean success = addImagesNoInit(newImages, allDetections, MosaicToGlobalXyzrpy);
-
-        if (success)
-            initialize();
-    }
-
-    // Delays initialization until all images have been processed.
-    public synchronized void addImageSet(List<List<BufferedImage>> newImagesSet,
-                                         List<List<List<TagDetection>>> allDetectionsSet,
-                                         List<double[]> MosaicToGlobalXyzrpySet )
-    {
-        assert(newImagesSet.size() == allDetectionsSet.size());
-        assert(allDetectionsSet.size() == MosaicToGlobalXyzrpySet.size());
-
-        boolean success = false;
-        for (int i = 0; i < newImagesSet.size(); i++) {
-            success |= addImagesNoInit(newImagesSet.get(i), allDetectionsSet.get(i), MosaicToGlobalXyzrpySet.get(i));
-        }
-
-        if (success)
-            initialize();
-    }
-
-    private synchronized boolean addImagesNoInit(List<BufferedImage> newImages,
-                                                 List<List<TagDetection>> allDetections,
-                                                 double MosaicToGlobalXyzrpy[])
-    {
-        assert(newImages.size() == initializers.size());
-        assert((allDetections == null) || (allDetections.size() == initializers.size()));
-
-        ArrayList<ProcessedImage> processedImages = new ArrayList<ProcessedImage>();
-        for (int cameraIndex = 0; cameraIndex < newImages.size(); cameraIndex++) {
-
-            BufferedImage im = newImages.get(cameraIndex);
-
-            // if we've already gotten a set of images, enforce that all images
-            // from a camera have the same size
-            if (this.images.size() > 0) {
-                List<ProcessedImage> firstImages = this.images.get(0);
-                ProcessedImage reference = firstImages.get(cameraIndex);
-                assert(reference.image.getWidth() == im.getWidth());
-                assert(reference.image.getHeight() == im.getHeight());
-            }
-
-            List<TagDetection> detections = null;
-
-            if (allDetections == null)
-                detections = detector.process(im, new double[] {im.getWidth()/2, im.getHeight()/2});
-            else
-                detections = allDetections.get(cameraIndex);
-
-            // skip we don't have enough tags
-            if (detections.size() < REQUIRED_TAGS_PER_IMAGE)
-                return false;
-
-            // skip if the tags don't span multiple rows and columns
-            int minRow = mosaic.getRow(detections.get(0).id);
-            int maxRow = minRow;
-            int minCol = mosaic.getColumn(detections.get(0).id);
-            int maxCol = minCol;
-            for (TagDetection d : detections) {
-                minRow = Math.min(minRow, mosaic.getRow(d.id));
-                maxRow = Math.max(maxRow, mosaic.getRow(d.id));
-                minCol = Math.min(minCol, mosaic.getColumn(d.id));
-                maxCol = Math.max(maxCol, mosaic.getColumn(d.id));
-            }
-
-            int rowSpan = maxRow - minRow + 1;
-            int colSpan = maxCol - minCol + 1;
-            if (rowSpan < 2 || colSpan < 2)
-                return false;
-
-            // looks good. add it.
-            processedImages.add(new ProcessedImage(im, detections));
-        }
-
-        this.images.add(processedImages);
-        this.mosaicExtInits.add(MosaicToGlobalXyzrpy);
-
-        return true;
-    }
-
-    private void initialize() {
-
-        // initialize the cameras if we haven't provided we have the minimum number of images
-        if (cameras == null) {
-            ArrayList<CameraWrapper> cameraList = initCameras();
-
-            // if we didn't succeed at initializing this time, try again later
-            if (cameraList == null)
-                return;
-            // else
-            cameras = cameraList;
-
-            // add all the images we've collected so far
-            //XXX This reuses the extrinsics for /this/ mosaic to redo
-            //XXX all the previous ones in the case of delayed
-            //XXX initialization
-            for (int i=0; i < this.images.size(); i++)
-                addImageSet(this.images.get(i), i, this.mosaicExtInits.get(i));
-        }
-        // otherwise, we just need to add the new set of images
-        else {
-            int idx = this.images.size() - 1;
-            addImageSet(this.images.get(idx), idx , this.mosaicExtInits.get(idx));
-        }
-    }
-
-    private void addImageSet(List<ProcessedImage> newImages, int imagesetIndex, double MosaicToGlobalXyzrpy[])
-    {
-        GExtrinsicsNode mosaicExtrinsics = new GExtrinsicsNode();
-        g.nodes.add(mosaicExtrinsics);
-        if (verbose) System.out.printf("Added mosaic extrinsics. Graph contains %d nodes\n", g.nodes.size());
-        int mosaicIndex = g.nodes.size() - 1;
-        mosaicExtrinsicsIndices.add(mosaicIndex);
-        assert(mosaicExtrinsicsIndices.size() == imagesetIndex + 1);
-
-        for (int cameraIndex = 0; cameraIndex < newImages.size(); cameraIndex++) {
-
-            ProcessedImage pim = newImages.get(cameraIndex);
-            CameraWrapper camera = cameras.get(cameraIndex);
-
-            if (cameraIndex == 0) {
-
-                if (MosaicToGlobalXyzrpy == null) {
-                    double mosaicToGlobal_est[][] = estimateMosaicExtrinsics(camera.cal.copyIntrinsics(),
-                                                                             pim.detections);
-
-                    MosaicToGlobalXyzrpy = LinAlg.matrixToXyzrpy(mosaicToGlobal_est);
-                }
-
-                mosaicExtrinsics.init = LinAlg.copy(MosaicToGlobalXyzrpy);
-                mosaicExtrinsics.state = LinAlg.copy(mosaicExtrinsics.init);
-
-            } else if (!camera.extrinsicsInitialized) {
-
-                GExtrinsicsNode camExtrinsics = camera.cameraExtrinsics;
-
-                // Initialize camera extrinsics with the provided values
-                if (initialExtrinsics != null) {
-                    double xyzrpy[] = initialExtrinsics.get(cameraIndex);
-                    camExtrinsics.init = LinAlg.copy(xyzrpy);
-
-                // Initialize camera extrinsics with our best guess
-                } else {
-                    double mosaicToCamera[][] = estimateMosaicExtrinsics(camera.cal.copyIntrinsics(),
-                                                                         pim.detections);
-
-                    // should been initialized by camera 0
-                    double mosaicToGlobal[][] = LinAlg.xyzrpyToMatrix(mosaicExtrinsics.state);
-
-                    double cameraToGlobal[][] = LinAlg.matrixAB(mosaicToGlobal,
-                                                                LinAlg.inverse(mosaicToCamera));
-
-                    camExtrinsics.init = LinAlg.matrixToXyzrpy(cameraToGlobal);
-                }
-
-                camExtrinsics.state = LinAlg.copy(camExtrinsics.init);
-                camera.extrinsicsInitialized = true;
-            }
-
-            processImage(cameraIndex,
-                         imagesetIndex,
-                         mosaicIndex,
-                         pim.detections);
-        }
-    }
-
-    public synchronized void draw()
-    {
-        if (vl == null)
-            return;
-
-        // nothing can be drawn prior to the initialization
-        if (cameras == null)
-            return;
-
-        vb = vw.getBuffer("Extrinsics - cameras");
-        for (CameraWrapper cam : cameras) {
-
-            double B2G[][] = null;
-
-            if (cam.cameraExtrinsics != null)
-                B2G = LinAlg.xyzrpyToMatrix(cam.cameraExtrinsics.state);
-            else
-                B2G = LinAlg.identity(4);
-
-
-            vb.addBack(new VisChain(Tvis,
-                                    B2G,
-                                    LinAlg.scale(0.05, 0.05, 0.05),
-                                    new VzAxes()));
-        }
-        vb.swap();
-
-        double XY0[] = null;
-        double XY1[] = null;
-
-        for (TagConstraint tc : constraints) {
-
-            if (XY0 == null && XY1 == null) {
-                XY0 = new double[2];
-                XY0[0] = tc.xyz_m[0];
-                XY0[1] = tc.xyz_m[1];
-
-                XY1 = new double[2];
-                XY1[0] = tc.xyz_m[0];
-                XY1[1] = tc.xyz_m[1];
-
-                continue;
-            }
-
-            XY0[0] = Math.min(XY0[0], tc.xyz_m[0]);
-            XY0[1] = Math.min(XY0[1], tc.xyz_m[1]);
-            XY1[0] = Math.max(XY1[0], tc.xyz_m[0]);
-            XY1[1] = Math.max(XY1[1], tc.xyz_m[1]);
-        }
-
-        vb = vw.getBuffer("Extrinsics - mosaics");
-        for (int index : mosaicExtrinsicsIndices) {
-            GNode node = g.nodes.get(index);
-
-            double B2G[][] = LinAlg.xyzrpyToMatrix(node.state);
-
-            java.awt.Color c = ColorUtil.seededColor(index);
-
-            vb.addBack(new VisChain(Tvis,
-                                    B2G,
-                                    LinAlg.translate((XY0[0]+XY1[0])/2.0, (XY0[1]+XY1[1])/2.0, 0),
-                                    new VzRectangle(XY1[0] - XY0[0],
-                                                    XY1[1] - XY0[1],
-                                                    new VzLines.Style(c, 2))));
-        }
-        vb.swap();
-
-        vb = vw.getBuffer("HUD");
-        vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.TOP_RIGHT,
-                                    new VzText(VzText.ANCHOR.TOP_RIGHT,
-                       String.format("<<monospaced-14,right,white>>Mean reprojection error: %8.6f pixels\nMean square reprojection error: %8.6f pixels",
-                                     getMRE(), getMSE()))));
-        vb.swap();
-
-        ////////////////////////////////////////
-        vb = vw.getBuffer("Distortion");
-
-        VisChain bgchain = new VisChain();
-        VisChain mgchain = new VisChain();
-        VisChain fgchain = new VisChain();
-
-        for (int idx = 0; idx < cameras.size(); idx++) {
-
-            CameraWrapper wrapper = cameras.get(idx);
-            View cal = wrapper.cal;
-
-            double K[][] = cal.copyIntrinsics();
-            double Kinv[][] = LinAlg.inverse(K);
-            int width = cal.getWidth();
-            int height = cal.getHeight();
-
-            double maxRadius = 0;
-
-            // top left
-            {
-                double radius = Math.sqrt(Math.pow(       0 - K[0][2] , 2)
-                                        + Math.pow(       0 - K[1][2] , 2));
-                maxRadius = Math.max(maxRadius, radius);
-            }
-
-            // top right
-            {
-                double radius = Math.sqrt(Math.pow( width-1 - K[0][2] , 2)
-                                        + Math.pow(       0 - K[1][2] , 2));
-                maxRadius = Math.max(maxRadius, radius);
-            }
-
-            // bottom left
-            {
-                double radius = Math.sqrt(Math.pow(       0 - K[0][2] , 2)
-                                        + Math.pow(height-1 - K[1][2] , 2));
-                maxRadius = Math.max(maxRadius, radius);
-            }
-
-            // bottom right
-            {
-                double radius = Math.sqrt(Math.pow( width-1 - K[0][2] , 2)
-                                        + Math.pow(height-1 - K[1][2] , 2));
-                maxRadius = Math.max(maxRadius, radius);
-            }
-
-            ArrayList<double[]> points = new ArrayList<double[]>();
-            int radius = (int) Math.ceil(2 * maxRadius); // XXX is this far enough?
-            double max = 0;
-            for (int r=0; r < radius; r++) {
-                double xy_rp[] = new double[] { K[0][2] + r, K[1][2] };
-
-                double xy_rn[] = CameraMath.pixelTransform(Kinv, xy_rp);
-
-                double xy_dp[] = cal.normToPixels(xy_rn);
-
-                double dr = xy_dp[0] - K[0][2];
-
-                points.add(new double[] { r, dr });
-
-                max = Math.max(max, dr);
-            }
-
-            boolean good = max > maxRadius;
-            String uistring = String.format("<<monospaced-10,%s>>%s: %s\n<<monospaced-10,%s>>Defined up to %.0f of %.0f pixels",
-                                            good ? "white" : "red",
-                                            wrapper.name,
-                                            good ? "good (invertible)" : "add tags at edges",
-                                            good ? "white" : "red",
-                                            max,
-                                            maxRadius);
-
-            bgchain.add(new VisChain(LinAlg.translate(100, 50 + 100*idx, 0),
-                                     new VzRectangle(200, 100,
-                                                     new VzMesh.Style(new Color(10*idx, 10*idx, 10*idx)),
-                                                     new VzLines.Style(Color.white, 1))),
-                        new VisChain(LinAlg.translate(0, 100*idx, 0),
-                                     new VzLines(new VisVertexData(new double[][] { {  0,   0},
-                                                                                    {100, 100} }),
-                                                 VzLines.LINE_STRIP,
-                                                 new VzLines.Style(new Color(255, 255, 255, 128), 1))));
-            mgchain.add(new VisChain(LinAlg.translate(0, 100*idx, 0),
-                                     LinAlg.scale(100 / maxRadius,
-                                                  100 / maxRadius,
-                                                  1),
-                                     new VzLines(new VisVertexData(points),
-                                                 VzLines.LINE_STRIP,
-                                                 new VzLines.Style(Color.red, 1))));
-            fgchain.add(new VisChain(LinAlg.translate(35, 100*idx, 0),
-                                     new VzText(VzText.ANCHOR.BOTTOM_LEFT, "<<monospaced-10>>r rect")),
-                        new VisChain(LinAlg.translate(0, 10+100*idx, 0),
-                                     LinAlg.rotateZ(Math.PI/2),
-                                     new VzText(VzText.ANCHOR.TOP_LEFT, "<<monospaced-10>>r dist")),
-                        new VisChain(LinAlg.translate(0, 100*(idx+1), 0),
-                                     new VzText(VzText.ANCHOR.TOP_LEFT, uistring)));
-        }
-
-        vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_LEFT,
-                                    bgchain,
-                                    mgchain,
-                                    fgchain));
-        vb.swap();
-
-        ////////////////////////////////////////
-        vb = vw.getBuffer("Sample density");
-
-        for (int cameraIndex = 0; cameraIndex < cameras.size(); cameraIndex++) {
-
-            int width  = images.get(0).get(cameraIndex).image.getWidth();
-            int height = images.get(0).get(cameraIndex).image.getHeight();
-
-            int w = width / 30 + 2;
-            int h = height / 30;
-            int hist[] = new int[w*h];
-
-            for (int imageSetIndex=0; imageSetIndex < images.size(); imageSetIndex++) {
-                List<TagDetection> detections = images.get(imageSetIndex).get(cameraIndex).detections;
-
-                for (TagDetection d : detections) {
-                    int x = (int) (d.cxy[0] / 30);
-                    int y = (int) (d.cxy[1] / 30);
-                    hist[y*w+x+2]++;
-                }
-            }
-
-            int max = 0;
-            for (int i=0; i < hist.length; i++)
-                max = Math.max(max, hist[i]);
-
-            for (int y=0; y < h; y++) {
-                int percent = ((h-1-y) * (max+1)) / h;
-                hist[y*w+0] = percent;
-            }
-
-            BufferedImage im = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
-            int buf[] = ((DataBufferInt) (im.getRaster().getDataBuffer())).getData();
-            for (int y=0; y < h; y++) {
-                for (int x=0; x < w; x++) {
-                    int i=y*w+x;
-                    int v = hist[i];
-
-                    if (x == 1) {
-                        buf[i] = 0;
-                    }
-                    else if (v == 0) {
-                        buf[i] = 0xFFFF0000;
-                    }
-                    else {
-                        int b = (int) (v * 255 / max);
-                        buf[i] = 0xFF000000 | (b & 0xFF);
-                    }
-                }
-            }
-
-            VisTexture texture = new VisTexture(im, VisTexture.NO_MIN_FILTER |
-                                                    VisTexture.NO_MAG_FILTER |
-                                                    VisTexture.NO_REPEAT |
-                                                    VisTexture.NO_ALPHA_MASK);
-
-            double scale = 150.0/w;
-            vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM_RIGHT,
-                                        new VisChain(LinAlg.translate(-150, 150*h/w*cameraIndex, 0),
-                                                     LinAlg.scale(scale, scale, 1),
-                                                     new VzImage(texture, VzImage.FLIP))));
-        }
-
-        vb.swap();
-
-        ///////////// Reprojection Histogram
-        vb = vw.getBuffer("reprojection-hist");
-        {
-            List<Double> errors = getReprojectionErrors();
-
-            double minError = errors.get(0);
-            double maxError = errors.get(0);
-            for (Double e : errors) {
-                minError = Math.min(minError, e);
-                maxError = Math.max(maxError, e);
-            }
-
-            List<double[]> errorCounts = getReprojectionErrorHistogram(errors);
-
-            double peakError = 0, peakCount = 0;
-            int peakIndex = 0;
-            for (int i=0; i < errorCounts.size(); i++) {
-                double errorcount[] = errorCounts.get(i);
-
-                double error = errorcount[0];
-                double count = errorcount[1];
-
-                if (count > peakCount) {
-                    peakCount = count;
-                    peakError = error;
-                    peakIndex = i;
-                }
-            }
-
-            // Draw histogram:
-            int height = 100 - 2*22;//3*counts.size()/2;
-            BufferedImage hist = new BufferedImage(errorCounts.size(), height, BufferedImage.TYPE_INT_ARGB);
-
-            int x = 0;
-            for (double errorcount[] : errorCounts) {
-                double val = errorcount[1];
-
-                for (int y = 0; y < height; y++) {
-
-                    int ymax = (int) Math.ceil(height*val*1.0/peakCount);
-
-                    if (ymax != 0 && y <= ymax) {
-                        hist.setRGB(x,y, 0xffffffff);
-                    } else {
-                        hist.setRGB(x,y, 0x00ffffff);
-                    }
-                }
-                x++;
-            }
-
-            vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.BOTTOM,
-                                        new VzText(VzText.ANCHOR.BOTTOM, String.format("<<white>>MRE [%.3f, %.3f]", minError, maxError)),
-                                        LinAlg.translate(-errorCounts.size()/2, 22, 0),
-                                        new VzImage(new VisTexture(hist, VisTexture.NO_MAG_FILTER | VisTexture.NO_MIN_FILTER), 0),
-                                        LinAlg.translate(peakIndex, height, 0),
-                                        new VzText(VzText.ANCHOR.BOTTOM_LEFT,String.format("peak %.3f", peakError))));
-        }
-        vb.swap();
-
-        ////////////////////////////////////////
-        // calibration text
-        String calstr = getCalibrationBlockString();
-        vb = vw.getBuffer("Calibration");
-        vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.TOP_LEFT,
-                                    new VzText(VzText.ANCHOR.TOP_LEFT,
-                                               "<<dropshadow=#AA000000>>"+
-                                               "<<sansserif-9,white>>"+
-                                               calstr)));
-        vb.swap();
-
-        ////////////////////////////////////////
-        // reprojected images
-
-        for (int cameraIndex = 0; cameraIndex < cameras.size(); cameraIndex++) {
-
-            for (int imageSetIndex=0; imageSetIndex < images.size(); imageSetIndex++) {
-
-                VisChain chain = new VisChain();
-
-                ProcessedImage pim = images.get(imageSetIndex).get(cameraIndex);
-                int width = pim.image.getWidth();
-                int height = pim.image.getHeight();
-
-                String buffername = String.format("Camera%d-Image%d", cameraIndex, imageSetIndex);
-                if (!disabledBuffers.contains(buffername)) {
-                    disabledBuffers.add(buffername);
-                    vl.setBufferEnabled(buffername, false);
-                }
-
-                vb = vw.getBuffer(buffername);
-                VzImage vzim = new VzImage(new VisTexture(pim.image, VisTexture.NO_MIN_FILTER|
-                                                                     VisTexture.NO_MAG_FILTER|
-                                                                     VisTexture.NO_ALPHA_MASK|
-                                                                     VisTexture.NO_REPEAT),
-                                           0);
-                chain.add(LinAlg.translate(0, height, 0));
-                chain.add(LinAlg.scale(1, -1, 1));
-                chain.add(vzim);
-
-                CameraWrapper camera = cameras.get(cameraIndex);
-                GExtrinsicsNode mosaicExtrinsics = (GExtrinsicsNode) g.nodes.get(mosaicExtrinsicsIndices.get(imageSetIndex));
-
-                double[][] cameraToGlobal = LinAlg.identity(4);
-                if (camera.cameraExtrinsics != null)
-                    cameraToGlobal = camera.cameraExtrinsics.getMatrix();
-
-                double[][] mosaicToGlobal = mosaicExtrinsics.getMatrix();
-
-                double[][] mosaicToCamera = LinAlg.matrixAB(LinAlg.inverse(cameraToGlobal),
-                                                            mosaicToGlobal);
-
-                double tagWidth_m = metersPerTag * (tf.d/2.0 + tf.blackBorder) / (tf.d + 2*tf.blackBorder + 2*tf.whiteBorder);
-
-                for (TagDetection d : pim.detections) {
-
-                    ////////////////////////////////////////
-                    // predicted position
-                    {
-                        double xyz_mosaic[] = tagPositions.get(d.id);
-                        double xyz_camera[] = LinAlg.transform(mosaicToCamera, xyz_mosaic);
-                        double xy_predicted[] = camera.cameraIntrinsics.project(xyz_camera);
-                        chain.add(new VzPoints(new VisVertexData(xy_predicted),
-                                               new VzPoints.Style(Color.cyan, 3)));
-                    }
-
-                    double border[][] = new double[4][];
-                    {
-                        double xyz_mosaic[] = LinAlg.copy(tagPositions.get(d.id));
-                        xyz_mosaic[0] += tagWidth_m;
-                        xyz_mosaic[1] += tagWidth_m;
-
-                        double xyz_camera[] = LinAlg.transform(mosaicToCamera, xyz_mosaic);
-                        double xy_predicted[] = camera.cameraIntrinsics.project(xyz_camera);
-                        border[0] = xy_predicted;
-                    }
-                    {
-                        double xyz_mosaic[] = LinAlg.copy(tagPositions.get(d.id));
-                        xyz_mosaic[0] += tagWidth_m;
-                        xyz_mosaic[1] -= tagWidth_m;
-
-                        double xyz_camera[] = LinAlg.transform(mosaicToCamera, xyz_mosaic);
-                        double xy_predicted[] = camera.cameraIntrinsics.project(xyz_camera);
-                        border[1] = xy_predicted;
-                    }
-                    {
-                        double xyz_mosaic[] = LinAlg.copy(tagPositions.get(d.id));
-                        xyz_mosaic[0] -= tagWidth_m;
-                        xyz_mosaic[1] -= tagWidth_m;
-
-                        double xyz_camera[] = LinAlg.transform(mosaicToCamera, xyz_mosaic);
-                        double xy_predicted[] = camera.cameraIntrinsics.project(xyz_camera);
-                        border[2] = xy_predicted;
-                    }
-                    {
-                        double xyz_mosaic[] = LinAlg.copy(tagPositions.get(d.id));
-                        xyz_mosaic[0] -= tagWidth_m;
-                        xyz_mosaic[1] += tagWidth_m;
-
-                        double xyz_camera[] = LinAlg.transform(mosaicToCamera, xyz_mosaic);
-                        double xy_predicted[] = camera.cameraIntrinsics.project(xyz_camera);
-                        border[3] = xy_predicted;
-                    }
-                    chain.add(new VzLines(new VisVertexData(border),
-                                          VzLines.LINE_LOOP,
-                                          new VzLines.Style(Color.cyan, 2)));
-
-                    ////////////////////////////////////////
-                    // observed position
-                    double p0[] = d.interpolate(-1,-1);
-                    double p1[] = d.interpolate(1,-1);
-                    double p2[] = d.interpolate(1,1);
-                    double p3[] = d.interpolate(-1,1);
-
-                    double ymax = Math.max(Math.max(p0[1], p1[1]), Math.max(p2[1], p3[1]));
-
-                    chain.add(new VzPoints(new VisVertexData(d.cxy),
-                                           new VzPoints.Style(Color.blue, 3)));
-                    chain.add(new VzLines(new VisVertexData(p0, p1, p2, p3, p0),
-                                          VzLines.LINE_STRIP,
-                                          new VzLines.Style(Color.blue, 1)));
-                    chain.add(new VzLines(new VisVertexData(p0,p1),
-                                          VzLines.LINE_STRIP,
-                                          new VzLines.Style(Color.green, 1)));
-                    chain.add(new VzLines(new VisVertexData(p0, p3),
-                                          VzLines.LINE_STRIP,
-                                          new VzLines.Style(Color.red, 1)));
-                }
-
-                vb.addBack(new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
-                                            new VisChain(LinAlg.translate(-width/2, -height/2, 0),
-                                                         chain)));
-
-                vb.swap();
-            }
-        }
-
-    }
-
-    public synchronized void iterate()
-    {
-        // don't try to optimize until we have a few images
-        // XXX replace this later with an rank check of the graph
-        if (cameras == null || images.size() < REQUIRED_NUM_IMAGES)
-            return;
-
-        solver.iterate();
-    }
-
-    /** Iterate the calibration until convergence or exceeding the maximum number of iterations.
-      * Returns the number of iterations performed.
-      *
-      * @param improvementThreshold - Maximum percent improvement in the mean
-      * reprojection error that is required for 'minConvergedIterations' in
-      * order for the calibration to be considered converged.
-      * @param minConvergedIterations - The number of iterations for which the
-      * percent improvement in the mean reprojection error must be below the
-      * 'improvementThreshold'
-      * @param maxIterations - The maximum number of iterations ever allowed.
-      */
-    public synchronized int iterateUntilConvergence(double improvementThreshold, int minConvergedIterations, int maxIterations)
-    {
-        // don't try to optimize until we have a few images
-        // XXX replace this later with an rank check of the graph
-        if (cameras == null || images.size() < REQUIRED_NUM_IMAGES)
-            return 0;
-
-        double lastMRE = getMRE();
+        GraphSolver solver = new CholeskySolver(gw.g, new MinimumDegreeOrdering());
+        //GraphSolver solver = new LMSolver(gw.g, new MinimumDegreeOrdering(), 10e-6, 10e6, 10);
+        CholeskySolver.verbose = false;
+
+        GraphStats lastStats = getGraphStats(gw.g, gw.rootNumber);
         int convergedCount = 0;
         int iterationCount = 0;
 
-        while (iterationCount < maxIterations && convergedCount < minConvergedIterations) {
+        try {
+            while (iterationCount < maxIterations && convergedCount < minConvergedIterations) {
 
-            solver.iterate();
-            double MRE = getMRE();
+                solver.iterate();
+                GraphStats stats = getGraphStats(gw.g, gw.rootNumber);
 
-            double percentImprovement = (lastMRE - MRE) / lastMRE;
+                double percentImprovement = (lastStats.MRE - stats.MRE) / lastStats.MRE;
 
-            if (percentImprovement < improvementThreshold)
-                convergedCount++;
-            else
-                convergedCount = 0;
+                if (percentImprovement < improvementThreshold)
+                    convergedCount++;
+                else
+                    convergedCount = 0;
 
-            lastMRE = MRE;
+                lastStats = stats;
 
-            iterationCount++;
+                iterationCount++;
+            }
+        } catch (RuntimeException ex) {
+            lastStats.SPDError = true;
+
+            if (verbose)
+                System.out.println("CameraCalibrator: Caught SPD error during optimization");
         }
 
-        return iterationCount;
+        return lastStats;
     }
 
-    // Returns mean reprojections error
-    public synchronized double getMRE()
+    public List<GraphStats> iterateUntilConvergenceWithReinitalization(double reinitMREThreshold, double improvementThreshold,
+                                                                       int minConvergedIterations, int maxIterations)
     {
-        if (cameras == null || images.size() == 0)
-            return Double.NaN;
+        // iterate the usual way
+        List<GraphWrapper> origGraphWrappers = this.buildCalibrationGraphs();
+        List<GraphStats> origStats = this.iterateUntilConvergence(origGraphWrappers, improvementThreshold,
+                                                                  minConvergedIterations, maxIterations);
 
-        double reprojError = 0;
-        int numObs = 0;
-        for (GEdge e : g.edges) {
-            assert(e instanceof GTagEdge);
-            GTagEdge edge = (GTagEdge) e;
+        boolean origError = false;
+        double origJointMRE = 0;
+        int origJointNumObs = 0;
+        for (GraphStats s : origStats) {
+            if (s == null || s.SPDError == true) {
+                origError = true;
+                continue;
+            }
 
-            double res[] = edge.getResidualExternal(g);
-            assert((res.length & 0x1) == 0);
-
-            for (int i=0; i < res.length; i+=2)
-                reprojError += Math.sqrt(res[i]*res[i] + res[i+1]*res[i+1]);
-
-            numObs += res.length / 2;
+            origJointMRE += s.MRE*s.numObs;
+            origJointNumObs += s.numObs;
         }
-        return reprojError / numObs;
-    }
+        origJointMRE = origJointMRE / origJointNumObs;
 
-    public synchronized double getMSE()
-    {
-        if (cameras == null || images.size() == 0)
-            return Double.NaN;
+        boolean origBadFocalLength = false;
+        for (GraphWrapper gw : origGraphWrappers) {
+            if (gw == null || gw.g == null)
+                continue;
 
-        double sqError = 0;
-        int numObs = 0;
-        for (GEdge e : g.edges) {
-            assert(e instanceof GTagEdge);
-            GTagEdge edge = (GTagEdge) e;
+            for (GNode n : gw.g.nodes) {
+                if (n instanceof GIntrinsicsNode) {
+                    GIntrinsicsNode intrinsics = (GIntrinsicsNode) n;
+                    double K[][] = intrinsics.copyIntrinsicsMatrix();
 
-            double res[] = edge.getResidualExternal(g);
-            assert((res.length & 0x1) == 0);
-
-            for (int i=0; i < res.length; i+=2)
-                sqError += res[i]*res[i] + res[i+1]*res[i+1];
-
-            numObs += res.length / 2;
-        }
-        return sqError / numObs;
-    }
-
-    public synchronized List<Double> getReprojectionErrors()
-    {
-        if (cameras == null)
-            return null;
-
-        ArrayList<Double> errs = new ArrayList();
-        for (GEdge e : g.edges) {
-            assert(e instanceof GTagEdge);
-            GTagEdge edge = (GTagEdge) e;
-
-            double res[] = edge.getResidualExternal(g);
-            assert((res.length & 0x1) == 0);
-
-            for (int i=0; i < res.length; i+=2)
-                errs.add(Math.sqrt(res[i]*res[i] + res[i+1]*res[i+1]));
+                    if (K[0][0] < 0 || K[1][1] < 0)
+                        origBadFocalLength = true;
+                }
+            }
         }
 
-        return errs;
-    }
-
-    public synchronized List<double[]> getReprojectionErrorHistogram()
-    {
-        return getReprojectionErrorHistogram(getReprojectionErrors());
-    }
-
-    public synchronized List<double[]> getReprojectionErrorHistogram(List<Double> errors)
-    {
-        if (cameras == null || errors == null)
-            return null;
-
-        double min = errors.get(0);
-        double max = errors.get(0);
-        for (Double e : errors) {
-            min = Math.min(min, e);
-            max = Math.max(max, e);
+        // is it acceptable?
+        if (!origError && !origBadFocalLength && origJointMRE < reinitMREThreshold) {
+            this.updateFromGraphs(origGraphWrappers, origStats);
+            if (verbose)
+                System.out.printf("Skipped reinitialization, using original (orig %b/%b/%8.3f)\n",
+                                  origError, origBadFocalLength, origJointMRE);
+            return origStats;
         }
 
-        int nbuckets = 100;
+        // build and optimize the new system
+        CameraCalibrationSystem copy = this.cal.copyWithBatchReinitialization(false);
+        List<GraphWrapper> newGraphWrappers = this.buildCalibrationGraphs(copy, false);
+        List<GraphStats> newStats = this.iterateUntilConvergence(newGraphWrappers, improvementThreshold,
+                                                                 minConvergedIterations, maxIterations);
+        copy.verbose = this.verbose; // quiet during initialization
 
-        double derr = (max - min) / (nbuckets-1);
+        boolean newError = false;
+        double newJointMRE = 0;
+        int newJointNumObs = 0;
+        for (GraphStats s : newStats) {
+            if (s == null || s.SPDError == true) {
+                newError = true;
+                continue;
+            }
 
-        int counts[] = new int[nbuckets];
+            newJointMRE += s.MRE*s.numObs;
+            newJointNumObs += s.numObs;
+        }
+        newJointMRE = newJointMRE / newJointNumObs;
 
-        for (Double e : errors) {
-            int i = (int) ((e - min) / derr);
-            counts[i]++;
+        boolean newBadFocalLength = false;
+        for (GraphWrapper gw : newGraphWrappers) {
+            if (gw == null || gw.g == null)
+                continue;
+
+            for (GNode n : gw.g.nodes) {
+                if (n instanceof GIntrinsicsNode) {
+                    GIntrinsicsNode intrinsics = (GIntrinsicsNode) n;
+                    double K[][] = intrinsics.copyIntrinsicsMatrix();
+
+                    if (K[0][0] < 0 || K[1][1] < 0)
+                        newBadFocalLength = true;
+                }
+            }
         }
 
-        List<double[]> result = new ArrayList<double[]>();
+        // decide which system to use
+        boolean useNew = false;
+        if (!origError && !origBadFocalLength &&
+            !newError && !newBadFocalLength &&
+            (newJointMRE + 0.001 < origJointMRE)) // both are good but new has lower error
+        {
+            useNew = true;
+        }
+        else if (origError || origBadFocalLength)
+            useNew = true;
 
-        for (int i=0; i < counts.length; i++)
-            result.add(new double[] { min + (i+0.5)*derr, counts[i] });
+        if (!useNew) {
+            this.updateFromGraphs(origGraphWrappers, origStats);
+            if (verbose)
+                System.out.printf("Attempted reinitialization, using original (orig %b/%b/%8.3f new %b/%b/%8.3f)\n",
+                                  origError, origBadFocalLength, origJointMRE,
+                                  newError, newBadFocalLength, newJointMRE);
+            return origStats;
+        }
 
-        return result;
+        this.updateFromGraphs(newGraphWrappers, newStats);
+        this.cal = copy;
+        if (this.renderer != null)
+            this.renderer.replaceCalibrationSystem(copy);
+        if (verbose)
+            System.out.printf("Attempted reinitialization, using new (orig %b/%b/%8.3f new %b/%b/%8.3f)\n",
+                              origError, origBadFocalLength, origJointMRE,
+                              newError, newBadFocalLength, newJointMRE);
+        return newStats;
     }
 
-    public void printCalibrationBlock()
+    /** Convenience method to build graphs for all connected subsystems. Finds
+      * all unique rootNumbers in the camera system and calls buildCalibrationGraph()
+      * to build a graph for each subsystem. See buildCalibrationGraph() for details.
+      */
+    public List<GraphWrapper> buildCalibrationGraphs()
     {
-        if (cameras == null || cameras.size() < 1)
+        return buildCalibrationGraphs(this.cal, this.verbose);
+    }
+
+    public static List<GraphWrapper> buildCalibrationGraphs(CameraCalibrationSystem cal, boolean verbose)
+    {
+        List<CameraCalibrationSystem.CameraWrapper> cameras = cal.getCameras();
+        List<CameraCalibrationSystem.MosaicWrapper> mosaics = cal.getMosaics();
+
+        Set<Integer> uniqueRoots = new TreeSet<Integer>();
+        for (CameraCalibrationSystem.CameraWrapper cam : cameras)
+            uniqueRoots.add(cam.rootNumber);
+
+        List<GraphWrapper> graphWrappers = new ArrayList<GraphWrapper>();
+        for (int root : uniqueRoots)
+            graphWrappers.add(buildCalibrationGraph(cal, root, verbose));
+
+        return graphWrappers;
+    }
+
+    /** Build a graph for the specified root camera. Returns null if the graph
+      * cannot be built yet (e.g. intrinsics not initialized). All state in the
+      * contained graph is safe to change, as it is copied or regenerated from
+      * the underlying CameraCalibrationSystem. This means you can optimize the
+      * graph safely and ensure that it has suceeded before updating the
+      * underlying CameraCalibrationSystem. See updateFromGraph() and related
+      * methods
+      */
+    public static GraphWrapper buildCalibrationGraph(CameraCalibrationSystem cal, int rootNumber,
+                                                     boolean verbose)
+    {
+        List<CameraCalibrationSystem.CameraWrapper> cameras = cal.getCameras();
+        List<CameraCalibrationSystem.MosaicWrapper> mosaics = cal.getMosaics();
+
+        GraphWrapper gw = new GraphWrapper();
+        gw.g = new Graph();
+        gw.rootNumber = rootNumber;
+        gw.cameraToIntrinsicsNodeIndex = new HashMap();
+        gw.cameraToExtrinsicsNodeIndex = new HashMap();
+        gw.mosaicToExtrinsicsNodeIndex = new HashMap();
+
+        for (CameraCalibrationSystem.CameraWrapper cam : cameras)
+        {
+            // skip cameras with different roots
+            if (cam.rootNumber != rootNumber)
+                continue;
+
+            // if a camera in this subsystem doesn't have intrinsics, this
+            // graph cannot be constructed
+            if (cam.cal == null)
+                return null;
+
+            // make a new camera model
+            double params[] = cam.cal.getParameterization();
+            ParameterizableCalibration pcal =
+                cam.initializer.initializeWithParameters(cam.width, cam.height, params);
+
+            GIntrinsicsNode intrinsics = new GIntrinsicsNode(pcal);
+
+            gw.g.nodes.add(intrinsics);
+            int intrinsicsNodeIndex = gw.g.nodes.size()-1;
+            gw.cameraToIntrinsicsNodeIndex.put(cam, intrinsicsNodeIndex);
+
+            if (verbose)
+                System.out.printf("[Root %d] Added intrinsics for camera '%s'\n",
+                                  rootNumber, cam.name);
+
+            // has extrinsics
+            if (cam.cameraNumber != cam.rootNumber) {
+                double CameraToRoot[][] = LinAlg.xyzrpyToMatrix(cam.CameraToRootXyzrpy);
+
+                GExtrinsicsNode extrinsics = new GExtrinsicsNode(CameraToRoot);
+
+                gw.g.nodes.add(extrinsics);
+                int extrinsicsNodeIndex = gw.g.nodes.size()-1;
+                gw.cameraToExtrinsicsNodeIndex.put(cam, extrinsicsNodeIndex);
+
+                if (verbose)
+                    System.out.printf("[Root %d] Added extrinsics for camera '%s'\n",
+                                      rootNumber, cam.name);
+            }
+        }
+
+        for (int mosaicIndex = 0; mosaicIndex < mosaics.size(); mosaicIndex++)
+        {
+            CameraCalibrationSystem.MosaicWrapper mosaic = mosaics.get(mosaicIndex);
+
+            double MosaicToRootXyzrpy[] = mosaic.MosaicToRootXyzrpys.get(rootNumber);
+
+            // skip mosaics not rooted in this subsystem
+            if (MosaicToRootXyzrpy == null)
+                continue;
+
+            double MosaicToRoot[][] = LinAlg.xyzrpyToMatrix(MosaicToRootXyzrpy);
+
+            GExtrinsicsNode mosaicExtrinsics = new GExtrinsicsNode(MosaicToRoot);
+
+            gw.g.nodes.add(mosaicExtrinsics);
+            int mosaicExtrinsicsIndex = gw.g.nodes.size()-1;
+            gw.mosaicToExtrinsicsNodeIndex.put(mosaic, mosaicExtrinsicsIndex);
+
+            if (verbose)
+                System.out.printf("[Root %d] Added extrinsics for mosaic %d\n",
+                                  rootNumber, mosaicIndex);
+
+            for (CameraCalibrationSystem.CameraWrapper cam : cameras) {
+                // skip cameras with different roots
+                if (cam.rootNumber != rootNumber)
+                    continue;
+
+                // get the detections for this camera
+                List<TagDetection> detections = mosaic.detectionSet.get(cam.cameraNumber);
+
+                // only add edges if there are enough constraints
+                if (cal.detectionsUsable(detections) == false)
+                    continue;
+
+                ArrayList<double[]> xys_px = new ArrayList<double[]>();
+                ArrayList<double[]> xyzs_m = new ArrayList<double[]>();
+
+                for (TagDetection d : detections) {
+                    xys_px.add(LinAlg.copy(d.cxy));
+                    xyzs_m.add(LinAlg.copy(cal.tm.getPositionMeters(d.id)));
+                }
+
+                // get the intrinsics and extrinsics indices for this camera
+                Integer cameraIntrinsicsNodeIndex = gw.cameraToIntrinsicsNodeIndex.get(cam);
+                Integer cameraExtrinsicsNodeIndex = gw.cameraToExtrinsicsNodeIndex.get(cam);
+
+                GTagEdge edge;
+                if (cameraExtrinsicsNodeIndex == null)
+                    edge = new GTagEdge(cameraIntrinsicsNodeIndex,
+                                        mosaicExtrinsicsIndex, xys_px, xyzs_m);
+                else
+                    edge = new GTagEdge(cameraIntrinsicsNodeIndex, cameraExtrinsicsNodeIndex,
+                                        mosaicExtrinsicsIndex, xys_px, xyzs_m);
+
+                gw.g.edges.add(edge);
+
+                if (verbose)
+                    System.out.printf("[Root %d] Added tag edge between mosaic %d and camera '%s'"+
+                                      "(camera %s extrinsics)\n",
+                                      rootNumber, mosaicIndex, cam.name,
+                                      (cameraExtrinsicsNodeIndex == null) ? "doesn't have" : "has");
+            }
+        }
+
+        return gw;
+    }
+
+    /** Update the CameraCalibrationSystem from the graphs provided. If an
+      * entry in either argument is null or the GraphStats.SPDError field is
+      * true, the camera system will <b>not</b> be updated from the
+      * corresponding GraphWrapper.
+      */
+    public void updateFromGraphs(List<GraphWrapper> graphWrappers,
+                                 List<GraphStats> stats)
+    {
+        updateFromGraphs(cal, graphWrappers, stats, this.verbose);
+    }
+
+    /** Update the CameraCalibrationSystem from the graphs provided. If an
+      * entry in either argument is null or the GraphStats.SPDError field is
+      * true, the camera system will <b>not</b> be updated from the
+      * corresponding GraphWrapper.
+      */
+    public static void updateFromGraphs(CameraCalibrationSystem cal,
+                                        List<GraphWrapper> graphWrappers,
+                                        List<GraphStats> stats,
+                                        boolean verbose)
+    {
+        assert(graphWrappers.size() == stats.size());
+
+        for (int i = 0; i < graphWrappers.size(); i++)
+        {
+            GraphWrapper gw = graphWrappers.get(i);
+            GraphStats s = stats.get(i);
+
+            updateFromGraph(cal, gw, s);
+        }
+
+        if (verbose)
+            cal.printSystem();
+    }
+
+    /** Update the CameraCalibrationSystem from the graph provided. If either
+      * argument is null or the GraphStats.SPDError field is true, the camera
+      * system will <b>not</b> be updated from the corresponding GraphWrapper.
+      */
+    public static void updateFromGraph(CameraCalibrationSystem cal, GraphWrapper gw, GraphStats s)
+    {
+        updateCameraIntrinsicsFromGraph(cal, gw, s);
+        updateCameraExtrinsicsFromGraph(cal, gw, s);
+        updateMosaicExtrinsicsFromGraph(cal, gw, s);
+    }
+
+    /** Update the CameraCalibrationSystem's camera intrinsics from the graph
+      * provided. If either * argument is null or the GraphStats.SPDError field
+      * is true, the camera * system will <b>not</b> be updated from the
+      * corresponding GraphWrapper.
+      */
+    public static void updateCameraIntrinsicsFromGraph(CameraCalibrationSystem cal, GraphWrapper gw, GraphStats s)
+    {
+        if (gw == null || s == null || s.SPDError == true)
             return;
 
-        System.out.printf(getCalibrationBlockString());
+        List<CameraCalibrationSystem.CameraWrapper> cameras = cal.getCameras();
+        List<CameraCalibrationSystem.MosaicWrapper> mosaics = cal.getMosaics();
+
+        Set<Map.Entry<CameraCalibrationSystem.CameraWrapper,Integer>> camera_intrinsics =
+            gw.cameraToIntrinsicsNodeIndex.entrySet();
+
+        for (Map.Entry<CameraCalibrationSystem.CameraWrapper,Integer> entry : camera_intrinsics)
+        {
+            CameraCalibrationSystem.CameraWrapper cam = entry.getKey();
+            Integer cameraIntrinsicsNodeIndex = entry.getValue();
+            assert(cam != null);
+            assert(cameraIntrinsicsNodeIndex != null);
+
+            GNode node = gw.g.nodes.get(cameraIntrinsicsNodeIndex);
+            assert(node != null);
+            assert(node instanceof GIntrinsicsNode);
+            GIntrinsicsNode intrinsics = (GIntrinsicsNode) node;
+
+            assert(cam.cal != null);
+            cam.cal.resetParameterization(intrinsics.state);
+        }
     }
 
-    private String getCalibrationBlockString()
+    /** Update the CameraCalibrationSystem's camera extrinsics from the graph
+      * provided. If either * argument is null or the GraphStats.SPDError field
+      * is true, the camera * system will <b>not</b> be updated from the
+      * corresponding GraphWrapper.
+      */
+    public static void updateCameraExtrinsicsFromGraph(CameraCalibrationSystem cal, GraphWrapper gw, GraphStats s)
     {
-        if (cameras == null || cameras.size() == 0)
+        if (gw == null || s == null || s.SPDError == true)
+            return;
+
+        List<CameraCalibrationSystem.CameraWrapper> cameras = cal.getCameras();
+        List<CameraCalibrationSystem.MosaicWrapper> mosaics = cal.getMosaics();
+
+        Set<Map.Entry<CameraCalibrationSystem.CameraWrapper,Integer>> camera_extrinsics =
+            gw.cameraToExtrinsicsNodeIndex.entrySet();
+
+        for (Map.Entry<CameraCalibrationSystem.CameraWrapper,Integer> entry : camera_extrinsics)
+        {
+            CameraCalibrationSystem.CameraWrapper cam = entry.getKey();
+            Integer cameraExtrinsicsNodeIndex = entry.getValue();
+            assert(cam != null);
+            assert(cameraExtrinsicsNodeIndex != null);
+
+            GNode node = gw.g.nodes.get(cameraExtrinsicsNodeIndex);
+            assert(node != null);
+            assert(node instanceof GExtrinsicsNode);
+            GExtrinsicsNode extrinsics = (GExtrinsicsNode) node;
+
+            cam.CameraToRootXyzrpy = LinAlg.copy(extrinsics.state);
+        }
+    }
+
+    /** Update the CameraCalibrationSystem's mosaic extrinsics from the graph
+      * provided. If either * argument is null or the GraphStats.SPDError field
+      * is true, the camera * system will <b>not</b> be updated from the
+      * corresponding GraphWrapper.
+      */
+    public static void updateMosaicExtrinsicsFromGraph(CameraCalibrationSystem cal, GraphWrapper gw, GraphStats s)
+    {
+        if (gw == null || s == null || s.SPDError == true)
+            return;
+
+        List<CameraCalibrationSystem.CameraWrapper> cameras = cal.getCameras();
+        List<CameraCalibrationSystem.MosaicWrapper> mosaics = cal.getMosaics();
+
+        Set<Map.Entry<CameraCalibrationSystem.MosaicWrapper,Integer>> mosaic_extrinsics =
+            gw.mosaicToExtrinsicsNodeIndex.entrySet();
+
+        for (Map.Entry<CameraCalibrationSystem.MosaicWrapper,Integer> entry : mosaic_extrinsics)
+        {
+            CameraCalibrationSystem.MosaicWrapper mosaic = entry.getKey();
+            Integer mosaicExtrinsicsNodeIndex = entry.getValue();
+            assert(mosaic != null);
+            assert(mosaicExtrinsicsNodeIndex != null);
+
+            GNode node = gw.g.nodes.get(mosaicExtrinsicsNodeIndex);
+            assert(node != null);
+            assert(node instanceof GExtrinsicsNode);
+            GExtrinsicsNode extrinsics = (GExtrinsicsNode) node;
+
+            double MosaicToRootXyzrpy[] = mosaic.MosaicToRootXyzrpys.get(gw.rootNumber);
+            assert(MosaicToRootXyzrpy != null);
+
+            mosaic.MosaicToRootXyzrpys.put(gw.rootNumber, LinAlg.copy(extrinsics.state));
+        }
+    }
+
+    public List<CameraCalibrator> createModelSelectionCalibrators(List<List<CalibrationInitializer>> initializerSets)
+    {
+        List<CameraCalibrator> calibrators = new ArrayList();
+
+        outer:
+        for (List<CalibrationInitializer> initializerSet : initializerSets)
+        {
+            CameraCalibrator calCopy = this.copy(false);
+
+            List<CameraCalibrationSystem.CameraWrapper> cameras = calCopy.getCalRef().getCameras();
+            assert(initializerSet.size() == cameras.size());
+
+            for (int cameraIndex = 0; cameraIndex < cameras.size(); cameraIndex++)
+            {
+                CameraCalibrationSystem.CameraWrapper cam = cameras.get(cameraIndex);
+                CalibrationInitializer initializer = initializerSet.get(cameraIndex);
+
+                List<List<TagDetection>> usableDetections =
+                    calCopy.getCalRef().getCamerasUsableDetections(cameraIndex);
+
+                ParameterizableCalibration cal =
+                    initializer.initializeWithObservations(cam.width, cam.height,
+                                                           usableDetections, tm);
+
+                if (cal == null) {
+                    calibrators.add(null);
+                    continue outer;
+                }
+
+                cam.initializer = initializer;
+                cam.cal = cal;
+            }
+
+            calibrators.add(calCopy);
+        }
+
+        return calibrators;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // rendering code
+
+    public void createGUI()
+    {
+        if (renderer != null)
+            return;
+
+        renderer = new CalibrationRenderer(this.cal, this.tf, this.metersPerTag, this.verbose);
+
+        List<CameraCalibrationSystem.MosaicWrapper> mosaics = this.cal.getMosaics();
+        for (CameraCalibrationSystem.MosaicWrapper mosaic : mosaics)
+            renderer.updateMosaicDimensions(mosaic.detectionSet);
+
+        renderer.draw(null);
+    }
+
+    /** Return a reference to the CalibrationRenderer's VisCanvas, if it exists.
+      */
+    public VisCanvas getVisCanvas()
+    {
+        if (renderer == null)
             return null;
+
+        return renderer.vc;
+    }
+
+    /** Tell the CalibrationRenderer to draw(), if it exists.
+      */
+    public void draw()
+    {
+        draw(null);
+    }
+
+    public void draw(List<CameraCalibrator.GraphStats> stats)
+    {
+        if (renderer == null)
+            return;
+
+        renderer.draw(stats);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // file io code
+
+    /** Print the camera calibration string to the terminal. Uses the
+      * getCalibrationBlockString() method.
+      */
+    public void printCalibrationBlock(String[] commentLines)
+    {
+        System.out.printf(getCalibrationBlockString(commentLines));
+    }
+
+    /** Get the camera calibration string. Intrinsics that aren't initialized
+      * result in a comment (thus an invalid calibration block).
+      */
+    public String getCalibrationBlockString(String[] commentLines)
+    {
+        return getCalibrationBlockString(cal, commentLines);
+    }
+
+    public static String getCalibrationBlockString(CameraCalibrationSystem cal, String[] commentLines)
+    {
+        List<CameraCalibrationSystem.CameraWrapper> cameras = cal.getCameras();
 
         String str = "";
 
@@ -1152,17 +746,17 @@ public class CameraCalibrator
         str += "aprilCameraCalibration {\n";
         str += "\n";
 
-        // Comment about MRE, MSE for this calibration
-        if (true) {
-            str += String.format("    // MRE: %.5f\n",getMRE());
-            str += String.format("    // MSE: %.5f\n",getMSE());
+        // add all comment lines
+        if (commentLines != null) {
+            for (String line : commentLines)
+                str += String.format("    // %s\n", line.trim().replace("\n",""));
             str += "\n";
         }
 
         // print name list
         String names = "    names = [";
         for (int i=0; i+1 < cameras.size(); i++) {
-            CameraWrapper cam = cameras.get(i);
+            CameraCalibrationSystem.CameraWrapper cam = cameras.get(i);
             names = String.format("%s %s,", names, cam.name);
         }
         names = String.format("%s %s ];\n", names, cameras.get(cameras.size()-1).name);
@@ -1171,22 +765,19 @@ public class CameraCalibrator
         // print cameras
         for (int i=0; i < cameras.size(); i++) {
 
-            CameraWrapper cam = cameras.get(i);
+            CameraCalibrationSystem.CameraWrapper cam = cameras.get(i);
 
             str += "\n";
             str += String.format("    %s {\n", cam.name);
 
             // make sure ParameterizableCalibration is up to date and print it
-            cam.cal.resetParameterization(cam.cameraIntrinsics.state);
-            str += cam.cal.getCalibrationString();
+            if (cam.cal != null)
+                str += cam.cal.getCalibrationString();
+            else
+                str += "        // Error: intrinsics not initialized\n";
 
-            double state[] = new double[6];
-            if (cam.cameraExtrinsics != null) {
-                state = LinAlg.copy(g.nodes.get(cam.cameraExtrinsicsIndex).state);
-                double C2L[][] = LinAlg.xyzrpyToMatrix(state);
-                double L2C[][] = LinAlg.inverse(C2L);
-                state = LinAlg.matrixToXyzrpy(L2C);
-            }
+            // RootToCamera
+            double state[] = LinAlg.xyzrpyInverse(cam.CameraToRootXyzrpy);
 
             String s;
             s = String.format(  "        extrinsics {\n");
@@ -1206,131 +797,44 @@ public class CameraCalibrator
         return str;
     }
 
-    public void saveDetections()
+    /** Save the calibration to a file.
+      */
+    public synchronized void saveCalibration(String basepath, String[] commentLines)
     {
-        saveDetections("/tmp/CameraCalibration");
-    }
-
-    public void saveDetections(String basepath)
-    {
-        if (images == null || images.size() < 1 || cameras == null)
-            return;
-
-        String dirName = String.format("%s/", basepath);
-        File dir = new File(dirName);
-
-        if (dir.exists() && !dir.isDirectory()) {
-            System.err.printf("CameraCalibrator: File exists at the desired directory '%s'\n", dirName);
-            return;
-        }
-
+        File dir = new File(basepath);
         if (!dir.exists()) {
-            boolean mkdir = dir.mkdirs();
-            if (mkdir != true) {
-                System.err.printf("CameraCalibrator: Failed to create directory '%s'\n", dirName);
+            boolean success = dir.mkdirs();
+            if (!success) {
+                System.err.printf("CameraCalibrator: Failure to create directory '%s'\n", basepath);
                 return;
             }
         }
 
-        try {
-            String filename = String.format("%s/detections.csv", basepath);
-            BufferedWriter outs = new BufferedWriter(new FileWriter(new File(filename)));
-
-            for (int imageSetIndex = 0; imageSetIndex < images.size(); imageSetIndex++) {
-                List<ProcessedImage> imageSet = images.get(imageSetIndex);
-
-                for (int cameraIndex = 0; cameraIndex < imageSet.size(); cameraIndex++) {
-
-                    ProcessedImage pim = imageSet.get(cameraIndex);
-
-                    CameraWrapper cam = cameras.get(cameraIndex);
-                    double K[][] = cam.cal.copyIntrinsics();
-
-                    for (TagDetection d : pim.detections)
-                        outs.write(String.format("%12.6f, %12.6f\n", d.cxy[0], d.cxy[1]));
-                }
-            }
-
-            outs.close();
-
-            System.out.println("Saved detections successfully.");
-
-        } catch (IOException ex) {
-            System.out.println("Error saving detections: " + ex);
-        }
-    }
-
-    public void saveReprojectionErrors()
-    {
-        saveReprojectionErrors("/tmp/CameraCalibration");
-    }
-
-    public void saveReprojectionErrors(String basepath)
-    {
-        if (images == null || images.size() < 1 || cameras == null)
-            return;
-
-        String dirName = String.format("%s/", basepath);
-        File dir = new File(dirName);
-
-        if (dir.exists() && !dir.isDirectory()) {
-            System.err.printf("CameraCalibrator: File exists at the desired directory '%s'\n", dirName);
-            return;
-        }
-
-        if (!dir.exists()) {
-            boolean mkdir = dir.mkdirs();
-            if (mkdir != true) {
-                System.err.printf("CameraCalibrator: Failed to create directory '%s'\n", dirName);
-                return;
-            }
-        }
-
-        List<Double> errors = getReprojectionErrors();
-        List<double[]> errorcounts = getReprojectionErrorHistogram(errors);
+        // find unused name
+        int calNum = -1;
+        String calName = null;
+        File outputConfigFile = null;
+        do {
+            calNum++;
+            calName = String.format("%s/calibration%04d.config/", basepath, calNum);
+            outputConfigFile = new File(calName);
+        } while (outputConfigFile.exists());
 
         try {
-            String filename = String.format("%s/reprojectionErrors.csv", basepath);
-            BufferedWriter outs = new BufferedWriter(new FileWriter(new File(filename)));
-
-            for (double e : errors)
-                outs.write(String.format("%f\n", e));
-
+            BufferedWriter outs = new BufferedWriter(new FileWriter(outputConfigFile));
+            outs.write(getCalibrationBlockString(commentLines));
+            outs.flush();
             outs.close();
-
-            System.out.println("Saved reprojection errors successfully.");
-
-        } catch (IOException ex) {
-            System.out.println("Error saving reprojection errors: " + ex);
-        }
-
-        try {
-            String filename = String.format("%s/reprojectionErrorHistogram.csv", basepath);
-            BufferedWriter outs = new BufferedWriter(new FileWriter(new File(filename)));
-
-
-            for (double ec[] : errorcounts)
-                outs.write(String.format("%f, %d\n", ec[0], (int) ec[1]));
-
-            outs.close();
-
-            System.out.println("Saved reprojection error histogram successfully.");
-
-        } catch (IOException ex) {
-            System.out.println("Error saving reprojection error histogram: " + ex);
-        }
-    }
-
-    public void saveCalibrationAndImages()
-    {
-        saveCalibrationAndImages("/tmp/cameraCalibration");
-    }
-
-    public void saveCalibrationAndImages(String basepath)
-    {
-        if (images == null || images.size() < 1)
+        } catch (Exception ex) {
+            System.err.printf("CameraCalibrator: Failed to output calibration to '%s'\n", calName);
             return;
+        }
+    }
 
+    /** Save the calibration to a file and all images.
+      */
+    public synchronized void saveCalibrationAndImages(String basepath, String[] commentLines)
+    {
         // create directory for image dump
         int dirNum = -1;
         String dirName = null;
@@ -1349,7 +853,7 @@ public class CameraCalibrator
         String configpath = String.format("%s/calibration.config", dirName);
         try {
             BufferedWriter outs = new BufferedWriter(new FileWriter(new File(configpath)));
-            outs.write(getCalibrationBlockString());
+            outs.write(getCalibrationBlockString(commentLines));
             outs.flush();
             outs.close();
         } catch (Exception ex) {
@@ -1358,39 +862,40 @@ public class CameraCalibrator
         }
 
         // save images
-        for (int cameraIndex = 0; cameraIndex < initializers.size(); cameraIndex++) {
+        List<List<BufferedImage>> imageSets = this.cal.getAllImageSets();
+        for (int cameraIndex = 0; cameraIndex < this.initializers.size(); cameraIndex++) {
+
+            String subDirName = dirName;
 
             // make a subdirectory if we have multiple cameras
-            if (initializers.size() > 1) {
-                String subDirName = String.format("%s/camera%d/", dirName, cameraIndex);
+            if (this.initializers.size() > 1) {
+                subDirName = String.format("%scamera%d/", dirName, cameraIndex);
                 File subDir = new File(subDirName);
 
                 if (subDir.mkdirs() != true) {
                     System.err.printf("CameraCalibrator: Failure to create subdirectory '%s'\n", subDirName);
                     return;
                 }
-
-                dirName = subDirName;
             }
 
-            for (int imageSetIndex = 0; imageSetIndex < images.size(); imageSetIndex++) {
+            for (int imageSetIndex = 0; imageSetIndex < imageSets.size(); imageSetIndex++) {
 
-                List<ProcessedImage> imageSet = images.get(imageSetIndex);
-                ProcessedImage pim = imageSet.get(cameraIndex);
+                List<BufferedImage> images = imageSets.get(imageSetIndex);
+                BufferedImage im = images.get(cameraIndex);
 
-                String fileName = String.format("%s/image%04d.png", dirName, imageSetIndex);
+                String fileName = String.format("%simage%04d.png", subDirName, imageSetIndex);
                 File imageFile = new File(fileName);
 
                 System.out.printf("Filename '%s'\n", fileName);
 
                 try {
-                    ImageIO.write(pim.image, "png", imageFile);
+                    ImageIO.write(im, "png", imageFile);
 
                 } catch (IllegalArgumentException ex) {
-                    System.err.printf("CameraCalibrator: Failed to output images to '%s'\n", dirName);
+                    System.err.printf("CameraCalibrator: Failed to output images to '%s'\n", subDirName);
                     return;
                 } catch (IOException ex) {
-                    System.err.printf("CameraCalibrator: Failed to output images to '%s'\n", dirName);
+                    System.err.printf("CameraCalibrator: Failed to output images to '%s'\n", subDirName);
                     return;
                 }
             }
@@ -1399,210 +904,29 @@ public class CameraCalibrator
         System.out.printf("Successfully saved calibration and images to '%s'\n", dirName);
     }
 
-    private ArrayList<CameraWrapper> initCameras()
+    /** Use at your own risk! Returns a reference to the CameraCalibrationSystem in use.
+      */
+    public CameraCalibrationSystem getCalRef()
     {
-        // get all of the images available for each camera
-        ArrayList<ArrayList<ProcessedImage>> imagesForEachCamera = new ArrayList<ArrayList<ProcessedImage>>();
-        for (int i=0; i < initializers.size(); i++) {
-
-            ArrayList<ProcessedImage> currentCameraImages = new ArrayList<ProcessedImage>();
-            for (int j=0; j < images.size(); j++)
-                currentCameraImages.add(images.get(j).get(i));
-
-            imagesForEachCamera.add(currentCameraImages);
-        }
-
-        ArrayList<ParameterizableCalibration> initializations = new ArrayList<ParameterizableCalibration>();
-        for (int i=0; i < initializers.size(); i++) {
-
-            CalibrationInitializer initializer = initializers.get(i);
-            assert(initializer != null);
-
-            ArrayList<ProcessedImage> currentCameraImages = imagesForEachCamera.get(i);
-            int width = currentCameraImages.get(0).image.getWidth();
-            int height = currentCameraImages.get(0).image.getHeight();
-
-            // get all the detections (one set per image) for this camera for
-            // the purposes of initialization
-            List<List<TagDetection>> allDetections = new ArrayList<List<TagDetection>>();
-            for (ProcessedImage pim : currentCameraImages)
-                allDetections.add(pim.detections);
-
-            ParameterizableCalibration cal = null;
-            if (initialParameters != null)
-                // if specified, initialize the camera parameters to the provided values
-                cal = initializer.initializeWithParameters(width, height,
-                                                           initialParameters.get(i));
-            else
-                // normally, let the initializer proceed as it sees fit
-                cal = initializer.initializeWithObservations(width, height,
-                                                             allDetections, this.mosaic);
-
-            // if the initializer failed, we probably don't have enough images
-            // and will try again next time
-            if (cal == null)
-                return null;
-
-            initializations.add(cal);
-        }
-
-        ArrayList<CameraWrapper> cameraList = new ArrayList<CameraWrapper>();
-        for (int i=0; i < initializers.size(); i++) {
-
-            String name = String.format("camera%d", i);
-            ParameterizableCalibration cal = initializations.get(i);
-
-            // create graph intrinsics node
-            GIntrinsicsNode cameraIntrinsics = new GIntrinsicsNode(cal);
-            if (verbose) System.out.println("Initialized camera intrinsics to:");
-            if (verbose) LinAlg.print(cameraIntrinsics.init);
-            g.nodes.add(cameraIntrinsics);
-            if (verbose) System.out.printf("Added camera intrinsics. Graph contains %d nodes\n", g.nodes.size());
-            int cameraIntrinsicsIndex = g.nodes.size() - 1;
-
-            GExtrinsicsNode cameraExtrinsics = null;
-            int cameraExtrinsicsIndex        = -1;
-            if (i != 0) {
-                cameraExtrinsics = new GExtrinsicsNode(LinAlg.identity(4));
-                g.nodes.add(cameraExtrinsics);
-                System.out.printf("Added camera extrinsics. Graph contains %d nodes\n",
-                                  g.nodes.size());
-                cameraExtrinsicsIndex = g.nodes.size() - 1;
-            }
-
-            CameraWrapper camera = new CameraWrapper();
-            camera.cal                      = cal;
-            camera.cameraIntrinsics         = cameraIntrinsics;
-            camera.cameraIntrinsicsIndex    = cameraIntrinsicsIndex;
-            camera.cameraExtrinsics         = cameraExtrinsics;
-            camera.cameraExtrinsicsIndex    = cameraExtrinsicsIndex;
-            camera.extrinsicsInitialized    = false;
-            camera.name                     = name;
-            camera.classname                = cal.getClass().getName();
-
-            cameraList.add(camera);
-        }
-
-        // if all cameras were initialized successfully, we're ready to hand off
-        // the list of camera wrappers
-        assert(cameraList.size() == initializers.size());
-        return cameraList;
+        return cal;
     }
 
-    private double[][] estimateMosaicExtrinsics(double K[][], List<TagDetection> detections)
+    public TagMosaic getTagMosaic()
     {
-        /* // Old, per-tag homography decomposition and AlignPoints3D
-        ArrayList<double[]> points_camera_est = new ArrayList<double[]>();
-        ArrayList<double[]> points_mosaic = new ArrayList<double[]>();
-
-        for (int i = 0; i < detections.size(); i++) {
-
-            TagDetection d = detections.get(i);
-
-            double tagToCamera_est[][] = CameraUtil.homographyToPose(K[0][0], K[1][1],
-                                                                     metersPerTag,
-                                                                     d.homography);
-            double tagPosition_est[] = LinAlg.select(LinAlg.matrixToXyzrpy(tagToCamera_est),
-                                                     0, 2);
-            // XXX convert to X-right, Y-down, Z-in coordinates
-            tagPosition_est = new double[] { tagPosition_est[0] ,
-                                            -tagPosition_est[1] ,
-                                            -tagPosition_est[2] };
-
-            points_camera_est.add(tagPosition_est);
-
-            double xyz_m[] = LinAlg.copy(tagPositions.get(d.id));
-            points_mosaic.add(xyz_m);
-        }
-
-        double mosaicToGlobal_est[][] = AlignPoints3D.align(points_mosaic,
-                                                            points_camera_est);
-        if (verbose) System.out.println("Estimated mosaic extrinsics:");
-        if (verbose) LinAlg.printTranspose(LinAlg.matrixToXyzrpy(mosaicToGlobal_est));
-
-        return mosaicToGlobal_est;
-        */
-
-        // Fit a homography jointly to all of the tag observations and
-        // decompose it to estimate the extrinsics
-        ArrayList<double[]> points_mosaic_meters = new ArrayList<double[]>();
-        ArrayList<double[]> points_image_pixels = new ArrayList<double[]>();
-
-        for (TagDetection d : detections) {
-            points_mosaic_meters.add(LinAlg.select(tagPositions.get(d.id), 0, 1));
-            points_image_pixels.add(LinAlg.select(d.cxy, 0, 1));
-        }
-
-        double H[][] = CameraMath.estimateHomography(points_mosaic_meters,
-                                                     points_image_pixels);
-
-        double Rt[][] = CameraMath.decomposeHomography(H, K, points_mosaic_meters.get(0));
-
-        return Rt;
+        return tm;
     }
 
-    private void processImage(int cameraIndex, int imageIndex, int mosaicIndex,
-                              List<TagDetection> detections)
+    public CameraCalibrator copy(boolean gui)
     {
-        // index where edge will appear (though it's not there now)
-        int tagEdgeIndex = g.edges.size();
+        CameraCalibrator rocal = new CameraCalibrator(this.initializers,
+                                                      this.tf,
+                                                      this.metersPerTag,
+                                                      gui,
+                                                      this.verbose);
+        rocal.cal = this.cal.copy();
+        if (rocal.renderer != null)
+            rocal.renderer.replaceCalibrationSystem(rocal.cal);
 
-        ArrayList<double[]> xys_px = new ArrayList<double[]>();
-        ArrayList<double[]> xyzs_m = new ArrayList<double[]>();
-
-        for (int i = 0; i < detections.size(); i++) {
-
-            TagDetection d = detections.get(i);
-
-            double xy_px[] = LinAlg.copy(d.cxy);
-            double xyz_m[] = LinAlg.copy(tagPositions.get(d.id));
-
-            xys_px.add(xy_px);
-            xyzs_m.add(xyz_m);
-
-            TagConstraint constraint = new TagConstraint();
-            constraint.tagid            = d.id;
-            constraint.graphNodeIndex   = tagEdgeIndex;
-            constraint.cameraIndex      = cameraIndex;
-            constraint.imageIndex       = imageIndex;
-            constraint.xy_px            = LinAlg.copy(xy_px);
-            constraint.xyz_m            = LinAlg.copy(xyz_m);
-
-            constraints.add(constraint);
-
-            // System.out.printf("Constraining (%8.3f, %8.3f) to (%8.3f, %8.3f, %8.3f)\n",
-            //                   constraint.xy_px[0], constraint.xy_px[1],
-            //                   constraint.xyz_m[0], constraint.xyz_m[1], constraint.xyz_m[2]);
-        }
-
-        CameraWrapper cam = cameras.get(cameraIndex);
-        GTagEdge edge = new GTagEdge(cam.cameraIntrinsicsIndex,
-                                     cam.cameraExtrinsicsIndex,
-                                     mosaicIndex,
-                                     xys_px,
-                                     xyzs_m);
-        g.edges.add(edge);
-        if (verbose) System.out.printf("Added tag edge. Graph contains %d edges\n", g.edges.size());
-        assert(g.edges.size()-1 == tagEdgeIndex);
-
-        if (verbose) printStatus();
-    }
-
-    void printStatus()
-    {
-        int nodeDOF = 0;
-        for (GNode n : g.nodes)
-            nodeDOF += n.getDOF();
-
-        int edgeDOF = 0;
-        for (GEdge e : g.edges)
-            edgeDOF += e.getDOF();
-
-        System.out.printf("Graph has %d nodes and %d edges.\n",
-                          g.nodes.size(), g.edges.size());
-        System.out.printf("There are %d camera wrappers, %d mosaics, and %d image sets\n",
-                          cameras.size(), mosaicExtrinsicsIndices.size(), images.size());
-        System.out.printf("Total node DOF is %d. Total edge DOF is %d\n",
-                          nodeDOF, edgeDOF);
+        return rocal;
     }
 }

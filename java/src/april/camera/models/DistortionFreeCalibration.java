@@ -91,20 +91,20 @@ public class DistortionFreeCalibration implements Calibration, ParameterizableCa
         return LinAlg.copy(K);
     }
 
-    /** Convert a 2D double { X/Z, Y/Z } to pixel coordinates in this view,
+    /** Convert a 3D ray to pixel coordinates in this view,
       * applying distortion if appropriate.
       */
-    public double[] normToPixels(double xy_rn[])
+    public double[] rayToPixels(double xyz_r[])
     {
-        return CameraMath.pixelTransform(K, xy_rn);
+        return CameraMath.pinholeTransform(K, xyz_r);
     }
 
-    /** Convert a 2D pixel coordinate in this view to normalized coordinates,
-      * { X/Z, Y/Z }, removing distortion if appropriate.
+    /** Convert a 2D pixel coordinate in this view to a 3D ray,
+      * removing distortion if appropriate.
       */
-    public double[] pixelsToNorm(double xy_rp[])
+    public double[] pixelsToRay(double xy_rp[])
     {
-        return CameraMath.pixelTransform(Kinv, xy_rp);
+        return CameraMath.rayToPlane(CameraMath.pinholeTransform(Kinv, xy_rp));
     }
 
     /** Return a string of all critical parameters for caching data based
@@ -123,14 +123,6 @@ public class DistortionFreeCalibration implements Calibration, ParameterizableCa
         s = String.format("%s        }\n", s);
 
         return s;
-    }
-
-    public String getCacheString()
-    {
-        return String.format("%.12f %.12f %.12f %.12f %d %d",
-                             fc[0], fc[1],
-                             cc[0], cc[1],
-                             width, height);
     }
 
     ////////////////////////////////////////////////////////////////////////////////
