@@ -207,7 +207,7 @@ public class TagFamilyGenerator
                 long diters = iter - lastprogressiters;
                 double rate = diters / dt; // iterations per second
                 double secremaining = ((long) (1L<<nbits) - iter) / rate;
-                System.out.printf("%8.2f%%  codes: %-5d (%.0f iters/sec, %.2f minutes = %.2f hours)           \r",
+                System.out.printf("%8.4f%%  codes: %-5d (%.0f iters/sec, %.2f minutes = %.2f hours)           \r",
                                   donepercent, codelist.size(), rate, secremaining/(60.0), secremaining/3600.0);
                 lastprogresstime = now;
                 lastprogressiters = iter;
@@ -334,14 +334,14 @@ public class TagFamilyGenerator
         System.out.printf("    Max bits corrected       False positive rate\n");
 
         for (int cbits = 0; cbits <= (minhamming-1)/2; cbits++) {
-            int validCodes = 0; // how many input codes will be mapped to a single valid code?
+            long validCodes = 0; // how many input codes will be mapped to a single valid code?
             // it's the number of input codes that have 0 errors, 1 error, 2 errors, ..., cbits errors.
             for (int i = 0; i <= cbits; i++)
                 validCodes += choose(nbits, i);
 
             validCodes *= codes.length; // total number of codes
 
-            System.out.printf("          %3d             %15f %%\n", cbits, (100.0*validCodes)/(1L<<nbits));
+            System.out.printf("          %3d             %15.8f %%\n", cbits, (100.0*validCodes)/(1L<<nbits));
         }
 
         System.out.printf("\n    Generation time: %f s\n\n", (System.currentTimeMillis() - starttime)/1000.0);
