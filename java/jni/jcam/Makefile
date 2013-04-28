@@ -25,7 +25,7 @@ all: $(ALL)
 
 
 istest: main.o $(LIBIMAGESOURCE_OBJS)
-	gcc -L../../../lib main.o $(LIBIMAGESOURCE_OBJS) -o istest -ldc1394 -lc -lcommon -lpng
+	gcc -L../../../lib main.o $(LIBIMAGESOURCE_OBJS) -o istest -ldc1394 -lc -lcommon -lpng -lpthread -lusb-1.0 -lm
 
 $(DESTLIB): $(LIB)
 	cp $(LIB) $(DESTLIB)
