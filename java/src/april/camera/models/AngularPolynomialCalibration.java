@@ -201,10 +201,6 @@ public class AngularPolynomialCalibration implements Calibration, Parameterizabl
 
         double theta  = Math.atan2(r, z);
         double theta2 = theta*theta;
-        double theta3 = theta*theta2;
-        double theta5 = theta3*theta2;
-        double theta7 = theta5*theta2;
-        double theta9 = theta7*theta2;
 
         double psi = Math.atan2(y, x);
 
