@@ -14,6 +14,9 @@ public abstract class ImageSource
         if (url.startsWith("islog-lcm:"))
             return new ImageSourceISLogLCM(url);
 
+        if (url.startsWith("tcp:"))
+            return new ImageSourceTCP(url);
+
         if (url.startsWith("reflect:"))
             return new ImageSourceReflect(url);
 
