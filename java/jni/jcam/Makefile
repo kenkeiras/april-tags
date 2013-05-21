@@ -5,7 +5,7 @@ LIBIMAGESOURCE_OBJS = image_source.o image_source_v4l2.o image_source_jni.o imag
 LIB=libimagesource.so
 DESTLIB=../../../lib/$(LIB)
 
-ALL = $(DESTLIB) istest
+ALL = $(DESTLIB) istest tcpstream
 
 #############################################################
 # MacOS X
@@ -27,6 +27,9 @@ all: $(ALL)
 istest: main.o $(LIBIMAGESOURCE_OBJS)
 	gcc -L../../../lib main.o $(LIBIMAGESOURCE_OBJS) -o istest -ldc1394 -lc -lcommon -lpng -lpthread -lusb-1.0 -lm
 
+tcpstream: tcp_image_streamer.c
+	gcc -o tcpstream -std=gnu99 tcp_image_streamer.c -lc
+
 $(DESTLIB): $(LIB)
 	cp $(LIB) $(DESTLIB)
 
@@ -38,7 +41,7 @@ april_jcam_ImageSourceNative.h:
 	javah -classpath ../../april.jar  april.jcam.ImageSourceNative
 
 clean:
-	rm -f *~ april_jcam_ImageSourceNative.h april_jcam_ImageSourceFormat.h $(LIB) $(DESTLIB) $(LIBIMAGESOURCE_OBJS) istest
+	rm -f *~ april_jcam_ImageSourceNative.h april_jcam_ImageSourceFormat.h $(LIB) $(DESTLIB) $(LIBIMAGESOURCE_OBJS) istest main.o tcpstream tcp_image_streamer.o
 
 # If you get an error message saying that you're missing jni.h or
 # jni_md.h, locate those files and add the directories using the -I
