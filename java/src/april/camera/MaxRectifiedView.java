@@ -78,8 +78,6 @@ public class MaxRectifiedView implements View
             Rl = Math.min(Rl, xy_rp[0]);
         }
 
-        if (verbose) System.out.printf("Bottom: %5.1f Right: %5.1f Top: %5.1f Left: %5.1f\n", Rb, Rr, Rt, Rl);
-
         ////////////////////////////////////////
         // transformation matrix
         K[0][2] -= Rl;
@@ -88,6 +86,11 @@ public class MaxRectifiedView implements View
 
         width   = (int) Math.floor(Rr - Rl + 1);
         height  = (int) Math.floor(Rt - Rb + 1);
+
+        if (verbose) System.out.printf("Bottom: %5.1f Right: %5.1f Top: %5.1f Left: %5.1f Width: %d Height: %d\n",
+                                       Rb, Rr, Rt, Rl, width, height);
+
+        if (verbose) LinAlg.print(K);
     }
 
     ////////////////////////////////////////////////////////////////////////////////
