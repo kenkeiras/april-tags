@@ -87,6 +87,8 @@ public class MaxHeap2<T extends MaxHeap2.HeapObject>
             objs[0] = objs[heapsize];
 
             int parent = 0;
+            // note that the index of the parent changes as we
+            // traverse the tree, but its score does not.
             double parentScore = objs[0].heapValue;
 
             while (parent < heapsize) {
