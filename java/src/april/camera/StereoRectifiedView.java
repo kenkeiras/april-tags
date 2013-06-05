@@ -14,9 +14,7 @@ public class StereoRectifiedView implements View
     int         width;
     int         height;
 
-    String      viewCacheString;
-
-    public StereoRectifiedView(double _K[][], double XY01[][], String viewCacheString)
+    public StereoRectifiedView(double _K[][], double XY01[][])
     {
         Rb = XY01[0][1];
         Rl = XY01[0][0];
@@ -30,8 +28,6 @@ public class StereoRectifiedView implements View
 
         width  = (int) Math.floor(Rr - Rl + 1);
         height = (int) Math.floor(Rt - Rb + 1);
-
-        this.viewCacheString = viewCacheString;
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -52,29 +48,13 @@ public class StereoRectifiedView implements View
         return LinAlg.copy(K);
     }
 
-    public double[] normToPixels(double xy_rn[])
+    public double[] rayToPixels(double xyz_r[])
     {
-        return CameraMath.pixelTransform(K, xy_rn);
+        return CameraMath.pinholeTransform(K, xyz_r);
     }
 
-    public double[] pixelsToNorm(double xy_rp[])
+    public double[] pixelsToRay(double xy_rp[])
     {
-        return CameraMath.pixelTransform(Kinv, xy_rp);
-    }
-
-    public String getCacheString()
-    {
-        String s = String.format("%s", viewCacheString);
-
-        for (int row=0; row < K.length; row++)
-            for (int col=0; col < K[row].length; col++)
-                s = String.format("%s, %.12f", s, K[row][col]);
-
-        s = String.format("%s, %.12f %.12f %.12f %.12f",
-                          s, Rb, Rr, Rt, Rl);
-
-        s = String.format("%s, %d, %d", s, width, height);
-
-        return s;
+        return CameraMath.rayToPlane(CameraMath.pinholeTransform(Kinv, xy_rp));
     }
 }

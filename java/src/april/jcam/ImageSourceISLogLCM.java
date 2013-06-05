@@ -82,7 +82,7 @@ public class ImageSourceISLogLCM extends ImageSource implements LCMSubscriber
         }
     }
 
-    private ISLog.ISEvent readImage(url_t url) throws IOException, IllegalArgumentException
+    public ISLog.ISEvent readImage(url_t url) throws IOException, IllegalArgumentException
     {
         URLParser parser = new URLParser(url.url);
 
@@ -108,10 +108,17 @@ public class ImageSourceISLogLCM extends ImageSource implements LCMSubscriber
             throw new IOException();
 
         String path = basepath + location;
+        String newCanonicalPath = (new File(path)).getCanonicalPath();
+
         // close old log if it's time for the new one
-        if (log != null && !path.equals(log.getPath())) {
-            log.close();
-            log = null;
+        if (log != null) {
+
+            String oldCanonicalPath = (new File(log.getPath())).getCanonicalPath();
+
+            if (!newCanonicalPath.equals(oldCanonicalPath)) {
+                log.close();
+                log = null;
+            }
         }
 
         // we don't have a log! open one!

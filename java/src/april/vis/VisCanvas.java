@@ -40,6 +40,9 @@ public class VisCanvas extends JComponent implements VisSerializable
     public int popupFrameRates[] = new int[] { 1, 5, 10, 20, 30, 60, 100, 100000 };
     int targetFrameRate = 20;
 
+    public boolean smoothPoints = false;
+    public boolean smoothPolygons = false;
+
     // a list of open movies.
     ArrayList<Movie> movies = new ArrayList<Movie>();
     Movie popupMovie;
@@ -335,18 +338,19 @@ public class VisCanvas extends JComponent implements VisSerializable
 
             gl.glShadeModel(GL.GL_SMOOTH);
 
-/*
-  gl.glEnable(GL.GL_POINT_SMOOTH);
-  gl.glHint(GL.GL_POINT_SMOOTH_HINT, GL.GL_NICEST);
-*/
+            if (smoothPoints) {
+                gl.glEnable(GL.GL_POINT_SMOOTH);
+                gl.glHint(GL.GL_POINT_SMOOTH_HINT, GL.GL_NICEST);
+            }
 
             // VzGrid benefits tremendously from this
             gl.glEnable(GL.GL_LINE_SMOOTH);
             gl.glHint(GL.GL_LINE_SMOOTH_HINT, GL.GL_NICEST);
-/*
-  gl.glEnable(GL.GL_POLYGON_SMOOTH);
-  gl.glHint(GL.GL_POLYGON_SMOOTH_HINT, GL.GL_NICEST);
-*/
+
+            if (smoothPolygons) {
+                gl.glEnable(GL.GL_POLYGON_SMOOTH);
+                gl.glHint(GL.GL_POLYGON_SMOOTH_HINT, GL.GL_NICEST);
+            }
 
             gl.glEnable(GL.GL_SCISSOR_TEST);
 
@@ -690,9 +694,15 @@ public class VisCanvas extends JComponent implements VisSerializable
         SyncTask st = new SyncTask();
 
         synchronized(st.o) {
-            glManager.add(redrawTask); // ensure we're queued
-            glManager.add(st);
+            boolean success = false;
+            int i = 0;
+            while (!success) {
+                if (i++ > 0)
+                    TimeUtil.sleep(1);
 
+                success = glManager.add(redrawTask); // ensure we're queued
+                success &= glManager.add(st);
+            }
             try {
                 st.o.wait();
             } catch (InterruptedException ex) {
@@ -714,8 +724,12 @@ public class VisCanvas extends JComponent implements VisSerializable
         drawSync();
 
         // Our image will be upside down. let's flip it.
-        BufferedImage thisim = ImageUtil.flipVertical(im);
-
+        BufferedImage thisim = this.im;
+        if (thisim == null) {
+            System.out.println("WRN: Screenshot failed due to null image");
+            return;
+        }
+        thisim = ImageUtil.flipVertical(im);
         try {
             ImageIO.write(thisim, format, file);
         } catch (IOException ex) {

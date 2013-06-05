@@ -221,7 +221,7 @@ public class JCamView
 
                     String camera = urls.get(cameraList.getSelectedIndex());
 
-                    String url = String.format("%s?fidx=%d", camera, isrc.getCurrentFormatIndex());
+                    String url = String.format("%s?fidx=%d", camera.split("\\?")[0], isrc.getCurrentFormatIndex());
 
                     for (int i=0; i < isrc.getNumFeatures(); i++) {
                         String key = isrc.getFeatureName(i);
@@ -589,8 +589,8 @@ public class JCamView
                 add(jcb, BorderLayout.CENTER);
             } else if (type.startsWith("i")) {
                 String tt[] = type.split(",");
-                int min = Integer.parseInt(tt[1]);
-                int max = Integer.parseInt(tt[2]);
+                int min = (int)(Long.parseLong(tt[1]) & 0xffffffff); // allows max IP addr of 0xffffffff to be parsed
+                int max = (int)(Long.parseLong(tt[2]) & 0xffffffff);
 
                 slider = new FeedbackSlider(min, max, value, value, true);
                 slider.minFormatPosition = 0;

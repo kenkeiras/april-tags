@@ -40,7 +40,7 @@ public class CameraMath
         return LinAlg.select(X, 0, 2);
     }
 
-    public final static double[] pixelTransform(double T[][], double p[])
+    public final static double[] pinholeTransform(double T[][], double p[])
     {
         if (T.length == 3) {
             if (p.length==2) {
@@ -58,6 +58,49 @@ public class CameraMath
                 return new double[] { r[0]/r[2], r[1]/r[2] };
             }
             assert(false);
+        }
+
+        assert(false);
+        return null;
+    }
+
+    public final static double[] pointTransform(double T[][], double p[])
+    {
+        if (T.length == 3) {
+            if (p.length==3) {
+                double r[] = new double[] { T[0][0]*p[0] + T[0][1]*p[1] + T[0][2]*p[2],
+                                            T[1][0]*p[0] + T[1][1]*p[1] + T[1][2]*p[2],
+                                            T[2][0]*p[0] + T[2][1]*p[1] + T[2][2]*p[2] };
+
+                return r;
+            }
+            assert(false);
+        }
+
+        assert(false);
+        return null;
+    }
+
+    public final static double[] rayToPlane(double p[])
+    {
+        if (p.length == 2) {
+            return new double[] { p[0], p[1], 1 }; // x and y already normalized, z == 1 plane
+        }
+        if (p.length == 3) {
+            return new double[] { p[0]/p[2], p[1]/p[2], 1 }; // normalize x and y, z == 1 plane
+        }
+
+        assert(false);
+        return null;
+    }
+
+    public final static double[] rayToSphere(double p[])
+    {
+        if (p.length == 2) {
+            return LinAlg.normalize(new double[] { p[0], p[1], 1 }); // assume point was on z == 1 plane
+        }
+        if (p.length == 3) {
+            return LinAlg.normalize(p); // unit magnitude sphere
         }
 
         assert(false);
@@ -379,15 +422,15 @@ public class CameraMath
         double T[][]        = getPointNormalizationTransform(xys);
         double Tprime[][]   = getPointNormalizationTransform(xy_primes);
 
-        double A[][] = new double[2*n][];
+        double A[][] = new double[Math.max(2*n, 10)][];
         for (int i=0; i < n; i++) {
 
             double xy[]         = xys.get(i);
             double xy_prime[]   = xy_primes.get(i);
 
             // apply the normalization to both points
-            xy = pixelTransform(T, xy);
-            xy_prime = pixelTransform(Tprime, xy_prime);
+            xy = pinholeTransform(T, xy);
+            xy_prime = pinholeTransform(Tprime, xy_prime);
 
             double x  = xy[0];
             double y  = xy[1];
@@ -398,6 +441,12 @@ public class CameraMath
 
             A[2*i+0] = new double[] {     0,     0,     0, -wp*x, -wp*y, -wp*w,  yp*x,  yp*y,  yp*w };
             A[2*i+1] = new double[] {  wp*x,  wp*y,  wp*w,     0,     0,     0, -xp*x, -xp*y, -xp*w };
+        }
+
+        // add a zero entry because of the economical SVD
+        if (n == 4) {
+            A[8] = new double[9];
+            A[9] = new double[9];
         }
 
         SingularValueDecomposition A_SVD = new SingularValueDecomposition(new Matrix(A));
@@ -411,6 +460,12 @@ public class CameraMath
         Matrix U = A_SVD.getU();
         Matrix S = A_SVD.getS();
         Matrix V = A_SVD.getV();
+
+        /*
+        System.out.println("U:"); U.print();
+        System.out.println("S:"); S.print();
+        System.out.println("V:"); V.print();
+        */
 
         double hvec[] = V.getColumn(V.getColumnDimension()-1).getDoubles();
 
@@ -447,8 +502,8 @@ public class CameraMath
             double xy_prime[]   = xy_primes.get(i);
 
             // apply the normalization to both points
-            xy = pixelTransform(T, xy);
-            xy_prime = pixelTransform(Tprime, xy_prime);
+            xy = pinholeTransform(T, xy);
+            xy_prime = pinholeTransform(Tprime, xy_prime);
 
             double x  = xy[0];
             double y  = xy[1];
@@ -569,9 +624,7 @@ public class CameraMath
         if (L2C != null)
             xyz_camera = LinAlg.transform(L2C, xyz);
 
-        double xy_rn[] = new double[] { xyz_camera[0] / xyz_camera[2] ,
-                                        xyz_camera[1] / xyz_camera[2] };
-        return pixelTransform(K, xy_rn);
+        return pinholeTransform(K, xyz_camera);
     }
 
     // View-based projection
@@ -590,9 +643,22 @@ public class CameraMath
         if (L2C != null)
             xyz_camera = LinAlg.transform(L2C, xyz);
 
-        double xy_rn[] = new double[] { xyz_camera[0] / xyz_camera[2] ,
-                                        xyz_camera[1] / xyz_camera[2] };
-        return view.normToPixels(xy_rn);
+        return view.rayToPixels(xyz_camera);
+    }
+
+    // View-based projection with a distortion function verifier
+
+    public final static double[] project(View view, DistortionFunctionVerifier verifier,
+                                         double L2C[][], double xyz[])
+    {
+        double xyz_camera[] = xyz;
+        if (L2C != null)
+            xyz_camera = LinAlg.transform(L2C, xyz);
+
+        if (verifier.validRay(xyz_camera))
+            return view.rayToPixels(xyz_camera);
+
+        return null;
     }
 
     ////////////////////////////////////////////////////////////////////////////////

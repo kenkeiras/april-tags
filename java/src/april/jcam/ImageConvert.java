@@ -321,6 +321,7 @@ public class ImageConvert
                                                                 JPEGHuffmanTable.StdACChrominance });
 
                 BufferedImage im = reader.read(0, params);
+                reader.dispose();
                 return im;
             } catch (IOException ex) {
                 System.out.println("ImageConvert: MJPG decode failed: "+ex);

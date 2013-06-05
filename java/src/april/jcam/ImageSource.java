@@ -8,11 +8,17 @@ public abstract class ImageSource
 {
     public static ImageSource make(String url) throws IOException
     {
-//        if (url.startsWith("file:") || url.startsWith("dir:"))
-//            return new ImageSourceFile(url);
+       if (url.startsWith("file:") || url.startsWith("dir:"))
+           return new ImageSourceFile(url);
 
         if (url.startsWith("islog-lcm:"))
             return new ImageSourceISLogLCM(url);
+
+        if (url.startsWith("tcp:"))
+            return new ImageSourceTCP(url);
+
+        if (url.startsWith("reflect:"))
+            return new ImageSourceReflect(url);
 
         return new ImageSourceNative(url);
     }

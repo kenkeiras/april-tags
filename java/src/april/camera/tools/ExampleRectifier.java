@@ -17,15 +17,17 @@ public class ExampleRectifier
     View output;
     Rasterizer      rasterizer;
 
-    public ExampleRectifier(Config config, String imagepath) throws IOException
+    public ExampleRectifier(Config config, String imagepath, String rectifierclass, int maxdimension) throws IOException
     {
         ////////////////////////////////////////
         // Get output image path
-        String toks[] = imagepath.split("\\.");
-        String newpath = toks[0];
-        for (int i=1; i+1 < toks.length; i++)
-            newpath = String.format("%s.%s", newpath, toks[i]);
-        newpath = String.format("%s.rectified.%s", newpath, toks[toks.length-1]);
+        String classtoks[] = rectifierclass.split("\\.");
+        String pathtoks[] = imagepath.split("\\.");
+        String newpath = pathtoks[0];
+        for (int i=1; i+1 < pathtoks.length; i++)
+            newpath = String.format("%s.%s", newpath, pathtoks[i]);
+        newpath = String.format("%s.%s.%s",
+                                newpath, classtoks[classtoks.length-1], pathtoks[pathtoks.length-1]);
         System.out.printf("Output image path: '%s'\n", newpath);
 
         ////////////////////////////////////////
@@ -49,9 +51,23 @@ public class ExampleRectifier
         ////////////////////////////////////////
         // Output view
         System.out.println("Creating rectified view");
-        output = new MaxRectifiedView(input);
-        //output = new MaxInscribedRectifiedView(input);
-        //output = new ScaledView(2, output);
+        Object robj = null;
+        try {
+            robj = Class.forName(rectifierclass).getConstructor(new Class[] { Class.forName("april.camera.View") }).newInstance(input);
+        } catch (Exception ex) {
+            System.out.println("Exception when creating rectifier via reflection: "+ex);
+            ex.printStackTrace();
+            System.exit(-1);
+        }
+        assert(robj != null);
+        assert(robj instanceof View);
+        output = (View) robj;
+
+        int maxOutputDimension = Math.max(output.getWidth(), output.getHeight());
+        if (maxdimension > 0 && maxOutputDimension > maxdimension) {
+            output = new ScaledView(((double) maxdimension) / maxOutputDimension,
+                                    output);
+        }
 
         ////////////////////////////////////////
         // Make rasterizer
@@ -80,8 +96,10 @@ public class ExampleRectifier
 
         opts.addBoolean('h',"help",false,"See the help screen");
         opts.addString('c',"config","","Config file path");
-        opts.addString('s',"childstring","aprilCameraCalibration","CameraSet child name (e.g. aprilCameraCalibration.camera0)");
+        opts.addString('s',"childstring","aprilCameraCalibration.camera0000","CameraSet child name (e.g. aprilCameraCalibration.camera0)");
+        opts.addString('r',"rectifier","april.camera.MaxRectifiedView","Rectifier class to use");
         opts.addString('i',"image","","Image path");
+        opts.addInt('m',"maxdimension",-1,"Maximum image dimension after rectifying");
 
         if (!opts.parse(args)) {
             System.out.println("Option error: " + opts.getReason());
@@ -89,7 +107,9 @@ public class ExampleRectifier
 
         String configpath = opts.getString("config");
         String childstring = opts.getString("childstring");
+        String rectifierclass = opts.getString("rectifier");
         String imagepath = opts.getString("image");
+        int maxdim = opts.getInt("maxdimension");
 
         if (opts.getBoolean("help") || configpath.isEmpty() || childstring.isEmpty() || imagepath.isEmpty()) {
             System.out.println("Usage:");
@@ -101,7 +121,7 @@ public class ExampleRectifier
             Config config = new ConfigFile(configpath);
             Config child = config.getChild(childstring);
 
-            new ExampleRectifier(child, imagepath);
+            new ExampleRectifier(child, imagepath, rectifierclass, maxdim);
 
         } catch (IOException ex) {
             System.err.println("Exception: " + ex);

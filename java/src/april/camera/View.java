@@ -16,19 +16,14 @@ public interface View
       */
     public double[][]   copyIntrinsics();
 
-    /** Convert a 2D double { X/Z, Y/Z } to pixel coordinates in this view,
+    /** Convert a 3D ray to pixel coordinates in this view,
       * applying distortion if appropriate.
       */
-    public double[]     normToPixels(double xy_n[]);
+    public double[]     rayToPixels(double xyz_r[]);
 
-    /** Convert a 2D pixel coordinate in this view to normalized coordinates,
-      * { X/Z, Y/Z }, removing distortion if appropriate.
+    /** Convert a 2D pixel coordinate in this view to a 3D ray,
+      * removing distortion if appropriate.
       */
-    public double[]     pixelsToNorm(double xy_p[]);
-
-    /** Return a string of all critical parameters for caching data based
-      * on a calibration (e.g. lookup tables).
-      */
-    public String       getCacheString();
+    public double[]     pixelsToRay(double xy_p[]);
 }
 
