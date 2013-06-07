@@ -340,6 +340,9 @@ public class ImageConvert
             return im;
         }
 
+        if (format.equals("Y10B"))
+            return convertY10BtoGRAY(width, height, d);
+
         if (format.equals("YUYV"))
             return convertYUYVtoRGB(width, height, d);
 
@@ -494,6 +497,44 @@ public class ImageConvert
                 hsv[i*stride + 3*j+2] = (byte) v;
             }
         }
+        return im;
+    }
+
+    /** Convert the format Y10B to USHORT_GRAY. This format is used by the kinect,
+     * among other things, and packs 10 bits of grayscale data into a
+     * a byte array.
+     **/
+    public static BufferedImage convertY10BtoGRAY(int w, int h, byte[] y10b)
+    {
+        BufferedImage im = new BufferedImage(w, h, BufferedImage.TYPE_USHORT_GRAY);
+
+        short[] buf = ((DataBufferUShort)(im.getRaster().getDataBuffer())).getData();
+
+        // Every 5 bytes yields 4 pixels.
+        // Handle all 4 pixels at a type, discarding the last couple for now XXX
+        // [p0_9:2 | p0_1:0 , p1_9:4 | p1_3:0 , p2_9:6 | p2_5:0, p3_9:8 | p3_7:0]
+        int bidx = 0;
+        for (int i = 0; i < y10b.length; i+=5) {
+            buf[bidx+0] = (short)((y10b[i] & 0xff) << 2 |
+                                  (y10b[i+1] & 0xc0) >> 6);
+            buf[bidx+1] = (short)((y10b[i+1] & 0x3f) << 4 |
+                                  (y10b[i+2] & 0xf0) >> 4);
+            buf[bidx+2] = (short)((y10b[i+2] & 0x0f) << 6 |
+                                  (y10b[i+3] & 0xfc) >> 2);
+            buf[bidx+3] = (short)((y10b[i+3] & 0x03) << 8 |
+                                  (y10b[i+4] & 0xff) >> 0);
+
+            // System.out.printf("%x %x %x %x %x\n", y10b[i],y10b[i+1],y10b[i+2],y10b[i+3],y10b[i+4]);
+
+            // Convert 10 bit gray values to 16 bit equivalents
+            buf[bidx+0] =(short)((double)(buf[bidx+0])/0x3ff * 0xffff);
+            buf[bidx+1] =(short)((double)(buf[bidx+1])/0x3ff * 0xffff);
+            buf[bidx+2] =(short)((double)(buf[bidx+2])/0x3ff * 0xffff);
+            buf[bidx+3] =(short)((double)(buf[bidx+3])/0x3ff * 0xffff);
+
+            bidx += 4;
+        }
+
         return im;
     }
 
