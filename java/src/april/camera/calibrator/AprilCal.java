@@ -1604,14 +1604,17 @@ public class AprilCal
     {
         List<List<CalibrationInitializer>> initializerTypes = new ArrayList();
         initializerTypes.add(Arrays.asList((CalibrationInitializer) new DistortionFreeInitializer("")));
+        initializerTypes.add(Arrays.asList((CalibrationInitializer) new AngularPolynomialInitializer("kclength=1")));
         initializerTypes.add(Arrays.asList((CalibrationInitializer) new AngularPolynomialInitializer("kclength=2")));
         initializerTypes.add(Arrays.asList((CalibrationInitializer) new AngularPolynomialInitializer("kclength=3")));
         initializerTypes.add(Arrays.asList((CalibrationInitializer) new AngularPolynomialInitializer("kclength=4")));
         initializerTypes.add(Arrays.asList((CalibrationInitializer) new AngularPolynomialInitializer("kclength=5")));
+        initializerTypes.add(Arrays.asList((CalibrationInitializer) new RadialPolynomialInitializer("kclength=1")));
         initializerTypes.add(Arrays.asList((CalibrationInitializer) new RadialPolynomialInitializer("kclength=2")));
         initializerTypes.add(Arrays.asList((CalibrationInitializer) new RadialPolynomialInitializer("kclength=3")));
         initializerTypes.add(Arrays.asList((CalibrationInitializer) new RadialPolynomialInitializer("kclength=4")));
         initializerTypes.add(Arrays.asList((CalibrationInitializer) new RadialPolynomialInitializer("kclength=5")));
+        initializerTypes.add(Arrays.asList((CalibrationInitializer) new CaltechInitializer("kclength=1")));
         initializerTypes.add(Arrays.asList((CalibrationInitializer) new CaltechInitializer("kclength=2")));
         initializerTypes.add(Arrays.asList((CalibrationInitializer) new CaltechInitializer("kclength=3")));
         initializerTypes.add(Arrays.asList((CalibrationInitializer) new CaltechInitializer("kclength=4")));
