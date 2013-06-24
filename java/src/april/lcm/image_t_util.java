@@ -117,6 +117,8 @@ public class image_t_util
         v.image = bouts.toByteArray();
         v.size = v.image.length;
 
+        writer.dispose();
+
         return v;
     }
 

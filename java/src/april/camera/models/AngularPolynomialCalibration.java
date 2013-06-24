@@ -10,6 +10,8 @@ import april.util.*;
   */
 public class AngularPolynomialCalibration implements Calibration, ParameterizableCalibration
 {
+    static final int MAX_ITERATIONS = 10;
+
     // required calibration parameter lengths
     static final public int LENGTH_FC = 2;
     static final public int LENGTH_CC = 2;
@@ -241,19 +243,41 @@ public class AngularPolynomialCalibration implements Calibration, Parameterizabl
         else if (Double.isNaN(yrtheta)) rtheta = xrtheta;
         else                            rtheta = (xrtheta + yrtheta) / 2.0;
 
-        double theta = Math.sqrt(xy_dn[0]*xy_dn[0] + xy_dn[1]*xy_dn[1]);
+        // xy_dn is on the z==1 plane. estimate initial theta
+        double theta = Math.atan2(Math.sqrt(xy_dn[0]*xy_dn[0] + xy_dn[1]*xy_dn[1]), 1);
 
-        for (int i=0; i < 10; i++) {
+        // gradient descent
+        for (int i = 0; i < MAX_ITERATIONS; i++) {
 
-            double rthetaHigher = 0;
-            double thetapow     = theta;
-            double theta2       = theta*theta;
+            double eps = 0.01; // half a degree
+
+            double theta0 = theta;
+            double theta1 = theta + eps;
+
+            double rtheta0  = theta0;
+            double theta0pow = theta0;
+            double theta02   = theta0*theta0;
             for (int j=0; j < LENGTH_KC; j++) {
-                thetapow *= theta2;
-                rthetaHigher += kc[j]*thetapow;
+                theta0pow *= theta02;
+                rtheta0   += kc[j]*theta0pow;
             }
 
-            theta = rtheta - rthetaHigher;
+            double rtheta1  = theta1;
+            double theta1pow = theta1;
+            double theta12   = theta1*theta1;
+            for (int j=0; j < LENGTH_KC; j++) {
+                theta1pow *= theta12;
+                rtheta1   += kc[j]*theta1pow;
+            }
+
+            double J = (rtheta1 - rtheta0) / eps;
+
+            double res = rtheta0 - rtheta;
+
+            theta = theta - res/J;
+
+            if (Math.abs(res) < 1.8e-5) // less than 0.001 degrees?
+                break;
         }
 
         // Theta is the angle off of the z axis, which forms a triangle with sides
