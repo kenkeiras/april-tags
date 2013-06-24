@@ -16,7 +16,9 @@ public class ConfigFile extends Config
     public ConfigFile(File f) throws IOException
     {
         prefix = "";
-        basePath = f.getParent() + File.separator;
+        if (f.getParent() != null)
+            basePath = f.getParent() + File.separator;
+
         merge(f);
     }
 
