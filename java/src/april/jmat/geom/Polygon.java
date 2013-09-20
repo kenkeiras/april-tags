@@ -2,6 +2,7 @@ package april.jmat.geom;
 
 import april.jmat.*;
 
+import java.text.DecimalFormat;
 import java.util.*;
 
 /** Simple (non-intersecting) polygon.
@@ -203,6 +204,43 @@ public class Polygon
         }
 
         return false;
+    }
+
+    /**
+     * Generates a human-readable string representation of this object instance
+     */
+    @Override
+    public String toString()
+    {
+        StringBuffer buffer = new StringBuffer("Polygon{");
+
+        for (int i = 0; i < points.size(); i++) {
+            buffer.append(pointToString(points.get(i)));
+            if (i + 1 < points.size())
+                buffer.append("; ");
+        }
+        buffer.append("}");
+
+        return buffer.toString();
+    }
+
+    /**
+     * Formats a double array (point) as a human-readable string in the format:
+     * "(x.xxx[, y.yyy[, z.zzz...]])"
+     */
+    public static String pointToString(double[] point)
+    {
+        DecimalFormat decimalFormat = new DecimalFormat("0.000");
+
+        StringBuffer buffer = new StringBuffer("(");
+        for (int i = 0; i < point.length; i++) {
+            buffer.append(decimalFormat.format(point[i]));
+            if (i < point.length - 1)
+                buffer.append(", ");
+        }
+        buffer.append(")");
+
+        return buffer.toString();
     }
 
     public static void main(String args[])

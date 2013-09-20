@@ -73,4 +73,30 @@ public class GPSUtil
             return -1;
         return 1;
     }
+
+    /** Approximate the geodesic distance between two latlon pairs */
+    public static double haverSineDist(double[] latlon1, double[] latlon2)
+    {
+        return haverSineDist(latlon1[0], latlon1[1], latlon2[0], latlon2[1]);
+    }
+
+
+    /** Approximate the geodesic distance between two latlon pairs */
+    public static double haverSineDist(double lat1, double lng1, double lat2, double lng2)
+    {
+        // http://en.wikipedia.org/wiki/Haversine_formula
+        lat1 = Math.toRadians(lat1);
+        lng1 = Math.toRadians(lng1);
+        lat2 = Math.toRadians(lat2);
+        lng2 = Math.toRadians(lng2);
+
+        double dlon = lng2 - lng1;
+        double dlat = lat2 - lat1;
+
+        double a = LinAlg.sq((Math.sin(dlat/2))) + Math.cos(lat1) * Math.cos(lat2) * LinAlg.sq(Math.sin(dlon/2));
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+        final double EARTH_RADIUS = 6731000;
+        return EARTH_RADIUS * c;
+    }
 }

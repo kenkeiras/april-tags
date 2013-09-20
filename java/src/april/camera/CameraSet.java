@@ -48,7 +48,6 @@ public class CameraSet
             cam.cal = cal;
 
             // Extrinsics
-            //double ext[][] = ConfigUtil.getRigidBodyTransform(child, "extrinsics");
             double xyz[] = child.requireDoubles("extrinsics.position");
             double rpy[] = child.requireDoubles("extrinsics.rollpitchyaw_degrees");
             double ext[][] = LinAlg.xyzrpyToMatrix(new double[] { xyz[0]             ,

@@ -25,13 +25,17 @@ public class Base64
 
     public static String[] encode(byte in[])
     {
+        return encode(in, in.length);
+    }
+
+    public static String[] encode(byte in[], int length) {
         StringBuilder sb = new StringBuilder();
         ArrayList<String> lines = new ArrayList<String>();
 
-        for (int idx = 0; idx < in.length; idx+=3) {
+        for (int idx = 0; idx < length; idx+=3) {
             int v0 = in[idx]&0xff;
-            int v1 = idx+1 < in.length ? in[idx+1]&0xff : 0;
-            int v2 = idx+2 < in.length ? in[idx+2]&0xff : 0;
+            int v1 = idx+1 < length ? in[idx+1]&0xff : 0;
+            int v2 = idx+2 < length ? in[idx+2]&0xff : 0;
             int v = (v0<<16) | (v1<<8) | v2;
 
             int a = (v>>18)&63;
@@ -44,10 +48,10 @@ public class Base64
             sb.append(encodeLut[c]);
             sb.append(encodeLut[d]);
 
-            if (idx+3 >= in.length || sb.length()==72) {
-                if (idx+2 >= in.length)
+            if (idx+3 >= length || sb.length()==72) {
+                if (idx+2 >= length)
                     sb.setCharAt(sb.length()-1, '=');
-                if (idx+1 >= in.length)
+                if (idx+1 >= length)
                     sb.setCharAt(sb.length()-2, '=');
 
                 lines.add(sb.toString());
@@ -88,40 +92,103 @@ public class Base64
         return outs.toByteArray();
     }
 
+    /**
+     * Provides a user-space mechanism for encoding and decoding data in base-64.
+     *
+     * Usage: Base64 [--encode* | --decode] [--file=<input>] [--help]
+     */
     public static void main(String args[])
     {
-        Random r = new Random();
+        final int BINARY_BUFFER_LEN = 54;  // size of raw binary input/output buffer
+        final int TEXT_BUFFER_LEN = 73;    // size of encoded text input/output buffer
 
-        // self test.
+        GetOpt opts  = new GetOpt();
 
-        for (int iter = 0; iter < 10000; iter++) {
-            int len = r.nextInt(500);
-            byte in[] = new byte[len];
-            for (int i = 0; i < in.length; i++)
-                in[i] = (byte) r.nextInt(256);
+        opts.addBoolean('h', "help", false, "Print usage information and exit");
+        opts.addBoolean('e', "encode", true, "Encode binary input into base-64 text (default)");
+        opts.addBoolean('d', "decode", false, "Decode base-64 text input into original binary");
+        opts.addString( 'f', "file", "", "Read input from a file with the given filename");
 
-            String enc[] = encode(in);
-
-            byte out[] = decode(enc);
-
-            if (false) {
-                for (int i = 0; i < enc.length; i++)
-                    System.out.println(enc[i]);
-                System.out.println("");
-            }
-
-            System.out.printf("%4d %4d\n", in.length, out.length);
-
-            assert (in.length == out.length);
-            if (true) {
-                for (int i = 0; i < in.length; i++) {
-                    //		    System.out.printf("%2x %2x\n", in[i], out[i]);
-                    assert(in[i]==out[i]);
-                }
-            }
-
+        if (!opts.parse(args)) {
+            System.err.println("Invalid argument: " + opts.getReason());
+            System.exit(1);
         }
 
-        System.out.println("done");
+        if (opts.getBoolean("help")) {
+            System.out.println("Usage:");
+            opts.doHelp();
+            System.exit(0);
+        }
+
+        if (opts.wasSpecified("encode") && opts.wasSpecified("decode")) {
+            System.err.println("Only one of --encode and --decode may be specified");
+            System.exit(1);
+        }
+
+
+        if (opts.getBoolean("decode")) {
+            // decode base-64 text input
+            try {
+                BufferedReader input = new BufferedReader(new InputStreamReader(System.in));
+                char[] data = new char[TEXT_BUFFER_LEN];
+                ArrayList<String> lineArray = new ArrayList<String>();
+                int count;
+
+                if (opts.wasSpecified("file")) {
+                    // open input file
+                    input = new BufferedReader(new FileReader(opts.getString("file")));
+                }
+
+                while (true) {
+                    // read input data
+                    count = input.read(data, 0, TEXT_BUFFER_LEN);
+                    if (count < 0)
+                        break;
+                    // trim trailing end-of-line
+                    if (data[count-1] == '\n')
+                        count--;
+                    lineArray.add(new String(data, 0, count));
+                }
+
+                // decode and output
+                byte[] output = Base64.decode(lineArray.toArray(new String[0]));
+                System.out.write(output, 0, output.length);
+
+                input.close();
+            } catch (IOException ioe) {
+                System.err.println(ioe);
+                System.exit(2);
+            }
+        } else {
+            // encode binary input
+            try {
+                BufferedInputStream input = new BufferedInputStream(System.in);
+                byte[] data = new byte[BINARY_BUFFER_LEN];
+                int count;
+
+                if (opts.wasSpecified("file")) {
+                    // open input file
+                    input = new BufferedInputStream(new FileInputStream(opts.getString("file")));
+                }
+
+                while (true) {
+                    // read input data
+                    count = input.read(data, 0, BINARY_BUFFER_LEN);
+                    if (count < 0)
+                        break;
+
+                    // encode and output data
+                    String[] encoded = Base64.encode(data, count);
+                    for (String line : encoded) {
+                        System.out.println(line);
+                    }
+                }
+
+                input.close();
+            } catch (IOException ioe) {
+                System.err.println(ioe);
+                System.exit(2);
+            }
+        }
     }
 }
