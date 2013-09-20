@@ -1360,6 +1360,13 @@ public final class LinAlg
         System.out.printf("\n");
     }
 
+    public static void printTranspose(long v[])
+    {
+        for (int i = 0; i < v.length; i++)
+            System.out.printf("%15d\t", v[i]);
+        System.out.printf("\n");
+    }
+
     public static void printTranspose(float v[])
     {
         for (int i = 0; i < v.length; i++)
@@ -1400,6 +1407,13 @@ public final class LinAlg
         System.out.printf("\n");
     }
 
+    public static void print(long v[])
+    {
+        for (int i = 0; i < v.length; i++)
+            System.out.printf("%15dl\n", v[i]);
+        System.out.printf("\n");
+    }
+
     public static void print(float v[])
     {
         for (int i = 0; i < v.length; i++)
@@ -1414,13 +1428,31 @@ public final class LinAlg
         System.out.printf("\n");
     }
 
+    public static void print(int v[][])
+    {
+        for (int i = 0; i < v.length; i++) {
+            printTranspose(v[i]);
+        }
+    }
+
+    public static void print(long v[][])
+    {
+        for (int i = 0; i < v.length; i++) {
+            printTranspose(v[i]);
+        }
+    }
+
+    public static void print(float v[][])
+    {
+        for (int i = 0; i < v.length; i++) {
+            printTranspose(v[i]);
+        }
+    }
+
     public static void print(double v[][])
     {
         for (int i = 0; i < v.length; i++) {
-            for (int j = 0; j < v[0].length; j++) {
-                System.out.printf("%14f ", v[i][j]);
-            }
-            System.out.printf("\n");
+            printTranspose(v[i]);
         }
     }
 
