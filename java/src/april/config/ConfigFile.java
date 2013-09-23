@@ -189,11 +189,6 @@ public class ConfigFile extends Config
             }
 
             keys.put(key, values.toArray(new String[0]));
-            System.out.printf("root: %s\t key: %s\tdepth: %d\n", keyroot, key, depth);
-            if (true) {
-                for (String str : values)
-                    System.out.printf("\t%s\n", str);
-            }
         }
     }
 

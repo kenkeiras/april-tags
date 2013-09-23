@@ -142,32 +142,13 @@ public class ConfigFileWriter implements KeyedStructureWriter
 
     private void writeFloatsRaw(float v[]) throws IOException
     {
-        writeFloatsRaw(v, 5);
-    }
-
-    private void writeFloatsRaw(float v[], int cols) throws IOException
-    {
         outs.write("[ ");
-
-        if (v.length > cols) {
-            indent += 2;
-            outs.write("\n");
-            doIndent();
-        }
         for (int i = 0; i < v.length; i++){
-            if (i > 0) {
+            if (i > 0)
                 outs.write(", ");
-                if (cols > 0 && (i % cols) == 0) {
-                    outs.write("\n");
-                    doIndent();
-                }
-            }
-            outs.write(String.format("%2.10g", v[i]));
+            outs.write(String.format("%.10g", v[i]));
         }
         outs.write(" ]");
-
-        if (v.length > cols)
-            indent -= 2;
     }
 
     private void writeDoublesRaw(double v[]) throws IOException
@@ -316,7 +297,7 @@ public class ConfigFileWriter implements KeyedStructureWriter
                                                                 {6,7,8,9}});
         outs.writeLongsMatrix("longs_matrix",     new long[][]{{1,2,3,4,5},
                                                                 {6,7,8,9}});
-        outs.writeFloatsMatrix("floats_matrix",   new float[][]{{1,2,3,4,5},
+        outs.writeFloatsMatrix("floats_matrix",   new float[][]{{1,2,3,4,5,6,7,8},
                                                                   {6,7,8,9}});
 
         outs.writeComment("here");
@@ -330,29 +311,29 @@ public class ConfigFileWriter implements KeyedStructureWriter
 
         Config config = new ConfigFile(path);
 
-        System.out.printf("%d\t%d\t%d\t%f\t%f\t%g\n",
+        System.out.printf("good_int\t%d\nbad_int \t%d\ngood_long\t%d\n" +
+                          "good_float\t%f\nbad_float\t%f\ngood_double\t%g\n",
                           config.requireInt("s.good_int"),   config.requireInt("s.bad_int"),
                           config.requireLong("s.good_long"),
                           config.requireDouble("s.good_float"), config.requireDouble("s.bad_float"),
                           config.requireDouble("s.good_double"));
 
-        System.out.println("v.ints");
+        System.out.println("v.ints:");
         LinAlg.printTranspose(config.requireInts("v.ints"));
-        System.out.println("v.longs");
+        System.out.println("v.longs:");
         LinAlg.printTranspose(config.requireLongs("v.longs"));
-        System.out.println("v.floats");
+        System.out.println("v.floats:");
         LinAlg.printTranspose(config.requireFloats("v.floats"));
-        System.out.println("v.doubles");
+        System.out.println("v.doubles:");
         LinAlg.printTranspose(config.requireDoubles("v.doubles"));
 
-
-        System.out.println("m.ints_matrix");
+        System.out.println("m.ints_matrix:");
         LinAlg.print(config.requireIntsMatrix("m.ints_matrix"));
-        System.out.println("m.longs_matrix");
+        System.out.println("m.longs_matrix:");
         LinAlg.print(config.requireLongsMatrix("m.longs_matrix"));
-        System.out.println("m.floats_matrix");
+        System.out.println("m.floats_matrix:");
         LinAlg.print(config.requireFloatsMatrix("m.floats_matrix"));
-        System.out.println("m.doubles_matrix");
+        System.out.println("m.doubles_matrix:");
         LinAlg.print(config.requireDoublesMatrix("m.doubles_matrix"));
     }
 }
