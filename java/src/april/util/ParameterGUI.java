@@ -463,8 +463,10 @@ public class ParameterGUI extends JPanel
 
         void setEnabled(boolean v)
         {
-            if (textField!=null)
+            if (textField != null)
                 textField.setEnabled(v);
+            if (comboBox != null)
+                comboBox.setEnabled(v);
         }
     }
 
@@ -784,6 +786,13 @@ public class ParameterGUI extends JPanel
 
         if (p instanceof IntegerValue) {
             ((IntegerValue) p).setIntegerValue(v, false);
+        } else if (p instanceof StringValue) {
+            StringValue sv = (StringValue) p;
+            JComboBox cb = sv.getComboBox();
+            if (cb != null) {
+                sv.idx = v;
+                cb.setSelectedIndex(v);
+            }
         } else {
             assert(false);
         }
