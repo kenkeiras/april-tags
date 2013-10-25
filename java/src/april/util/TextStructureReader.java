@@ -241,4 +241,9 @@ public class TextStructureReader implements StructureReader
     {
         ins.close();
     }
+
+    public int getLineNumber()
+    {
+        return ins.lineNumber;
+    }
 }

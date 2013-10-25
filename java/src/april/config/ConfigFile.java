@@ -184,8 +184,8 @@ public class ConfigFile extends Config
 
             String key = keyroot+keypart;
 
-            if (keys.get(key)!=null) {
-                parseError(t, "Duplicate key definition for: "+key);
+            if (keys.get(key) != null) {
+                //parseError(t, "Duplicate key definition for: "+key);
             }
 
             keys.put(key, values.toArray(new String[0]));
