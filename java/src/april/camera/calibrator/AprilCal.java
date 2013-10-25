@@ -12,9 +12,6 @@ import java.util.concurrent.*;
 import javax.imageio.*;
 import javax.swing.*;
 
-import lcm.lcm.*;
-import april.lcmtypes.*;
-
 import april.camera.*;
 import april.camera.tools.*;
 import april.camera.models.*;
@@ -46,8 +43,6 @@ public class AprilCal
 
     // debug gui
     VisLayer vl2 = null;
-
-    LCM lcm = LCM.getSingleton();
 
     // Debug state
     ArrayList<SuggestedImage> ranked;
