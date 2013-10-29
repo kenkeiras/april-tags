@@ -301,6 +301,9 @@ public class CalibrationRenderer
                                        font, gs.MRE,
                                        font, gs.MSE,
                                        font, gs.MaxRE);
+            if (gs.MaxERE != null)
+                str = String.format("%s\nMax expected reprojection error: %6.3f", str, gs.MaxERE);
+
             if (gs.SPDError)
                 str = "<<monospaced-12,left,red>>SPD error for graph";
 
