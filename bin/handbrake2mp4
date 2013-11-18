@@ -1,0 +1,21 @@
+#!/bin/bash
+
+if (( $# != 2 ))
+then
+    echo "usage: `basename $0` <bitrate> <input_file>"
+    echo "example: `basename $0` 20000 foo.avi"
+    echo "note: output filename is automatically chosen from input. e.g. in: foo.ext out: foo.mp4"
+    exit 1
+fi
+
+bitrate=$1
+in="$2"
+out="${in%.*}".mp4
+
+echo "handbrake2mp4: Input file: $in"
+echo "handbrake2mp4: Output file: $out"
+
+echo "handbrake2mp4: Calling handbrake"
+HandBrakeCLI -i $in -o $out --format mp4 --encoder x264 --vb $bitrate --optimize
+
+echo "handbrake2mp4: All done"
