@@ -2,6 +2,7 @@ package april.sim;
 
 import java.awt.*;
 import java.io.*;
+import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 
 import april.vis.*;
@@ -93,6 +94,8 @@ public class SimWorld
             SimObject so = (SimObject) obj;
             return so;
 
+        } catch (InvocationTargetException ex) {
+            System.out.printf("ex: %s (%s)\n", ex, ex.getTargetException());
         } catch (Exception ex) {
             System.out.println("ex: "+ex);
         }

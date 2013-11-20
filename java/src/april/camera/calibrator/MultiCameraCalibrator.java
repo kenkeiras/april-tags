@@ -150,10 +150,11 @@ public class MultiCameraCalibrator implements ParameterListener
         ArrayList<String> lines = new ArrayList();
 
         for (CameraCalibrator.GraphStats gs : lastGraphStats)
-            lines.add(String.format("MRE: %10s MSE %10s MaxRE %10s",
+            lines.add(String.format("MRE: %10s MSE %10s MaxRE %10s MaxERE %10s",
                                     (gs == null) ? "n/a" : String.format("%7.3f px", gs.MRE),
                                     (gs == null) ? "n/a" : String.format("%7.3f px", gs.MSE),
-                                    (gs == null) ? "n/a" : String.format("%7.3f px", gs.MaxRE)));
+                                    (gs == null) ? "n/a" : String.format("%7.3f px", gs.MaxRE),
+                                    (gs == null || gs.MaxERE == null) ? "n/a" : String.format("%7.3f px", gs.MaxERE)));
 
         return lines.toArray(new String[0]);
     }

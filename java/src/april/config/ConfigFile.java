@@ -32,6 +32,7 @@ public class ConfigFile extends Config
     void parseError(Tokenizer t, String msg)
     {
         System.out.println("Parse error: "+msg);
+
 //        System.out.println("Near line "+t.lineNumber+": "+t.line);
     }
 
@@ -146,22 +147,32 @@ public class ConfigFile extends Config
 
             String tok = t.next();
             if (!tok.equals("=")) {
-                parseError(t, "Expected = got "+tok);
+                parseError(t, "Expected = got "+tok + "\t["+keypart+"]");
                 return;
             }
 
             ArrayList<String> values = new ArrayList<String>();
 
             if (t.consume("[")) {
-                // read a list of values
-                while (true) {
-                    tok = t.next();
-                    if (tok.equals("]"))
-                        break;
-                    values.add(tok);
-                    tok = t.peek();
-                    if (tok.equals(","))
-                        t.next();
+                tok = t.peek();
+                if (tok.equals("[")) {   // matrix
+                    int r = 1;
+                    int idx = 0;
+                    while (t.consume("[")) {
+                        values.add(null);
+                        ArrayList<String> vect = parseVector(t);
+                        values.addAll(vect);
+                        values.set(idx, ""+vect.size());
+                        if (!t.consume(","))
+                            break;
+                        idx = values.size();
+                        r++;
+                    }
+                    if (!t.consume("]"))
+                        parseError(t, "Expected ] (matrix end) got "+tok + "\t["+keypart+"]");
+                    values.add(0, ""+r);  // allow jagged matrices
+                } else {
+                    values.addAll(parseVector(t));
                 }
             } else {
                 // read a single value
@@ -169,15 +180,31 @@ public class ConfigFile extends Config
             }
 
             if (!t.consume(";"))
-                parseError(t, "Expected ; got "+tok);
+                parseError(t, "Expected ; got "+tok + "\t["+keypart+"]");
 
             String key = keyroot+keypart;
 
-            if (keys.get(key)!=null) {
-//                parseError(t, "Duplicate key definition for: "+key);
+            if (keys.get(key) != null) {
+                //parseError(t, "Duplicate key definition for: "+key);
             }
 
             keys.put(key, values.toArray(new String[0]));
+        }
+    }
+
+    private ArrayList<String> parseVector(Tokenizer t) throws IOException
+    {
+        ArrayList<String> values = new ArrayList<String>();
+
+        // read a list of values
+        while (true) {
+            String tok = t.next();
+            if (tok.equals("]"))
+                return values;
+            values.add(tok);
+            tok = t.peek();
+            if (tok.equals(","))
+                t.next();
         }
     }
 
