@@ -276,6 +276,29 @@ public class Palette
         }
     }
 
+    public static class code
+    {
+        public static Color dark_blue = new Color(0x04, 0x20, 0x29);
+        public static Color gray      = new Color(0x83, 0x94, 0x8F);
+        public static Color blue      = new Color(0x00, 0x88, 0xD9);
+        public static Color teal      = new Color(0x00, 0xA6, 0x9A);
+        public static Color orange    = new Color(0xBC, 0x88, 0x00);
+        public static Color olive     = new Color(0x7C, 0x9F, 0x00);
+
+        public static List<Color> listAll()
+        {
+            List<Color> list = new ArrayList<Color>();
+            list.add(dark_blue);
+            list.add(gray);
+            list.add(blue);
+            list.add(teal);
+            list.add(orange);
+            list.add(olive);
+
+            return list;
+        }
+    }
+
     public static List<Color> listAll()
     {
         List<Color> list = new ArrayList<Color>();
@@ -410,6 +433,25 @@ public class Palette
             for (int i = 0; i < list.size(); i++) {
                 vb.addBack(new VisLighting(false,
                                            LinAlg.translate(7.5 + i%6, -5.5-i/6, 0),
+                                           new VzRectangle(1, 1,
+                                                           new VzMesh.Style(list.get(i)))));
+            }
+
+            vb.swap();
+        }
+
+        {
+            VisWorld.Buffer vb = vw.getBuffer("code");
+
+            vb.addBack(new VisLighting(false,
+                                       LinAlg.translate(0, -8.0, 0),
+                                       LinAlg.scale(0.002),
+                                       new VzText(VzText.ANCHOR.BOTTOM_LEFT,
+                                                  "<<monospaced-128>>Code")));
+            List<Color> list = code.listAll();
+            for (int i = 0; i < list.size(); i++) {
+                vb.addBack(new VisLighting(false,
+                                           LinAlg.translate(.5 + i%6, -8.5-i/6, 0),
                                            new VzRectangle(1, 1,
                                                            new VzMesh.Style(list.get(i)))));
             }

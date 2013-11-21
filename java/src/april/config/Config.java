@@ -128,6 +128,24 @@ public class Config
         return v;
     }
 
+    public int[][] getIntsMatrix(String key, int defaults[][])
+    {
+        String vs[] = keys.get(prefix + key);
+        if (vs == null || vs[0] == null)
+            return defaults;
+
+        int idx = 1;
+        int v[][] = new int[Integer.parseInt(vs[0])][];
+        for (int i = 0; i < v.length; i++) {
+            v[i] = new int[Integer.parseInt(vs[idx++])];
+            for (int j = 0; j < v[i].length; j++) {
+                v[i][j] = Integer.parseInt(vs[idx++]);
+            }
+        }
+
+        return v;
+    }
+
     public int[] getInts(String key)
     {
         return getInts(key, null);
@@ -136,6 +154,19 @@ public class Config
     public int[] requireInts(String key)
     {
         int v[] = getInts(key, null);
+        if (v == null)
+            missingRequired(key);
+        return v;
+    }
+
+    public int[][] getIntsMatrix(String key)
+    {
+        return getIntsMatrix(key, null);
+    }
+
+    public int[][] requireIntsMatrix(String key)
+    {
+        int v[][] = getIntsMatrix(key, null);
         if (v == null)
             missingRequired(key);
         return v;
@@ -168,6 +199,93 @@ public class Config
 //        source.setInts(key, v);
     }
 
+    ////////////////////////////
+    // long
+    public long[] getLongs(String key, long defaults[])
+    {
+        String vs[] = keys.get(prefix + key);
+        if (vs == null)
+            return defaults;
+
+        long v[] = new long[vs.length];
+        for (int i = 0; i < vs.length; i++) {
+            v[i] = Long.parseLong(vs[i]);
+        }
+
+        return v;
+    }
+
+    public long[][] getLongsMatrix(String key, long defaults[][])
+    {
+        String vs[] = keys.get(prefix + key);
+        if (vs == null || vs[0] == null)
+            return defaults;
+
+        int idx = 1;
+        long v[][] = new long[Integer.parseInt(vs[0])][];
+        for (int i = 0; i < v.length; i++) {
+            v[i] = new long[Integer.parseInt(vs[idx++])];
+            for (int j = 0; j < v[i].length; j++) {
+                v[i][j] = Long.parseLong(vs[idx++]);
+            }
+        }
+
+        return v;
+    }
+
+    public long[] getLongs(String key)
+    {
+        return getLongs(key, null);
+    }
+
+    public long[] requireLongs(String key)
+    {
+        long v[] = getLongs(key, null);
+        if (v == null)
+            missingRequired(key);
+        return v;
+    }
+
+    public long[][] getLongsMatrix(String key)
+    {
+        return getLongsMatrix(key, null);
+    }
+
+    public long[][] requireLongsMatrix(String key)
+    {
+        long v[][] = getLongsMatrix(key, null);
+        if (v == null)
+            missingRequired(key);
+        return v;
+    }
+
+    public long getLong(String key, long def)
+    {
+        return getLongs(key, new long[] { def})[0];
+    }
+
+    public long requireLong(String key)
+    {
+        long v[] = getLongs(key, null);
+
+        if (v == null)
+            missingRequired(key);
+
+        return v[0];
+    }
+
+    public void setLong(String key, long v)
+    {
+        assert(false);
+//        source.setLongs(key, new long[] {v});
+    }
+
+    public void setLongs(String key, long v[])
+    {
+        assert(false);
+//        source.setLongs(key, v);
+    }
+
     ///////////////////////////
     // Paths
     public String getPath(String key, String def)
@@ -196,6 +314,24 @@ public class Config
         return (v==null) ? defaults : v;
     }
 
+    public String[][] getStringsMatrix(String key, String defaults[][])
+    {
+        String vs[] = keys.get(prefix + key);
+        if (vs == null || vs[0] == null)
+            return defaults;
+
+        int idx = 1;
+        String v[][] = new String[Integer.parseInt(vs[0])][];
+        for (int i = 0; i < v.length; i++) {
+            v[i] = new String[Integer.parseInt(vs[idx++])];
+            for (int j = 0; j < v[i].length; j++) {
+                v[i][j] = vs[idx++];
+            }
+        }
+
+        return v;
+    }
+
     public String[] getStrings(String key)
     {
         return getStrings(key, null);
@@ -204,6 +340,19 @@ public class Config
     public String[] requireStrings(String key)
     {
         String v[] = getStrings(key, null);
+        if (v == null)
+            missingRequired(key);
+        return v;
+    }
+
+    public String[][] getStringsMatrix(String key)
+    {
+        return getStringsMatrix(key, null);
+    }
+
+    public String[][] requireStringsMatrix(String key)
+    {
+        String v[][] = getStringsMatrix(key, null);
         if (v == null)
             missingRequired(key);
         return v;
@@ -254,6 +403,24 @@ public class Config
         return v;
     }
 
+    public boolean[][] getBooleansMatrix(String key, boolean defaults[][])
+    {
+        String vs[] = keys.get(prefix + key);
+        if (vs == null || vs[0] == null)
+            return defaults;
+
+        int idx = 1;
+        boolean v[][] = new boolean[Integer.parseInt(vs[0])][];
+        for (int i = 0; i < v.length; i++) {
+            v[i] = new boolean[Integer.parseInt(vs[idx++])];
+            for (int j = 0; j < v[i].length; j++) {
+                v[i][j] = Boolean.parseBoolean(vs[idx++]);
+            }
+        }
+
+        return v;
+    }
+
     public boolean[] getBooleans(String key)
     {
         return getBooleans(key, null);
@@ -262,6 +429,19 @@ public class Config
     public boolean[] requireBooleans(String key)
     {
         boolean v[] = getBooleans(key, null);
+        if (v == null)
+            missingRequired(key);
+        return v;
+    }
+
+    public boolean[][] getBooleansMatrix(String key)
+    {
+        return getBooleansMatrix(key, null);
+    }
+
+    public boolean[][] requireBooleansMatrix(String key)
+    {
+        boolean v[][] = getBooleansMatrix(key, null);
         if (v == null)
             missingRequired(key);
         return v;
@@ -291,6 +471,92 @@ public class Config
     }
 
     ////////////////////////////
+    // float
+    public float[] getFloats(String key, float defaults[])
+    {
+        String vs[] = keys.get(prefix + key);
+        if (vs == null)
+            return defaults;
+
+        float v[] = new float[vs.length];
+        for (int i = 0; i < vs.length; i++) {
+            v[i] = Float.parseFloat(vs[i]);
+        }
+
+        return v;
+    }
+
+    public float[][] getFloatsMatrix(String key, float defaults[][])
+    {
+        String vs[] = keys.get(prefix + key);
+        if (vs == null || vs[0] == null)
+            return defaults;
+
+        int idx = 1;
+        float v[][] = new float[Integer.parseInt(vs[0])][];
+        for (int i = 0; i < v.length; i++) {
+            v[i] = new float[Integer.parseInt(vs[idx++])];
+            for (int j = 0; j < v[i].length; j++) {
+                v[i][j] = Float.parseFloat(vs[idx++]);
+            }
+        }
+
+        return v;
+    }
+
+    public float[] getFloats(String key)
+    {
+        return getFloats(key, null);
+    }
+
+    public float[] requireFloats(String key)
+    {
+        float v[] = getFloats(key, null);
+        if (v == null)
+            missingRequired(key);
+        return v;
+    }
+
+    public float[][] getFloatsMatrix(String key)
+    {
+        return getFloatsMatrix(key, null);
+    }
+
+    public float[][] requireFloatsMatrix(String key)
+    {
+        float v[][] = getFloatsMatrix(key, null);
+        if (v == null)
+            missingRequired(key);
+        return v;
+    }
+
+    public float getFloat(String key, float def)
+    {
+        return getFloats(key, new float[] { def })[0];
+    }
+
+    public float requireFloat(String key)
+    {
+        float v[] = getFloats(key, null);
+        if (v == null)
+            missingRequired(key);
+        return v[0];
+    }
+
+    public void setFloat(String key, float v)
+    {
+        assert(false);
+    }
+
+    public void setFloats(String key, float v[])
+    {
+        String vs[] = new String[v.length];
+        for (int i = 0; i < vs.length; i++)
+            vs[i] = ""+v[i];
+        keys.put(prefix+key, vs);
+    }
+
+    ////////////////////////////
     // double
     public double[] getDoubles(String key, double defaults[])
     {
@@ -306,6 +572,24 @@ public class Config
         return v;
     }
 
+    public double[][] getDoublesMatrix(String key, double defaults[][])
+    {
+        String vs[] = keys.get(prefix + key);
+        if (vs == null || vs[0] == null)
+            return defaults;
+
+        int idx = 1;
+        double v[][] = new double[Integer.parseInt(vs[0])][];
+        for (int i = 0; i < v.length; i++) {
+            v[i] = new double[Integer.parseInt(vs[idx++])];
+            for (int j = 0; j < v[i].length; j++) {
+                v[i][j] = Double.parseDouble(vs[idx++]);
+            }
+        }
+
+        return v;
+    }
+
     public double[] getDoubles(String key)
     {
         return getDoubles(key, null);
@@ -314,6 +598,19 @@ public class Config
     public double[] requireDoubles(String key)
     {
         double v[] = getDoubles(key, null);
+        if (v == null)
+            missingRequired(key);
+        return v;
+    }
+
+    public double[][] getDoublesMatrix(String key)
+    {
+        return getDoublesMatrix(key, null);
+    }
+
+    public double[][] requireDoublesMatrix(String key)
+    {
+        double v[][] = getDoublesMatrix(key, null);
         if (v == null)
             missingRequired(key);
         return v;
@@ -346,7 +643,7 @@ public class Config
     }
 
     ////////////////////////////
-    // double
+    // bytes
     public byte[] getBytes(String key, byte defaults[])
     {
         String lines[] = getStrings(key);

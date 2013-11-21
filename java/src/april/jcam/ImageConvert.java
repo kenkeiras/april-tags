@@ -144,6 +144,80 @@ public class ImageConvert
     }
 
     /** Returns an image of the same resolution as the input. **/
+    public static BufferedImage debayerGRBG(String format, int width, int height, byte d[])
+    {
+        BufferedImage im = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        int out[] = ((DataBufferInt) (im.getRaster().getDataBuffer())).getData();
+
+        // loop over each 2x2 bayer block and compute the pixel values for each element.
+        for (int y = 0; y < height; y+=2) {
+            for (int x = 0; x < width; x+=2) {
+
+                int r = 0, g = 0, b = 0;
+
+                // compute indices into bayer pattern for the nine 2x2 blocks we'll use.
+                int X00 = (y-2)*width+(x-2);
+                int X01 = (y-2)*width+(x+0);
+                int X02 = (y-2)*width+(x+2);
+                int X10 = (y+0)*width+(x-2);
+                int X11 = (y+0)*width+(x+0);
+                int X12 = (y+0)*width+(x+2);
+                int X20 = (y+2)*width+(x-2);
+                int X21 = (y+2)*width+(x+0);
+                int X22 = (y+2)*width+(x+2);
+
+                // handle the edges of the screen.
+                if (y < 2) {
+                    X00 += 2*width;
+                    X01 += 2*width;
+                    X02 += 2*width;
+                }
+                if (y+2 >= height) {
+                    X20 -= 2*width;
+                    X21 -= 2*width;
+                    X22 -= 2*width;
+                }
+                if (x < 2) {
+                    X00 += 2;
+                    X10 += 2;
+                    X20 += 2;
+                }
+                if (x+2 >= width) {
+                    X02 -= 2;
+                    X12 -= 2;
+                    X22 -= 2;
+                }
+
+                // top left pixel (G)
+                b = ((d[X01+width]&0xff) + (d[X11+width]&0xff)) / 2;
+                g = d[X11]&0xff;
+                r = ((d[X10+1]&0xff) + (d[X11+1]&0xff)) / 2;;
+                out[y*width+x] = (r<<16)+(g<<8)+b;
+
+                // top right pixel (B)
+                b = ((d[X01+width]&0xff)+(d[X02+width]&0xff)+(d[X01+width]&0xff) + (d[X12+width]&0xff)) / 4;
+                g = ((d[X01+width+1]&0xff)+(d[X11]&0xff)+(d[X12]&0xff)+(d[X11+width+1]&0xff)) / 4;
+                r = (d[X11+1]&0xff);
+                out[y*width+x+1] = (r<<16)+(g<<8)+b;
+
+                // bottom left pixel (R)
+                b = (d[X11+width]&0xff);
+                g = ((d[X11]&0xff)+(d[X10+width+1]&0xff)+(d[X11+width+1]&0xff)+(d[X21]&0xff)) / 4;
+                r = ((d[X10+1]&0xff)+(d[X11+1]&0xff)+(d[X20+1]&0xff)+(d[X21+1]&0xff)) / 4;
+                out[y*width+width+x] = (r<<16)+(g<<8)+b;
+
+                // bottom right pixel (G)
+                b = ((d[X11+width]&0xff)+(d[X12+width]&0xff)) / 2;
+                g = (d[X11+width+1]&0xff);
+                r = ((d[X11+1]&0xff)+(d[X21+1]&0xff)) / 2;
+                out[y*width+width+x+1] = (r<<16)+(g<<8)+b;
+            }
+        }
+
+        return im;
+    }
+
+    /** Returns an image of the same resolution as the input. **/
     public static BufferedImage debayerRGGB(String format, int width, int height, byte d[])
     {
         BufferedImage im = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
@@ -230,6 +304,9 @@ public class ImageConvert
         if (format.equals("BAYER_RGGB"))
             return debayerRGGB(format, width, height, d);
 
+        if (format.equals("BAYER_GRBG") || format.equals("GRBG"))
+            return debayerGRBG(format, width, height, d);
+
         if (format.equals("GRAY16")) {
             BufferedImage im = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_GRAY);
 
@@ -262,6 +339,9 @@ public class ImageConvert
             }
             return im;
         }
+
+        if (format.equals("Y10B"))
+            return convertY10BtoGRAY(width, height, d);
 
         if (format.equals("YUYV"))
             return convertYUYVtoRGB(width, height, d);
@@ -435,6 +515,44 @@ public class ImageConvert
                 hsv[i*stride + 3*j+2] = (byte) v;
             }
         }
+        return im;
+    }
+
+    /** Convert the format Y10B to USHORT_GRAY. This format is used by the kinect,
+     * among other things, and packs 10 bits of grayscale data into a
+     * a byte array.
+     **/
+    public static BufferedImage convertY10BtoGRAY(int w, int h, byte[] y10b)
+    {
+        BufferedImage im = new BufferedImage(w, h, BufferedImage.TYPE_USHORT_GRAY);
+
+        short[] buf = ((DataBufferUShort)(im.getRaster().getDataBuffer())).getData();
+
+        // Every 5 bytes yields 4 pixels.
+        // Handle all 4 pixels at a type, discarding the last couple for now XXX
+        // [p0_9:2 | p0_1:0 , p1_9:4 | p1_3:0 , p2_9:6 | p2_5:0, p3_9:8 | p3_7:0]
+        int bidx = 0;
+        for (int i = 0; i < y10b.length; i+=5) {
+            buf[bidx+0] = (short)((y10b[i] & 0xff) << 2 |
+                                  (y10b[i+1] & 0xc0) >> 6);
+            buf[bidx+1] = (short)((y10b[i+1] & 0x3f) << 4 |
+                                  (y10b[i+2] & 0xf0) >> 4);
+            buf[bidx+2] = (short)((y10b[i+2] & 0x0f) << 6 |
+                                  (y10b[i+3] & 0xfc) >> 2);
+            buf[bidx+3] = (short)((y10b[i+3] & 0x03) << 8 |
+                                  (y10b[i+4] & 0xff) >> 0);
+
+            // System.out.printf("%x %x %x %x %x\n", y10b[i],y10b[i+1],y10b[i+2],y10b[i+3],y10b[i+4]);
+
+            // Convert 10 bit gray values to 16 bit equivalents
+            buf[bidx+0] =(short)((double)(buf[bidx+0])/0x3ff * 0xffff);
+            buf[bidx+1] =(short)((double)(buf[bidx+1])/0x3ff * 0xffff);
+            buf[bidx+2] =(short)((double)(buf[bidx+2])/0x3ff * 0xffff);
+            buf[bidx+3] =(short)((double)(buf[bidx+3])/0x3ff * 0xffff);
+
+            bidx += 4;
+        }
+
         return im;
     }
 
