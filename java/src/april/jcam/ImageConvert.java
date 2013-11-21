@@ -379,6 +379,24 @@ public class ImageConvert
             return im;
         }
 
+        if (format.equals("BGRA")) {
+            BufferedImage im = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+            int in[] = ((DataBufferInt) (im.getRaster().getDataBuffer())).getData();
+            int dpos = 0;
+
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                    int b = d[dpos++]&0xff;
+                    int g = d[dpos++]&0xff;
+                    int r = d[dpos++]&0xff;
+                    int a = d[dpos++]&0xff;
+
+                    in[y*width+x] = (a<<24) + (r<<16) + (g<<8) + b;
+                }
+            }
+            return im;
+        }
+
         if (d.length == (width*height)) { //format.equals("GRAY8")) {
             BufferedImage im = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_GRAY);
 
