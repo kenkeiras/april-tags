@@ -157,6 +157,7 @@ public class ImageSourceTCP extends ImageSource
         public void run()
         {
             Socket sock = null;
+            ServerSocket serverSock = null;
 
             while (true) {
                 // (Re)-connect
@@ -178,13 +179,16 @@ public class ImageSourceTCP extends ImageSource
                     } else {
                         assert(url.startsWith("tcp-server://"));
 
-                        String port_string = url.substring("tcp-server://".length());
-                        // an inbound server
-                        int port = Integer.valueOf(port_string);
+                        if (serverSock == null) {
+                            String port_string = url.substring("tcp-server://".length());
+                            // an inbound server
+                            int port = port_string.length() > 0 ? Integer.valueOf(port_string) : 7701;
 
-                        ServerSocket serverSock = new ServerSocket(port);
+                            serverSock = new ServerSocket(port);
+                        }
                         System.out.println("Waiting for connection...");
                         sock = serverSock.accept();
+                        System.out.println("... connected");
                     }
                 } catch (IOException ex) {
                     System.out.println("Exception: "+ex);
