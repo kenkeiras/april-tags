@@ -27,7 +27,6 @@ public class ImageSourceTCP extends ImageSource
     public static final long MAGIC = 0x17923349ab10ea9aL;
 
     ReceiveThread rthread;
-    Integer port;
 
     final static int MAX_QUEUE_SIZE = 100;
     ArrayBlockingQueue<FrameData> queue = new ArrayBlockingQueue<FrameData>(MAX_QUEUE_SIZE*2);
@@ -36,21 +35,23 @@ public class ImageSourceTCP extends ImageSource
     ImageSourceFormat lastFmt;
     boolean warned = false;
 
-    public ImageSourceTCP(String url)
+    String url;
+
+    public ImageSourceTCP(String _url)
     {
-        assert(url.startsWith("tcp://"));
+        this.url = _url;
 
-        url = url.substring("tcp://".length());
-        int argidx = url.indexOf("?");
-        if (argidx >= 0) {
-            String arg = url.substring(argidx+1);
-            url = url.substring(0, argidx);
-        }
-
-        port = Integer.valueOf(url);
+        boolean isClientTCP = true;
 
         rthread = new ReceiveThread();
+
         rthread.start();
+
+        try {
+            rthread.blockUntilFrameReceived();
+        } catch (InterruptedException ex) {
+            System.out.println("Interrupted while waiting for a frame "+ex);
+        }
     }
 
     ////////////////////////////////////////////////////////////
@@ -66,9 +67,9 @@ public class ImageSourceTCP extends ImageSource
         return "";
     }
 
-    /** Wait for a new image or use the last unused image if one exists. Return the
-      * byte buffer and save ImageSourceFormat and timestamp for later.
-      * <br>
+    /** Wait for a new image or use the last unused image if one
+      * exists. Return the byte buffer and save ImageSourceFormat and
+      * timestamp for later.  <br>
       */
     public FrameData getFrame()
     {
@@ -79,9 +80,6 @@ public class ImageSourceTCP extends ImageSource
         } catch (Exception ex) {
             System.out.println("Exception during ArrayBlockingQueue.take(): " + ex);
         }
-
-        if (fd != null)
-            lastFmt = fd.ifmt;
 
         return fd;
     }
@@ -94,12 +92,11 @@ public class ImageSourceTCP extends ImageSource
 
         // if we don't have a format, we have to return null
         if (lastFmt == null) {
-            if (!warned) {
-                warned = true;
-                System.out.println("Warning: ImageSourceTCP.getFormat() returning null because no frame has been received");
+            try {
+                rthread.blockUntilFrameReceived();
+            } catch (InterruptedException ex) {
+                System.out.println("interrupted while waiting for frame: "+ex);
             }
-
-            return null;
         }
 
         return lastFmt;
@@ -136,7 +133,7 @@ public class ImageSourceTCP extends ImageSource
         System.out.printf("========================================\n");
         System.out.printf(" ImageSourceTCP Info\n");
         System.out.printf("========================================\n");
-        System.out.printf("\tPort: %d\n", port);
+        System.out.printf("\tURL: %s\n", url);
     }
 
     public int close()
@@ -146,7 +143,6 @@ public class ImageSourceTCP extends ImageSource
 
     ////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////
-
     private class ReceiveThread extends Thread
     {
         ReceiveThread()
@@ -154,24 +150,64 @@ public class ImageSourceTCP extends ImageSource
             this.setName("ImageSourceTCP ReceiveThread");
         }
 
+        void reconnect()
+        {
+        }
+
         public void run()
         {
-            assert(port != null);
+            Socket sock = null;
+            ServerSocket serverSock = null;
 
-            try {
+            while (true) {
+                // (Re)-connect
+                System.out.println(url);
 
-                ServerSocket serverSock = new ServerSocket(port);
+                try {
+                    if (url.startsWith("tcp://")) {
+                        // an outbound client connection.
 
-                while (true) {
-                    System.out.println("Waiting for connection...");
-                    Socket sock = serverSock.accept();
-                    System.out.println("Connected");
-                    readSock(sock);
+                        String hostport = url.substring("tcp://".length());
+                        int colon_pos = hostport.indexOf(":");
+                        String host = (colon_pos >= 0) ? hostport.substring(0, colon_pos) : hostport;
+                        if (host.length() == 0)
+                            host = "localhost";
+
+                        int port = (colon_pos >= 0) ? Integer.parseInt(hostport.substring(colon_pos+1)) : 7701;
+
+                        sock = new Socket(host, port);
+                    } else {
+                        assert(url.startsWith("tcp-server://"));
+
+                        if (serverSock == null) {
+                            String port_string = url.substring("tcp-server://".length());
+                            // an inbound server
+                            int port = port_string.length() > 0 ? Integer.valueOf(port_string) : 7701;
+
+                            serverSock = new ServerSocket(port);
+                        }
+                        System.out.println("Waiting for connection...");
+                        sock = serverSock.accept();
+                        System.out.println("... connected");
+                    }
+                } catch (IOException ex) {
+                    System.out.println("Exception: "+ex);
                 }
 
-            } catch (IOException ex) {
-                System.out.println("ex: "+ex);
-                System.exit(1);
+                if (sock != null)
+                    readSock(sock);
+
+                try {
+                    Thread.sleep(250);
+                } catch (InterruptedException ex) {
+                }
+            }
+        }
+
+        void blockUntilFrameReceived() throws InterruptedException
+        {
+            synchronized(this) {
+                this.wait();
             }
         }
 
@@ -208,6 +244,8 @@ public class ImageSourceTCP extends ImageSource
                     fd.data = new byte[ins.readInt()];
                     ins.readFully(fd.data);
 
+                    lastFmt = fd.ifmt;
+
                     // add the queue
                     synchronized (queue) {
 
@@ -221,6 +259,10 @@ public class ImageSourceTCP extends ImageSource
                                 System.out.println("Exception while shrinking queue: " + ex);
                             }
                         }
+                    }
+
+                    synchronized(this) {
+                        this.notifyAll();
                     }
                 }
 

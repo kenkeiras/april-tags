@@ -215,7 +215,9 @@ public class ViewRobot extends VisEventAdapter implements ViewObject, LCMSubscri
             // Follow mode
             followMode = (followMode + 1) % 3;
             viewer.vw.getBuffer("follow").removeTemporary(lastFollowTemporary);
-            lastFollowTemporary = new VzText(VzText.ANCHOR.CENTER, followString[followMode]);
+            lastFollowTemporary = new VisPixCoords(VisPixCoords.ORIGIN.CENTER,
+                                                   new VzText(VzText.ANCHOR.CENTER,
+                                                              "<<scale=2>>"+followString[followMode]));
             viewer.vw.getBuffer("follow").addTemporary(lastFollowTemporary, 1.0);
             return true;
         }

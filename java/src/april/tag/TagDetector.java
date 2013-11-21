@@ -509,9 +509,10 @@ public class TagDetector implements AbstractTagDetector
             }
 
             double dot = dx*Math.cos(seg.theta) + dy*Math.sin(seg.theta);
+            double xbug = 0, ybug = 0;
             if (dot > 0) {
-                seg.x0 = gseg.p2[0]; seg.y0 = gseg.p2[1];
-                seg.x1 = gseg.p1[0]; seg.y1 = gseg.p1[1];
+                seg.x0 = gseg.p2[0] + xbug; seg.y0 = gseg.p2[1] + ybug;
+                seg.x1 = gseg.p1[0] + xbug; seg.y1 = gseg.p1[1] + ybug;
             } else {
                 seg.x0 = gseg.p1[0]; seg.y0 = gseg.p1[1];
                 seg.x1 = gseg.p2[0]; seg.y1 = gseg.p2[1];
