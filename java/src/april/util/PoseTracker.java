@@ -136,7 +136,7 @@ public class PoseTracker implements LCMSubscriber
             p.accel = LinAlg.add(LinAlg.scale(p0.accel, w0),
                                  LinAlg.scale(p1.accel, w1));
 
-            p.orientation = LinAlg.slerp(p0.orientation, p1.orientation, w0);
+            p.orientation = LinAlg.slerp(p0.orientation, p1.orientation, w1);
             return p;
         }
 
