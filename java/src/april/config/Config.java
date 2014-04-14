@@ -21,6 +21,8 @@ public class Config
 
     public boolean verbose = EnvUtil.getProperty("april.config.debug", false);
 
+    Stack<File> includedFiles = new Stack<File>();
+
     public Config()
     {
         this.prefix = "";
