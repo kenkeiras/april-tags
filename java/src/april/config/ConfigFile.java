@@ -26,7 +26,19 @@ public class ConfigFile extends Config
     {
         Tokenizer t = new Tokenizer(f);
 
+        String fullPath = f.getCanonicalPath();
+        for (File file : includedFiles) {
+            if (file.getCanonicalPath().equals (fullPath)) {
+                System.out.println ("Config circular include, file" + includedFiles.pop().getCanonicalPath() + " Includes " + fullPath);
+                throw new IOException ("Circular include");
+            }
+        }
+
+        includedFiles.push(new File (fullPath));
+
         parse(t, "", 0);
+
+        includedFiles.pop();
     }
 
     void parseError(Tokenizer t, String msg)
@@ -105,6 +117,31 @@ public class ConfigFile extends Config
                 keypart = ":" + t.next();
             } else {
                 keypart = t.next();
+            }
+
+            if (keypart.equals ("include")) {
+                if (!t.hasNext()) {
+                    parseError (t, "premature EOF, expected file to include");
+                    return;
+                }
+
+                String filename = t.next();
+                if (filename.charAt(0) == '"') {
+                    filename = filename.substring (1, filename.length() - 1);
+                }
+                if (filename.charAt(0) != '/') {
+                    File curFile = includedFiles.peek();
+                    String dir = curFile.getParent();
+                    filename = dir + "/" + filename;
+
+                }
+                if (! t.consume (";")) {
+                    parseError (t, "Expected ; after include filename");
+                    return;
+                }
+                merge (new File (filename));
+                continue;
+
             }
 
             if (keypart.endsWith("#")) {
