@@ -129,6 +129,9 @@ public class ConfigFile extends Config
                 if (filename.charAt(0) == '"') {
                     filename = filename.substring (1, filename.length() - 1);
                 }
+
+                filename = StringUtil.replaceEnvironmentVariables (filename);
+
                 if (filename.charAt(0) != '/') {
                     File curFile = includedFiles.peek();
                     String dir = curFile.getParent();
