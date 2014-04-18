@@ -62,7 +62,7 @@ public class GraphTest implements ParameterListener
         pg.addButtons("init", "init", "truth", "truth");
         pg.addChoice("method", "Method", new String[] { "Sparse Cholesky", "Gauss Seidel" }, 0);
         pg.addInt("drawevery", "Draw Every N iterations", 10);
-        pg.addButtons("iterate", "iterate", "startstop", "start/stop");
+        pg.addButtons("iterate", "iterate", "startstop", "start/stop", "save", "save");
         pg.addListener(this);
         parameterChanged(pg, "method");
 
@@ -85,6 +85,13 @@ public class GraphTest implements ParameterListener
 
     public void parameterChanged(ParameterGUI pg, String name)
     {
+        if (name.equals("save")) {
+            try {
+                g.write("/tmp/saved.graph");
+            } catch (IOException ex) {
+            }
+        }
+
         if (name.equals("init")) {
             for (GNode gn : g.nodes)
                 if (gn.init != null)
