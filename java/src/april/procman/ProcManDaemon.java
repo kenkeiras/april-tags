@@ -262,6 +262,7 @@ public class ProcManDaemon implements Runnable
                         pr.stderrReader.publish("Warning: ProcManDaemon auto "+
                                                 "restarting this process after "
                                                 +udiff/1000+" milliseconds!");
+                        pr.restartCount++;
                         pr.startProcess();
                     }
                 }// 3)
