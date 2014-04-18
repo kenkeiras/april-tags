@@ -167,9 +167,11 @@ public class GXYTEdge extends GEdge
 
         double zpred[] = LinAlg.xytInvMul31(gna.state, gnb.state);
         getMultiGaussian();
-        zpred[2] = MathUtil.mod2pi(mg.getMean()[2], z[2]);
+        zpred[2] = MathUtil.mod2pi(mg.getMean()[2], zpred[2]);
 
-        return mg.chi2(zpred);
+        double chi2 =  mg.chi2(zpred);
+
+        return chi2;
     }
 
     public MultiGaussian getMultiGaussian()
