@@ -13,6 +13,7 @@ public class JCamExample
     JImage jim = new JImage();
 
     ImageSource isrc;
+    final RunThread runThread;
 
     volatile boolean running = true;
 
@@ -28,39 +29,54 @@ public class JCamExample
         jf.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         jf.setVisible(true);
 
+        runThread = new RunThread();
+        runThread.start();
+
         Runtime.getRuntime().addShutdownHook(new Thread() {
             public void run()
             {
                 running = false;
+
+                try {
+                    runThread.join();
+                } catch (InterruptedException ex) {
+                }
             }
         });
     }
 
-    public void run()
+    class RunThread extends Thread
     {
-        isrc.start();
+        public void run()
+        {
+            isrc.start();
 
-        while (running) {
-            FrameData frmd = isrc.getFrame(); // wait for the next frame
+            while (running) {
+                FrameData frmd = isrc.getFrame(); // wait for the next frame
 
-            // If something goes wrong with the camera, the frame data can be null
-            if (frmd == null) {
-                System.out.println("ERR: Image stream interrupted!");
-                break;
+                // If something goes wrong with the camera, the frame data can be null
+                if (frmd == null) {
+                    System.out.println("ERR: Image stream interrupted!");
+                    break;
+                }
+
+                // Convert the raw data to a buffered image, display it
+                BufferedImage im = ImageConvert.convertToImage(frmd);
+                jim.setImage(im);
             }
 
-            // Convert the raw data to a buffered image, display it
-            BufferedImage im = ImageConvert.convertToImage(frmd);
-            jim.setImage(im);
-        }
+            isrc.stop();
+            System.out.println("Stopped camera");
 
-        isrc.stop();
+            isrc.close();
+            System.out.println("Closed camera");
+        }
     }
 
     public static void main(String args[])
     {
         try {
-            new JCamExample(ImageSource.make(args[0])).run();
+            new JCamExample(ImageSource.make(args[0]));
         } catch (IOException ex) {
             System.err.println("ERR: Failed to create image source: " + ex);
             System.err.println("     Usage: java april.jcam.JCamExample <image source url>");

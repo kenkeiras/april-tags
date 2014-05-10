@@ -12,9 +12,6 @@ import java.util.concurrent.*;
 import javax.imageio.*;
 import javax.swing.*;
 
-import lcm.lcm.*;
-import april.lcmtypes.*;
-
 import april.camera.*;
 import april.camera.tools.*;
 import april.camera.models.*;
@@ -46,8 +43,6 @@ public class AprilCal
 
     // debug gui
     VisLayer vl2 = null;
-
-    LCM lcm = LCM.getSingleton();
 
     // Debug state
     ArrayList<SuggestedImage> ranked;
@@ -261,10 +256,11 @@ public class AprilCal
         ArrayList<String> lines = new ArrayList();
 
         for (CameraCalibrator.GraphStats gs : lastGraphStats)
-            lines.add(String.format("MRE: %10s MSE %10s MaxRE %10s",
+            lines.add(String.format("MRE: %10s MSE %10s MaxRE %10s MaxERE %10s",
                                     (gs == null) ? "n/a" : String.format("%7.3f px", gs.MRE),
                                     (gs == null) ? "n/a" : String.format("%7.3f px", gs.MSE),
-                                    (gs == null) ? "n/a" : String.format("%7.3f px", gs.MaxRE)));
+                                    (gs == null) ? "n/a" : String.format("%7.3f px", gs.MaxRE),
+                                    (gs == null || gs.MaxERE == null) ? "n/a" : String.format("%7.3f px", gs.MaxERE)));
 
         return lines.toArray(new String[0]);
     }
@@ -1604,14 +1600,17 @@ public class AprilCal
     {
         List<List<CalibrationInitializer>> initializerTypes = new ArrayList();
         initializerTypes.add(Arrays.asList((CalibrationInitializer) new DistortionFreeInitializer("")));
+        initializerTypes.add(Arrays.asList((CalibrationInitializer) new AngularPolynomialInitializer("kclength=1")));
         initializerTypes.add(Arrays.asList((CalibrationInitializer) new AngularPolynomialInitializer("kclength=2")));
         initializerTypes.add(Arrays.asList((CalibrationInitializer) new AngularPolynomialInitializer("kclength=3")));
         initializerTypes.add(Arrays.asList((CalibrationInitializer) new AngularPolynomialInitializer("kclength=4")));
         initializerTypes.add(Arrays.asList((CalibrationInitializer) new AngularPolynomialInitializer("kclength=5")));
+        initializerTypes.add(Arrays.asList((CalibrationInitializer) new RadialPolynomialInitializer("kclength=1")));
         initializerTypes.add(Arrays.asList((CalibrationInitializer) new RadialPolynomialInitializer("kclength=2")));
         initializerTypes.add(Arrays.asList((CalibrationInitializer) new RadialPolynomialInitializer("kclength=3")));
         initializerTypes.add(Arrays.asList((CalibrationInitializer) new RadialPolynomialInitializer("kclength=4")));
         initializerTypes.add(Arrays.asList((CalibrationInitializer) new RadialPolynomialInitializer("kclength=5")));
+        initializerTypes.add(Arrays.asList((CalibrationInitializer) new CaltechInitializer("kclength=1")));
         initializerTypes.add(Arrays.asList((CalibrationInitializer) new CaltechInitializer("kclength=2")));
         initializerTypes.add(Arrays.asList((CalibrationInitializer) new CaltechInitializer("kclength=3")));
         initializerTypes.add(Arrays.asList((CalibrationInitializer) new CaltechInitializer("kclength=4")));

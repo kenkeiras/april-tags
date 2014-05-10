@@ -18,7 +18,7 @@ public class StringUtil
      */
     public static String replaceEnvironmentVariables(String value)
     {
-        Pattern pattern = Pattern.compile("\\$\\w+\\W??$??");
+        Pattern pattern = Pattern.compile("\\$\\w+\\W??\\$??");
         Matcher matcher = pattern.matcher(value);
 
         String resolved = value;

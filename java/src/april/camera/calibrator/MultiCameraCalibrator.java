@@ -150,9 +150,11 @@ public class MultiCameraCalibrator implements ParameterListener
         ArrayList<String> lines = new ArrayList();
 
         for (CameraCalibrator.GraphStats gs : lastGraphStats)
-            lines.add(String.format("MRE: %10s MSE %10s",
+            lines.add(String.format("MRE: %10s MSE %10s MaxRE %10s MaxERE %10s",
                                     (gs == null) ? "n/a" : String.format("%7.3f px", gs.MRE),
-                                    (gs == null) ? "n/a" : String.format("%7.3f px", gs.MSE)));
+                                    (gs == null) ? "n/a" : String.format("%7.3f px", gs.MSE),
+                                    (gs == null) ? "n/a" : String.format("%7.3f px", gs.MaxRE),
+                                    (gs == null || gs.MaxERE == null) ? "n/a" : String.format("%7.3f px", gs.MaxERE)));
 
         return lines.toArray(new String[0]);
     }
@@ -441,14 +443,17 @@ public class MultiCameraCalibrator implements ParameterListener
     {
         List<CalibrationInitializer> initializerTypes = new ArrayList();
         initializerTypes.add((CalibrationInitializer) new DistortionFreeInitializer(""));
+        initializerTypes.add((CalibrationInitializer) new AngularPolynomialInitializer("kclength=1"));
         initializerTypes.add((CalibrationInitializer) new AngularPolynomialInitializer("kclength=2"));
         initializerTypes.add((CalibrationInitializer) new AngularPolynomialInitializer("kclength=3"));
         initializerTypes.add((CalibrationInitializer) new AngularPolynomialInitializer("kclength=4"));
         initializerTypes.add((CalibrationInitializer) new AngularPolynomialInitializer("kclength=5"));
+        initializerTypes.add((CalibrationInitializer) new RadialPolynomialInitializer("kclength=1"));
         initializerTypes.add((CalibrationInitializer) new RadialPolynomialInitializer("kclength=2"));
         initializerTypes.add((CalibrationInitializer) new RadialPolynomialInitializer("kclength=3"));
         initializerTypes.add((CalibrationInitializer) new RadialPolynomialInitializer("kclength=4"));
         initializerTypes.add((CalibrationInitializer) new RadialPolynomialInitializer("kclength=5"));
+        initializerTypes.add((CalibrationInitializer) new CaltechInitializer("kclength=1"));
         initializerTypes.add((CalibrationInitializer) new CaltechInitializer("kclength=2"));
         initializerTypes.add((CalibrationInitializer) new CaltechInitializer("kclength=3"));
         initializerTypes.add((CalibrationInitializer) new CaltechInitializer("kclength=4"));

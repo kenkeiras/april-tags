@@ -3,10 +3,10 @@
 <project name="april" default="build" basedir=".">
 
   <!-- Build everything -->
-  <target name="build" depends="generate-lcmtypes,build-java,build-jar,build-jni"/>
+  <target name="build" depends="generate-lcmtypes, make-src, build-java,build-jar,build-jni"/>
 
   <!-- Clean everything -->
-  <target name="clean" depends="clean-lcmtypes,clean-java,clean-jni"/>
+  <target name="clean" depends="clean-lcmtypes, clean-src, clean-java,clean-jni"/>
 
   <!-- Dist Clean everyting -->
   <target name="distclean" depends="clean">
@@ -46,7 +46,7 @@
   </target>
 
   <target name="make-src">
-    <exec executable="make" dir="${basedir}">
+    <exec executable="make" dir="${basedir}" failonerror="true">
       <arg line="-C ../src/" />
     </exec>
   </target>
@@ -90,7 +90,7 @@
   </target>
 
   <target name="build-jni">
-    <exec executable="make" dir="${basedir}/jni">
+    <exec executable="make" dir="${basedir}/jni" failonerror="true">
       <arg line="-f Makefile" />
     </exec>
   </target>

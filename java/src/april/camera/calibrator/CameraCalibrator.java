@@ -84,6 +84,8 @@ public class CameraCalibrator
         public double MSE;       // mean-squared reprojection error
         public double MaxRE;     // max reprojection error
         public boolean SPDError; // did we catch an SPD error from the graph solver?
+
+        public Double MaxERE;    // max expected reprojection error. optional, for display only
     }
 
     public static class GraphWrapper
@@ -220,6 +222,21 @@ public class CameraCalibrator
         return lastStats;
     }
 
+    private void addMaxERE(List<GraphStats> stats)
+    {
+        if (stats.size() != 1)
+            return;
+
+        GraphStats gs = stats.get(0);
+
+        List<CameraCalibrationSystem.CameraWrapper> camWrappers = cal.getCameras();
+        if (camWrappers.size() == 1) {
+            CameraCalibrationSystem.CameraWrapper cam = camWrappers.get(0);
+            if (cal.getAllImageSets().size() >= 3 && cam.cal != null)
+                gs.MaxERE = MaxEREScorer.scoreCal(this, cam.width, cam.height);
+        }
+    }
+
     public List<GraphStats> iterateUntilConvergenceWithReinitalization(double reinitMREThreshold, double improvementThreshold,
                                                                        int minConvergedIterations, int maxIterations)
     {
@@ -264,6 +281,7 @@ public class CameraCalibrator
             if (verbose)
                 System.out.printf("Skipped reinitialization, using original (orig %b/%b/%8.3f)\n",
                                   origError, origBadFocalLength, origJointMRE);
+            addMaxERE(origStats);
             return origStats;
         }
 
@@ -321,6 +339,7 @@ public class CameraCalibrator
                 System.out.printf("Attempted reinitialization, using original (orig %b/%b/%8.3f new %b/%b/%8.3f)\n",
                                   origError, origBadFocalLength, origJointMRE,
                                   newError, newBadFocalLength, newJointMRE);
+            addMaxERE(origStats);
             return origStats;
         }
 
@@ -332,6 +351,7 @@ public class CameraCalibrator
             System.out.printf("Attempted reinitialization, using new (orig %b/%b/%8.3f new %b/%b/%8.3f)\n",
                               origError, origBadFocalLength, origJointMRE,
                               newError, newBadFocalLength, newJointMRE);
+        addMaxERE(newStats);
         return newStats;
     }
 

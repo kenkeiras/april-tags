@@ -7,6 +7,11 @@
 #include "image_source.h"
 #include "url_parser.h"
 
+#include "common/varray.h"
+#include "common/string_util.h"
+
+void image_source_print_features(image_source_t *isrc);
+
 image_source_t *image_source_open(const char *url)
 {
     image_source_t *isrc = NULL;
@@ -54,6 +59,11 @@ image_source_t *image_source_open(const char *url)
                 printf("image_source.c: set feature %30s = %15s\n", key, value);
                 isrc->set_named_format(isrc, value);
                 found[param_idx] = 1;
+                continue;
+            }
+
+            if (!strcmp(key, "print")) {
+                image_source_print_features(isrc);
                 continue;
             }
 
@@ -119,3 +129,73 @@ void image_source_enumerate_free(char **urls)
         free(urls[i]);
     free(urls);
 }
+
+void image_source_print_features(image_source_t *isrc)
+{
+    printf("Features:\n");
+
+    int n = isrc->num_features(isrc);
+    for (int i = 0; i < n; i++) {
+
+        const char *name = isrc->get_feature_name(isrc, i);
+        const char *type = isrc->get_feature_type(isrc, i);
+        double value = isrc->get_feature_value(isrc, i);
+
+        printf("    %-30s : ", name);
+
+        if (type[0] == 'b') {
+            printf("Boolean %20s", ((int) value) ? "True" : "False");
+        } else if (type[0] == 'i') {
+
+            varray_t *tokens = str_split(type, ",");
+
+            if (varray_size(tokens) == 3 || varray_size(tokens) == 4) {
+                char *min = varray_get(tokens, 1);
+                char *max = varray_get(tokens, 2);
+                char *inc = "1";
+                if (varray_size(tokens) == 4)
+                    inc = varray_get(tokens, 3);
+
+                printf("Int     %20i Min %20s Max %20s Inc %20s", (int) value, min, max, inc);
+            }
+
+            varray_map(tokens, free);
+            varray_destroy(tokens);
+
+        } else if (type[0] == 'f') {
+
+            varray_t *tokens = str_split(type, ",");
+
+            if (varray_size(tokens) == 3 || varray_size(tokens) == 4) {
+                char *min = varray_get(tokens, 1);
+                char *max = varray_get(tokens, 2);
+                char *inc = NULL;
+                if (varray_size(tokens) == 4)
+                    inc = varray_get(tokens, 3);
+
+                printf("Float   %20.15f Min %20s Max %20s", value, min, max);
+                if (inc) printf("Inc %20s", inc);
+            }
+
+            varray_map(tokens, free);
+            varray_destroy(tokens);
+
+        } else if (type[0] == 'c') {
+
+            varray_t *tokens = str_split(type, ",");
+
+            printf("Enum    %20i (", (int) value);
+
+            for (int i = 1; i < varray_size(tokens); i++)
+                printf("%s%s", (char*) varray_get(tokens, i), (i+1 == varray_size(tokens)) ? "" : ", ");
+
+            printf(")");
+
+            varray_map(tokens, free);
+            varray_destroy(tokens);
+        }
+
+        printf("\n");
+    }
+}
+

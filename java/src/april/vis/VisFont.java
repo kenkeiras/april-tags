@@ -110,28 +110,50 @@ public class VisFont
                     style += "I";
 
                 String basename = f.getName()+"_"+style+"_"+f.getSize();
-                basename = basename.replace(" ", "-");
+                basename = basename.replace(" ", "-").toLowerCase();
 
                 ImageIO.write(tiles, "png", new File("/tmp/"+basename+".png"));
-                BufferedWriter outs = new BufferedWriter(new FileWriter("/tmp/"+basename+".param"));
-                outs.write(String.format("ascii_min %d\n", ASCII_MIN));
-                outs.write(String.format("ascii_max %d\n", ASCII_MAX));
-                outs.write(String.format("tile_width %d\n", tile_width));
-                outs.write(String.format("tile_height %d\n", tile_height));
-                outs.write(String.format("tile_dim %d\n", tile_dim));
-                outs.write(String.format("height %d\n", height));
-                outs.write(String.format("width %d\n", width));
-                outs.write(String.format("widths "));
-                for (int i = 0; i < widths.length; i++)
-                    outs.write(String.format("%d ", (int) widths[i]));
-                outs.write("\n");
 
-                outs.write(String.format("advances "));
-                for (int i = 0; i < advances.length; i++)
-                    outs.write(String.format("%d ", (int) advances[i]));
-                outs.write("\n");
+                if (false) {
+                    BufferedWriter outs = new BufferedWriter(new FileWriter("/tmp/"+basename+".param"));
+                    outs.write(String.format("ascii_min %d\n", ASCII_MIN));
+                    outs.write(String.format("ascii_max %d\n", ASCII_MAX));
+                    outs.write(String.format("tile_width %d\n", tile_width));
+                    outs.write(String.format("tile_height %d\n", tile_height));
+                    outs.write(String.format("tile_dim %d\n", tile_dim));
+                    outs.write(String.format("height %d\n", height));
+                    outs.write(String.format("width %d\n", width));
+                    outs.write(String.format("widths "));
+                    for (int i = 0; i < widths.length; i++)
+                        outs.write(String.format("%d ", (int) widths[i]));
+                    outs.write("\n");
 
-                outs.close();
+                    outs.write(String.format("advances "));
+                    for (int i = 0; i < advances.length; i++)
+                        outs.write(String.format("%d ", (int) advances[i]));
+                    outs.write("\n");
+
+                    outs.close();
+                }
+
+                if (true) {
+                    DataOutputStream outs = new DataOutputStream(new FileOutputStream("/tmp/"+basename+".bparam"));
+                    outs.writeInt(ASCII_MIN);
+                    outs.writeInt(ASCII_MAX);
+                    outs.writeInt(tile_width);
+                    outs.writeInt(tile_height);
+                    outs.writeInt(tile_dim);
+                    outs.writeInt(width);
+                    outs.writeInt(height);
+                    outs.writeInt(widths.length);
+                    for (int i = 0; i < widths.length; i++)
+                        outs.writeInt((int) (100*widths[i]));
+                    outs.writeInt(advances.length);
+                    for (int i = 0; i < advances.length; i++)
+                        outs.writeInt((int) (100*advances[i]));
+                    outs.close();
+                }
+
             } catch (IOException ex) {
                 assert(false);
             }
@@ -270,8 +292,8 @@ public class VisFont
 
     public static void main(String args[])
     {
-        int sizes[] = new int[] { 12, 24, 48, 128 };
-        int styles[] = new int[] { Font.PLAIN, Font.BOLD, Font.ITALIC };
+        int sizes[] = new int[] { 128 };
+        int styles[] = new int[] { Font.PLAIN, Font.BOLD, Font.ITALIC, Font.BOLD | Font.ITALIC };
 
         for (int style : styles) {
             for (int size : sizes) {

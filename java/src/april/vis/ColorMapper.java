@@ -218,7 +218,7 @@ public class ColorMapper implements VisSerializable
     }
 
     // Returns an image with text labels
-    // e.g. makeLegend(70, 480, 0.35, "%5.1f", new Font("Monospaced", Font.PLAIN, 12));
+    // e.g. makeLegend(70, 480, 0.35, false, "%5.1f", new Font("Monospaced", Font.PLAIN, 12));
     public BufferedImage makeLegend(int width, int height, double barFraction, boolean light,
                                     String format, Font font)
     {

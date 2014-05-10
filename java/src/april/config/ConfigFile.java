@@ -16,7 +16,9 @@ public class ConfigFile extends Config
     public ConfigFile(File f) throws IOException
     {
         prefix = "";
-        basePath = f.getParent() + File.separator;
+        if (f.getParent() != null)
+            basePath = f.getParent() + File.separator;
+
         merge(f);
     }
 
@@ -24,12 +26,25 @@ public class ConfigFile extends Config
     {
         Tokenizer t = new Tokenizer(f);
 
+        String fullPath = f.getCanonicalPath();
+        for (File file : includedFiles) {
+            if (file.getCanonicalPath().equals (fullPath)) {
+                System.out.println ("Config circular include, file" + includedFiles.pop().getCanonicalPath() + " Includes " + fullPath);
+                throw new IOException ("Circular include");
+            }
+        }
+
+        includedFiles.push(new File (fullPath));
+
         parse(t, "", 0);
+
+        includedFiles.pop();
     }
 
     void parseError(Tokenizer t, String msg)
     {
         System.out.println("Parse error: "+msg);
+
 //        System.out.println("Near line "+t.lineNumber+": "+t.line);
     }
 
@@ -104,6 +119,34 @@ public class ConfigFile extends Config
                 keypart = t.next();
             }
 
+            if (keypart.equals ("include")) {
+                if (!t.hasNext()) {
+                    parseError (t, "premature EOF, expected file to include");
+                    return;
+                }
+
+                String filename = t.next();
+                if (filename.charAt(0) == '"') {
+                    filename = filename.substring (1, filename.length() - 1);
+                }
+
+                filename = StringUtil.replaceEnvironmentVariables (filename);
+
+                if (filename.charAt(0) != '/') {
+                    File curFile = includedFiles.peek();
+                    String dir = curFile.getParent();
+                    filename = dir + "/" + filename;
+
+                }
+                if (! t.consume (";")) {
+                    parseError (t, "Expected ; after include filename");
+                    return;
+                }
+                merge (new File (filename));
+                continue;
+
+            }
+
             if (keypart.endsWith("#")) {
                 // System.out.println("*********: "+keypart);
                 keypart = keypart.substring(0, keypart.length()-1) + instantiateId;
@@ -144,22 +187,32 @@ public class ConfigFile extends Config
 
             String tok = t.next();
             if (!tok.equals("=")) {
-                parseError(t, "Expected = got "+tok);
+                parseError(t, "Expected = got "+tok + "\t["+keypart+"]");
                 return;
             }
 
             ArrayList<String> values = new ArrayList<String>();
 
             if (t.consume("[")) {
-                // read a list of values
-                while (true) {
-                    tok = t.next();
-                    if (tok.equals("]"))
-                        break;
-                    values.add(tok);
-                    tok = t.peek();
-                    if (tok.equals(","))
-                        t.next();
+                tok = t.peek();
+                if (tok.equals("[")) {   // matrix
+                    int r = 1;
+                    int idx = 0;
+                    while (t.consume("[")) {
+                        values.add(null);
+                        ArrayList<String> vect = parseVector(t);
+                        values.addAll(vect);
+                        values.set(idx, ""+vect.size());
+                        if (!t.consume(","))
+                            break;
+                        idx = values.size();
+                        r++;
+                    }
+                    if (!t.consume("]"))
+                        parseError(t, "Expected ] (matrix end) got "+tok + "\t["+keypart+"]");
+                    values.add(0, ""+r);  // allow jagged matrices
+                } else {
+                    values.addAll(parseVector(t));
                 }
             } else {
                 // read a single value
@@ -167,15 +220,31 @@ public class ConfigFile extends Config
             }
 
             if (!t.consume(";"))
-                parseError(t, "Expected ; got "+tok);
+                parseError(t, "Expected ; got "+tok + "\t["+keypart+"]");
 
             String key = keyroot+keypart;
 
-            if (keys.get(key)!=null) {
-//                parseError(t, "Duplicate key definition for: "+key);
+            if (keys.get(key) != null) {
+                //parseError(t, "Duplicate key definition for: "+key);
             }
 
             keys.put(key, values.toArray(new String[0]));
+        }
+    }
+
+    private ArrayList<String> parseVector(Tokenizer t) throws IOException
+    {
+        ArrayList<String> values = new ArrayList<String>();
+
+        // read a list of values
+        while (true) {
+            String tok = t.next();
+            if (tok.equals("]"))
+                return values;
+            values.add(tok);
+            tok = t.peek();
+            if (tok.equals(","))
+                t.next();
         }
     }
 

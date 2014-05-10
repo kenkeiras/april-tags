@@ -46,11 +46,13 @@ public class TextStructureReader implements StructureReader
         ins = new CommentReader(_ins);
     }
 
+    @Override
     public int readInt() throws IOException
     {
         return Integer.parseInt(ins.readLine());
     }
 
+    @Override
     public int[] readInts() throws IOException
     {
         String line = ins.readLine();
@@ -76,16 +78,19 @@ public class TextStructureReader implements StructureReader
         return v;
     }
 
+    @Override
     public long readLong() throws IOException
     {
         return Long.parseLong(ins.readLine());
     }
 
+    @Override
     public float readFloat() throws IOException
     {
         return Float.parseFloat(ins.readLine());
     }
 
+    @Override
     public float[] readFloats() throws IOException
     {
         String line = ins.readLine();
@@ -111,11 +116,13 @@ public class TextStructureReader implements StructureReader
         return v;
     }
 
+    @Override
     public double readDouble() throws IOException
     {
         return Double.parseDouble(ins.readLine());
     }
 
+    @Override
     public double[] readDoubles() throws IOException
     {
         String line = ins.readLine();
@@ -141,6 +148,7 @@ public class TextStructureReader implements StructureReader
         return v;
     }
 
+    @Override
     public double[][] readMatrix() throws IOException
     {
         String line = ins.readLine();
@@ -190,6 +198,7 @@ public class TextStructureReader implements StructureReader
         return sb.toString();
     }
 
+    @Override
     public String readString() throws IOException
     {
         String s = ins.readLine();
@@ -199,9 +208,10 @@ public class TextStructureReader implements StructureReader
         if (s.length()==0 || s.charAt(0)!='\"')
             return s;
 
-        return s.substring(1, s.length()-1);
+        return unescapeString(s.substring(1, s.length()-1));
     }
 
+    @Override
     public byte[] readBytes() throws IOException
     {
         int nlines = readInt();
@@ -212,20 +222,28 @@ public class TextStructureReader implements StructureReader
         return Base64.decode(lines);
     }
 
+    @Override
     public void blockBegin() throws IOException
     {
         String line = ins.readLine();
         assert(line.equals("{"));
     }
 
+    @Override
     public void blockEnd() throws IOException
     {
         String line = ins.readLine();
         assert(line.equals("}"));
     }
 
+    @Override
     public void close() throws IOException
     {
         ins.close();
+    }
+
+    public int getLineNumber()
+    {
+        return ins.lineNumber;
     }
 }
