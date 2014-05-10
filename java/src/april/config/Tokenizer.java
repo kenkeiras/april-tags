@@ -75,7 +75,7 @@ class Tokenizer
                             i++;
                         }
 
-                        System.out.println("EXPANDING ENV: "+var.toString());
+                        System.err.println("EXPANDING ENV: "+var.toString());
                         sb.append(System.getenv(var.toString()));
 
                         continue;
