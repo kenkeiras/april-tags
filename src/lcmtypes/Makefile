@@ -24,4 +24,4 @@ $(LIBLCMTYPES): $(LCMTYPES_C) $(LCMTYPES_O)
 	$(LCM) $< -c
 
 clean:
-	rm -f *.c *.h *.o *.a *~
+	rm -f *.c *.h *.o *.a *~ $(LIBLCMTYPES)

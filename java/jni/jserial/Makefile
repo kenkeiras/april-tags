@@ -33,7 +33,7 @@ april_jserial_JSerial.h:
 	javah -classpath ../../april.jar  april.jserial.JSerial
 
 clean:
-	rm -f $(LIB_APRIL_JSERIAL_OBJS) *~ april_jserial_JSerial.h *.so $(LIB) $(LDESTLIB)
+	rm -f $(LIB_APRIL_JSERIAL_OBJS) *~ april_jserial_JSerial.h *.so $(LIB) $(DESTLIB)
 
 %.o: %.c
 	$(CC) $(CCFLAGS) $(JNI_INCLUDES) $<
