@@ -12,6 +12,7 @@ all: $(HOKUYO)
 
 
 $(HOKUYO): $(HOKUYO_OBJS)
+	@echo "    [$@]"
 	$(CC) -o $@ $(HOKUYO_OBJS) $(LDFLAGS)
 
 clean:

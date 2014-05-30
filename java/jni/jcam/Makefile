@@ -25,12 +25,15 @@ all: $(ALL)
 
 
 istest: main.o $(LIBIMAGESOURCE_OBJS)
+	@echo "    [$@]"
 	gcc -L../../../lib main.o $(LIBIMAGESOURCE_OBJS) -o istest -ldc1394 -lc -lcommon -lpng -lpthread -lusb-1.0 -lm
 
 tcpstream: tcp_image_streamer.c
+	@echo "    [$@]"
 	gcc -o tcpstream -std=gnu99 tcp_image_streamer.c -lc
 
 $(DESTLIB): $(LIB)
+	@echo "    [$@]"
 	cp $(LIB) $(DESTLIB)
 
 libimagesource.so: april_jcam_ImageSourceNative.h $(LIBIMAGESOURCE_OBJS)

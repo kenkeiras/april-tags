@@ -23,6 +23,7 @@ all: $(ALL)
 
 
 $(DESTLIB): $(LIB)
+	@echo "    [$@]"
 	cp $(LIB) $(DESTLIB)
 
 libjserial.so: april_jserial_JSerial.h $(LIB_APRIL_JSERIAL_OBJS)

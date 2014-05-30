@@ -12,6 +12,7 @@ all: $(SPACENAV)
 
 
 $(SPACENAV): $(SPACENAV_OBJS)
+	@echo "    [$@]"
 	$(CC) -o $@ $(SPACENAV_OBJS) $(LDFLAGS)
 
 clean:

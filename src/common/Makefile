@@ -11,6 +11,7 @@ all: $(LIBCOMMON)
 
 
 $(LIBCOMMON): $(COMMON_OBJS)
+	@echo "    [$@]"
 	ar rc $@ $(COMMON_OBJS)
 
 pixels.o: pixels.c

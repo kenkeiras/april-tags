@@ -16,6 +16,7 @@ all: $(LIBLCMTYPES)
 
 
 $(LIBLCMTYPES): $(LCMTYPES_C) $(LCMTYPES_O)
+	@echo "    [$@]"
 	ar rc $@ $(LCMTYPES_O)
 
 

@@ -12,6 +12,7 @@ all: $(SICK)
 
 
 $(SICK): $(SICK_OBJS)
+	@echo "    [$@]"
 	$(CC) -o $@ $(SICK_OBJS) $(LDFLAGS)
 
 clean:
