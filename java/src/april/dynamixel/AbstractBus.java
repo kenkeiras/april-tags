@@ -10,7 +10,7 @@ public abstract class AbstractBus
     public static final int INST_RESET_DATA   = 0x06;
     public static final int INST_SYNC_WRITE   = 0x83;
 
-    public boolean retryEnable = true;
+    boolean retryEnable = true;
 
     /** Send an instruction with the specified parameters. The error
      * code, body and checksum of the response are returned (the
