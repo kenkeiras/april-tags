@@ -11,6 +11,7 @@ all: $(LIBCOMMON)
 
 
 $(LIBCOMMON): $(COMMON_OBJS)
+	@echo "    [$@]"
 	ar rc $@ $(COMMON_OBJS)
 
 pixels.o: pixels.c
@@ -22,5 +23,5 @@ gridmap.o: gridmap.c
 	$(CC) $(CFLAGS) -msse -c $<
 
 clean:
-	rm -f *.o *~ *.a
+	rm -f *.o *~ *.a $(LIBCOMMON)
 	rm -f gu_minheap_tester

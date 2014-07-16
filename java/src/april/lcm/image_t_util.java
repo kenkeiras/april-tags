@@ -27,7 +27,8 @@ import april.lcmtypes.image_t;
 public class image_t_util
 {
     public static final int FORMAT_JPEG = 1196444237;
-    public static final int FORMAT_RGB = 859981650;
+    public static final int FORMAT_RGB  = 859981650;
+    public static final int FORMAT_RGBA = 876758866;
     public static final int FORMAT_MJP0 = 0x30504A4D;
     public static final int FORMAT_MJP1 = 0x31504A4D;
     public static final int FORMAT_MJP2 = 0x32504A4D;
@@ -69,6 +70,9 @@ public class image_t_util
 
             case FORMAT_RGB:  // raw RGB
                 return decodeRGB(v);
+
+            case FORMAT_RGBA: // raw RGBA
+                return decodeRGBA(v);
 
             case FORMAT_MJP0: // Motion JPEG (JPEG without headers)
             case FORMAT_MJP1:
@@ -201,6 +205,31 @@ public class image_t_util
                 int b_int = b & 0xff;
 
                 Color col = new Color(r_int,g_int,b_int);
+                bi.setRGB(x, y, col.getRGB());
+            }
+        }
+
+        return bi;
+    }
+
+    static BufferedImage decodeRGBA(image_t v)
+    {
+        BufferedImage bi = new BufferedImage(v.width, v.height, BufferedImage.TYPE_INT_ARGB);
+
+        for (int y = 0; y < v.height; y++) {
+            for (int x = 0; x < v.width; x++) {
+                int index = y*v.stride + 4*x;
+                byte r = v.image[index + 0];
+                byte g = v.image[index + 1];
+                byte b = v.image[index + 2];
+                byte a = v.image[index + 3];
+
+                int r_int = r & 0xff;
+                int g_int = g & 0xff;
+                int b_int = b & 0xff;
+                int a_int = a & 0xff;
+
+                Color col = new Color(r_int,g_int,b_int,a_int);
                 bi.setRGB(x, y, col.getRGB());
             }
         }

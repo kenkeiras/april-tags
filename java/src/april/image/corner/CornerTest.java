@@ -94,7 +94,28 @@ public class CornerTest implements ParameterListener
 
         jf.add(new LayerBufferPanel(vc), BorderLayout.EAST);
 
+        new AcquisitionThread().start();
         new RunThread().start();
+    }
+
+    BlockingSingleQueue<FrameData> frameQueue = new BlockingSingleQueue<FrameData>();
+
+    class AcquisitionThread extends Thread
+    {
+        public void run()
+        {
+            isrc.start();
+
+            while (true) {
+                FrameData frmd = isrc.getFrame();
+                if (frmd == null)
+                    continue;
+
+                frameQueue.put(frmd);
+            }
+
+        }
+
     }
 
     class RunThread extends Thread
@@ -102,12 +123,8 @@ public class CornerTest implements ParameterListener
         public void run()
         {
             boolean first = true;
-            isrc.start();
-
             while (true) {
-                FrameData frmd = isrc.getFrame();
-                if (frmd == null)
-                    continue;
+                FrameData frmd = frameQueue.get();
 
                 im = ImageConvert.convertToImage(frmd);
 
@@ -173,10 +190,11 @@ public class CornerTest implements ParameterListener
                 if (corner[2] < thresh)
                     continue;
 
-                vb.addBack(new VisChain(LinAlg.translate(0, out.getHeight(), 0),
-                                        LinAlg.scale(1, -1, 1),
-                                        LinAlg.translate(corner[0], corner[1], 0),
-                                        new VzCircle(4, new VzLines.Style(Color.yellow, 1), null)));
+                vb.addBack(new VisDepthTest(false,
+                                            new VisChain(LinAlg.translate(0, out.getHeight(), 0),
+                                                         LinAlg.scale(1, -1, 1),
+                                                         LinAlg.translate(corner[0], corner[1], 0),
+                                                         new VzCircle(4, new VzLines.Style(Color.yellow, 1), null))));
             }
 
             vb.swap();

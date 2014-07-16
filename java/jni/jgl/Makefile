@@ -7,6 +7,7 @@ all:  $(DESTLIB)
 
 
 $(DESTLIB) : $(LIB)
+	@echo "    [$(LIB)]"
 	cp $(LIB) $(DESTLIB)
 
 LIBJGL_OBJS += glcontext.o glcontext-x11.o gl_jni.o lphash.o parray.o
