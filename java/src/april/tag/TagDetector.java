@@ -244,6 +244,12 @@ public class TagDetector implements AbstractTagDetector
      **/
     public ArrayList<TagDetection> process(BufferedImage im, double opticalCenter[])
     {
+        return processFloat(new FloatImage(im), opticalCenter);
+    }
+
+    /** Detect the features in the specified float image.  **/
+    public ArrayList<TagDetection> processFloat(FloatImage fimOrig, double opticalCenter[])
+    {
         this.opticalCenter = opticalCenter;
 
         // This is a very long function, but it can't really be
@@ -253,8 +259,6 @@ public class TagDetector implements AbstractTagDetector
         ///////////////////////////////////////////////////////////
         // Step one. Preprocess image (convert to float (grayscale)
         // and low pass if necessary.)
-        FloatImage fimOrig = new FloatImage(im);
-
         FloatImage fim = fimOrig;
         if (sigma > 0) {
             int filtsz = ((int) Math.max(3, 3*sigma)) | 1;
