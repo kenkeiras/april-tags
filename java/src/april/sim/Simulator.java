@@ -98,8 +98,9 @@ public class Simulator implements VisConsole.Listener
             }
 
             // XXX Might be good to add a bit of 'fudge' here, especially if we stick with perspective
-            vl.cameraManager.fit2D(LinAlg.resize(min,2),
-                                   LinAlg.resize(max,2),true);
+            if (world.objects.size() > 0)
+                vl.cameraManager.fit2D(LinAlg.resize(min,2),
+                                       LinAlg.resize(max,2),true);
         }
 
 
