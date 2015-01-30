@@ -293,11 +293,14 @@ public class TagDetector implements AbstractTagDetector
         if (segDecimate)
             fimseg = fimseg.decimateAvg();
 
-        FloatImage fimTheta = new FloatImage(fimseg.width, fimseg.height);
-        FloatImage fimMag = new FloatImage(fimseg.width, fimseg.height);
+        int fimsegWidth = fimseg.width;
+        int fimsegHeight = fimseg.height;
 
-        for (int y = 1; y+1 < fimseg.height; y++) {
-            for (int x = 1; x+1 < fimseg.width; x++) {
+        FloatImage fimTheta = new FloatImage(fimsegWidth, fimsegHeight);
+        FloatImage fimMag = new FloatImage(fimsegWidth, fimsegHeight);
+
+        for (int y = 1; y+1 < fimsegHeight; y++) {
+            for (int x = 1; x+1 < fimsegWidth; x++) {
 
                 float Ix = fimseg.get(x+1, y) - fimseg.get(x-1, y);
                 float Iy = fimseg.get(x,y+1) - fimseg.get(x, y-1);
@@ -315,15 +318,17 @@ public class TagDetector implements AbstractTagDetector
             debugMag = fimMag.normalize().makeImage();
         }
 
+        fimseg = null;
+
         ///////////////////////////////////////////////////////////
         // Step three. Segment the edges, grouping pixels with similar
         // thetas together. This is a greedy algorithm: we start with
         // the most similar pixels.  We use 4-connectivity.
-        UnionFindSimple uf = new UnionFindSimple(fimseg.width*fimseg.height);
+        UnionFindSimple uf = new UnionFindSimple(fimsegWidth*fimsegHeight);
 
         if (true) {
-            int width = fimseg.width;
-            int height = fimseg.height;
+            int width = fimsegWidth;
+            int height = fimsegHeight;
 
             long edges[] = new long[width*height*4];
             int nedges = 0;
@@ -342,8 +347,8 @@ public class TagDetector implements AbstractTagDetector
             double mmin[] = new double[width*height];
             double mmax[] = new double[width*height];
 
-            for (int y = 0; y+1 < fimseg.height; y++) {
-                for (int x = 0; x+1 < fimseg.width; x++) {
+            for (int y = 0; y+1 < fimsegHeight; y++) {
+                for (int x = 0; x+1 < fimsegWidth; x++) {
 
                     double mag0 = fimMag.get(x,y);
                     if (mag0 < minMag)
@@ -437,19 +442,19 @@ public class TagDetector implements AbstractTagDetector
         // these points.
 
         if (debug) {
-            debugSegmentation = new BufferedImage(fimseg.width, fimseg.height, BufferedImage.TYPE_INT_RGB);
+            debugSegmentation = new BufferedImage(fimsegWidth, fimsegHeight, BufferedImage.TYPE_INT_RGB);
         }
 
         HashMap<Integer,ArrayList<double[]>> clusters = new HashMap<Integer,ArrayList<double[]>>();
-        for (int y = 0; y+1 < fimseg.height; y++) {
-            for (int x = 0; x+1 < fimseg.width; x++) {
-                if (uf.getSetSize(y*fimseg.width+x) < minimumSegmentSize) {
+        for (int y = 0; y+1 < fimsegHeight; y++) {
+            for (int x = 0; x+1 < fimsegWidth; x++) {
+                if (uf.getSetSize(y*fimsegWidth+x) < minimumSegmentSize) {
                     if (debug)
                         debugSegmentation.setRGB(x, y, 0);
                     continue;
                 }
 
-                int rep = (int) uf.getRepresentative(y*fimseg.width + x);
+                int rep = (int) uf.getRepresentative(y*fimsegWidth + x);
                 if (debug)
                     debugSegmentation.setRGB(x, y, rep);
 
@@ -464,6 +469,8 @@ public class TagDetector implements AbstractTagDetector
                 points.add(pt);
             }
         }
+
+        uf = null;
 
         ///////////////////////////////////////////////////////////
         // Step five. Loop over the clusters, fitting lines (which we
@@ -532,6 +539,8 @@ public class TagDetector implements AbstractTagDetector
 
             segments.add(seg);
         }
+
+        fimMag = fimTheta = null;
 
         int width = fim.width, height = fim.height;
 
